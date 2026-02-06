@@ -1502,14 +1502,8 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let inner = modal.inner(modalArea)
     let contentArea = rect(inner.x, inner.y, inner.width,
       max(1, inner.height - 2))
-    let jumpSuffix =
-      if model.ui.fleetListState.jumpBuffer.len > 0:
-        "  Fleet#: " &
-          model.ui.fleetListState.jumpBuffer & "_"
-      else:
-        ""
     let hintLine =
-      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md [R]OE [Z]TC" & jumpSuffix
+      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md [R]OE [Z]TC"
     let footerY = inner.bottom - 1
     discard buf.setString(inner.x, footerY, hintLine,
       canvasDimStyle())

@@ -20,6 +20,8 @@ import ../../engine/types/[core, production, ship, facilities, ground_unit, flee
 
 export types, tui_model, actions
 
+const DigitBufferTimeout = 1.0  ## Seconds to wait for a second keystroke in multi-char input
+
 proc viewModeFromInt(value: int): Option[ViewMode] =
   case value
   of 1:
@@ -1343,6 +1345,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue > 0:
         model.ui.fleetDetailModal.roeValue -= 1  # Up decreases value (moves toward 0)
+        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       if model.ui.fleetDetailModal.ztcIdx > 0:
         model.ui.fleetDetailModal.ztcIdx -= 1
@@ -1360,6 +1363,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue < 10:
         model.ui.fleetDetailModal.roeValue += 1  # Down increases value (moves toward 10)
+        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       let maxZtc = allZeroTurnCommands().len - 1  # 8 (indices 0-8)
       if model.ui.fleetDetailModal.ztcIdx < maxZtc:
@@ -1657,19 +1661,21 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           let buffer = model.ui.fleetDetailModal.commandDigitBuffer
           let lastTime = model.ui.fleetDetailModal.commandDigitTime
           
-          # Check if previous digit timed out (300ms)
-          if buffer.len == 1 and (now - lastTime) < 0.3:
+          if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
             # Second digit - combine with first to get command index
             let cmdNum = parseInt(buffer & $digit)
             if cmdNum >= 0 and cmdNum <= 19:
               model.ui.fleetDetailModal.commandIdx = cmdNum
             model.ui.fleetDetailModal.commandDigitBuffer = ""
           else:
-            # First digit - store it and wait for second
+            # First digit - jump immediately and wait for second
+            let cmdNum = parseInt($digit)
+            if cmdNum >= 0 and cmdNum <= 19:
+              model.ui.fleetDetailModal.commandIdx = cmdNum
             model.ui.fleetDetailModal.commandDigitBuffer = $digit
             model.ui.fleetDetailModal.commandDigitTime = now
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
-      # Direct digit entry for ROE Picker (0-10)
+      # Direct digit entry for ROE Picker (0-10) — jump only, Enter to confirm
       if proposal.kind == ProposalKind.pkGameAction:
         let ch = if proposal.gameActionData.len > 0: proposal.gameActionData[0] else: '\0'
         if ch >= '0' and ch <= '9':
@@ -1678,73 +1684,20 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           let buffer = model.ui.fleetDetailModal.commandDigitBuffer
           let lastTime = model.ui.fleetDetailModal.commandDigitTime
           
-          # Check if this is a second digit within 300ms
-          if buffer.len == 1 and (now - lastTime) < 0.3:
+          if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
             # Two digits: form number like "10"
             let roeNum = parseInt(buffer & $ch)
             if roeNum >= 0 and roeNum <= 10:
               model.ui.fleetDetailModal.roeValue = roeNum
-              # Auto-select the ROE value (equivalent to pressing Enter)
-              # Call the fleetDetailSelectROE logic inline
-              model.ui.fleetDetailModal.subModal = FleetSubModal.None
-              if model.ui.selectedFleetIds.len > 0:
-                for fleetId in model.ui.selectedFleetIds:
-                  let cmd = FleetCommand(
-                    fleetId: FleetId(fleetId),
-                    commandType: FleetCommandType.Hold,
-                    targetSystem: none(SystemId),
-                    targetFleet: none(FleetId),
-                    roe: some(int32(roeNum))
-                  )
-                  model.ui.stagedFleetCommands.add(cmd)
-                model.ui.statusMessage = "Staged ROE " & $roeNum & " for " &
-                  $model.ui.selectedFleetIds.len & " fleets"
-                model.ui.mode = ViewMode.Fleets
-                model.resetBreadcrumbs(ViewMode.Fleets)
-              else:
-                let cmd = FleetCommand(
-                  fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
-                  commandType: FleetCommandType.Hold,
-                  targetSystem: none(SystemId),
-                  targetFleet: none(FleetId),
-                  roe: some(int32(roeNum))
-                )
-                model.ui.stagedFleetCommands.add(cmd)
-                model.ui.statusMessage = "Staged ROE " & $roeNum
             model.ui.fleetDetailModal.commandDigitBuffer = ""
           elif digit == 1:
-            # First digit is '1' - wait for second digit for "10"
+            # First digit is '1' - jump immediately, wait for second digit for "10"
+            model.ui.fleetDetailModal.roeValue = 1
             model.ui.fleetDetailModal.commandDigitBuffer = $ch
             model.ui.fleetDetailModal.commandDigitTime = now
           else:
-            # Single digit 0-9: immediately set ROE and stage
+            # Single digit 0, 2-9: jump to that ROE value
             model.ui.fleetDetailModal.roeValue = digit
-            # Auto-select the ROE value
-            model.ui.fleetDetailModal.subModal = FleetSubModal.None
-            if model.ui.selectedFleetIds.len > 0:
-              for fleetId in model.ui.selectedFleetIds:
-                let cmd = FleetCommand(
-                  fleetId: FleetId(fleetId),
-                  commandType: FleetCommandType.Hold,
-                  targetSystem: none(SystemId),
-                  targetFleet: none(FleetId),
-                  roe: some(int32(digit))
-                )
-                model.ui.stagedFleetCommands.add(cmd)
-              model.ui.statusMessage = "Staged ROE " & $digit & " for " &
-                $model.ui.selectedFleetIds.len & " fleets"
-              model.ui.mode = ViewMode.Fleets
-              model.resetBreadcrumbs(ViewMode.Fleets)
-            else:
-              let cmd = FleetCommand(
-                fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
-                commandType: FleetCommandType.Hold,
-                targetSystem: none(SystemId),
-                targetFleet: none(FleetId),
-                roe: some(int32(digit))
-              )
-              model.ui.stagedFleetCommands.add(cmd)
-              model.ui.statusMessage = "Staged ROE " & $digit
             model.ui.fleetDetailModal.commandDigitBuffer = ""
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       # Single-digit quick entry for ZTC (1-9)
@@ -1810,31 +1763,29 @@ proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
       let lastTime = model.ui.fleetListState.jumpTime
       # Build 2-char label buffer (e.g. "A" then "1" → "A1")
       var nextBuffer = ""
-      if buffer.len == 1 and (now - lastTime) < 0.3:
+      if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
         nextBuffer = buffer & $ch
       else:
         nextBuffer = $ch
       model.ui.fleetListState.jumpBuffer = nextBuffer
       model.ui.fleetListState.jumpTime = now
-      # Search for matching fleet by name
-      let fleets = model.filteredFleets()
-      let target = nextBuffer.toUpperAscii()
-      var foundIdx = -1
-      for idx, fleet in fleets:
-        if fleet.name.toUpperAscii().startsWith(target):
-          foundIdx = idx
-          break
-      if foundIdx >= 0:
-        model.ui.selectedIdx = foundIdx
-        var localScroll = model.ui.fleetsScroll
-        localScroll.contentLength = fleets.len
-        let maxVisibleRows = max(1, model.ui.termHeight - 10)
-        localScroll.viewportLength = maxVisibleRows
-        localScroll.ensureVisible(foundIdx)
-        model.ui.fleetsScroll = localScroll
-        if nextBuffer.len >= 2:
-          model.ui.fleetListState.jumpBuffer = ""
-      elif nextBuffer.len >= 2:
+      # Only search when we have a full 2-char label
+      if nextBuffer.len >= 2:
+        let fleets = model.filteredFleets()
+        let target = nextBuffer.toUpperAscii()
+        var foundIdx = -1
+        for idx, fleet in fleets:
+          if fleet.name.toUpperAscii().startsWith(target):
+            foundIdx = idx
+            break
+        if foundIdx >= 0:
+          model.ui.selectedIdx = foundIdx
+          var localScroll = model.ui.fleetsScroll
+          localScroll.contentLength = fleets.len
+          let maxVisibleRows = max(1, model.ui.termHeight - 10)
+          localScroll.viewportLength = maxVisibleRows
+          localScroll.ensureVisible(foundIdx)
+          model.ui.fleetsScroll = localScroll
         model.ui.fleetListState.jumpBuffer = ""
   else:
     discard

@@ -381,17 +381,9 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.None:
       (true, "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close")
     of FleetSubModal.CommandPicker:
-      let hint = if state.commandDigitBuffer.len > 0:
-        "Cmd: " & state.commandDigitBuffer & "_ [↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
-      else:
-        "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
-      (true, hint)
+      (true, "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.ROEPicker:
-      let hint = if state.commandDigitBuffer.len > 0:
-        "ROE: " & state.commandDigitBuffer & "_ [↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel"
-      else:
-        "[↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel"
-      (true, hint)
+      (true, "[↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.ZTCPicker:
       (true, "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
     else:
