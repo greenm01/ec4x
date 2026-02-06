@@ -98,8 +98,6 @@ proc hasColonySelection*(model: TuiModel): bool =
   row.colonyId.isSome and row.isOwned
 proc hasFleetSelection*(model: TuiModel): bool =
   model.ui.selectedFleetIds.len > 0
-proc fleetSearchActive*(model: TuiModel): bool =
-  model.ui.mode == ViewMode.Fleets and model.ui.fleetListState.searchActive
 proc inGame*(model: TuiModel): bool = model.ui.appPhase == AppPhase.InGame
 proc inLobby*(model: TuiModel): bool = model.ui.appPhase == AppPhase.Lobby
 
@@ -280,8 +278,6 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.selectedIdx >= 0
   of "hasFleetSelection":
     model.ui.selectedFleetIds.len > 0
-  of "fleetSearchActive":
-    model.ui.mode == ViewMode.Fleets and model.ui.fleetListState.searchActive
   of "inGame":
     model.ui.appPhase == AppPhase.InGame
   of "inLobby":
@@ -608,40 +604,11 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyS, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetSortCycle,
+    actionKind: ActionKind.fleetSortToggle,
     context: BindingContext.Fleets,
-    longLabel: "SORT", shortLabel: "Sort", priority: 24,
+    longLabel: "ASC/DESC", shortLabel: "A/D",
+    priority: 24,
     enabledCheck: "hasFleets"))
-
-  registerBinding(Binding(
-    key: KeyCode.Key1, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetFilterAll,
-    context: BindingContext.Fleets,
-    longLabel: "FILTER ALL", shortLabel: "All", priority: 25))
-
-  registerBinding(Binding(
-    key: KeyCode.Key2, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetFilterIdle,
-    context: BindingContext.Fleets,
-    longLabel: "FILTER IDLE", shortLabel: "Idle", priority: 26))
-
-  registerBinding(Binding(
-    key: KeyCode.Key3, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetFilterTransit,
-    context: BindingContext.Fleets,
-    longLabel: "FILTER MOVE", shortLabel: "Move", priority: 27))
-
-  registerBinding(Binding(
-    key: KeyCode.Key4, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetFilterAttention,
-    context: BindingContext.Fleets,
-    longLabel: "FILTER WARN", shortLabel: "Warn", priority: 28))
-
-  registerBinding(Binding(
-    key: KeyCode.KeySlash, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetSearchStart,
-    context: BindingContext.Fleets,
-    longLabel: "SEARCH", shortLabel: "Find", priority: 29))
 
   registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
@@ -657,12 +624,6 @@ proc initBindings*() =
     longLabel: "BATCH ROE", shortLabel: "ROE", priority: 31,
     enabledCheck: "hasFleetSelection"))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.fleetSearchCancel,
-    context: BindingContext.Fleets,
-    longLabel: "CLEAR SEARCH", shortLabel: "Clr", priority: 32,
-    enabledCheck: "fleetSearchActive"))
   
   # Fleet Console pane navigation (SystemView mode only)
   registerBinding(Binding(
@@ -1163,22 +1124,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionDeselect())
   of ActionKind.toggleFleetSelect:
     return some(actionToggleFleetSelect(model.ui.selectedIdx))
-  of ActionKind.fleetSortCycle:
-    return some(actionFleetSortCycle())
-  of ActionKind.fleetFilterAll:
-    return some(actionFleetFilterAll())
-  of ActionKind.fleetFilterIdle:
-    return some(actionFleetFilterIdle())
-  of ActionKind.fleetFilterTransit:
-    return some(actionFleetFilterTransit())
-  of ActionKind.fleetFilterAttention:
-    return some(actionFleetFilterAttention())
-  of ActionKind.fleetSearchStart:
-    return some(actionFleetSearchStart())
-  of ActionKind.fleetSearchConfirm:
-    return some(actionFleetSearchConfirm())
-  of ActionKind.fleetSearchCancel:
-    return some(actionFleetSearchCancel())
+  of ActionKind.fleetSortToggle:
+    return some(actionFleetSortToggle())
   of ActionKind.fleetBatchCommand:
     return some(actionFleetBatchCommand())
   of ActionKind.fleetBatchROE:
@@ -1363,8 +1310,6 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     if model.ui.fleetDetailModal.subModal != FleetSubModal.None:
       return some(actionFleetDetailCancel())
     return some(actionCloseFleetDetailModal())
-  if model.ui.mode == ViewMode.Fleets and model.ui.fleetListState.searchActive:
-    return some(actionFleetSearchCancel())
   if model.ui.orderEntryActive:
     return some(actionCancelOrder())
   if model.ui.expertModeActive:
@@ -1423,18 +1368,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     else:
       return none(Proposal)
 
-  # Fleet list search mode: handle confirm/cancel/backspace
-  if model.ui.mode == ViewMode.Fleets and model.ui.fleetListState.searchActive:
-    case key
-    of KeyCode.KeyEnter:
-      return some(actionFleetSearchConfirm())
-    of KeyCode.KeyBackspace:
-      return some(actionFleetSearchBackspace())
-    of KeyCode.KeyEscape:
-      return some(actionFleetSearchCancel())
-    else:
-      discard
-
   # Build modal mode: use registry
   if model.ui.buildModal.active and modifier == KeyModifier.None:
     if key != KeyCode.KeyEscape:
@@ -1472,6 +1405,25 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       # Allow global bindings to pass through, block other keys
       if modifier != ViewModifier:
         return none(Proposal)
+
+  if model.ui.mode == ViewMode.Fleets and
+      model.ui.fleetViewMode == FleetViewMode.ListView and
+      not model.ui.expertModeActive and
+      modifier == KeyModifier.None:
+    let digitChar = case key
+      of KeyCode.Key0: '0'
+      of KeyCode.Key1: '1'
+      of KeyCode.Key2: '2'
+      of KeyCode.Key3: '3'
+      of KeyCode.Key4: '4'
+      of KeyCode.Key5: '5'
+      of KeyCode.Key6: '6'
+      of KeyCode.Key7: '7'
+      of KeyCode.Key8: '8'
+      of KeyCode.Key9: '9'
+      else: '\0'
+    if digitChar != '\0':
+      return some(actionFleetDigitJump(digitChar))
 
   # Order entry mode: use registry
   if model.ui.orderEntryActive and modifier == KeyModifier.None:

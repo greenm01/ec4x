@@ -500,6 +500,9 @@ proc buildFleetListTable*(model: TuiModel,
     .selectedIdx(selectedIdx)
     .zebraStripe(true)
     .showBorders(true)
+    .sortColumn(
+      model.ui.fleetListState.sortState.columnIdx,
+      model.ui.fleetListState.sortState.ascending)
 
   if startIdx >= endIdx:
     return
@@ -559,9 +562,6 @@ proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let tableArea = rect(area.x, area.y, tableWidth,
     min(tableHeight, area.height))
   table.render(tableArea, buf)
-  if model.ui.fleetListState.searchActive and tableArea.bottom < area.bottom:
-    let hint = "/" & model.ui.fleetListState.searchQuery
-    discard buf.setString(area.x, tableArea.bottom, hint, dimStyle())
 
 # ============================================================================
 # Deprecated: Old fleet detail render functions (replaced by modal)
@@ -1496,26 +1496,24 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
       .minHeight(1)
       .borderStyle(primaryBorderStyle())
       .bgStyle(modalBgStyle())
-    var footerText = "[↑↓] Navigate  [Enter] Details  [X] Select" &
-      "  [S] Sort  [1-4] Filter  [/] Search"
-    let sortLabel = fleetSortLabel(model.ui.fleetListState.sort)
-    let sortDir = if model.ui.fleetListState.sortAscending: "▲" else: "▼"
-    let filterLabel = fleetFilterLabel(model.ui.fleetListState.filter)
-    let meta = "  Sort: " & sortLabel & " " & sortDir &
-      "  Filter: " & filterLabel & " (" & $fleets.len & ")"
-    let searchSuffix = if model.ui.fleetListState.searchQuery.len > 0:
-      "  Search: " & model.ui.fleetListState.searchQuery
-    else:
-      ""
-    let fullMeta = meta & searchSuffix
-    if footerText.len + fullMeta.len <= tableWidth:
-      footerText.add(fullMeta)
-    elif footerText.len + meta.len <= tableWidth:
-      footerText.add(meta)
     let modalArea = modal.calculateArea(canvas, tableWidth,
       tableHeight + 2)
-    modal.renderWithFooter(modalArea, buf, footerText)
-    let contentArea = modal.contentArea(modalArea, hasFooter = true)
+    modal.renderWithSeparator(modalArea, buf, 2)
+    let inner = modal.inner(modalArea)
+    let contentArea = rect(inner.x, inner.y, inner.width,
+      max(1, inner.height - 2))
+    let jumpSuffix =
+      if model.ui.fleetListState.jumpBuffer.len > 0:
+        "  Fleet#: " &
+          model.ui.fleetListState.jumpBuffer & "_"
+      else:
+        ""
+    let hintLine =
+      "[↑↓] Navigate  [Enter] Details  [X] Select" &
+      "  [←→] Sort  [S] Asc/Desc" & jumpSuffix
+    let footerY = inner.bottom - 1
+    discard buf.setString(inner.x, footerY, hintLine,
+      canvasDimStyle())
     table.render(contentArea, buf)
   
   of FleetViewMode.SystemView:

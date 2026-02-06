@@ -295,18 +295,19 @@ type
     ROE
     Status
 
-  FleetListFilter* {.pure.} = enum
-    All
-    Idle
-    InTransit
-    NeedsAttention
+  TableSortState* = object
+    ## Reusable sort state for any table view.
+    ## Column index is 0-based, matching column order.
+    columnIdx*: int
+    ascending*: bool
+    columnCount*: int
 
   FleetListState* = object
-    sort*: FleetListSort
-    sortAscending*: bool
-    filter*: FleetListFilter
+    sortState*: TableSortState
     searchActive*: bool
     searchQuery*: string
+    jumpBuffer*: string
+    jumpTime*: float
 
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to primary view number)
@@ -767,6 +768,12 @@ proc initBreadcrumb*(label: string, mode: ViewMode,
   ## Create a breadcrumb item
   BreadcrumbItem(label: label, viewMode: mode, entityId: entityId)
 
+proc initTableSortState*(columnCount: int): TableSortState =
+  ## Create initial sort state (first column, ascending)
+  TableSortState(
+    columnIdx: 0, ascending: true,
+    columnCount: columnCount)
+
 proc initTuiUiState*(): TuiUiState =
   ## Create initial UI state with defaults
   TuiUiState(
@@ -807,11 +814,11 @@ proc initTuiUiState*(): TuiUiState =
     fleetConsoleSystems: @[],
     fleetConsoleFleetsBySystem: initTable[int, seq[FleetConsoleFleet]](),
     fleetListState: FleetListState(
-      sort: FleetListSort.FleetId,
-      sortAscending: true,
-      filter: FleetListFilter.All,
+      sortState: initTableSortState(11),
       searchActive: false,
-      searchQuery: ""
+      searchQuery: "",
+      jumpBuffer: "",
+      jumpTime: 0.0
     ),
     reportFilter: ReportCategory.Summary,
     reportFocus: ReportPaneFocus.TurnList,
@@ -1162,29 +1169,6 @@ proc idleFleetsCount*(model: TuiModel): int =
     if fleet.isIdle:
       result.inc
 
-proc fleetSortLabel*(sort: FleetListSort): string =
-  ## Label for fleet list sort column
-  case sort
-  of FleetListSort.FleetId: "Fleet ID"
-  of FleetListSort.Location: "Location"
-  of FleetListSort.Sector: "Sector"
-  of FleetListSort.Ships: "Ships"
-  of FleetListSort.AttackStrength: "AS"
-  of FleetListSort.DefenseStrength: "DS"
-  of FleetListSort.Command: "Command"
-  of FleetListSort.Destination: "Destination"
-  of FleetListSort.ETA: "ETA"
-  of FleetListSort.ROE: "ROE"
-  of FleetListSort.Status: "Status"
-
-proc fleetFilterLabel*(filter: FleetListFilter): string =
-  ## Label for fleet list filter
-  case filter
-  of FleetListFilter.All: "All"
-  of FleetListFilter.Idle: "Idle"
-  of FleetListFilter.InTransit: "In Transit"
-  of FleetListFilter.NeedsAttention: "Needs Attention"
-
 proc fleetMatchesSearch*(fleet: FleetInfo, query: string): bool =
   ## Match fleet against search query (fleet ID or sector coords)
   if query.len == 0:
@@ -1223,27 +1207,15 @@ proc compareFleetSort(a, b: FleetInfo, sort: FleetListSort): int =
     cmp(a.statusLabel, b.statusLabel)
 
 proc filteredFleets*(model: TuiModel): seq[FleetInfo] =
-  ## Filter and sort fleet list for ListView
+  ## Sort fleet list for ListView (with optional search)
   let state = model.ui.fleetListState
   result = @[]
   for fleet in model.view.fleets:
     if not fleetMatchesSearch(fleet, state.searchQuery):
       continue
-    case state.filter
-    of FleetListFilter.All:
-      discard
-    of FleetListFilter.Idle:
-      if not fleet.isIdle:
-        continue
-    of FleetListFilter.InTransit:
-      if fleet.destinationSystemId == 0:
-        continue
-    of FleetListFilter.NeedsAttention:
-      if not fleet.needsAttention:
-        continue
     result.add(fleet)
-  let ascending = state.sortAscending
-  let sortMode = state.sort
+  let ascending = state.sortState.ascending
+  let sortMode = FleetListSort(state.sortState.columnIdx)
   result.sort(proc(a, b: FleetInfo): int =
     let cmpResult = compareFleetSort(a, b, sortMode)
     if cmpResult == 0:

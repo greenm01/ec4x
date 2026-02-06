@@ -54,6 +54,8 @@ type
     showBorders*: bool          ## Render box borders and vertical separators
     fillHeight*: bool           ## Extend borders to fill available height
     scrollOffset*: int          ## Vertical scroll offset for row rendering
+    sortColumnIdx*: int         ## Sorted column index (-1 = no indicator)
+    sortAscending*: bool        ## Sort direction (true = ▲, false = ▼)
 
 # -----------------------------------------------------------------------------
 # Constructors
@@ -90,7 +92,9 @@ proc table*(columns: openArray[TableColumn]): Table =
     cellPadding: 1,
     showBorders: true,
     fillHeight: false,
-    scrollOffset: 0
+    scrollOffset: 0,
+    sortColumnIdx: -1,
+    sortAscending: true
   )
 
 # -----------------------------------------------------------------------------
@@ -180,6 +184,14 @@ proc scrollOffset*(t: Table, offset: int): Table =
   ## Rows before this offset will be skipped during rendering.
   result = t
   result.scrollOffset = max(0, offset)
+
+proc sortColumn*(t: Table, idx: int,
+    ascending: bool): Table =
+  ## Set sorted column indicator.
+  ## When idx >= 0, the column header shows ▲/▼.
+  result = t
+  result.sortColumnIdx = idx
+  result.sortAscending = ascending
 
 # -----------------------------------------------------------------------------
 # Column width calculation
@@ -371,7 +383,12 @@ proc renderToStrings*(t: Table, width: int = 60): seq[string] =
     var headerLine = if t.showBorders: "\u2502" else: ""
     let pad = " ".repeat(t.cellPadding)
     for i, col in t.columns:
-      let aligned = alignText(col.header, colWidths[i], col.align)
+      var headerText = col.header
+      if i == t.sortColumnIdx:
+        headerText &= (
+          if t.sortAscending: "\u25B2" else: "\u25BC")
+      let aligned = alignText(
+        headerText, colWidths[i], col.align)
       headerLine.add(pad & aligned & pad)
       if t.showBorders:
         headerLine.add("\u2502")
@@ -467,7 +484,12 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     if t.showBorders:
       putSegment(x, "\u2502", t.separatorStyle)
     for i, col in t.columns:
-      let aligned = alignText(col.header, colWidths[i], col.align)
+      var headerText = col.header
+      if i == t.sortColumnIdx:
+        headerText &= (
+          if t.sortAscending: "\u25B2" else: "\u25BC")
+      let aligned = alignText(
+        headerText, colWidths[i], col.align)
       putSegment(x, pad, t.headerStyle)
       putSegment(x, aligned, t.headerStyle)
       putSegment(x, pad, t.headerStyle)

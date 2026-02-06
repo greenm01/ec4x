@@ -267,45 +267,13 @@ proc actionSubmitTurn*(): Proposal =
 # Fleet List Actions
 # ============================================================================
 
-proc actionFleetSortCycle*(): Proposal =
-  ## Cycle fleet list sort column
-  gameActionProposal(ActionKind.fleetSortCycle, "")
+proc actionFleetSortToggle*(): Proposal =
+  ## Toggle fleet list sort direction (asc/desc)
+  gameActionProposal(ActionKind.fleetSortToggle, "")
 
-proc actionFleetFilterAll*(): Proposal =
-  ## Show all fleets
-  gameActionProposal(ActionKind.fleetFilterAll, "")
-
-proc actionFleetFilterIdle*(): Proposal =
-  ## Show idle fleets
-  gameActionProposal(ActionKind.fleetFilterIdle, "")
-
-proc actionFleetFilterTransit*(): Proposal =
-  ## Show fleets in transit
-  gameActionProposal(ActionKind.fleetFilterTransit, "")
-
-proc actionFleetFilterAttention*(): Proposal =
-  ## Show fleets needing attention
-  gameActionProposal(ActionKind.fleetFilterAttention, "")
-
-proc actionFleetSearchStart*(): Proposal =
-  ## Start fleet search input
-  gameActionProposal(ActionKind.fleetSearchStart, "")
-
-proc actionFleetSearchAppend*(value: string): Proposal =
-  ## Append character to fleet search input
-  gameActionProposal(ActionKind.fleetSearchAppend, value)
-
-proc actionFleetSearchBackspace*(): Proposal =
-  ## Backspace in fleet search input
-  gameActionProposal(ActionKind.fleetSearchBackspace, "")
-
-proc actionFleetSearchConfirm*(): Proposal =
-  ## Confirm fleet search input
-  gameActionProposal(ActionKind.fleetSearchConfirm, "")
-
-proc actionFleetSearchCancel*(): Proposal =
-  ## Cancel fleet search input
-  gameActionProposal(ActionKind.fleetSearchCancel, "")
+proc actionFleetDigitJump*(digit: char): Proposal =
+  ## Jump to fleet by digit input
+  gameActionProposal(ActionKind.fleetDigitJump, $digit)
 
 proc actionFleetBatchCommand*(): Proposal =
   ## Open batch command picker for selected fleets

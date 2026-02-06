@@ -63,21 +63,23 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.confirmMessage = ""
   model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
 
-proc advanceFleetSort(model: var TuiModel) =
-  let next =
-    case model.ui.fleetListState.sort
-    of FleetListSort.FleetId: FleetListSort.Location
-    of FleetListSort.Location: FleetListSort.Sector
-    of FleetListSort.Sector: FleetListSort.Ships
-    of FleetListSort.Ships: FleetListSort.AttackStrength
-    of FleetListSort.AttackStrength: FleetListSort.DefenseStrength
-    of FleetListSort.DefenseStrength: FleetListSort.Command
-    of FleetListSort.Command: FleetListSort.Destination
-    of FleetListSort.Destination: FleetListSort.ETA
-    of FleetListSort.ETA: FleetListSort.ROE
-    of FleetListSort.ROE: FleetListSort.Status
-    of FleetListSort.Status: FleetListSort.FleetId
-  model.ui.fleetListState.sort = next
+proc advanceSortColumn*(state: var TableSortState) =
+  ## Move to next sort column, reset to ascending
+  state.columnIdx =
+    (state.columnIdx + 1) mod state.columnCount
+  state.ascending = true
+
+proc retreatSortColumn*(state: var TableSortState) =
+  ## Move to previous sort column, reset to ascending
+  state.columnIdx =
+    (state.columnIdx - 1 + state.columnCount) mod
+    state.columnCount
+  state.ascending = true
+
+proc toggleSortDirection*(
+    state: var TableSortState) =
+  ## Toggle ascending/descending on current column
+  state.ascending = not state.ascending
 
 proc resetExpertPaletteSelection(model: var TuiModel) =
   let matches = matchExpertCommands(model.ui.expertModeInput)
@@ -432,60 +434,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     let maxIdx = model.currentListLength() - 1
     let pageSize = max(1, model.ui.termHeight - 10)
     model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
-  of ActionKind.fleetSortCycle:
-    if model.ui.mode == ViewMode.Fleets and
-        model.ui.fleetViewMode == FleetViewMode.ListView:
-      if model.ui.fleetListState.sortAscending:
-        model.ui.fleetListState.sortAscending = false
-      else:
-        model.ui.fleetListState.sortAscending = true
-        advanceFleetSort(model)
-  of ActionKind.fleetFilterAll:
-    if model.ui.mode == ViewMode.Fleets:
-      model.ui.fleetListState.filter = FleetListFilter.All
-      model.ui.selectedIdx = 0
-      model.ui.fleetsScroll.verticalOffset = 0
-  of ActionKind.fleetFilterIdle:
-    if model.ui.mode == ViewMode.Fleets:
-      model.ui.fleetListState.filter = FleetListFilter.Idle
-      model.ui.selectedIdx = 0
-      model.ui.fleetsScroll.verticalOffset = 0
-  of ActionKind.fleetFilterTransit:
-    if model.ui.mode == ViewMode.Fleets:
-      model.ui.fleetListState.filter = FleetListFilter.InTransit
-      model.ui.selectedIdx = 0
-      model.ui.fleetsScroll.verticalOffset = 0
-  of ActionKind.fleetFilterAttention:
-    if model.ui.mode == ViewMode.Fleets:
-      model.ui.fleetListState.filter = FleetListFilter.NeedsAttention
-      model.ui.selectedIdx = 0
-      model.ui.fleetsScroll.verticalOffset = 0
-  of ActionKind.fleetSearchStart:
-    if model.ui.mode == ViewMode.Fleets:
-      model.ui.fleetListState.searchActive = true
-      model.ui.fleetListState.searchQuery = ""
-      model.ui.statusMessage = "Search fleets: [Enter] confirm  [Esc] cancel"
-      model.ui.selectedIdx = 0
-      model.ui.fleetsScroll.verticalOffset = 0
-  of ActionKind.fleetSearchBackspace:
-    if model.ui.fleetListState.searchActive and
-        model.ui.fleetListState.searchQuery.len > 0:
-      model.ui.fleetListState.searchQuery =
-        model.ui.fleetListState.searchQuery[0 ..<
-          model.ui.fleetListState.searchQuery.len - 1]
-  of ActionKind.fleetSearchConfirm:
-    if model.ui.fleetListState.searchActive:
-      model.ui.fleetListState.searchActive = false
-      model.ui.selectedIdx = 0
-      model.ui.statusMessage = ""
-      model.ui.fleetsScroll.verticalOffset = 0
-  of ActionKind.fleetSearchCancel:
-    if model.ui.mode == ViewMode.Fleets:
-      model.ui.fleetListState.searchActive = false
-      model.ui.fleetListState.searchQuery = ""
-      model.ui.selectedIdx = 0
-      model.ui.statusMessage = ""
-      model.ui.fleetsScroll.verticalOffset = 0
   of ActionKind.fleetBatchCommand:
     if model.ui.mode == ViewMode.Fleets and
         model.ui.selectedFleetIds.len > 0:
@@ -1526,14 +1474,66 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     discard
 
 proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
-  ## Handle fleet list search input
-  if proposal.kind != ProposalKind.pkGameAction:
+  ## Handle fleet list sort and jump input
+  if proposal.kind != ProposalKind.pkGameAction and
+      proposal.kind != ProposalKind.pkNavigation:
     return
   case proposal.actionKind
-  of ActionKind.fleetSearchAppend:
-    if model.ui.fleetListState.searchActive and
+  of ActionKind.fleetSortToggle:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.ListView:
+      toggleSortDirection(
+        model.ui.fleetListState.sortState)
+  of ActionKind.fleetConsoleNextPane:
+    # Right arrow: next sort column in ListView
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.ListView:
+      advanceSortColumn(
+        model.ui.fleetListState.sortState)
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetConsolePrevPane:
+    # Left arrow: prev sort column in ListView
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.ListView:
+      retreatSortColumn(
+        model.ui.fleetListState.sortState)
+      model.ui.selectedIdx = 0
+      model.ui.fleetsScroll.verticalOffset = 0
+  of ActionKind.fleetDigitJump:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.ListView and
         proposal.gameActionData.len > 0:
-      model.ui.fleetListState.searchQuery.add(proposal.gameActionData)
+      let digit = proposal.gameActionData[0]
+      if digit >= '0' and digit <= '9':
+        let now = epochTime()
+        let buffer = model.ui.fleetListState.jumpBuffer
+        let lastTime = model.ui.fleetListState.jumpTime
+        var nextBuffer = ""
+        if buffer.len == 1 and (now - lastTime) < 0.3:
+          nextBuffer = buffer & $digit
+        else:
+          nextBuffer = $digit
+        model.ui.fleetListState.jumpBuffer = nextBuffer
+        model.ui.fleetListState.jumpTime = now
+        let fleets = model.filteredFleets()
+        let targetId = parseInt(nextBuffer)
+        var foundIdx = -1
+        for idx, fleet in fleets:
+          if fleet.id == targetId:
+            foundIdx = idx
+            break
+        if foundIdx >= 0:
+          model.ui.selectedIdx = foundIdx
+          var localScroll = model.ui.fleetsScroll
+          localScroll.contentLength = fleets.len
+          let maxVisibleRows = max(1, model.ui.termHeight - 10)
+          localScroll.viewportLength = maxVisibleRows
+          localScroll.ensureVisible(foundIdx)
+          model.ui.fleetsScroll = localScroll
+          model.ui.fleetListState.jumpBuffer = ""
+        elif nextBuffer.len >= 2:
+          model.ui.fleetListState.jumpBuffer = ""
   else:
     discard
 

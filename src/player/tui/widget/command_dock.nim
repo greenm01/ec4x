@@ -118,8 +118,6 @@ proc planetsContextActions*(hasSelection: bool): seq[ContextAction] =
   @[
     ContextAction(key: "Enter", label: "View Colony", enabled: hasSelection),
     ContextAction(key: "B", label: "Build", enabled: hasSelection),
-    ContextAction(key: "S", label: "Sort", enabled: true),
-    ContextAction(key: "F", label: "Filter", enabled: true),
   ]
 
 proc planetDetailContextActions*(): seq[ContextAction] =
@@ -150,8 +148,8 @@ proc fleetsContextActions*(hasSelection: bool,
       label: "Fleet Details",
       enabled: hasSelection
     ),
-      ContextAction(key: "S", label: "Sort", enabled: true),
-      ContextAction(key: "F", label: "Filter", enabled: true),
+      ContextAction(key: "←→", label: "Sort", enabled: true),
+      ContextAction(key: "S", label: "Asc/Desc", enabled: true),
     ]
 
 proc fleetDetailContextActions*(): seq[ContextAction] =

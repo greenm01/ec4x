@@ -54,16 +54,8 @@ type
     toggleFleetSelect
     switchPlanetTab
     switchFleetView
-    fleetSortCycle
-    fleetFilterAll
-    fleetFilterIdle
-    fleetFilterTransit
-    fleetFilterAttention
-    fleetSearchStart
-    fleetSearchAppend
-    fleetSearchBackspace
-    fleetSearchConfirm
-    fleetSearchCancel
+    fleetSortToggle
+    fleetDigitJump
     fleetBatchCommand
     fleetBatchROE
     cycleReportFilter

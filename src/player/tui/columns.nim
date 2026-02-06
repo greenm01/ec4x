@@ -75,13 +75,13 @@ proc fleetListColumns*(): seq[TableColumn] =
     tableColumn("Flt", 5, table.Alignment.Right),
     tableColumn("Location", 14, table.Alignment.Left),
     tableColumn("Sect", 5, table.Alignment.Center),
-    tableColumn("Ships", 5, table.Alignment.Right),
+    tableColumn("Ships", 6, table.Alignment.Right),
     tableColumn("AS", 4, table.Alignment.Right),
     tableColumn("DS", 4, table.Alignment.Right),
     tableColumn("CMD", 7, table.Alignment.Left),
     tableColumn("Dest", 10, table.Alignment.Left),
-    tableColumn("ETA", 3, table.Alignment.Right),
-    tableColumn("ROE", 3, table.Alignment.Right),
+    tableColumn("ETA", 4, table.Alignment.Right),
+    tableColumn("ROE", 4, table.Alignment.Right),
     tableColumn("Status", 8, table.Alignment.Left)
   ]
 
