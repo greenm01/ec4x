@@ -236,9 +236,24 @@ Command and Control for fleets.
 * **Table View**: Lists fleets with location, composition, and orders.
 * **Detail View**: Ship-level status and cargo.
 * **Commands**:
-  - `FleetCommand`: Move, Patrol, Hold, Guard, Attack (Bombard/Invade/Blockade/Blitz),
-    Colonize, Scout, Merge, Split.
-  - `ZeroTurn`: Rename, Scrap ships.
+  - `[C]` Command: 20 operational commands (00-19) - Move, Patrol, Hold, Guard, Attack, etc.
+  - `[R]` ROE: Rules of Engagement (0-10 scale)
+  - `[Z]` Zero-Turn: 9 administrative commands (instant, no turn cost) - DetachShips, TransferShips, MergeFleets, LoadCargo, UnloadCargo, LoadFighters, UnloadFighters, TransferFighters, Reactivate
+
+==== Fleet Label System
+
+Fleets use an internal `FleetId` (uint32, global, monotonic) for engine state, but the
+player-visible identifier is a 2-character per-house label.
+
+**Label format:** Letter + alphanumeric (A1, A2, ..., A9, AA, AB, ..., AZ, B1, ..., ZZ).
+This gives 910 labels per house (26 first chars x 35 second chars).
+
+**Assignment rules:**
+
+* Labels are per-house — each house has an independent namespace.
+* New fleets receive the lowest available label by scanning existing names.
+* When a fleet is destroyed, its label returns to the pool and may be reused.
+* Labels are stable for the lifetime of a fleet (never reassigned while fleet exists).
 
 ==== Fleet List View (ListView)
 
@@ -246,78 +261,666 @@ ListView is a full-width bordered table for empire-wide fleet management.
 SystemView remains the 2-pane location-focused console.
 
 * Toggle views: `L`
-* Sorting: `S` (cycles columns, press twice to reverse direction)
-* Filters: `1-4` (All, Idle, In Transit, Needs Attention)
-* Search: `/` (matches fleet ID or sector coordinates)
-* Batch: `X` to select fleets, `C` for batch command, `R` for batch ROE
+* Sorting: Left/Right arrow keys select column, `S` toggles ascending/descending
+* Label-jump: Type 2-character fleet label (e.g. A1, B3) to jump to that fleet
+* Batch: `X` to select fleets, `C` for batch command, `R` for batch ROE, `Z` for batch zero-turn
+  - If no `[X]` selection exists: `[C]`/`[R]`/`[Z]` act on cursor-row fleet (implicit selection)
+  - If `[X]` selection exists: `[C]`/`[R]`/`[Z]` act on ALL selected fleets
 
-Columns (120 cols target):
-* Flt (Fleet ID with prefix glyphs)
-* Location
-* Sect (sector coordinates)
-* Ships
-* AS
-* DS
-* CMD
-* Dest (destination coordinates)
-* ETA
-* ROE
-* Status
+**ListView Layout:**
+----
+┌─ EC4X Fleet View ─ Turn 12 ─ House Atreides ─────────────────────────────────┐
+│┌─────────────────────────────────────────────────────────────────────────────┐│
+││FLT LOCATION       SECT  SHIPS AS  DS  CMD     DEST       ETA ROE STATUS    ││
+││──────────────────────────────────────────────────────────────────────────────││
+││A1  Arrakis        C03      12 100 300 HOLD    -            0   7 Ready     ││
+││A2  Caladan        A01       8  34 123 MOVE    D12          3   6 Transit   ││
+││A3  Arrakis        C03       4 124  34 GUARD   C03          0   5 Guard     ││
+││A4  Giedi Prime    HUB       3  69  69 BOMBARD B09          4   8 Attack    ││
+││A5  Ix             B09       6  45  78 PATROL  B09-C03      2   6 Transit   ││
+││A6  Caladan        A01      15 234 456 RESERVE -            0   4 Reserved  ││
+│└─────────────────────────────────────────────────────────────────────────────┘│
+│                                                                               │
+│ [↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]Cmd [R]ROE [Z]ZTC  │
+└───────────────────────────────────────────────────────────────────────────────┘
+----
 
-Status prefixes:
+**Columns** (widths from code):
+* Flt 3 (Per-house label with prefix glyphs)
+* Location 14
+* Sect 5 (sector coordinates)
+* Ships 6
+* AS 4
+* DS 4
+* CMD 7
+* Dest 10 (destination coordinates)
+* ETA 4
+* ROE 4
+* Status 8
+
+**Footer hints**:
+* `[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]Cmd [R]ROE [Z]ZTC`
+
+**Status prefixes**:
 * `●` staged command pending
 * `⚠` needs attention (crippled ships, no orders, or unescorted support)
 
-=== Fleet Command Console (`F` - Detailed)
+==== Fleet Command Console (SystemView - Detailed)
 Intent: fast, multi-fleet command and per-ship zero-turn management.
 
-Layout sketch:
+**SystemView Layout (2-pane):**
 ----
 ┌─ EC4X Fleet Command ─ Turn 12 ─ House Atreides ──────────────────────────────┐
 │                                                                              │
-│ ┌─ Systems (5) ──────────────────────┐  ┌─ Arrakis (3) ────────────────────┐ │
-│ │SYSTEM                       │SECT  │  │FLEET│AS  │DS  │CMD   │DST  │ETA  │ │
-│ │─────────────────────────────┼──────│  │─────┼────┼────┼──────┼─────┼─────│ │
-│ │> Spatharokandidatos         │D07   │  │> 02 │100 │300 │HOLD  │C03  │0    │ │
-│ │  Caladan                    │A01   │  │  03 │034 │123 │MOVE  │D12  │3    │ │
-│ │  Arrakis                    │C03   │  │  12 │124 │34  │GUARD │C03  │0    │ │
-│ │  Giedi Prime                │HUB   │  │  15 │69  │69  │BOMB  │B09  │4    │ │
-│ │  Ix                         │B09   │  │     │    │    │      │     │     │ │
-│ └────────────────────────────────────┘  └──────────────────────────────────┘ │
+│ ┌─ Systems (5) ─────┐  ┌─ Arrakis (3) ────────────────────────────────────┐ │
+│ │SYSTEM         SECT│  │FLT SHIPS AS  DS  TT ETAC CMD    TGT   ETA ROE STS│ │
+│ │──────────────────│  │───────────────────────────────────────────────────│ │
+│ │  Spatharo... D07 │  │A1    12 100 300  4   2 HOLD    -       0   7 RDY│ │
+│ │  Caladan     A01 │  │A2     8  34 123  0   0 MOVE    D12      3   6 TRN│ │
+│ │  Arrakis     C03 │  │A3     4 124  34  0   0 GUARD   C03      0   5 GRD│ │
+│ │  Giedi Prime HUB │  │A4     3  69  69  0   0 BOMBARD B09      4   8 ATK│ │
+│ │  Ix          B09 │  │                                                    │ │
+│ └──────────────────┘  └───────────────────────────────────────────────────┘ │
 │                                                                              │
-│ ┌─ Alpha Fleet Details ────────────────────────────────────────────────────┐ │
-│ │ Location: Arrakis      Orders: PATROL (03)      ROE: 7                   │ │
-│ │                                                                          │ │
-│ │ Ships                │ WEP │ AS/DS │ Combat State                        │ │
-│ │ ─────────────────────┼─────┼───────┼─────────────────────────────────────│ │
-│ │ > Light Cruiser      │ 02  │ 48/32 │ Nominal                             │ │
-│ │   Frigate            │ 01  │ 36/24 │ Crippled                            │ │
-│ │   Raider             │ 06  │ 12/45 │ Nominal                             │ │
-│ │   Troop Transport    │ 01  │ 10/15 │ Crippled                            │ │
-│ │   ETAC               │ 01  │ 10/30 │ Nominal                             │ │
-│ │                                                                          │ │
-│ │ Aux Ships:  2 ETAC, 4 Troop Transports (8 MD loaded)                     │ │
-│ └──────────────────────────────────────────────────────────────────────────┘ │
+│ [↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]Cmd [R]ROE [Z]ZeroTurn     │
+└──────────────────────────────────────────────────────────────────────────────┘
+----
+
+**Fleet Detail Modal (opened with Enter on fleet):**
+----
+┌─ Fleet Detail ────────────────────────────────────────────────────────────────┐
+│ Fleet A1 at Arrakis                                                          │
+│ Command: HOLD  ROE: 7                                                        │
+│ Ships: 12  AS: 100  DS: 300                                                  │
 │                                                                              │
-│ [C]ommand [R]OE [Z]ero Turn                                                  │
+│ SHIPS (12)                                                                   │
+│ ┌─────────────────────────────────────────────────────────────────────────┐ │
+│ │CLASS          STATE     AS   DS  WEP  MAR                                │ │
+│ │────────────────────────────────────────────────────────────────────────│ │
+│ │  Light Cruiser Nominal  48   32    2    0                               │ │
+│ │  Frigate       Crippled 36   24    1    0                               │ │
+│ │  Raider        Nominal  12   45    6    0                               │ │
+│ │  Troop Transp  Crippled 10   15    1    8                               │ │
+│ │  ETAC          Nominal  10   30    1    0                               │ │
+│ └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│ [C]Command [R]ROE [PgUp/PgDn]Scroll [Esc]Close                               │
 └──────────────────────────────────────────────────────────────────────────────┘
 ----
 
 Interaction rules:
-* Fleet commands apply to multi-selected fleets only.
-* Zero-turn applies to multi-selected ships in the focused fleet.
-* Selection scope follows pane focus (fleets vs ships).
+* `[C]`/`[R]`/`[Z]` act on cursor-row fleet if no `[X]` selection exists.
+* `[C]`/`[R]`/`[Z]` act on ALL `[X]`-selected fleets when selection exists.
+* `[X]` toggles multi-select in both ListView and SystemView fleet pane.
+* Batch mode: same command/ROE/ZTC applied to all selected fleets.
 
-Column width note (draft):
-* Systems pane: Name 29, Sector 6
-* Fleet list: Fleet 5, AS 4, DS 4, CMD 6, DST 5, ETA 5
-* Ship list: Ships 22, WEP 5, AS/DS 7, State 37
+Column widths:
+* **SystemView Systems pane**: System 14, Sect 5
+* **SystemView Fleets pane**: Flt 3, Ships 5, AS 4, DS 4, TT 3, ETAC 4, CMD 6, TGT 5, ETA 3, ROE 3, STS 3
+* **Fleet Detail ship table**: Class 14, State 8, AS 4, DS 4, WEP 4, Mar 4
 
-Key map (draft):
-* `C` Command (apply to selected fleets)
-* `R` ROE (apply to selected fleets)
-* `Z` Zero Turn (apply to selected ships)
-* `X` Toggle selection (fleet list or ship list)
+Key map:
+* `C` Command (apply to cursor fleet or selected fleets)
+* `R` ROE (apply to cursor fleet or selected fleets)
+* `Z` Zero Turn (apply to cursor fleet or selected fleets)
+* `X` Toggle multi-select on current row
+* `Tab` Switch between Systems and Fleets panes
+* `Enter` Open Fleet Detail modal for cursor fleet
+
+==== Fleet Command Menu System
+
+This section documents the unified menu flow for all fleet command operations: operational commands (`[C]`), rules of engagement (`[R]`), and zero-turn commands (`[Z]`).
+
+===== Selection Model
+
+Fleet commands operate on either a single fleet (cursor-implicit) or multiple fleets (explicit multi-select):
+
+[%header,cols="1,2,2"]
+|===
+| Mode | Condition | Behavior
+
+| Cursor-Implicit
+| No `[X]` selection exists
+| `[C]`/`[R]`/`[Z]` act on the fleet under the cursor
+
+| Explicit-Multi
+| One or more `[X]` selections exist
+| `[C]`/`[R]`/`[Z]` act on ALL selected fleets (batch mode)
+
+| Batch Semantics
+| Explicit-Multi mode
+| Same command, target, or parameter applied to all selected fleets
+|===
+
+This design eliminates the need to explicitly select a single fleet - just position the cursor and press `[C]`/`[R]`/`[Z]`. Use `[X]` only when you want to command multiple fleets at once.
+
+**Implementation note:** The cursor-implicit selection is the **design target**. Current code may require explicit `[X]` selection for `[C]` and `[R]` operations (enforced via `hasFleetSelection` guard). The spec documents the intended behavior; code will be updated to match.
+
+===== Menu Flow Diagram
+
+The following diagram shows the complete command flow from key press to staged proposal:
+
+[mermaid]
+----
+flowchart TD
+    Start([User presses C/R/Z]) --> Resolve{Selection Resolution}
+    Resolve -->|Cursor-implicit| Single[Single fleet]
+    Resolve -->|Explicit-multi| Multi[Multiple fleets]
+    Single --> Branch{Key Branch}
+    Multi --> Branch
+
+    Branch -->|C| CmdPicker[Command Picker Modal]
+    Branch -->|R| ROEPicker[ROE Picker Modal]
+    Branch -->|Z| ColonyCheck{Fleet at colony?}
+
+    ColonyCheck -->|No| Warn[Show warning banner]
+    ColonyCheck -->|Yes| ZTCPicker[ZTC Picker Modal]
+
+    CmdPicker --> CmdType{Command Type}
+    CmdType -->|No params| Stage1[Stage proposal]
+    CmdType -->|Target system| OrderEntry[Order Entry Mode]
+    CmdType -->|Target fleet| FltPicker1[Fleet Picker]
+    CmdType -->|Destructive| Confirm1[Confirm Prompt]
+
+    OrderEntry --> MapView[Exit to hex map]
+    MapView --> SelectSys[User clicks system]
+    SelectSys --> Stage2[Stage proposal]
+
+    FltPicker1 --> Stage3[Stage proposal]
+    Confirm1 -->|Yes| CheckParams{Needs params?}
+    Confirm1 -->|No| Return1[Return to fleet view]
+    CheckParams -->|Target| OrderEntry
+    CheckParams -->|No| Stage4[Stage proposal]
+
+    ROEPicker --> Stage5[Stage proposal]
+
+    ZTCPicker --> ZTCType{ZTC Type}
+    ZTCType -->|DetachShips| ShipSel1[Ship Selector]
+    ZTCType -->|TransferShips| FltPicker2[Fleet Picker]
+    ZTCType -->|MergeFleets| FltPicker3[Fleet Picker]
+    ZTCType -->|LoadCargo/Unload| CargoModal[Cargo Params]
+    ZTCType -->|LoadFighters/Unload| FighterModal[Fighter Params]
+    ZTCType -->|TransferFighters| FighterModal2[Fighter Params]
+    ZTCType -->|Reactivate| Stage6[Stage proposal]
+
+    FltPicker2 --> ShipSel2[Ship Selector]
+    ShipSel1 --> Stage7[Stage proposal]
+    ShipSel2 --> Stage8[Stage proposal]
+    FltPicker3 --> Stage9[Stage proposal]
+    CargoModal --> Stage10[Stage proposal]
+    FighterModal --> Stage11[Stage proposal]
+    FighterModal2 --> Stage12[Stage proposal]
+
+    Stage1 --> Done([Return to fleet view])
+    Stage2 --> Done
+    Stage3 --> Done
+    Stage4 --> Done
+    Stage5 --> Done
+    Stage6 --> Done
+    Stage7 --> Done
+    Stage8 --> Done
+    Stage9 --> Done
+    Stage10 --> Done
+    Stage11 --> Done
+    Stage12 --> Done
+    Return1 --> Done
+    Return2 --> Done
+    Warn --> Done
+----
+
+===== FleetSubModal State Machine
+
+The fleet detail modal manages command workflow through these sub-modal states:
+
+[mermaid]
+----
+stateDiagram-v2
+    [*] --> None: Default view
+
+    None --> CommandPicker: Press C
+    None --> ROEPicker: Press R
+    None --> ZTCPicker: Press Z (colony check)
+
+    CommandPicker --> OrderEntry: Command needs target system
+    CommandPicker --> FleetPicker: Command needs target fleet
+    CommandPicker --> ConfirmPrompt: Destructive command
+    CommandPicker --> Staged: No-param command
+    CommandPicker --> None: Esc to cancel
+
+    OrderEntry --> [*]: Exit modal to map
+
+    FleetPicker --> Staged: Fleet selected
+    FleetPicker --> CommandPicker: Esc to cancel
+
+    ConfirmPrompt --> Staged: Confirmed
+    ConfirmPrompt --> OrderEntry: Confirmed + needs target
+    ConfirmPrompt --> CommandPicker: Denied
+
+    ROEPicker --> Staged: ROE selected
+    ROEPicker --> None: Esc to cancel
+
+    ZTCPicker --> ShipSelector: DetachShips
+    ZTCPicker --> FleetPicker: TransferShips/MergeFleets
+    ZTCPicker --> CargoParams: LoadCargo/UnloadCargo
+    ZTCPicker --> FighterParams: LoadFighters/UnloadFighters/TransferFighters
+    ZTCPicker --> Staged: Reactivate
+    ZTCPicker --> None: Esc to cancel
+
+    ShipSelector --> Staged: Confirm selection
+    ShipSelector --> ZTCPicker: Esc to cancel
+
+    FleetPicker --> ShipSelector: For TransferShips
+
+    CargoParams --> Staged: Confirm params
+    CargoParams --> ZTCPicker: Esc to cancel
+
+    FighterParams --> Staged: Confirm params
+    FighterParams --> ZTCPicker: Esc to cancel
+
+    Staged --> None: Proposal staged, return
+----
+
+===== [C] Command Picker
+
+The Command Picker presents all 20 operational commands with their requirements and allows two-digit quick entry.
+
+Wireframe (actual commands from code):
+----
+┌─ Fleet Command ──────────────────────────────────────────────────────┐
+│ CODE  COMMAND              REQUIREMENTS                               │
+│ ────  ───────────────────  ───────────────────────────────────────── │
+│ 00    Hold                 None                                       │
+│ 01    Move                 None                                       │
+│ 02    Seek Home            None                                       │
+│ 03    Patrol               None                                       │
+│ 04    Guard Starbase       Combat ship(s)                             │
+│ 05    Guard Colony         Combat ship(s)                             │
+│ 06    Blockade             Combat ship(s)                             │
+│ 07    Bombard              Combat ship(s)                             │
+│ 08    Invade               Combat ship(s) & loaded Transports         │
+│ 09    Blitz                Loaded Troop Transports                    │
+│ 10    Colonize             One ETAC                                   │
+│ 11    Scout Colony         Scout-only fleet (1+ scouts)               │
+│ 12    Scout System         Scout-only fleet (1+ scouts)               │
+│ 13    Hack Starbase        Scout-only fleet (1+ scouts)               │
+│ 14    Join Fleet           None                                       │
+│ 15    Rendezvous           None                                       │
+│ 16    Salvage              Friendly colony system                     │
+│ 17    Reserve              At friendly colony                         │
+│ 18    Mothball             At friendly colony w/ Spaceport            │
+│ 19    View                 Any ship type                              │
+│                                                                       │
+│ [↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel                    │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Two-digit quick entry:**
+- Type first digit: modal displays "1_" in status line, starts 300ms timer
+- Type second digit within 300ms: command immediately selects and proceeds
+- Timer expires: first digit interpreted as "0X" (e.g., "1" → "01")
+
+**Command parameter categories:**
+
+[%header,cols="1,2,2"]
+|===
+| Category | Commands | Flow After Selection
+
+| No parameters
+| 00 Hold, 02 Seek Home, 03 Patrol, 04 Guard Starbase, 05 Guard Colony
+| Immediately stage proposal
+
+| Target system
+| 01 Move, 06-09 (Blockade/Bombard/Invade/Blitz), 10 Colonize, 11-13 (Scout/Hack), 15 Rendezvous, 19 View
+| Enter Order Entry Mode (exit modal to hex map)
+
+| Target fleet
+| 14 Join Fleet
+| Show FleetPicker sub-modal
+
+| Destructive
+| 07 Bombard, 16 Salvage, 17 Reserve, 18 Mothball
+| Show ConfirmPrompt, then stage or request target
+|===
+
+===== Order Entry Mode
+
+After selecting a command that requires a target system (Move, Patrol, Attack, Scout, etc.), the fleet modal closes and the main view switches to the hex map in **Order Entry Mode**.
+
+**Map interaction:**
+- Cursor moves freely across hex grid
+- Click/Enter on a system: set as target, stage proposal(s), return to fleet view
+- Esc: cancel order entry, return to fleet view without staging
+
+**Status bar during Order Entry Mode:**
+----
+Order Entry: Move → Select target system [Esc] Cancel
+----
+
+**Batch behavior:**
+- In explicit-multi mode, the SAME target system is applied to all selected fleets
+- Example: Select fleets A1, A2, A3 → Press `[C]` → Choose "00 Move" → Click system B07 → All three fleets receive Move commands to B07
+
+===== Confirmation Prompt
+
+Destructive commands require explicit confirmation to prevent accidental fleet loss.
+
+Wireframe (72 columns):
+----
+┌─ Confirm Destructive Command ────────────────────────────────────────┐
+│                                                                       │
+│  You are about to BOMBARD the colony at Arrakis with fleet A4.       │
+│                                                                       │
+│  This will cause civilian casualties and damage infrastructure.       │
+│                                                                       │
+│  Are you sure you want to proceed?                                    │
+│                                                                       │
+│            [Y] Yes, proceed      [N] No, cancel                       │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Commands requiring confirmation:**
+- 07 Bombard (civilian casualties)
+- 16 Salvage (fleet disbanded)
+- 17 Reserve (ships deactivated)
+- 18 Mothball (ships deactivated, maintenance cost)
+
+**Flow after confirmation:**
+- If command requires additional parameters (target system): proceed to Order Entry Mode
+- If no additional parameters: immediately stage proposal
+- If denied: return to Command Picker
+
+===== FleetPicker Sub-Modal
+
+Used for commands that target another fleet: Join Fleet (operational), Transfer Ships, Merge Fleets (ZTCs).
+
+Wireframe (72 columns):
+----
+┌─ Select Target Fleet ────────────────────────────────────────────────┐
+│ FLT  LOCATION           SHIPS  AS   DS   STATUS                      │
+│ ───  ─────────────────  ─────  ───  ───  ─────────────────────────── │
+│ A1   Arrakis            12     240  180  HOLD                        │
+│ A2   Arrakis            8      120  90   PATROL (B07)                │
+│ A3   Arrakis            3      45   30   GUARD COLONY                │
+│                                                                       │
+│ [↑↓]Select [Enter]Confirm [Esc]Cancel                                 │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Eligibility criteria:**
+- Same house (owned by player)
+- Same system as source fleet
+- Active status (not Reserved, Mothballed, or in transit)
+
+**Greying/hiding:**
+- Ineligible fleets shown in muted text or hidden entirely
+- If no eligible fleets exist: show "No eligible fleets in this system" message
+
+===== [R] ROE Picker
+
+The ROE Picker sets Rules of Engagement for selected fleet(s) on a 0-10 scale.
+
+Wireframe (actual ROE values from code):
+----
+┌─ Rules of Engagement ────────────────────────────────────────────────┐
+│ ROE  LABEL        DESCRIPTION                                         │
+│ ───  ───────────  ──────────────────────────────────────────────────  │
+│  0   Avoid        Avoid all hostile forces                            │
+│  1   Flee         Engage only defenseless targets                     │
+│  2   Flee         Need 4:1 advantage to engage                        │
+│  3   Cautious     Need 3:1 advantage to engage                        │
+│  4   Cautious     Need 2:1 advantage to engage                        │
+│  5   Defensive    Need 3:2 advantage to engage                        │
+│  6   Standard     Fight if equal or superior                          │
+│  7   Aggressive   Fight even at 2:3 disadvantage                      │
+│  8   Aggressive   Fight even at 1:2 disadvantage                      │
+│  9   Desperate    Fight even at 1:3 disadvantage                      │
+│  10  Suicidal     Fight regardless of odds                            │
+│                                                                       │
+│ [↑↓]Select [Enter]Confirm [Esc]Cancel                                 │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Direct digit entry:**
+- Single digit (0-9): immediately sets ROE and stages proposal
+- Two digits (10): type "1" then "0" within 300ms to select ROE 10
+
+**Batch behavior:**
+- In explicit-multi mode, the SAME ROE value is applied to all selected fleets
+
+===== [Z] Zero-Turn Command Menu
+
+Zero-turn commands (ZTCs) are administrative actions that execute instantly without consuming a fleet's turn. They require the fleet to be at a colony.
+
+**Colony requirement check:**
+- If selected fleet(s) are NOT at a colony: show banner "Zero-turn commands require fleet to be at a colony" and return
+- If at colony: proceed to ZTC Picker
+
+Wireframe (actual ZTCs from code):
+----
+┌─ Zero-Turn Commands ─────────────────────────────────────────────────┐
+│ #  COMMAND              DESCRIPTION                                   │
+│ ─  ───────────────────  ──────────────────────────────────────────── │
+│ 1  Detach Ships         Split ships from fleet into new fleet        │
+│ 2  Transfer Ships       Move ships to another fleet (same system)    │
+│ 3  Merge Fleets         Dissolve this fleet into another             │
+│ 4  Load Cargo           Load marines/colonists onto transport ships  │
+│ 5  Unload Cargo         Unload cargo from transport ships            │
+│ 6  Load Fighters        Load fighter ships from colony to carrier    │
+│ 7  Unload Fighters      Unload fighter ships from carrier to colony  │
+│ 8  Transfer Fighters    Transfer fighter ships between carriers      │
+│ 9  Reactivate           Return Reserved/Mothballed fleet to active   │
+│                                                                       │
+│ Type 1-9 or [Esc] to cancel                                           │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Single-digit quick select:**
+- Type 1-9: immediately proceed to next step for that ZTC
+
+**Eligibility greying:**
+- Commands that cannot be executed (e.g., Reactivate when no ships are mothballed) shown in muted text
+- Hovering over greyed command shows reason: "No reserved or mothballed ships in fleet"
+
+**Batch mode limitations:**
+- Ship-level ZTCs (Detach, Transfer): batch mode disabled, act on cursor fleet only
+- Fleet-level ZTCs (Merge, Cargo, Fighters): batch mode allowed
+- Rationale: Ship selection is fleet-specific and cannot be meaningfully batched
+
+===== ZTC Sub-Modals
+
+====== ShipSelector (for Detach/Transfer)
+
+Checkbox list allowing selection of individual ships to detach or transfer.
+
+**Note:** Modal title changes based on context:
+- "Select Ships to Detach" for DetachShips ZTC
+- "Select Ships to Transfer" for TransferShips ZTC
+
+Wireframe (72 columns):
+----
+┌─ Select Ships to Detach ─────────────────────────────────────────────┐
+│ [ ] Battleship Indomitable       WEP 08  AS 120  DS 80               │
+│ [X] Cruiser Valiant              WEP 04  AS 60   DS 40               │
+│ [X] Frigate Swift                WEP 02  AS 30   DS 20               │
+│ [ ] Troop Transport Hercules     WEP 01  AS 10   DS 15               │
+│ [X] ETAC Oracle                  WEP 01  AS 10   DS 30               │
+│                                                                       │
+│ Selected: 3 ships  (100 AS / 90 DS)                                   │
+│                                                                       │
+│ [X] Toggle  [A]ll  [N]one  [Enter] Confirm  [Esc] Cancel              │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Interactions:**
+- `[X]`: Toggle checkbox on cursor row
+- `[A]`: Select all ships
+- `[N]`: Deselect all ships
+- `[Enter]`: Confirm selection, stage proposal
+- `[Esc]`: Cancel, return to ZTC Picker
+
+**Validation:**
+- Cannot select zero ships
+- For Detach: cannot select all ships (must leave at least one in original fleet)
+- For Transfer: must have a valid target fleet selected first
+
+====== CargoParams (for Load/Unload Cargo)
+
+Simple parameter collection for cargo operations.
+
+Wireframe (72 columns):
+----
+┌─ Load Cargo ─────────────────────────────────────────────────────────┐
+│                                                                       │
+│  Cargo Type:  [Colonists ▼]                                           │
+│               ─────────────                                           │
+│               Colonists                                               │
+│               Troops (MD)                                             │
+│               Supplies (SU)                                           │
+│                                                                       │
+│  Quantity:    [______] (max: 120 available, 50 cargo capacity)        │
+│                                                                       │
+│                                                                       │
+│  [Enter] Confirm  [Esc] Cancel                                        │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Validation:**
+- Quantity must be > 0
+- For Load: quantity ≤ min(colony stores, fleet cargo capacity remaining)
+- For Unload: quantity ≤ current cargo loaded
+
+====== FighterParams (for Load/Unload/Transfer Fighters)
+
+**Context variants:**
+- **LoadFighters**: Load fighters from colony to carrier
+- **UnloadFighters**: Unload fighters from carrier to colony
+- **TransferFighters**: Transfer fighters between two carriers (requires source and target carrier selection)
+
+Wireframe for Load/Unload (72 columns):
+----
+┌─ Load Fighters ──────────────────────────────────────────────────────┐
+│                                                                       │
+│  Fleet carrier capacity: 48                                           │
+│  Currently loaded:       24                                           │
+│  Available in hangars:   60                                           │
+│                                                                       │
+│  Quantity to load:  [______] (max: 24)                                │
+│                                                                       │
+│                                                                       │
+│  [Enter] Confirm  [Esc] Cancel                                        │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+Wireframe for TransferFighters (72 columns):
+----
+┌─ Transfer Fighters ──────────────────────────────────────────────────┐
+│                                                                       │
+│  Source carrier:    [Carrier Alpha ▼]                                 │
+│  Target carrier:    [Carrier Beta ▼]                                  │
+│                                                                       │
+│  Source capacity: 48  Loaded: 36  Available to transfer: 36           │
+│  Target capacity: 48  Loaded: 12  Available capacity: 36              │
+│                                                                       │
+│  Quantity to transfer:  [______] (max: 36)                            │
+│                                                                       │
+│                                                                       │
+│  [Enter] Confirm  [Esc] Cancel                                        │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
+----
+
+**Validation:**
+- Quantity must be > 0
+- For Load: quantity ≤ min(colony hangar stock, carrier capacity remaining)
+- For Unload: quantity ≤ currently loaded fighters
+- For TransferFighters: quantity ≤ min(source carrier loaded, target carrier capacity remaining)
+
+===== Key Bindings Table
+
+Complete reference of all fleet command interactions:
+
+[%header,cols="1,2,3,2"]
+|===
+| Key | Context | Action | Condition
+
+| `C`
+| Fleet view (any)
+| Open Command Picker
+| Cursor on fleet OR fleet(s) selected
+
+| `R`
+| Fleet view (any)
+| Open ROE Picker
+| Cursor on fleet OR fleet(s) selected
+
+| `Z`
+| Fleet view (any)
+| Open ZTC Picker
+| Fleet(s) at colony
+
+| `X`
+| ListView / SystemView fleet pane
+| Toggle multi-select on cursor row
+| Any fleet
+
+| `0-9`
+| Command Picker
+| Quick-select command (two-digit)
+| Modal open
+
+| `0-9`
+| ROE Picker
+| Quick-select ROE level
+| Modal open
+
+| `1-9`
+| ZTC Picker
+| Quick-select ZTC
+| Modal open
+
+| `Enter`
+| Any picker modal
+| Confirm selection
+| Valid selection
+
+| `Esc`
+| Any sub-modal
+| Cancel and return to parent
+| Always
+
+| `Click`
+| Order Entry Mode (hex map)
+| Select target system
+| Map view active
+
+| `Y/N`
+| Confirmation Prompt
+| Confirm/Deny destructive action
+| Prompt visible
+
+| `↑/↓`
+| Any picker modal
+| Navigate list
+| List has focus
+
+| `X`
+| ShipSelector
+| Toggle ship selection
+| Ship list
+
+| `A`
+| ShipSelector
+| Select all ships
+| Ship list
+
+| `N`
+| ShipSelector
+| Deselect all ships
+| Ship list
+|===
 
 === Tech View (`T`)
 Research and Development management.
@@ -417,17 +1020,14 @@ Within views, single-letter hotkeys trigger actions on the *selected item*:
 
 |===
 | Key | Context | Action
-| `m` | Fleet selected | Move command
-| `p` | Fleet selected | Patrol command
-| `h` | Fleet selected | Hold command
-| `g` | Fleet selected | Guard (colony or starbase)
+| `c` | Fleet selected | Command picker overlay
 | `r` | Fleet selected | ROE picker overlay
-| `j` | Fleet selected | Join fleet
+| `z` | Fleet selected | Zero-turn command picker overlay
+| `x` | Fleet/Multi-select | Toggle selection on current row
 | `b` | Colony selected | Build (construction queue)
 | `t` | Colony selected | Adjust tax rate
 | `l` | General | Diplomatic matrix overlay
 | `d` | Reports | Delete selected report
-| `x` | Multi-select | Toggle selection on current row
 | `a` | Proposals | Accept proposal
 | `r` | Proposals | Reject proposal
 |===
@@ -566,7 +1166,7 @@ The sleep uses `readByteTimeout(sleepTime)` which:
 │  New Galaxy        (3/6 players)                                       │
 │                                                                        │
 ├────────────────────────────────────────────────────────────────────────┤
-│  [↑/↓] Select   [Enter] Play   [I] Import   [Q] Quit       v0.1.0      │
+│  [↑↓]Select [Enter]Play [I]Import [Q]Quit                   v0.1.0      │
 └────────────────────────────────────────────────────────────────────────┘
 ----
 
