@@ -68,14 +68,12 @@ proc requiresConfirmation*(cmdType: FleetCommandType): bool =
               FleetCommandType.Reserve, FleetCommandType.Mothball}
 
 proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
-                       selectedIdx: int, itemCount: int,
-                       hint: string, digitBuffer: string = "",
-                       bufferLabel: string = "") =
+                       selectedIdx: int, itemCount: int) =
   ## Shared rendering for picker sub-modals (Command, ROE, ZTC).
-  ## Handles scroll offset calculation, selection, table rendering, and footer.
-  let availableHeight = area.height - 2  # Reserve 2 for footer
+  ## Handles scroll offset calculation, selection, and table rendering.
+  ## Footer hint is rendered by the modal frame via renderWithFooter.
   let tableBaseHeight = 4  # top border + header + separator + bottom border
-  let maxVisibleRows = max(1, availableHeight - tableBaseHeight)
+  let maxVisibleRows = max(1, area.height - tableBaseHeight)
 
   # Calculate scroll offset to keep selected item visible
   var scrollOffset = 0
@@ -92,15 +90,6 @@ proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
   let tableHeight = t.renderHeight(actualVisibleRows)
   let tableArea = rect(area.x, area.y, area.width, tableHeight)
   t.render(tableArea, buf)
-
-  # Render footer hint below table
-  let footerY = tableArea.bottom + 1
-  if footerY < area.bottom:
-    let fullHint = if digitBuffer.len > 0:
-      bufferLabel & ": " & digitBuffer & "_ " & hint
-    else:
-      hint
-    discard buf.setString(area.x, footerY, fullHint, canvasDimStyle())
 
 proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
@@ -133,10 +122,7 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
 
   renderPickerTable(commandTable, area, buf,
     selectedIdx = state.commandIdx,
-    itemCount = commands.len,
-    hint = "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel",
-    digitBuffer = state.commandDigitBuffer,
-    bufferLabel = "Cmd")
+    itemCount = commands.len)
 
 proc renderROEPicker(state: FleetDetailModalState, area: Rect,
                     buf: var CellBuffer) =
@@ -163,10 +149,7 @@ proc renderROEPicker(state: FleetDetailModalState, area: Rect,
 
   renderPickerTable(roeTable, area, buf,
     selectedIdx = state.roeValue,
-    itemCount = 11,
-    hint = "[↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel",
-    digitBuffer = state.commandDigitBuffer,
-    bufferLabel = "ROE")
+    itemCount = 11)
 
 proc renderConfirmDialog(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
@@ -221,8 +204,7 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
 
   renderPickerTable(ztcTable, area, buf,
     selectedIdx = state.ztcIdx,
-    itemCount = ztcCommands.len,
-    hint = "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
+    itemCount = ztcCommands.len)
 
 proc renderPlaceholderSubModal(label: string, area: Rect,
                               buf: var CellBuffer) =
@@ -393,18 +375,35 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   let modalArea = modal.calculateArea(viewport, contentHeight)
 
   # Render modal frame with title
-  # Only show main footer when no sub-modal is active
+  # Determine footer text per sub-modal (pickers get bordered footers too)
   let title = "FLEET DETAIL"
-  let hasMainFooter = state.subModal == FleetSubModal.None
-  
-  if hasMainFooter:
-    let footerText = "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close"
+  let (hasFooter, footerText) = case state.subModal
+    of FleetSubModal.None:
+      (true, "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close")
+    of FleetSubModal.CommandPicker:
+      let hint = if state.commandDigitBuffer.len > 0:
+        "Cmd: " & state.commandDigitBuffer & "_ [↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
+      else:
+        "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel"
+      (true, hint)
+    of FleetSubModal.ROEPicker:
+      let hint = if state.commandDigitBuffer.len > 0:
+        "ROE: " & state.commandDigitBuffer & "_ [↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel"
+      else:
+        "[↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel"
+      (true, hint)
+    of FleetSubModal.ZTCPicker:
+      (true, "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
+    else:
+      (false, "")
+
+  if hasFooter:
     modal.title(title).renderWithFooter(modalArea, buf, footerText)
   else:
     modal.title(title).render(modalArea, buf)
 
   # Get content area (excludes footer if present)
-  let inner = modal.contentArea(modalArea, hasFooter = hasMainFooter)
+  let inner = modal.contentArea(modalArea, hasFooter = hasFooter)
 
   # Check for sub-modals
   case state.subModal
