@@ -509,13 +509,13 @@ proc buildFleetListTable*(model: TuiModel,
 
   for i in startIdx ..< endIdx:
     let fleet = fleets[i]
-    var prefix = " " & $fleet.id
+    var prefix = " " & fleet.name
     if fleet.needsAttention:
-      prefix = GlyphWarning & $fleet.id
+      prefix = GlyphWarning & fleet.name
     else:
       for cmd in model.ui.stagedFleetCommands:
         if int(cmd.fleetId) == fleet.id:
-          prefix = GlyphOk & $fleet.id
+          prefix = GlyphOk & fleet.name
           break
     let etaLabel = if fleet.destinationSystemId != 0 and fleet.eta > 0:
       $fleet.eta
@@ -636,7 +636,7 @@ proc renderFleetConsoleFleets(
         break
     
     # Add indicator "●" for staged commands
-    let fleetIdStr = if hasStaged: "●" & $flt.fleetId else: $flt.fleetId
+    let fleetIdStr = if hasStaged: "●" & flt.name else: flt.name
     
     fleetsTable.addRow([
       fleetIdStr,

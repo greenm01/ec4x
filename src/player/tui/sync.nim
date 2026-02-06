@@ -239,6 +239,7 @@ proc syncGameStateToModel*(
         hasCombatShips = true
     var info = sam_pkg.FleetInfo(
         id: int(fleet.id),
+        name: fleet.name,
         location: int(fleet.location),
         locationName: locName,
         sectorLabel: sectorLabel,
@@ -369,6 +370,7 @@ proc syncFleetConsoleFleets*(
     
     result.add(FleetConsoleFleet(
       fleetId: int(fleet.id),
+      name: fleet.name,
       shipCount: shipCount,
       attackStrength: attackStr,
       defenseStrength: defenseStr,
@@ -472,7 +474,7 @@ proc syncPlayerStateToOverview*(
         fleet.status == FleetStatus.Active:
       idleFleets.add(fleet)
       result.actionQueue.addChecklistItem(
-        description = "Fleet #" & $fleet.id.int & " awaiting orders",
+        description = "Fleet " & fleet.name & " awaiting orders",
         isDone = false,
         priority = ActionPriority.Warning,
       )
@@ -640,6 +642,7 @@ proc syncPlayerStateToModel*(
           break
     var info = sam_pkg.FleetInfo(
         id: int(fleet.id),
+        name: fleet.name,
         location: int(fleet.location),
         locationName: locName,
         sectorLabel: sectorLabel,

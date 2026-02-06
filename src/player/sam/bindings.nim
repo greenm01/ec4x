@@ -1410,7 +1410,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       model.ui.fleetViewMode == FleetViewMode.ListView and
       not model.ui.expertModeActive and
       modifier == KeyModifier.None:
-    let digitChar = case key
+    # Fleet label jump: type 2-char label (e.g. A1, B3) to jump to fleet
+    # Excludes letters bound in Fleets context: S(sort), L(list), X(select),
+    # C(batch cmd), R(batch ROE)
+    let jumpChar = case key
       of KeyCode.Key0: '0'
       of KeyCode.Key1: '1'
       of KeyCode.Key2: '2'
@@ -1421,9 +1424,29 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.Key7: '7'
       of KeyCode.Key8: '8'
       of KeyCode.Key9: '9'
+      of KeyCode.KeyA: 'A'
+      of KeyCode.KeyB: 'B'
+      of KeyCode.KeyD: 'D'
+      of KeyCode.KeyE: 'E'
+      of KeyCode.KeyF: 'F'
+      of KeyCode.KeyG: 'G'
+      of KeyCode.KeyH: 'H'
+      of KeyCode.KeyI: 'I'
+      of KeyCode.KeyJ: 'J'
+      of KeyCode.KeyK: 'K'
+      of KeyCode.KeyM: 'M'
+      of KeyCode.KeyN: 'N'
+      of KeyCode.KeyO: 'O'
+      of KeyCode.KeyP: 'P'
+      of KeyCode.KeyQ: 'Q'
+      of KeyCode.KeyT: 'T'
+      of KeyCode.KeyU: 'U'
+      of KeyCode.KeyV: 'V'
+      of KeyCode.KeyW: 'W'
+      of KeyCode.KeyY: 'Y'
       else: '\0'
-    if digitChar != '\0':
-      return some(actionFleetDigitJump(digitChar))
+    if jumpChar != '\0':
+      return some(actionFleetDigitJump(jumpChar))
 
   # Order entry mode: use registry
   if model.ui.orderEntryActive and modifier == KeyModifier.None:

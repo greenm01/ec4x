@@ -20,6 +20,7 @@ type
 
   Fleet* = object ## A collection of ships that move together
     id*: FleetId # Unique fleet identifier
+    name*: string # Per-house alphanumeric label (e.g. "A1", "B3", "AZ")
     ships*: seq[ShipId] # All ship types (combat, intel, auxiliary)
     houseId*: HouseId # House that owns this fleet
     location*: SystemId # Current system location
@@ -87,6 +88,19 @@ type
     targetSystem*: SystemId
     detected*: bool # Whether scouts were detected
     intelligenceGathered*: bool # Whether intel was successfully gathered
+
+# =============================================================================
+# Fleet Label System
+# =============================================================================
+# Per-house alphanumeric labels (A1-ZZ, 910 capacity).
+# First char: A-Z (26). Second char: 1-9, A-Z (35).
+# Sequence: A1, A2, ..., A9, AA, AB, ..., AZ, B1, ..., ZZ
+# Assignment: scan house's active fleets, return lowest unused label.
+
+const
+  FleetLabelFirstChars* = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  FleetLabelSecondChars* = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  FleetLabelCapacity* = FleetLabelFirstChars.len * FleetLabelSecondChars.len
 
 ## Maps fleet commands to their threat level for diplomatic escalation
 ## Per docs/specs/08-diplomacy.md Section 8.1.5

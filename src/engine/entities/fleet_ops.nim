@@ -1,12 +1,40 @@
-import std/[tables, sequtils, options]
+import std/[tables, sequtils, options, sets]
 import ../types/[core, game_state, fleet, ship]
 import ../state/[engine, id_gen]
 import ./ship_ops
 import ../systems/command/commands
 
+# =============================================================================
+# Fleet Label Operations
+# =============================================================================
+
+proc fleetLabelFromIndex*(index: int): string =
+  ## Convert 0-based index to fleet label. 0→"A1", 34→"AZ", 35→"B1", 909→"ZZ"
+  if index < 0 or index >= FleetLabelCapacity:
+    return "??"
+  let first = index div FleetLabelSecondChars.len
+  let second = index mod FleetLabelSecondChars.len
+  $FleetLabelFirstChars[first] & $FleetLabelSecondChars[second]
+
+proc nextAvailableFleetLabel*(existingNames: openArray[string]): string =
+  ## Find the lowest available fleet label not in existingNames.
+  var used = initHashSet[string]()
+  for name in existingNames:
+    used.incl(name)
+  for i in 0 ..< FleetLabelCapacity:
+    let label = fleetLabelFromIndex(i)
+    if label notin used:
+      return label
+  "??"
+
+# =============================================================================
+# Fleet Construction
+# =============================================================================
+
 proc newFleet*(
     shipIds: seq[ShipId] = @[],
     id: FleetId = FleetId(0),
+    name: string = "",
     owner: HouseId = HouseId(0),
     location: SystemId = SystemId(0),
     status: FleetStatus = FleetStatus.Active,
@@ -17,6 +45,7 @@ proc newFleet*(
   ## Default ROE = 6 (engage if equal or better)
   Fleet(
     id: id,
+    name: name,
     ships: shipIds,
     houseId: owner,
     location: location,
@@ -56,12 +85,23 @@ proc unregisterFleetOwner*(state: GameState, fleetId: FleetId, owner: HouseId) =
 
 proc createFleet*(state: GameState, owner: HouseId, location: SystemId): Fleet =
   ## Creates a new, empty fleet and adds it to the game state.
+  ## Automatically assigns the lowest available per-house label (A1-ZZ).
   let fleetId = state.generateFleetId()
+
+  # Scan existing fleet names for this owner to find lowest available label
+  var existingNames: seq[string] = @[]
+  if state.fleets.byOwner.contains(owner):
+    for fid in state.fleets.byOwner[owner]:
+      let fOpt = state.fleet(fid)
+      if fOpt.isSome:
+        existingNames.add(fOpt.get().name)
+  let label = nextAvailableFleetLabel(existingNames)
 
   # Use newFleet() for consistent field initialization
   let newFleet = newFleet(
     shipIds = @[],
     id = fleetId,
+    name = label,
     owner = owner,
     location = location,
     status = FleetStatus.Active,

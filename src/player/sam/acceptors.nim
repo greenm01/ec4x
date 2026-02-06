@@ -1194,9 +1194,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           let fleetIdx = model.ui.fleetConsoleFleetIdx
           if fleetIdx >= 0 and fleetIdx < fleets.len:
             let fleetId = fleets[fleetIdx].fleetId
+            let fleetName = fleets[fleetIdx].name
             # Transition to FleetDetail ViewMode with breadcrumb
             model.ui.mode = ViewMode.FleetDetail
-            model.pushBreadcrumb("Fleet #" & $fleetId, ViewMode.FleetDetail, fleetId)
+            model.pushBreadcrumb("Fleet " & fleetName, ViewMode.FleetDetail, fleetId)
             # Initialize fleet detail state
             model.ui.fleetDetailModal.fleetId = fleetId
             model.ui.fleetDetailModal.subModal = FleetSubModal.None
@@ -1224,7 +1225,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         let fleetId = fleet.id
         # Transition to FleetDetail ViewMode with breadcrumb
         model.ui.mode = ViewMode.FleetDetail
-        model.pushBreadcrumb("Fleet #" & $fleetId, ViewMode.FleetDetail, fleetId)
+        model.pushBreadcrumb("Fleet " & fleet.name, ViewMode.FleetDetail, fleetId)
         # Initialize fleet detail state
         model.ui.fleetDetailModal.fleetId = fleetId
         model.ui.fleetDetailModal.subModal = FleetSubModal.None
@@ -1504,36 +1505,38 @@ proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.ui.mode == ViewMode.Fleets and
         model.ui.fleetViewMode == FleetViewMode.ListView and
         proposal.gameActionData.len > 0:
-      let digit = proposal.gameActionData[0]
-      if digit >= '0' and digit <= '9':
-        let now = epochTime()
-        let buffer = model.ui.fleetListState.jumpBuffer
-        let lastTime = model.ui.fleetListState.jumpTime
-        var nextBuffer = ""
-        if buffer.len == 1 and (now - lastTime) < 0.3:
-          nextBuffer = buffer & $digit
-        else:
-          nextBuffer = $digit
-        model.ui.fleetListState.jumpBuffer = nextBuffer
-        model.ui.fleetListState.jumpTime = now
-        let fleets = model.filteredFleets()
-        let targetId = parseInt(nextBuffer)
-        var foundIdx = -1
-        for idx, fleet in fleets:
-          if fleet.id == targetId:
-            foundIdx = idx
-            break
-        if foundIdx >= 0:
-          model.ui.selectedIdx = foundIdx
-          var localScroll = model.ui.fleetsScroll
-          localScroll.contentLength = fleets.len
-          let maxVisibleRows = max(1, model.ui.termHeight - 10)
-          localScroll.viewportLength = maxVisibleRows
-          localScroll.ensureVisible(foundIdx)
-          model.ui.fleetsScroll = localScroll
+      let ch = proposal.gameActionData[0]
+      let now = epochTime()
+      let buffer = model.ui.fleetListState.jumpBuffer
+      let lastTime = model.ui.fleetListState.jumpTime
+      # Build 2-char label buffer (e.g. "A" then "1" → "A1")
+      var nextBuffer = ""
+      if buffer.len == 1 and (now - lastTime) < 0.3:
+        nextBuffer = buffer & $ch
+      else:
+        nextBuffer = $ch
+      model.ui.fleetListState.jumpBuffer = nextBuffer
+      model.ui.fleetListState.jumpTime = now
+      # Search for matching fleet by name
+      let fleets = model.filteredFleets()
+      let target = nextBuffer.toUpperAscii()
+      var foundIdx = -1
+      for idx, fleet in fleets:
+        if fleet.name.toUpperAscii().startsWith(target):
+          foundIdx = idx
+          break
+      if foundIdx >= 0:
+        model.ui.selectedIdx = foundIdx
+        var localScroll = model.ui.fleetsScroll
+        localScroll.contentLength = fleets.len
+        let maxVisibleRows = max(1, model.ui.termHeight - 10)
+        localScroll.viewportLength = maxVisibleRows
+        localScroll.ensureVisible(foundIdx)
+        model.ui.fleetsScroll = localScroll
+        if nextBuffer.len >= 2:
           model.ui.fleetListState.jumpBuffer = ""
-        elif nextBuffer.len >= 2:
-          model.ui.fleetListState.jumpBuffer = ""
+      elif nextBuffer.len >= 2:
+        model.ui.fleetListState.jumpBuffer = ""
   else:
     discard
 

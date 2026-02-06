@@ -236,6 +236,7 @@ type
   FleetConsoleFleet* = object
     ## Fleet info for console list (cached from PlayerState)
     fleetId*: int
+    name*: string            ## Per-house label (e.g. "A1", "B3")
     shipCount*: int
     attackStrength*: int
     defenseStrength*: int
@@ -425,6 +426,7 @@ type
   FleetInfo* = object
     ## Fleet info for list display
     id*: int
+    name*: string            ## Per-house label (e.g. "A1", "B3")
     location*: int          ## System ID
     locationName*: string
     sectorLabel*: string
@@ -1170,13 +1172,13 @@ proc idleFleetsCount*(model: TuiModel): int =
       result.inc
 
 proc fleetMatchesSearch*(fleet: FleetInfo, query: string): bool =
-  ## Match fleet against search query (fleet ID or sector coords)
+  ## Match fleet against search query (fleet name or sector coords)
   if query.len == 0:
     return true
   let q = query.strip().toUpperAscii()
   if q.len == 0:
     return true
-  if $fleet.id == q:
+  if fleet.name.toUpperAscii() == q:
     return true
   fleet.sectorLabel.toUpperAscii().contains(q)
 
@@ -1184,7 +1186,7 @@ proc compareFleetSort(a, b: FleetInfo, sort: FleetListSort): int =
   ## Compare fleets for sorting
   case sort
   of FleetListSort.FleetId:
-    cmp(a.id, b.id)
+    cmp(a.name, b.name)
   of FleetListSort.Location:
     cmp(a.locationName, b.locationName)
   of FleetListSort.Sector:
@@ -1219,7 +1221,7 @@ proc filteredFleets*(model: TuiModel): seq[FleetInfo] =
   result.sort(proc(a, b: FleetInfo): int =
     let cmpResult = compareFleetSort(a, b, sortMode)
     if cmpResult == 0:
-      cmp(a.id, b.id)
+      cmp(a.name, b.name)
     elif ascending:
       cmpResult
     else:

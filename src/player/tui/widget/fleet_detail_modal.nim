@@ -242,7 +242,7 @@ proc renderFleetInfo(fleetData: FleetDetailData, area: Rect,
   var y = area.y
 
   # Fleet ID and location
-  let line1 = "Fleet #" & $fleetData.fleetId & " at " & fleetData.location
+  let line1 = "Fleet " & fleetData.fleetName & " at " & fleetData.location
   for i, ch in line1:
     if area.x + i < area.right:
       discard buf.put(area.x + i, y, $ch, canvasStyle())
@@ -287,7 +287,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
 
   let maxWidth = max(4, viewport.width - 4)
   let tableWidth = shipTableBase.renderWidth(maxWidth)
-  let line1 = "Fleet #" & $fleetData.fleetId & " at " & fleetData.location
+  let line1 = "Fleet " & fleetData.fleetName & " at " & fleetData.location
   let line2 = "Command: " & fleetData.command & "  ROE: " & $fleetData.roe
   let line3 = "Ships: " & $state.shipCount & "  AS: " &
     $fleetData.totalAttack & "  DS: " & $fleetData.totalDefense

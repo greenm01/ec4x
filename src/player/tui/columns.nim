@@ -52,7 +52,7 @@ proc fleetConsoleSystemsColumns*(): seq[TableColumn] =
 proc fleetConsoleFleetsColumns*(): seq[TableColumn] =
   ## Column definitions for fleet console fleets pane
   @[
-    tableColumn("Flt", 4, table.Alignment.Right),
+    tableColumn("Flt", 3, table.Alignment.Left),
     tableColumn("Ships", 5, table.Alignment.Right),
     tableColumn("AS", 4, table.Alignment.Right),
     tableColumn("DS", 4, table.Alignment.Right),
@@ -72,7 +72,7 @@ proc fleetConsoleFleetsColumns*(): seq[TableColumn] =
 proc fleetListColumns*(): seq[TableColumn] =
   ## Column definitions for fleet list table (ListView)
   @[
-    tableColumn("Flt", 5, table.Alignment.Right),
+    tableColumn("Flt", 3, table.Alignment.Left),
     tableColumn("Location", 14, table.Alignment.Left),
     tableColumn("Sect", 5, table.Alignment.Center),
     tableColumn("Ships", 6, table.Alignment.Right),

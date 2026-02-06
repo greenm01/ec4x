@@ -527,6 +527,7 @@ type
   FleetDetailData* = object
     ## Complete fleet detail information for rendering
     fleetId*: int
+    fleetName*: string      ## Per-house label (e.g. "A1", "B3")
     location*: string       # System name (e.g., "Homeworld")
     systemId*: int          # For navigation to system detail
     shipCount*: int         # Total ships in fleet
@@ -550,6 +551,7 @@ proc fleetToDetailData*(
     logWarn("TUI", "Fleet ", fleetId, " not found in state (turn ", state.turn, ")")
     return FleetDetailData(
       fleetId: int(fleetId),
+      fleetName: "??",
       location: "Fleet Missing",
       shipCount: 0,
       totalAttack: 0,
@@ -733,6 +735,7 @@ proc fleetToDetailData*(
   
   FleetDetailData(
     fleetId: int(fleetId),
+    fleetName: fleet.name,
     location: locationName,
     systemId: int(fleet.location),
     shipCount: shipRows.len,
@@ -968,7 +971,7 @@ proc colonyToDetailData*(
     if fleet.houseId != houseId:
       continue
     dockedFleets.add(DockedFleetInfo(
-      name: "Fleet #" & $fleet.id,
+      name: "Fleet " & fleet.name,
       shipCount: fleet.ships.len
     ))
 
@@ -1242,6 +1245,7 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
 
       return FleetDetailData(
         fleetId: fleetId.int,
+        fleetName: fleet.name,
         location: locationName,
         systemId: fleet.location.int,
         shipCount: shipRows.len,
@@ -1258,6 +1262,7 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
   # Fleet not found
   FleetDetailData(
     fleetId: fleetId.int,
+    fleetName: "??",
     location: "Fleet Not Found",
     shipCount: 0,
     totalAttack: 0,
