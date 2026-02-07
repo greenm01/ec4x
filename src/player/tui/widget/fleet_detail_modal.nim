@@ -64,8 +64,10 @@ proc commandsInCategory*(category: CommandCategory): seq[FleetCommandType] =
 
 proc requiresConfirmation*(cmdType: FleetCommandType): bool =
   ## Check if command requires confirmation
-  cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
-              FleetCommandType.Reserve, FleetCommandType.Mothball}
+  ## Active fleet commands (00-19) never require confirmation;
+  ## the fleet travels to its destination first. Reserved for
+  ## future zero-turn commands (section 6.4) that execute instantly.
+  result = false
 
 proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
                        selectedIdx: int, itemCount: int) =

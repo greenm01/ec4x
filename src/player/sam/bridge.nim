@@ -156,5 +156,10 @@ proc toSamFleetInfo*(
     hasCrippled: false,
     hasCombatShips: false,
     hasSupportShips: false,
+    hasScouts: false,
+    hasTroopTransports: false,
+    hasEtacs: false,
+    isScoutOnly: false,
+    seekHomeTarget: none(int),
     needsAttention: false,
   )

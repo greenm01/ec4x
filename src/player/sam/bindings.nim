@@ -1670,7 +1670,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       # Q also cancels (not in registry for cleanliness)
       if key == KeyCode.KeyQ:
         return some(actionCancelOrder())
-      return none(Proposal)
+      # Fall through to global bindings (allows Ctrl+key view switching)
 
   # Expert mode: use registry
   if model.ui.expertModeActive and modifier == KeyModifier.None:

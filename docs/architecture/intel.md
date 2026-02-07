@@ -18,6 +18,30 @@ The intel system implements **fog of war** by tracking what each player knows ab
 
 ### System Visibility
 
+### Universal Starmap Awareness
+
+All players receive the **complete starmap** at game start.
+This includes every system's name, coordinates, and jump lane
+connectivity. This is universal knowledge — fog-of-war does NOT
+apply to the starmap topology itself. Players always know where
+all systems are and how they connect.
+
+**Fog-of-war applies to:**
+- Rival fleets (presence, composition, orders)
+- Rival colonies (existence, population, industry)
+- House intel and espionage data
+
+**Fog-of-war does NOT apply to:**
+- System names and coordinates (always known)
+- Jump lane connectivity (always known)
+- The starmap graph structure (always known)
+
+**Implementation:** `createPlayerState` in
+`src/engine/state/player_state.nim` assigns `Adjacent`
+visibility (with full `jumpLaneIds`, name, coordinates) to
+ALL systems not already at a higher visibility level. This
+ensures universal map awareness from turn 1.
+
 Players can see systems through four visibility levels:
 
 #### 1. Owned
@@ -54,14 +78,15 @@ Players can see systems through four visibility levels:
 **Intel Quality**: Degraded (stale by N turns)
 
 #### 4. Adjacent
-**Trigger**: System is one jump away from known system
+**Trigger**: All systems not at a higher visibility level
+(universal — every system starts at Adjacent minimum)
 **Visibility**:
 - System name and coordinates
-- Jump lane existence
+- Jump lane connectivity (all lanes)
 - No fleet information
 - No colony information
 
-**Intel Quality**: Minimal (awareness only)
+**Intel Quality**: Minimal (starmap awareness only)
 
 ### Fleet Detection
 
@@ -210,7 +235,7 @@ After each turn resolution phase, the daemon updates intel tables:
 1. **Mark owned systems**: Systems with player's colonies → 'owned'
 2. **Mark occupied systems**: Systems with player's fleets → 'occupied'
 3. **Update scouted systems**: Previously occupied systems → 'scouted'
-4. **Mark adjacent systems**: One jump from known systems → 'adjacent'
+4. **Mark adjacent systems**: All remaining systems → 'adjacent' (universal)
 5. **Prune**: Remove intel for systems no longer relevant (optional)
 
 **SQL Pattern:**

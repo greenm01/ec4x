@@ -152,28 +152,41 @@ Command your fleets with 20 distinct mission types—from peaceful exploration t
 
 Explicit commands that execute until completed or overridden:
 
-| No. | Mission        | Requirements                             |
-| --- | -------------- | ---------------------------------------- |
-| 00  | Hold           | None                                     |
-| 01  | Move           | None                                     |
-| 02  | Seek Home      | None                                     |
-| 03  | Patrol         | None                                     |
-| 04  | Guard Starbase | Combat ship(s)                           |
-| 05  | Guard Colony   | Combat ship(s)                           |
-| 06  | Blockade       | Combat ship(s)                           |
-| 07  | Bombard        | Combat ship(s)                           |
-| 08  | Invade         | Combat ship(s) & loaded Troop Transports |
-| 09  | Blitz          | Loaded Troop Transports                  |
-| 10  | Colonize       | One ETAC                                 |
-| 11  | Scout Colony   | Scout-only fleet (1+ scouts)             |
-| 12  | Scout System   | Scout-only fleet (1+ scouts)             |
-| 13  | Hack Starbase  | Scout-only fleet (1+ scouts)             |
-| 14  | Join Fleet     | None                                     |
-| 15  | Rendezvous     | None                                     |
-| 16  | Salvage        | Friendly colony system                   |
-| 17  | Reserve        | At friendly colony                       |
-| 18  | Mothball       | At friendly colony with Spaceport        |
-| 19  | View           | Any ship type                            |
+| No. | Mission        | Requirements                             | Destination                        |
+| --- | -------------- | ---------------------------------------- | ---------------------------------- |
+| 00  | Hold           | None                                     | Current location (auto)            |
+| 01  | Move           | None                                     | Player-selected system             |
+| 02  | Seek Home      | None                                     | Nearest drydock colony (auto)      |
+| 03  | Patrol         | None                                     | Player-selected system             |
+| 04  | Guard Starbase | Combat ship(s)                           | Player-selected system             |
+| 05  | Guard Colony   | Combat ship(s)                           | Player-selected system             |
+| 06  | Blockade       | Combat ship(s)                           | Player-selected system             |
+| 07  | Bombard        | Combat ship(s)                           | Player-selected system             |
+| 08  | Invade         | Combat ship(s) & loaded Troop Transports | Player-selected system             |
+| 09  | Blitz          | Loaded Troop Transports                  | Player-selected system             |
+| 10  | Colonize       | One ETAC                                 | Player-selected system             |
+| 11  | Scout Colony   | Scout-only fleet (1+ scouts)             | Player-selected system             |
+| 12  | Scout System   | Scout-only fleet (1+ scouts)             | Player-selected system             |
+| 13  | Hack Starbase  | Scout-only fleet (1+ scouts)             | Player-selected system             |
+| 14  | Join Fleet     | None                                     | Target fleet (fleet picker)        |
+| 15  | Rendezvous     | None                                     | Player-selected system             |
+| 16  | Salvage        | None                                     | Friendly colony system (player)    |
+| 17  | Reserve        | None                                     | Friendly colony system (player)    |
+| 18  | Mothball       | None                                     | Colony with Spaceport (player)     |
+| 19  | View           | None                                     | Player-selected system             |
+
+**Destinations and Requirements:**
+
+All active fleet commands (00-19) assign a destination system.
+The fleet travels to that destination to execute the command.
+**Requirements** are fleet composition constraints validated
+before the command is accepted (e.g., "must have combat ships").
+**Destination** constraints are validated at mission execution
+(e.g., Salvage only succeeds at a friendly colony). Three
+commands auto-compute their destination: Hold uses the fleet's
+current location, Seek Home finds the nearest friendly colony
+with drydocks (falling back to nearest colony), and Join Fleet
+targets another fleet via the fleet picker.
 
 **Command Defaults and Lifecycle:**
 

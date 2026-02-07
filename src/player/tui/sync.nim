@@ -2,7 +2,7 @@
 ##
 ## Converts engine state and player state into SAM model data.
 
-import std/[options, tables, algorithm]
+import std/[options, tables, algorithm, deques]
 
 import ../../engine/types/[core, colony, fleet, ship, facilities, player_state as
   ps_types, diplomacy, starmap, capacity, ground_unit, combat]
@@ -220,6 +220,9 @@ proc syncGameStateToModel*(
     var hasCrippled = false
     var hasCombatShips = false
     var hasSupportShips = false
+    var hasScouts = false
+    var hasTroopTransports = false
+    var hasEtacs = false
     var attackStr = 0
     var defenseStr = 0
     for shipId in fleet.ships:
@@ -233,10 +236,39 @@ proc syncGameStateToModel*(
         attackStr += int(ship.stats.attackStrength)
         defenseStr += int(ship.stats.defenseStrength)
       case ship.shipClass
-      of ShipClass.ETAC, ShipClass.TroopTransport:
+      of ShipClass.ETAC:
         hasSupportShips = true
+        hasEtacs = true
+      of ShipClass.TroopTransport:
+        hasSupportShips = true
+        hasTroopTransports = true
+      of ShipClass.Scout:
+        hasScouts = true
       else:
         hasCombatShips = true
+    let isScoutOnly = hasScouts and not hasCombatShips and not hasSupportShips
+    # Compute SeekHome target: nearest friendly colony with drydocks
+    var seekHome = none(int)
+    block seekHomeCalc:
+      var bestCost = high(uint32)
+      var bestId = none(int)
+      var fallbackCost = high(uint32)
+      var fallbackId = none(int)
+      for colony in state.coloniesOwned(viewingHouse):
+        let path = state.findPath(
+          fleet.location, colony.systemId, fleet)
+        if path.found:
+          if colony.repairDocks > 0:
+            if path.totalCost < bestCost:
+              bestCost = path.totalCost
+              bestId = some(int(colony.systemId))
+          if path.totalCost < fallbackCost:
+            fallbackCost = path.totalCost
+            fallbackId = some(int(colony.systemId))
+      if bestId.isSome:
+        seekHome = bestId
+      else:
+        seekHome = fallbackId
     var info = sam_pkg.FleetInfo(
         id: int(fleet.id),
         name: fleet.name,
@@ -258,6 +290,11 @@ proc syncGameStateToModel*(
         hasCrippled: hasCrippled,
         hasCombatShips: hasCombatShips,
         hasSupportShips: hasSupportShips,
+        hasScouts: hasScouts,
+        hasTroopTransports: hasTroopTransports,
+        hasEtacs: hasEtacs,
+        isScoutOnly: isScoutOnly,
+        seekHomeTarget: seekHome,
         needsAttention: false,
       )
     info.needsAttention = info.hasCrippled or info.isIdle or
@@ -491,6 +528,32 @@ proc syncPlayerStateToOverview*(
   if result.recentEvents.len == 0:
     result.addEvent(ps.turn, "No recent events", false)
 
+proc bfsDistance(
+    visibleSystems: Table[SystemId, ps_types.VisibleSystem],
+    start: SystemId,
+    goal: SystemId
+): Option[uint32] =
+  ## Unweighted BFS distance between two systems using
+  ## PlayerState lane adjacency data. Returns none if
+  ## no path exists.
+  if start == goal:
+    return some(0'u32)
+  var visited = initTable[SystemId, uint32]()
+  var queue = initDeque[SystemId]()
+  visited[start] = 0
+  queue.addLast(start)
+  while queue.len > 0:
+    let current = queue.popFirst()
+    let dist = visited[current]
+    if visibleSystems.hasKey(current):
+      for neighbor in visibleSystems[current].jumpLaneIds:
+        if neighbor == goal:
+          return some(dist + 1)
+        if neighbor notin visited:
+          visited[neighbor] = dist + 1
+          queue.addLast(neighbor)
+  return none(uint32)
+
 proc syncPlayerStateToModel*(
     model: var TuiModel,
     ps: ps_types.PlayerState
@@ -624,6 +687,9 @@ proc syncPlayerStateToModel*(
     var hasCrippled = false
     var hasCombatShips = false
     var hasSupportShips = false
+    var hasScouts = false
+    var hasTroopTransports = false
+    var hasEtacs = false
     var attackStr = 0
     var defenseStr = 0
     for shipId in fleet.ships:
@@ -635,11 +701,41 @@ proc syncPlayerStateToModel*(
             attackStr += int(ship.stats.attackStrength)
             defenseStr += int(ship.stats.defenseStrength)
           case ship.shipClass
-          of ShipClass.ETAC, ShipClass.TroopTransport:
+          of ShipClass.ETAC:
             hasSupportShips = true
+            hasEtacs = true
+          of ShipClass.TroopTransport:
+            hasSupportShips = true
+            hasTroopTransports = true
+          of ShipClass.Scout:
+            hasScouts = true
           else:
             hasCombatShips = true
           break
+    let isScoutOnly = hasScouts and not hasCombatShips and not hasSupportShips
+    # Compute SeekHome target via BFS over lane adjacency
+    var seekHome = none(int)
+    block seekHomeCalc:
+      var bestDist = high(uint32)
+      var bestId = none(int)
+      var fallbackDist = high(uint32)
+      var fallbackId = none(int)
+      for colony in ps.ownColonies:
+        let d = bfsDistance(
+          ps.visibleSystems, fleet.location,
+          colony.systemId)
+        if d.isSome:
+          if colony.repairDocks > 0:
+            if d.get() < bestDist:
+              bestDist = d.get()
+              bestId = some(int(colony.systemId))
+          if d.get() < fallbackDist:
+            fallbackDist = d.get()
+            fallbackId = some(int(colony.systemId))
+      if bestId.isSome:
+        seekHome = bestId
+      else:
+        seekHome = fallbackId
     var info = sam_pkg.FleetInfo(
         id: int(fleet.id),
         name: fleet.name,
@@ -661,6 +757,11 @@ proc syncPlayerStateToModel*(
         hasCrippled: hasCrippled,
         hasCombatShips: hasCombatShips,
         hasSupportShips: hasSupportShips,
+        hasScouts: hasScouts,
+        hasTroopTransports: hasTroopTransports,
+        hasEtacs: hasEtacs,
+        isScoutOnly: isScoutOnly,
+        seekHomeTarget: seekHome,
         needsAttention: false,
       )
     info.needsAttention = info.hasCrippled or info.isIdle or

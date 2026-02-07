@@ -12,7 +12,6 @@ import ./tui_model
 import ./actions
 import ./command_parser
 import ../tui/widget/scroll_state
-import ../tui/widget/fleet_detail_modal
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
@@ -1413,13 +1412,67 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           if cmdType == FleetCommandType.JoinFleet:
             model.ui.statusMessage = "JoinFleet: use single fleet mode"
             return
-          # Check if command requires confirmation
-          if requiresConfirmation(cmdType):
-            model.ui.fleetDetailModal.pendingCommandType = cmdType
-            model.ui.fleetDetailModal.confirmMessage =
-              "Confirm " & $cmdType & " for " &
-              $model.ui.selectedFleetIds.len & " fleets?"
-            model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
+          # Validate all fleets in batch meet command requirements
+          for fleetId in model.ui.selectedFleetIds:
+            for fleet in model.view.fleets:
+              if fleet.id == fleetId:
+                let err = validateFleetCommand(fleet, cmdType)
+                if err.len > 0:
+                  model.ui.statusMessage = $cmdType & ": " & err &
+                    " (fleet " & fleet.name & ")"
+                  return
+          # Hold: auto-target each fleet's current location
+          if int(cmdType) == CmdHold:
+            for fleetId in model.ui.selectedFleetIds:
+              var loc = 0
+              for fleet in model.view.fleets:
+                if fleet.id == fleetId:
+                  loc = fleet.location
+                  break
+              let cmd = FleetCommand(
+                fleetId: FleetId(fleetId),
+                commandType: cmdType,
+                targetSystem: some(SystemId(loc.uint32)),
+                targetFleet: none(FleetId),
+                roe: some(int32(
+                  model.ui.fleetDetailModal.roeValue))
+              )
+              model.stageFleetCommand(cmd)
+            model.ui.statusMessage = "Staged " &
+              $model.ui.selectedFleetIds.len &
+              " Hold command(s)"
+            resetFleetDetailSubModal(model)
+            model.ui.mode = ViewMode.Fleets
+            model.resetBreadcrumbs(ViewMode.Fleets)
+            return
+          # SeekHome: auto-target nearest drydock colony
+          if int(cmdType) == CmdSeekHome:
+            for fleetId in model.ui.selectedFleetIds:
+              var target = none(int)
+              for fleet in model.view.fleets:
+                if fleet.id == fleetId:
+                  target = fleet.seekHomeTarget
+                  break
+              if target.isNone:
+                model.ui.statusMessage =
+                  "SeekHome: no friendly colony found"
+                return
+              let cmd = FleetCommand(
+                fleetId: FleetId(fleetId),
+                commandType: cmdType,
+                targetSystem: some(
+                  SystemId(target.get().uint32)),
+                targetFleet: none(FleetId),
+                roe: some(int32(
+                  model.ui.fleetDetailModal.roeValue))
+              )
+              model.stageFleetCommand(cmd)
+            model.ui.statusMessage = "Staged " &
+              $model.ui.selectedFleetIds.len &
+              " Seek Home command(s)"
+            resetFleetDetailSubModal(model)
+            model.ui.mode = ViewMode.Fleets
+            model.resetBreadcrumbs(ViewMode.Fleets)
             return
           if orderEntryNeedsTarget(int32(cmdType)):
             model.ui.orderEntryBatch = true
@@ -1445,17 +1498,62 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.resetBreadcrumbs(ViewMode.Fleets)
           return
         
-        if cmdType == FleetCommandType.JoinFleet:
-          var currentFleet: Option[FleetInfo]
-          for fleet in model.view.fleets:
-            if fleet.id == model.ui.fleetDetailModal.fleetId:
-              currentFleet = some(fleet)
-              break
-          if currentFleet.isNone:
-            model.ui.statusMessage = "JoinFleet: fleet not found"
-            resetFleetDetailSubModal(model)
+        # Look up fleet and validate command requirements
+        var currentFleet: Option[FleetInfo]
+        for fleet in model.view.fleets:
+          if fleet.id == model.ui.fleetDetailModal.fleetId:
+            currentFleet = some(fleet)
+            break
+        if currentFleet.isNone:
+          model.ui.statusMessage = "Fleet not found"
+          resetFleetDetailSubModal(model)
+          return
+        let current = currentFleet.get()
+        let err = validateFleetCommand(current, cmdType)
+        if err.len > 0:
+          model.ui.statusMessage = $cmdType & ": " & err
+          return
+        
+        # Hold: auto-target fleet's current location
+        if int(cmdType) == CmdHold:
+          let cmd = FleetCommand(
+            fleetId: FleetId(current.id),
+            commandType: cmdType,
+            targetSystem: some(
+              SystemId(current.location.uint32)),
+            targetFleet: none(FleetId),
+            roe: some(int32(
+              model.ui.fleetDetailModal.roeValue))
+          )
+          model.stageFleetCommand(cmd)
+          model.ui.statusMessage = "Staged command: Hold"
+          resetFleetDetailSubModal(model)
+          model.ui.mode = ViewMode.Fleets
+          model.resetBreadcrumbs(ViewMode.Fleets)
+          return
+        # SeekHome: auto-target nearest drydock colony
+        if int(cmdType) == CmdSeekHome:
+          if current.seekHomeTarget.isNone:
+            model.ui.statusMessage =
+              "SeekHome: no friendly colony found"
             return
-          let current = currentFleet.get()
+          let cmd = FleetCommand(
+            fleetId: FleetId(current.id),
+            commandType: cmdType,
+            targetSystem: some(
+              SystemId(current.seekHomeTarget.get().uint32)),
+            targetFleet: none(FleetId),
+            roe: some(int32(
+              model.ui.fleetDetailModal.roeValue))
+          )
+          model.stageFleetCommand(cmd)
+          model.ui.statusMessage = "Staged command: Seek Home"
+          resetFleetDetailSubModal(model)
+          model.ui.mode = ViewMode.Fleets
+          model.resetBreadcrumbs(ViewMode.Fleets)
+          return
+        
+        if cmdType == FleetCommandType.JoinFleet:
           model.ui.fleetDetailModal.fleetPickerCandidates = @[]
           for fleet in model.view.fleets:
             if fleet.id == current.id:
@@ -1484,14 +1582,6 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             return
           model.ui.fleetDetailModal.fleetPickerIdx = 0
           model.ui.fleetDetailModal.subModal = FleetSubModal.FleetPicker
-          return
-
-        # Check if command requires confirmation
-        if requiresConfirmation(cmdType):
-          model.ui.fleetDetailModal.pendingCommandType = cmdType
-          model.ui.fleetDetailModal.confirmMessage =
-            "Confirm destructive command: " & $cmdType & "?"
-          model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
           return
 
         # Check if command requires target system selection

@@ -465,6 +465,11 @@ type
     hasCrippled*: bool
     hasCombatShips*: bool
     hasSupportShips*: bool
+    hasScouts*: bool
+    hasTroopTransports*: bool
+    hasEtacs*: bool
+    isScoutOnly*: bool       ## All non-destroyed ships are Scouts
+    seekHomeTarget*: Option[int] ## Precomputed SeekHome target system
     needsAttention*: bool
 
   CommandInfo* = object
@@ -1772,10 +1777,44 @@ proc queueImmediateOrder*(model: var TuiModel, fleetId: int, cmdType: int) =
   model.stageFleetCommand(cmd)
 
 proc orderEntryNeedsTarget*(cmdType: int): bool =
-  ## Check if a command type needs target selection
-  cmdType in [CmdMove, CmdPatrol, CmdBlockade, CmdBombard, CmdInvade,
-              CmdBlitz, CmdColonize, CmdScoutColony, CmdScoutSystem,
-              CmdRendezvous]
+  ## Check if a command type needs target selection on hex map.
+  ## Hold (00) auto-targets current location, SeekHome (02)
+  ## auto-computes nearest drydock, JoinFleet (14) uses FleetPicker.
+  cmdType in [CmdMove, CmdPatrol, CmdGuardStarbase,
+              CmdGuardColony, CmdBlockade, CmdBombard,
+              CmdInvade, CmdBlitz, CmdColonize,
+              CmdScoutColony, CmdScoutSystem,
+              CmdHackStarbase, CmdRendezvous, CmdSalvage,
+              CmdReserve, CmdMothball, CmdView]
+
+proc validateFleetCommand*(fleet: FleetInfo,
+    cmdType: FleetCommandType): string =
+  ## Returns empty string if valid, or error message if fleet doesn't meet
+  ## command requirements per 06-operations.md spec
+  case cmdType
+  of FleetCommandType.GuardStarbase,
+     FleetCommandType.GuardColony,
+     FleetCommandType.Blockade,
+     FleetCommandType.Bombard:
+    if not fleet.hasCombatShips:
+      return "Requires combat ship(s)"
+  of FleetCommandType.Invade:
+    if not fleet.hasCombatShips or not fleet.hasTroopTransports:
+      return "Requires combat ship(s) & loaded Transports"
+  of FleetCommandType.Blitz:
+    if not fleet.hasTroopTransports:
+      return "Requires loaded Troop Transports"
+  of FleetCommandType.Colonize:
+    if not fleet.hasEtacs:
+      return "Requires one ETAC"
+  of FleetCommandType.ScoutColony,
+     FleetCommandType.ScoutSystem,
+     FleetCommandType.HackStarbase:
+    if not fleet.isScoutOnly:
+      return "Requires scout-only fleet (1+ scouts)"
+  else:
+    discard  # Hold, Move, Patrol, etc. have no composition requirements
+  return ""
 
 # =============================================================================
 # Command Packet Builder
