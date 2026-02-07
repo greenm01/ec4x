@@ -12,6 +12,7 @@ import ./tui_model
 import ./actions
 import ./command_parser
 import ../tui/widget/scroll_state
+import ../tui/widget/fleet_detail_modal
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
@@ -64,6 +65,8 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.confirmPending = false
   model.ui.fleetDetailModal.confirmMessage = ""
   model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
+  model.ui.fleetDetailModal.fleetPickerCandidates = @[]
+  model.ui.fleetDetailModal.fleetPickerIdx = 0
 
 proc advanceSortColumn*(state: var TableSortState) =
   ## Move to next sort column, reset to ascending
@@ -848,7 +851,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         of MetaCommandType.None:
           # Regular command - add to staged commands
           if result.fleetCommand.isSome:
-            model.ui.stagedFleetCommands.add(result.fleetCommand.get())
+            model.stageFleetCommand(result.fleetCommand.get())
             model.ui.turnSubmissionConfirmed = false
             model.setExpertFeedback(
               "Fleet command staged (total: " &
@@ -1082,7 +1085,7 @@ proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
     if fleetId > 0:
       # Hold is immediate - no target selection needed
       model.queueImmediateOrder(fleetId, CmdHold)
-      model.ui.statusMessage = "Hold order queued for fleet " & $fleetId
+      model.ui.statusMessage = "Hold command staged for fleet " & $fleetId
   of ActionKind.confirmOrder:
     if model.ui.orderEntryActive:
       # Look up system ID at cursor position
@@ -1091,8 +1094,8 @@ proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
       if sysOpt.isSome:
         let targetSystemId = sysOpt.get().id
         model.confirmOrderEntry(targetSystemId)
-        let cmdLabel = commandLabel(model.ui.pendingFleetOrderCommandType)
-        model.ui.statusMessage = cmdLabel & " order queued to system " &
+        let cmdLabel = commandLabel(model.ui.orderEntryCommandType)
+        model.ui.statusMessage = cmdLabel & " command staged to system " &
           sysOpt.get().name
       else:
         model.ui.statusMessage = "No system at cursor position"
@@ -1290,6 +1293,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
             model.ui.fleetDetailModal.shipScroll = initScrollState()
             model.ui.fleetDetailModal.shipCount = fleets[fleetIdx].shipCount
+            model.ui.fleetDetailModal.fleetPickerCandidates = @[]
+            model.ui.fleetDetailModal.fleetPickerIdx = 0
+            model.ui.fleetDetailModal.fleetPickerScroll = initScrollState()
             model.ui.fleetDetailModal.directSubModal = false
             discard model.updateFleetDetailScroll()
             model.ui.statusMessage = "Fleet detail opened"
@@ -1319,6 +1325,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
         model.ui.fleetDetailModal.shipScroll = initScrollState()
         model.ui.fleetDetailModal.shipCount = fleet.shipCount
+        model.ui.fleetDetailModal.fleetPickerCandidates = @[]
+        model.ui.fleetDetailModal.fleetPickerIdx = 0
+        model.ui.fleetDetailModal.fleetPickerScroll = initScrollState()
         model.ui.fleetDetailModal.directSubModal = false
         discard model.updateFleetDetailScroll()
         model.ui.statusMessage = "Fleet detail opened"
@@ -1349,6 +1358,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       if model.ui.fleetDetailModal.ztcIdx > 0:
         model.ui.fleetDetailModal.ztcIdx -= 1
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
+      if model.ui.fleetDetailModal.fleetPickerIdx > 0:
+        model.ui.fleetDetailModal.fleetPickerIdx -= 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       discard model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll
@@ -1368,6 +1380,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let maxZtc = allZeroTurnCommands().len - 1  # 8 (indices 0-8)
       if model.ui.fleetDetailModal.ztcIdx < maxZtc:
         model.ui.fleetDetailModal.ztcIdx += 1
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
+      let maxIdx = model.ui.fleetDetailModal.fleetPickerCandidates.len - 1
+      if model.ui.fleetDetailModal.fleetPickerIdx < maxIdx:
+        model.ui.fleetDetailModal.fleetPickerIdx += 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       let (_, maxOffset) = model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll
@@ -1394,16 +1410,24 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
 
         # Batch command for selected fleets
         if model.ui.selectedFleetIds.len > 0:
-          if cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
-                        FleetCommandType.Reserve, FleetCommandType.Mothball}:
-            model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
+          if cmdType == FleetCommandType.JoinFleet:
+            model.ui.statusMessage = "JoinFleet: use single fleet mode"
+            return
+          # Check if command requires confirmation
+          if requiresConfirmation(cmdType):
             model.ui.fleetDetailModal.pendingCommandType = cmdType
-            model.ui.fleetDetailModal.confirmMessage = case cmdType
-              of FleetCommandType.Bombard: "Bombard will destroy population"
-              of FleetCommandType.Salvage: "Salvage will scrap this fleet"
-              of FleetCommandType.Reserve: "Reserve reduces readiness to 50%"
-              of FleetCommandType.Mothball: "Mothball takes fleet offline"
-              else: "Confirm this action?"
+            model.ui.fleetDetailModal.confirmMessage =
+              "Confirm " & $cmdType & " for " &
+              $model.ui.selectedFleetIds.len & " fleets?"
+            model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
+            return
+          if orderEntryNeedsTarget(int32(cmdType)):
+            model.ui.orderEntryBatch = true
+            model.ui.orderEntryFleetIds = model.ui.selectedFleetIds
+            model.ui.orderEntryROE =
+              some(int32(model.ui.fleetDetailModal.roeValue))
+            model.startOrderEntry(model.ui.selectedFleetIds[0], int(cmdType))
+            resetFleetDetailSubModal(model)
             return
           for fleetId in model.ui.selectedFleetIds:
             let cmd = FleetCommand(
@@ -1413,7 +1437,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               targetFleet: none(FleetId),
               roe: some(int32(model.ui.fleetDetailModal.roeValue))
             )
-            model.ui.stagedFleetCommands.add(cmd)
+            model.stageFleetCommand(cmd)
           model.ui.statusMessage = "Staged " & $model.ui.selectedFleetIds.len &
             " fleet command(s)"
           resetFleetDetailSubModal(model)
@@ -1421,41 +1445,79 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.resetBreadcrumbs(ViewMode.Fleets)
           return
         
+        if cmdType == FleetCommandType.JoinFleet:
+          var currentFleet: Option[FleetInfo]
+          for fleet in model.view.fleets:
+            if fleet.id == model.ui.fleetDetailModal.fleetId:
+              currentFleet = some(fleet)
+              break
+          if currentFleet.isNone:
+            model.ui.statusMessage = "JoinFleet: fleet not found"
+            resetFleetDetailSubModal(model)
+            return
+          let current = currentFleet.get()
+          model.ui.fleetDetailModal.fleetPickerCandidates = @[]
+          for fleet in model.view.fleets:
+            if fleet.id == current.id:
+              continue
+            if fleet.location == current.location and
+                fleet.owner == current.owner:
+              model.ui.fleetDetailModal.fleetPickerCandidates.add(
+                FleetConsoleFleet(
+                  fleetId: fleet.id,
+                  name: fleet.name,
+                  shipCount: fleet.shipCount,
+                  attackStrength: fleet.attackStrength,
+                  defenseStrength: fleet.defenseStrength,
+                  troopTransports: 0,
+                  etacs: 0,
+                  commandLabel: fleet.commandLabel,
+                  destinationLabel: fleet.destinationLabel,
+                  eta: fleet.eta,
+                  roe: fleet.roe,
+                  status: fleet.statusLabel
+                )
+              )
+          if model.ui.fleetDetailModal.fleetPickerCandidates.len == 0:
+            model.ui.statusMessage = "JoinFleet: no fleets at system"
+            resetFleetDetailSubModal(model)
+            return
+          model.ui.fleetDetailModal.fleetPickerIdx = 0
+          model.ui.fleetDetailModal.subModal = FleetSubModal.FleetPicker
+          return
+
         # Check if command requires confirmation
-        if cmdType in {FleetCommandType.Bombard, FleetCommandType.Salvage,
-                      FleetCommandType.Reserve, FleetCommandType.Mothball}:
-          model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
+        if requiresConfirmation(cmdType):
           model.ui.fleetDetailModal.pendingCommandType = cmdType
-          model.ui.fleetDetailModal.confirmMessage = case cmdType
-            of FleetCommandType.Bombard: "Bombard will destroy population"
-            of FleetCommandType.Salvage: "Salvage will scrap this fleet"
-            of FleetCommandType.Reserve: "Reserve reduces readiness to 50%"
-            of FleetCommandType.Mothball: "Mothball takes fleet offline"
-            else: "Confirm this action?"
+          model.ui.fleetDetailModal.confirmMessage =
+            "Confirm destructive command: " & $cmdType & "?"
+          model.ui.fleetDetailModal.subModal = FleetSubModal.ConfirmPrompt
+          return
+
+        # Check if command requires target system selection
+        if orderEntryNeedsTarget(int32(cmdType)):
+          # Transition to OrderEntry mode: exit modal, enter hex map target
+          # selection
+          model.startOrderEntry(
+            int(model.ui.fleetDetailModal.fleetId),
+            int(cmdType)
+          )
+          # Close the modal sub-modal (startOrderEntry sets mode to Overview)
+          resetFleetDetailSubModal(model)
         else:
-          # Check if command requires target system selection
-          if orderEntryNeedsTarget(int32(cmdType)):
-            # Transition to OrderEntry mode: exit modal, enter hex map target selection
-            model.startOrderEntry(
-              int(model.ui.fleetDetailModal.fleetId),
-              int(cmdType)
-            )
-            # Close the modal by switching back to previous view
-            resetFleetDetailSubModal(model)
-            model.ui.mode = ViewMode.Fleets
-            model.resetBreadcrumbs(ViewMode.Fleets)
-          else:
-            # Stage command immediately (no target needed)
-            let cmd = FleetCommand(
-              fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
-              commandType: cmdType,
-              targetSystem: none(SystemId),
-              targetFleet: none(FleetId),
-              roe: some(int32(model.ui.fleetDetailModal.roeValue))
-            )
-            model.ui.stagedFleetCommands.add(cmd)
-            model.ui.statusMessage = "Staged command: " & $cmdType
-            resetFleetDetailSubModal(model)
+          # Stage command immediately (no target needed)
+          let cmd = FleetCommand(
+            fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
+            commandType: cmdType,
+            targetSystem: none(SystemId),
+            targetFleet: none(FleetId),
+            roe: some(int32(model.ui.fleetDetailModal.roeValue))
+          )
+          model.stageFleetCommand(cmd)
+          model.ui.statusMessage = "Staged command: " & $cmdType
+          resetFleetDetailSubModal(model)
+          model.ui.mode = ViewMode.Fleets
+          model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       # Select ZTC from the picker
       let ztcCommands = allZeroTurnCommands()
@@ -1480,6 +1542,23 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
            ZeroTurnCommandType.TransferFighters:
           # Need fighter params - placeholder
           model.ui.fleetDetailModal.subModal = FleetSubModal.FighterParams
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
+      let candidates = model.ui.fleetDetailModal.fleetPickerCandidates
+      let idx = model.ui.fleetDetailModal.fleetPickerIdx
+      if idx >= 0 and idx < candidates.len:
+        let target = candidates[idx]
+        let cmd = FleetCommand(
+          fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
+          commandType: FleetCommandType.JoinFleet,
+          targetSystem: none(SystemId),
+          targetFleet: some(FleetId(target.fleetId)),
+          roe: some(int32(model.ui.fleetDetailModal.roeValue))
+        )
+        model.stageFleetCommand(cmd)
+        model.ui.statusMessage = "Staged JoinFleet: " & target.name
+        resetFleetDetailSubModal(model)
+        model.ui.mode = ViewMode.Fleets
+        model.resetBreadcrumbs(ViewMode.Fleets)
   of ActionKind.fleetDetailOpenROE:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       model.ui.fleetDetailModal.subModal = FleetSubModal.ROEPicker
@@ -1512,7 +1591,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             targetFleet: none(FleetId),
             roe: some(int32(model.ui.fleetDetailModal.roeValue))
           )
-          model.ui.stagedFleetCommands.add(cmd)
+          model.stageFleetCommand(cmd)
         model.ui.statusMessage = "Staged ROE " &
           $model.ui.fleetDetailModal.roeValue & " for " &
           $model.ui.selectedFleetIds.len & " fleets"
@@ -1528,7 +1607,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           targetFleet: none(FleetId),
           roe: some(int32(model.ui.fleetDetailModal.roeValue))
         )
-        model.ui.stagedFleetCommands.add(cmd)
+        model.stageFleetCommand(cmd)
         model.ui.statusMessage = "Staged ROE " &
           $model.ui.fleetDetailModal.roeValue
   of ActionKind.fleetDetailOpenZTC:
@@ -1548,14 +1627,21 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Check if the confirmed command also requires a target
       if orderEntryNeedsTarget(int32(cmdType)):
         # Route to OrderEntry for target selection
-        model.startOrderEntry(
-          int(model.ui.fleetDetailModal.fleetId),
-          int(cmdType)
-        )
-        # Close the modal by switching back to previous view
+        if model.ui.selectedFleetIds.len > 0:
+          # Batch mode: set up batch order entry
+          model.ui.orderEntryBatch = true
+          model.ui.orderEntryFleetIds = model.ui.selectedFleetIds
+          model.ui.orderEntryROE =
+            some(int32(model.ui.fleetDetailModal.roeValue))
+          model.startOrderEntry(model.ui.selectedFleetIds[0], int(cmdType))
+        else:
+          # Single fleet mode
+          model.startOrderEntry(
+            int(model.ui.fleetDetailModal.fleetId),
+            int(cmdType)
+          )
+        # Close the modal sub-modal (startOrderEntry sets mode to Overview)
         resetFleetDetailSubModal(model)
-        model.ui.mode = ViewMode.Fleets
-        model.resetBreadcrumbs(ViewMode.Fleets)
         return
       
       # Command doesn't need target, stage immediately
@@ -1568,7 +1654,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             targetFleet: none(FleetId),
             roe: some(int32(model.ui.fleetDetailModal.roeValue))
           )
-          model.ui.stagedFleetCommands.add(cmd)
+          model.stageFleetCommand(cmd)
         model.ui.statusMessage = "Staged " & $model.ui.selectedFleetIds.len &
           " fleet command(s)"
         resetFleetDetailSubModal(model)
@@ -1582,7 +1668,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         targetFleet: none(FleetId),
         roe: some(int32(model.ui.fleetDetailModal.roeValue))
       )
-      model.ui.stagedFleetCommands.add(cmd)
+      model.stageFleetCommand(cmd)
       model.ui.statusMessage = "Staged command: " & $cmdType
       resetFleetDetailSubModal(model)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:

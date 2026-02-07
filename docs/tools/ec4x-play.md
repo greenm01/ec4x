@@ -251,8 +251,7 @@ src/player/
 │   └── widgets/
 │       └── menu.nim        # Reusable menu component
 └── state/
-    ├── game_view.nim       # Load PlayerState from DB
-    └── order_builder.nim   # Accumulate orders → KDL
+    └── game_view.nim       # Load PlayerState from DB
 ```
 
 ### Dependencies

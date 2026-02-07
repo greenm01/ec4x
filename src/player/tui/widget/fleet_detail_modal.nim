@@ -206,6 +206,39 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
     selectedIdx = state.ztcIdx,
     itemCount = ztcCommands.len)
 
+proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
+                      buf: var CellBuffer) =
+  ## Render fleet picker using Table widget
+  if area.isEmpty:
+    return
+
+  var fleetTable = table([
+    tableColumn("Fleet", width = 8, align = table.Alignment.Left),
+    tableColumn("Ships", width = 5, align = table.Alignment.Right),
+    tableColumn("AS", width = 4, align = table.Alignment.Right),
+    tableColumn("DS", width = 4, align = table.Alignment.Right)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .headerStyle(canvasHeaderStyle())
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
+
+  for fleet in state.fleetPickerCandidates:
+    fleetTable.addRow([
+      fleet.name,
+      $fleet.shipCount,
+      $fleet.attackStrength,
+      $fleet.defenseStrength
+    ])
+
+  let count = max(1, state.fleetPickerCandidates.len)
+  renderPickerTable(fleetTable, area, buf,
+    selectedIdx = state.fleetPickerIdx,
+    itemCount = count)
+
 proc renderPlaceholderSubModal(label: string, area: Rect,
                               buf: var CellBuffer) =
   ## Render placeholder for not-yet-implemented sub-modals
@@ -345,8 +378,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       FleetDetailInfoHeight + FleetDetailSeparatorHeight +
         shipsContentHeight + FleetDetailFooterHeight
     of FleetSubModal.FleetPicker:
-      # FleetPicker: TODO Phase 3 - for now use compact height
-      15
+      # Table-based picker: itemCount + tableBase(4) + footer(2)
+      let fleetCount = max(1, state.fleetPickerCandidates.len)
+      let tableBaseHeight = 4
+      let footerHeight = 2
+      fleetCount + tableBaseHeight + footerHeight
     of FleetSubModal.Staged:
       # Staged: success message, compact
       8
@@ -386,6 +422,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       (true, "[↑↓]Select [0-9]Quick [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.ZTCPicker:
       (true, "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
+    of FleetSubModal.FleetPicker:
+      (true, "[↑↓]Select [Enter]Confirm [Esc]Cancel")
     else:
       (false, "")
 
@@ -437,12 +475,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       shipsArea.height - FleetDetailShipsHeaderHeight)
     shipTable.render(tableArea, buf)
   of FleetSubModal.FleetPicker:
-    # TODO Phase 3: Render fleet picker UI
-    # For now, just show placeholder text
-    let centerY = inner.y + inner.height div 2
-    let msg = "FleetPicker - TODO Phase 3"
-    let msgX = inner.x + (inner.width - msg.len) div 2
-    discard buf.put(msgX, centerY, msg, canvasStyle())
+    renderFleetPicker(state, inner, buf)
   of FleetSubModal.Staged:
     # Show success message
     let centerY = inner.y + inner.height div 2

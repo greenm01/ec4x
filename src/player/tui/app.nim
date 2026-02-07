@@ -22,7 +22,6 @@ import ../sam/sam_pkg
 import ../sam/bindings
 import ../state/join_flow
 import ../state/lobby_profile
-import ../state/order_builder
 import ../state/msgpack_serializer
 import ../state/msgpack_state
 import ../state/tui_cache
@@ -1129,35 +1128,6 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.statusMessage = "Map export requires local game (not available in Nostr mode)"
       sam.model.ui.exportMapRequested = false
       sam.model.ui.openMapRequested = false
-      needsRender = true
-
-    # Handle pending fleet orders (send via msgpack)
-    if sam.model.ui.pendingFleetOrderReady and activeGameId.len > 0:
-      if sam.model.ui.nostrEnabled and nostrClient != nil and
-          nostrClient.isConnected():
-        if nostrDaemonPubkey.len > 0:
-          let msgpackCommands = formatFleetOrderMsgpack(
-            FleetId(sam.model.ui.pendingFleetOrderFleetId.uint32),
-            FleetCommandType(sam.model.ui.pendingFleetOrderCommandType),
-            SystemId(sam.model.ui.pendingFleetOrderTargetSystemId.uint32),
-            sam.model.view.turn,
-            sam.model.view.viewingHouse)
-          asyncCheck nostrClient.submitCommands(msgpackCommands,
-            sam.model.view.turn)
-          let cmdLabel = commandLabel(
-            sam.model.ui.pendingFleetOrderCommandType)
-          sam.model.ui.statusMessage = cmdLabel & " order submitted"
-        else:
-          sam.model.ui.statusMessage = "Waiting for daemon pubkey"
-      else:
-        let gameDir = "data/games/" & sam.model.view.houseName
-        let orderPath = writeFleetOrderFromModel(gameDir, sam.model)
-        if orderPath.len > 0:
-          let cmdLabel = commandLabel(sam.model.ui.pendingFleetOrderCommandType)
-          sam.model.ui.statusMessage = cmdLabel & " order written: " &
-            extractFilename(orderPath)
-          logInfo("TUI Player SAM", "Fleet order written: " & orderPath)
-      sam.model.clearPendingOrder()
       needsRender = true
 
     # Handle turn submission (expert :submit)

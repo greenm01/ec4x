@@ -19,6 +19,7 @@
 import std/[options, tables, algorithm, strutils]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
+import ../tui/hex_labels
 import ../state/identity
 import ../../engine/types/[core, fleet, production, command, tech, ship,
   facilities, ground_unit, zero_turn]
@@ -293,6 +294,7 @@ type
     # FleetPicker state (for JoinFleet target selection)
     fleetPickerIdx*: int       # Selected fleet index in picker
     fleetPickerScroll*: ScrollState  # Scroll state for fleet picker list
+    fleetPickerCandidates*: seq[FleetConsoleFleet]  # Other fleets at same system
     # ZTCPicker state (for Zero-Turn Commands)
     ztcIdx*: int               # Selected ZTC index (0-8, maps to ZeroTurnCommandType)
     ztcDigitBuffer*: string    # Single-digit quick select buffer (1-9)
@@ -656,12 +658,10 @@ type
     orderEntryFleetId*: int
     orderEntryCommandType*: int
     orderEntryPreviousMode*: ViewMode
-
-    # Pending order (set by acceptor)
-    pendingFleetOrderFleetId*: int
-    pendingFleetOrderCommandType*: int
-    pendingFleetOrderTargetSystemId*: int
-    pendingFleetOrderReady*: bool
+    # Batch order entry (multiple fleets -> single target)
+    orderEntryBatch*: bool
+    orderEntryFleetIds*: seq[int]
+    orderEntryROE*: Option[int32]
 
     # Staged commands (for turn submission)
     stagedFleetCommands*: seq[FleetCommand]
@@ -857,10 +857,9 @@ proc initTuiUiState*(): TuiUiState =
     orderEntryFleetId: 0,
     orderEntryCommandType: 0,
     orderEntryPreviousMode: ViewMode.Fleets,
-    pendingFleetOrderFleetId: 0,
-    pendingFleetOrderCommandType: 0,
-    pendingFleetOrderTargetSystemId: 0,
-    pendingFleetOrderReady: false,
+    orderEntryBatch: false,
+    orderEntryFleetIds: @[],
+    orderEntryROE: none(int32),
     stagedFleetCommands: @[],
     stagedBuildCommands: @[],
     stagedRepairCommands: @[],
@@ -922,7 +921,13 @@ proc initTuiUiState*(): TuiUiState =
       confirmMessage: "",
       pendingCommandType: FleetCommandType.Hold,
       shipScroll: initScrollState(),
-      shipCount: 0
+      shipCount: 0,
+      fleetPickerIdx: 0,
+      fleetPickerScroll: initScrollState(),
+      fleetPickerCandidates: @[],
+      ztcIdx: 0,
+      ztcDigitBuffer: "",
+      directSubModal: false
     )
   )
 
@@ -1657,39 +1662,120 @@ proc startOrderEntry*(model: var TuiModel, fleetId: int, cmdType: int) =
 proc cancelOrderEntry*(model: var TuiModel) =
   ## Cancel order entry and return to previous view
   model.ui.orderEntryActive = false
+  model.ui.orderEntryBatch = false
+  model.ui.orderEntryFleetIds = @[]
+  model.ui.orderEntryROE = none(int32)
   model.ui.mode = model.ui.orderEntryPreviousMode
   model.ui.mapState.selected = none(HexCoord)
   model.ui.statusMessage = "Order cancelled"
 
+# =============================================================================
+# Fleet Command Staging (optimistic update)
+# =============================================================================
+
+proc systemNameById(model: TuiModel, systemId: int): string =
+  ## Look up system coord label by ID, or return "-" if not found
+  for sys in model.view.systems.values:
+    if sys.id == systemId:
+      return coordLabel(sys.coords.q, sys.coords.r)
+  "-"
+
+proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
+  ## Optimistically update FleetInfo (ListView) and FleetConsoleFleet (SystemView)
+  ## to reflect a staged command so fleet tables show new values immediately.
+  let cmdNum = fleetCommandNumber(cmd.commandType)
+  let cmdLbl = commandLabel(cmdNum)
+  let newRoe = if cmd.roe.isSome: int(cmd.roe.get()) else: -1
+  let isStationary = cmd.commandType in {
+    FleetCommandType.Hold, FleetCommandType.GuardStarbase,
+    FleetCommandType.GuardColony, FleetCommandType.SeekHome}
+  let destLabel = if cmd.targetSystem.isSome:
+      model.systemNameById(int(cmd.targetSystem.get()))
+    elif isStationary: "-"
+    else: ""  # keep existing
+  let fid = int(cmd.fleetId)
+
+  # Update FleetInfo in model.view.fleets (ListView)
+  for fleet in model.view.fleets.mitems:
+    if fleet.id == fid:
+      fleet.command = cmdNum
+      fleet.commandLabel = cmdLbl
+      fleet.isIdle = cmd.commandType == FleetCommandType.Hold
+      if newRoe >= 0: fleet.roe = newRoe
+      if destLabel.len > 0:
+        fleet.destinationLabel = destLabel
+        fleet.destinationSystemId =
+          if cmd.targetSystem.isSome: int(cmd.targetSystem.get()) else: 0
+      if isStationary: fleet.eta = 0
+      fleet.needsAttention = false
+      break
+
+  # Update FleetConsoleFleet in fleetConsoleFleetsBySystem (SystemView)
+  for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+    for flt in fleets.mitems:
+      if flt.fleetId == fid:
+        flt.commandLabel = cmdLbl
+        if newRoe >= 0: flt.roe = newRoe
+        if destLabel.len > 0:
+          flt.destinationLabel = destLabel
+        if isStationary: flt.eta = 0
+        return
+
+proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
+  ## Stage a fleet command and optimistically update fleet display data.
+  ## Single entry point — all fleet command staging goes through here.
+  model.ui.stagedFleetCommands.add(cmd)
+  model.updateFleetInfoFromStagedCommand(cmd)
+
+# =============================================================================
+# Order Entry — Target Selection
+# =============================================================================
+
 proc confirmOrderEntry*(model: var TuiModel, targetSystemId: int) =
-  ## Confirm order entry and queue the order for writing
-  model.ui.pendingFleetOrderFleetId = model.ui.orderEntryFleetId
-  model.ui.pendingFleetOrderCommandType = model.ui.orderEntryCommandType
-  model.ui.pendingFleetOrderTargetSystemId = targetSystemId
-  model.ui.pendingFleetOrderReady = true
+  ## Confirm order entry — stage the command with target for batch submission
+  if model.ui.orderEntryBatch:
+    let roeOpt = model.ui.orderEntryROE
+    for fleetId in model.ui.orderEntryFleetIds:
+      let cmd = FleetCommand(
+        fleetId: FleetId(fleetId.uint32),
+        commandType: FleetCommandType(model.ui.orderEntryCommandType),
+        targetSystem: some(SystemId(targetSystemId.uint32)),
+        targetFleet: none(FleetId),
+        roe: roeOpt
+      )
+      model.stageFleetCommand(cmd)
+  else:
+    let cmd = FleetCommand(
+      fleetId: FleetId(model.ui.orderEntryFleetId.uint32),
+      commandType: FleetCommandType(model.ui.orderEntryCommandType),
+      targetSystem: some(SystemId(targetSystemId.uint32)),
+      targetFleet: none(FleetId),
+      roe: none(int32)
+    )
+    model.stageFleetCommand(cmd)
   model.ui.orderEntryActive = false
+  model.ui.orderEntryBatch = false
+  model.ui.orderEntryFleetIds = @[]
+  model.ui.orderEntryROE = none(int32)
   model.ui.mode = model.ui.orderEntryPreviousMode
   model.ui.mapState.selected = none(HexCoord)
 
 proc queueImmediateOrder*(model: var TuiModel, fleetId: int, cmdType: int) =
-  ## Queue an immediate order (no target needed, like Hold)
-  model.ui.pendingFleetOrderFleetId = fleetId
-  model.ui.pendingFleetOrderCommandType = cmdType
-  model.ui.pendingFleetOrderTargetSystemId = 0
-  model.ui.pendingFleetOrderReady = true
-
-proc clearPendingOrder*(model: var TuiModel) =
-  ## Clear the pending order after it's been processed
-  model.ui.pendingFleetOrderReady = false
-  model.ui.pendingFleetOrderFleetId = 0
-  model.ui.pendingFleetOrderCommandType = 0
-  model.ui.pendingFleetOrderTargetSystemId = 0
+  ## Stage an immediate order (no target needed, like Hold)
+  let cmd = FleetCommand(
+    fleetId: FleetId(fleetId.uint32),
+    commandType: FleetCommandType(cmdType),
+    targetSystem: none(SystemId),
+    targetFleet: none(FleetId),
+    roe: none(int32)
+  )
+  model.stageFleetCommand(cmd)
 
 proc orderEntryNeedsTarget*(cmdType: int): bool =
   ## Check if a command type needs target selection
   cmdType in [CmdMove, CmdPatrol, CmdBlockade, CmdBombard, CmdInvade,
               CmdBlitz, CmdColonize, CmdScoutColony, CmdScoutSystem,
-              CmdJoinFleet, CmdRendezvous]
+              CmdRendezvous]
 
 # =============================================================================
 # Command Packet Builder

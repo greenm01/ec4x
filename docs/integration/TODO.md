@@ -40,7 +40,7 @@
 - Join screen with Nostr public key input.
 - Cache `houseId` locally in KDL.
 - Render join status and errors.
-- Order builder and serialization to KDL.
+- Order staging and serialization to msgpack.
 - Display responses and results in Reports.
 
 ## Manual Resolve (Now)

@@ -287,6 +287,12 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.None
   of "hasSubModal":
     model.ui.fleetDetailModal.subModal != FleetSubModal.None
+  of "isCommandPicker":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker
+  of "isROEPicker":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker
+  of "isFleetPicker":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker
   else:
     true
 
@@ -420,10 +426,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Overview,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Overview,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Overview,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -460,10 +478,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Planets,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Planets,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Planets,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -502,10 +532,22 @@ proc initBindings*() =
     longLabel: "PREV TAB", shortLabel: "←", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "PREV TAB", shortLabel: "H", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
     actionKind: ActionKind.switchPlanetTab,
     context: BindingContext.PlanetDetail,
     longLabel: "NEXT TAB", shortLabel: "→", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.switchPlanetTab,
+    context: BindingContext.PlanetDetail,
+    longLabel: "NEXT TAB", shortLabel: "L", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyTab, modifier: KeyModifier.None,
@@ -566,10 +608,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Fleets,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Fleets,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Fleets,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -598,7 +652,7 @@ proc initBindings*() =
     enabledCheck: "hasFleets"))
 
   registerBinding(Binding(
-    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    key: KeyCode.KeyV, modifier: KeyModifier.None,
     actionKind: ActionKind.switchFleetView,
     context: BindingContext.Fleets,
     longLabel: "LIST/MAP", shortLabel: "L/M", priority: 20))
@@ -636,13 +690,25 @@ proc initBindings*() =
     actionKind: ActionKind.fleetConsoleNextPane,
     context: BindingContext.Fleets,
     longLabel: "NEXT PANE", shortLabel: "→", priority: 21))
-  
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetConsoleNextPane,
+    context: BindingContext.Fleets,
+    longLabel: "NEXT PANE", shortLabel: "L", priority: 21))
+
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetConsolePrevPane,
     context: BindingContext.Fleets,
     longLabel: "PREV PANE", shortLabel: "←", priority: 22))
-  
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetConsolePrevPane,
+    context: BindingContext.Fleets,
+    longLabel: "PREV PANE", shortLabel: "H", priority: 22))
+
   registerBinding(Binding(
     key: KeyCode.KeyTab, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetConsoleNextPane,
@@ -689,16 +755,36 @@ proc initBindings*() =
     longLabel: "UP", shortLabel: "↑", priority: 32))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListUp,
+    context: BindingContext.FleetDetail,
+    longLabel: "UP", shortLabel: "K", priority: 32))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailListDown,
     context: BindingContext.FleetDetail,
     longLabel: "DOWN", shortLabel: "↓", priority: 33))
 
   registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListDown,
+    context: BindingContext.FleetDetail,
+    longLabel: "DOWN", shortLabel: "J", priority: 33))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailSelectCommand,
     context: BindingContext.FleetDetail,
-    longLabel: "SELECT", shortLabel: "Enter", priority: 34))
+    longLabel: "SELECT", shortLabel: "Enter", priority: 34,
+    enabledCheck: "isCommandPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailSelectCommand,
+    context: BindingContext.FleetDetail,
+    longLabel: "SELECT", shortLabel: "Enter", priority: 34,
+    enabledCheck: "isFleetPicker"))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -727,7 +813,8 @@ proc initBindings*() =
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailSelectROE,
     context: BindingContext.FleetDetail,
-    longLabel: "CONFIRM ROE", shortLabel: "Enter", priority: 35))
+    longLabel: "CONFIRM ROE", shortLabel: "Enter", priority: 35,
+    enabledCheck: "isROEPicker"))
 
   # Confirm dialog (Y/N)
   registerBinding(Binding(
@@ -781,10 +868,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Espionage,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Espionage,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Espionage,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -821,10 +920,22 @@ proc initBindings*() =
     longLabel: "TAX-", shortLabel: "-", priority: 10))
 
   registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.select,
+    context: BindingContext.Economy,
+    longLabel: "TAX-", shortLabel: "H", priority: 10))
+
+  registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
     actionKind: ActionKind.select,
     context: BindingContext.Economy,
     longLabel: "TAX+", shortLabel: "+", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.select,
+    context: BindingContext.Economy,
+    longLabel: "TAX+", shortLabel: "L", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -843,10 +954,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Reports,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Reports,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Reports,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -905,10 +1028,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Settings,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Settings,
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Settings,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -951,10 +1086,22 @@ proc initBindings*() =
     longLabel: "NAV", shortLabel: "Nav", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildListUp,
+    context: BindingContext.BuildModal,
+    longLabel: "NAV", shortLabel: "K", priority: 2))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.buildListDown,
     context: BindingContext.BuildModal,
     longLabel: "NAV", shortLabel: "Nav", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildListDown,
+    context: BindingContext.BuildModal,
+    longLabel: "NAV", shortLabel: "J", priority: 3))
 
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
@@ -963,10 +1110,22 @@ proc initBindings*() =
     longLabel: "FOCUS", shortLabel: "Foc", priority: 4))
 
   registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildFocusSwitch,
+    context: BindingContext.BuildModal,
+    longLabel: "FOCUS", shortLabel: "H", priority: 4))
+
+  registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
     actionKind: ActionKind.buildFocusSwitch,
     context: BindingContext.BuildModal,
     longLabel: "FOCUS", shortLabel: "Foc", priority: 5))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildFocusSwitch,
+    context: BindingContext.BuildModal,
+    longLabel: "FOCUS", shortLabel: "L", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -1015,10 +1174,22 @@ proc initBindings*() =
     longLabel: "MOVE", shortLabel: "Mov", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.moveCursor,
     context: BindingContext.OrderEntry,
     longLabel: "MOVE", shortLabel: "Mov", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "J", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
@@ -1027,10 +1198,22 @@ proc initBindings*() =
     longLabel: "MOVE", shortLabel: "Mov", priority: 3))
 
   registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "H", priority: 3))
+
+  registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
     actionKind: ActionKind.moveCursor,
     context: BindingContext.OrderEntry,
     longLabel: "MOVE", shortLabel: "Mov", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.moveCursor,
+    context: BindingContext.OrderEntry,
+    longLabel: "MOVE", shortLabel: "L", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -1067,11 +1250,22 @@ proc initBindings*() =
     longLabel: "HISTORY", shortLabel: "Hist", priority: 20))
 
   registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.expertHistoryPrev,
+    context: BindingContext.ExpertMode,
+    longLabel: "HISTORY", shortLabel: "K", priority: 20))
+
+  registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.expertHistoryNext,
     context: BindingContext.ExpertMode,
     longLabel: "HISTORY", shortLabel: "Hist", priority: 21))
 
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.expertHistoryNext,
+    context: BindingContext.ExpertMode,
+    longLabel: "HISTORY", shortLabel: "J", priority: 21))
   registerBinding(Binding(
     key: KeyCode.KeyBackspace, modifier: KeyModifier.None,
     actionKind: ActionKind.expertInputBackspace,
@@ -1125,6 +1319,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       of KeyCode.KeyDown: HexDirection.SouthEast
       of KeyCode.KeyLeft: HexDirection.West
       of KeyCode.KeyRight: HexDirection.East
+      of KeyCode.KeyK: HexDirection.NorthWest
+      of KeyCode.KeyJ: HexDirection.SouthEast
+      of KeyCode.KeyH: HexDirection.West
+      of KeyCode.KeyL: HexDirection.East
       else: HexDirection.East
     return some(actionMoveCursor(dir))
 
@@ -1429,8 +1627,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       not model.ui.expertModeActive and
       modifier == KeyModifier.None:
     # Fleet label jump: type 2-char label (e.g. A1, B3) to jump to fleet
-    # Excludes letters bound in Fleets context: S(sort), L(list), X(select),
-    # C(batch cmd), R(batch ROE), Z(batch ZTC)
+    # Excludes letters bound in Fleets context: H/J/K(nav), S(sort), V(view),
+    # X(select), C(batch cmd), R(batch ROE), Z(batch ZTC)
     let jumpChar = case key
       of KeyCode.Key0: '0'
       of KeyCode.Key1: '1'
@@ -1448,10 +1646,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyE: 'E'
       of KeyCode.KeyF: 'F'
       of KeyCode.KeyG: 'G'
-      of KeyCode.KeyH: 'H'
       of KeyCode.KeyI: 'I'
-      of KeyCode.KeyJ: 'J'
-      of KeyCode.KeyK: 'K'
       of KeyCode.KeyM: 'M'
       of KeyCode.KeyN: 'N'
       of KeyCode.KeyO: 'O'
@@ -1459,7 +1654,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyQ: 'Q'
       of KeyCode.KeyT: 'T'
       of KeyCode.KeyU: 'U'
-      of KeyCode.KeyV: 'V'
       of KeyCode.KeyW: 'W'
       of KeyCode.KeyY: 'Y'
       else: '\0'
