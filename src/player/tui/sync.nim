@@ -2,7 +2,7 @@
 ##
 ## Converts engine state and player state into SAM model data.
 
-import std/[options, tables, algorithm, deques]
+import std/[options, tables, algorithm, deques, sets, heapqueue]
 
 import ../../engine/types/[core, colony, fleet, ship, facilities, player_state as
   ps_types, diplomacy, starmap, capacity, ground_unit, combat]
@@ -206,9 +206,16 @@ proc syncGameStateToModel*(
         destLabel = coordLabel(int(target.coords.q), int(target.coords.r))
       else:
         destLabel = $targetId
-      let path = state.findPath(fleet.location, targetId, fleet)
+      let path = state.findPath(
+        fleet.location, targetId, fleet
+      )
       if path.found:
-        eta = int(path.totalCost)
+        let etaOpt = state.calculateETA(
+          fleet.location, targetId,
+          fleet, viewingHouse,
+        )
+        if etaOpt.isSome:
+          eta = etaOpt.get()
     var statusLabel = "Active"
     case fleet.status
     of FleetStatus.Active:
@@ -301,6 +308,168 @@ proc syncGameStateToModel*(
       (info.hasSupportShips and not info.hasCombatShips)
     model.view.fleets.add(info)
 
+  # Populate lane/ownership data for client-side ETA
+  model.view.laneTypes.clear()
+  model.view.laneNeighbors.clear()
+  model.view.ownedSystemIds = initHashSet[int]()
+  for lane in state.starMap.lanes.data:
+    let src = int(lane.source)
+    let dst = int(lane.destination)
+    model.view.laneTypes[(src, dst)] =
+      int(lane.laneType)
+    if src notin model.view.laneNeighbors:
+      model.view.laneNeighbors[src] = @[]
+    model.view.laneNeighbors[src].add(dst)
+  for colony in state.coloniesOwned(viewingHouse):
+    model.view.ownedSystemIds.incl(
+      int(colony.systemId)
+    )
+
+# =============================================================================
+# PlayerState ETA Helpers (A* pathfinding + turn simulation)
+# =============================================================================
+
+type PsPathNode = tuple[f: uint32, system: SystemId]
+
+proc `<`(a, b: PsPathNode): bool = a.f < b.f
+
+proc hexDistance(
+    visibleSystems: Table[SystemId, ps_types.VisibleSystem],
+    a: SystemId,
+    b: SystemId,
+): uint32 =
+  ## Hex distance heuristic for A* from VisibleSystem
+  ## coordinates. Falls back to 1 if coords missing.
+  if visibleSystems.hasKey(a) and
+      visibleSystems.hasKey(b):
+    let ca = visibleSystems[a].coordinates
+    let cb = visibleSystems[b].coordinates
+    if ca.isSome and cb.isSome:
+      let dq = abs(int(ca.get().q) - int(cb.get().q))
+      let dr = abs(int(ca.get().r) - int(cb.get().r))
+      let ds = abs(
+        (-int(ca.get().q) - int(ca.get().r)) -
+        (-int(cb.get().q) - int(cb.get().r))
+      )
+      return uint32(max(dq, max(dr, ds)))
+  return 1'u32
+
+proc findPathPS(
+    neighbors: Table[SystemId, seq[SystemId]],
+    connInfo: Table[
+      (SystemId, SystemId), LaneClass
+    ],
+    visibleSystems: Table[
+      SystemId, ps_types.VisibleSystem
+    ],
+    start: SystemId,
+    goal: SystemId,
+): (bool, seq[SystemId]) =
+  ## A* pathfinding using PlayerState lane data.
+  ## Returns (found, path).
+  if start == goal:
+    return (true, @[start])
+
+  var openSet: HeapQueue[PsPathNode]
+  var cameFrom: Table[SystemId, SystemId]
+  var gScore: Table[SystemId, uint32]
+
+  gScore[start] = 0'u32
+  let h = hexDistance(visibleSystems, start, goal)
+  openSet.push((h, start))
+
+  while openSet.len > 0:
+    let current = openSet.pop().system
+    if current == goal:
+      var path: seq[SystemId] = @[current]
+      var node = current
+      while node != start:
+        node = cameFrom[node]
+        path.insert(node, 0)
+      return (true, path)
+
+    let neighs =
+      neighbors.getOrDefault(current, @[])
+    for neighbor in neighs:
+      let lc = connInfo.getOrDefault(
+        (current, neighbor), LaneClass.Minor
+      )
+      let edgeCost =
+        case lc
+        of LaneClass.Major: 1'u32
+        of LaneClass.Minor: 2'u32
+        of LaneClass.Restricted: 3'u32
+      let tentG = gScore[current] + edgeCost
+      if neighbor notin gScore or
+          tentG < gScore[neighbor]:
+        cameFrom[neighbor] = current
+        gScore[neighbor] = tentG
+        let fVal = tentG + hexDistance(
+          visibleSystems, neighbor, goal
+        )
+        openSet.push((fVal, neighbor))
+
+  return (false, @[])
+
+proc calculateETAFromPS(
+    neighbors: Table[SystemId, seq[SystemId]],
+    connInfo: Table[
+      (SystemId, SystemId), LaneClass
+    ],
+    ownedSystems: HashSet[SystemId],
+    visibleSystems: Table[
+      SystemId, ps_types.VisibleSystem
+    ],
+    fromSystem: SystemId,
+    toSystem: SystemId,
+): int =
+  ## Calculate ETA using PlayerState data with
+  ## turn-by-turn simulation matching engine rules.
+  ## Returns 0 if unreachable or same system.
+  if fromSystem == toSystem:
+    return 0
+
+  let (found, path) = findPathPS(
+    neighbors, connInfo, visibleSystems,
+    fromSystem, toSystem,
+  )
+  if not found:
+    return 0
+
+  var pos = 0
+  var turns = 0
+
+  while pos < path.len - 1:
+    turns += 1
+    var jumpsThisTurn = 1
+
+    # Check 2-jump major lane rule
+    if pos + 2 < path.len:
+      var allOwned = true
+      for i in pos .. min(pos + 2, path.len - 1):
+        if path[i] notin ownedSystems:
+          allOwned = false
+          break
+
+      if allOwned:
+        var bothMajor = true
+        for i in pos ..< pos + 2:
+          let lc = connInfo.getOrDefault(
+            (path[i], path[i + 1]),
+            LaneClass.Minor,
+          )
+          if lc != LaneClass.Major:
+            bothMajor = false
+            break
+        if bothMajor:
+          jumpsThisTurn = 2
+
+    pos += min(
+      jumpsThisTurn, path.len - 1 - pos
+    )
+
+  return turns
+
 # =============================================================================
 # Fleet Console Data Sync (SystemView mode)
 # =============================================================================
@@ -342,7 +511,12 @@ proc syncFleetConsoleSystems*(
 
 proc syncFleetConsoleFleets*(
     ps: ps_types.PlayerState,
-    systemId: SystemId
+    systemId: SystemId,
+    psNeighbors: Table[SystemId, seq[SystemId]],
+    psConnInfo: Table[
+      (SystemId, SystemId), LaneClass
+    ],
+    psOwnedSystems: HashSet[SystemId],
 ): seq[FleetConsoleFleet] =
   ## Get list of fleets at a specific system for console
   result = @[]
@@ -389,8 +563,11 @@ proc syncFleetConsoleFleets*(
             int(target.coordinates.get().r))
       else:
         destLabel = $targetId
-      # TODO: ETA calculation requires pathfinding (not available in PS-only mode)
-      eta = 0
+      eta = calculateETAFromPS(
+        psNeighbors, psConnInfo,
+        psOwnedSystems, ps.visibleSystems,
+        fleet.location, targetId,
+      )
     else:
       # For patrol/hold, show current location
       if ps.visibleSystems.hasKey(fleet.location):
@@ -576,6 +753,22 @@ proc syncPlayerStateToModel*(
   model.view.unreadMessages = 0
   model.view.production = 0  # Would need income report
   model.view.houseTaxRate = 0
+
+  # Build lane lookup structures from jumpLanes
+  var psNeighbors = initTable[SystemId, seq[SystemId]]()
+  var psConnInfo =
+    initTable[(SystemId, SystemId), LaneClass]()
+  for lane in ps.jumpLanes:
+    psConnInfo[(lane.source, lane.destination)] =
+      lane.laneType
+    if lane.source notin psNeighbors:
+      psNeighbors[lane.source] = @[]
+    psNeighbors[lane.source].add(lane.destination)
+
+  # Build owned system set for 2-jump rule
+  var psOwnedSystems = initHashSet[SystemId]()
+  for colony in ps.ownColonies:
+    psOwnedSystems.incl(colony.systemId)
   
   # Build systems table from visible systems
   # VisibleSystem only has: id, name, visibility, lastScoutedTurn, coordinates
@@ -676,6 +869,11 @@ proc syncPlayerStateToModel*(
             int(target.coordinates.get().r))
       else:
         destLabel = $targetId
+      eta = calculateETAFromPS(
+        psNeighbors, psConnInfo,
+        psOwnedSystems, ps.visibleSystems,
+        fleet.location, targetId,
+      )
     var statusLabel = "Active"
     case fleet.status
     of FleetStatus.Active:
@@ -768,6 +966,23 @@ proc syncPlayerStateToModel*(
       (info.hasSupportShips and not info.hasCombatShips)
     model.view.fleets.add(info)
   
+  # Populate lane/ownership data for client-side ETA
+  model.view.laneTypes.clear()
+  model.view.laneNeighbors.clear()
+  model.view.ownedSystemIds = initHashSet[int]()
+  for lane in ps.jumpLanes:
+    let src = int(lane.source)
+    let dst = int(lane.destination)
+    model.view.laneTypes[(src, dst)] =
+      int(lane.laneType)
+    if src notin model.view.laneNeighbors:
+      model.view.laneNeighbors[src] = @[]
+    model.view.laneNeighbors[src].add(dst)
+  for colony in ps.ownColonies:
+    model.view.ownedSystemIds.incl(
+      int(colony.systemId)
+    )
+
   # Prestige rank
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
   for houseId, prestige in ps.housePrestige.pairs:
@@ -799,7 +1014,10 @@ proc syncPlayerStateToModel*(
   model.ui.fleetConsoleFleetsBySystem.clear()
   for sys in model.ui.fleetConsoleSystems:
     model.ui.fleetConsoleFleetsBySystem[sys.systemId] = 
-      syncFleetConsoleFleets(ps, SystemId(sys.systemId))
+      syncFleetConsoleFleets(
+        ps, SystemId(sys.systemId),
+        psNeighbors, psConnInfo, psOwnedSystems,
+      )
 
 # =============================================================================
 # Planets Table Sync (PlayerState-only)

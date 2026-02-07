@@ -17,7 +17,7 @@
 ## - Client generates human-readable reports from PlayerState deltas + GameEvents
 
 import std/[tables, options]
-import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit, tech, facilities]
+import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit, tech, facilities, starmap]
 
 type
   # =============================================================================
@@ -221,3 +221,6 @@ type
     diplomaticRelations*: Table[(HouseId, HouseId), DiplomaticState]
     eliminatedHouses*: seq[HouseId]
     actProgression*: ActProgressionState
+
+    # === Starmap Topology (Universal Knowledge) ===
+    jumpLanes*: seq[JumpLane]

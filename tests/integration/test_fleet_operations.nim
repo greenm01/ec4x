@@ -1369,7 +1369,7 @@ suite "Fleet Operations - Jump Lane Movement":
     )
     
     # Calculate ETA to second system
-    let etaOpt = calculateETA(game, testSystems[0], testSystems[1], fleet)
+    let etaOpt = calculateETA(game, testSystems[0], testSystems[1], fleet, houseId)
     
     # If path exists, ETA should be at least 1 turn (same system = 0)
     if etaOpt.isSome and testSystems[0] != testSystems[1]:
@@ -1440,7 +1440,7 @@ suite "Fleet Operations - Jump Lane Movement":
     
     # Calculate when both can reach third system
     let maxETAOpt = calculateMultiFleetETA(
-      game, testSystems[2], @[fleet1, fleet2]
+      game, testSystems[2], @[fleet1, fleet2], houseId
     )
     
     # Should return Some(eta) if both can reach target

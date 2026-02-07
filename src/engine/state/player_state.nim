@@ -341,3 +341,6 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
 
   for key, relation in state.diplomaticRelation:
     result.diplomaticRelations[key] = relation.state
+
+  # === Starmap Topology (Universal Knowledge) ===
+  result.jumpLanes = state.starMap.lanes.data

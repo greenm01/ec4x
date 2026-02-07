@@ -16,7 +16,7 @@
 ##   F7 Reports    - Turn summaries, combat/intel reports
 ##   F8 Settings   - Display options, automation defaults
 
-import std/[options, tables, algorithm, strutils, sequtils]
+import std/[options, tables, algorithm, strutils, sequtils, sets]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../tui/hex_labels
@@ -764,6 +764,11 @@ type
     # Lobby data lists
     lobbyActiveGames*: seq[ActiveGameInfo]
     lobbyJoinGames*: seq[JoinGameInfo]
+
+    # Starmap lane data for client-side ETA
+    laneTypes*: Table[(int, int), int]
+    laneNeighbors*: Table[int, seq[int]]
+    ownedSystemIds*: HashSet[int]
 
   # ============================================================================
   # The Complete TUI Model (SAM wrapper)
@@ -1678,6 +1683,83 @@ proc buildSystemPickerList*(
   )
 
 # =============================================================================
+# Client-Side ETA Estimation (for optimistic updates)
+# =============================================================================
+
+const
+  LaneTypeMajor = 0  ## Matches LaneClass.Major ord
+
+proc estimateETA*(model: TuiModel,
+    fromSys: int, toSys: int): int =
+  ## Estimate turns to travel from fromSys to toSys
+  ## using stored lane data and turn-by-turn sim.
+  ## Returns 0 if same system or unreachable.
+  if fromSys == toSys:
+    return 0
+
+  # BFS to find shortest-hop path
+  var parent = initTable[int, int]()
+  var queue: seq[int] = @[fromSys]
+  parent[fromSys] = -1
+
+  block bfsSearch:
+    while queue.len > 0:
+      let cur = queue[0]
+      queue.delete(0)
+      let neighs =
+        model.view.laneNeighbors.getOrDefault(
+          cur, @[]
+        )
+      for n in neighs:
+        if n notin parent:
+          parent[n] = cur
+          if n == toSys:
+            break bfsSearch
+          queue.add(n)
+
+  if toSys notin parent:
+    return 0  # Unreachable
+
+  # Reconstruct path
+  var path: seq[int] = @[]
+  var node = toSys
+  while node != -1:
+    path.insert(node, 0)
+    node = parent[node]
+
+  # Turn-by-turn simulation
+  var pos = 0
+  var turns = 0
+
+  while pos < path.len - 1:
+    turns += 1
+    var jumps = 1
+
+    if pos + 2 < path.len:
+      var allOwned = true
+      for i in pos .. min(pos + 2, path.len - 1):
+        if path[i] notin model.view.ownedSystemIds:
+          allOwned = false
+          break
+
+      if allOwned:
+        var bothMajor = true
+        for i in pos ..< pos + 2:
+          let lt =
+            model.view.laneTypes.getOrDefault(
+              (path[i], path[i + 1]), -1
+            )
+          if lt != LaneTypeMajor:
+            bothMajor = false
+            break
+        if bothMajor:
+          jumps = 2
+
+    pos += min(jumps, path.len - 1 - pos)
+
+  return turns
+
+# =============================================================================
 # Fleet Command Staging (optimistic update)
 # =============================================================================
 
@@ -1714,7 +1796,13 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
         fleet.destinationLabel = destLabel
         fleet.destinationSystemId =
           if cmd.targetSystem.isSome: int(cmd.targetSystem.get()) else: 0
-      if isStationary: fleet.eta = 0
+      if isStationary:
+        fleet.eta = 0
+      elif cmd.targetSystem.isSome:
+        fleet.eta = model.estimateETA(
+          fleet.location,
+          int(cmd.targetSystem.get()),
+        )
       fleet.needsAttention = false
       break
 
@@ -1726,7 +1814,13 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
         if newRoe >= 0: flt.roe = newRoe
         if destLabel.len > 0:
           flt.destinationLabel = destLabel
-        if isStationary: flt.eta = 0
+        if isStationary:
+          flt.eta = 0
+        elif cmd.targetSystem.isSome:
+          flt.eta = model.estimateETA(
+            systemId,
+            int(cmd.targetSystem.get()),
+          )
         return
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =

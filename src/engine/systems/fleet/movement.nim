@@ -261,36 +261,73 @@ proc calculateETA*(
     fromSystem: SystemId,
     toSystem: SystemId,
     fleet: Fleet,
+    houseId: HouseId,
 ): Option[int] =
-  ## Calculate estimated turns for fleet to reach target system
+  ## Calculate estimated turns for fleet to reach
+  ## target system using turn-by-turn simulation.
   ##
-  ## Returns none if target is unreachable
+  ## Applies the same movement rules as
+  ## resolveMovementCommand (mechanics.nim):
+  ## - Major lanes through owned systems: 2 jumps/turn
+  ## - All other lanes: 1 jump/turn
   ##
-  ## Uses conservative estimate: assumes 1 jump per turn (enemy/neutral)
-  ## Actual travel may be faster with major lanes through friendly space
-  ##
-  ## Useful for:
-  ## - AI strategic planning
-  ## - UI feedback to players
-  ## - Coordinated fleet operations
+  ## Returns none if target is unreachable.
 
   if fromSystem == toSystem:
     return some(0)
 
-  let pathResult = findPath(state, fromSystem, toSystem, fleet)
+  let pathResult = findPath(
+    state, fromSystem, toSystem, fleet
+  )
 
   if not pathResult.found:
     return none(int)
 
-  # Conservative estimate: 1 jump per turn
-  # Path length - 1 = number of jumps (e.g., [A, B, C] = 2 jumps)
-  let jumps = pathResult.path.len - 1
-  return some(jumps)
+  let path = pathResult.path
+  var pos = 0 # Index into path
+  var turns = 0
+
+  while pos < path.len - 1:
+    turns += 1
+    var jumpsThisTurn = 1
+
+    # Check 2-jump major lane rule
+    # (matches mechanics.nim resolveMovementCommand)
+    if pos + 2 < path.len:
+      # Check all systems along remaining path owned
+      var allOwned = true
+      for i in pos .. min(pos + 2, path.len - 1):
+        let colOpt = state.colonyBySystem(path[i])
+        if colOpt.isNone or
+            colOpt.get().owner != houseId:
+          allOwned = false
+          break
+
+      if allOwned:
+        # Check next two edges are both Major
+        var bothMajor = true
+        for i in pos ..< pos + 2:
+          let lc =
+            state.starMap.lanes.connectionInfo
+              .getOrDefault(
+                (path[i], path[i + 1]),
+                LaneClass.Minor,
+              )
+          if lc != LaneClass.Major:
+            bothMajor = false
+            break
+        if bothMajor:
+          jumpsThisTurn = 2
+
+    pos += min(jumpsThisTurn, path.len - 1 - pos)
+
+  return some(turns)
 
 proc calculateMultiFleetETA*(
     state: GameState,
     assemblyPoint: SystemId,
     fleets: seq[Fleet],
+    houseId: HouseId,
 ): Option[int] =
   ## Calculate when all fleets can reach assembly point
   ##
@@ -306,7 +343,8 @@ proc calculateMultiFleetETA*(
 
   for fleet in fleets:
     let etaOpt = calculateETA(
-      state, fleet.location, assemblyPoint, fleet
+      state, fleet.location, assemblyPoint,
+      fleet, houseId,
     )
 
     if etaOpt.isNone:
