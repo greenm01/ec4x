@@ -47,7 +47,6 @@ type
     ReportDetail  ## Report detail view
     Settings      ## Settings view
     Lobby         ## Entry screen / lobby
-    OrderEntry    ## Order entry mode (target selection)
     ExpertMode    ## Expert command mode
     BuildModal    ## Build command modal
 
@@ -293,6 +292,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker
   of "isFleetPicker":
     model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker
+  of "isSystemPicker":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker
   else:
     true
 
@@ -787,6 +788,37 @@ proc initBindings*() =
     enabledCheck: "isFleetPicker"))
 
   registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailSelectCommand,
+    context: BindingContext.FleetDetail,
+    longLabel: "SELECT", shortLabel: "Enter", priority: 34,
+    enabledCheck: "isSystemPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListUp,
+    context: BindingContext.FleetDetail,
+    longLabel: "UP", shortLabel: "←", priority: 32))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListDown,
+    context: BindingContext.FleetDetail,
+    longLabel: "DOWN", shortLabel: "→", priority: 33))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListUp,
+    context: BindingContext.FleetDetail,
+    longLabel: "UP", shortLabel: "H", priority: 32))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailListDown,
+    context: BindingContext.FleetDetail,
+    longLabel: "DOWN", shortLabel: "L", priority: 33))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailCancel,
     context: BindingContext.FleetDetail,
@@ -797,15 +829,13 @@ proc initBindings*() =
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailPageUp,
     context: BindingContext.FleetDetail,
-    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 50,
-    enabledCheck: "noSubModal"))
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 50))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailPageDown,
     context: BindingContext.FleetDetail,
-    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 51,
-    enabledCheck: "noSubModal"))
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 51))
 
   # ROE Picker sub-modal (shares bindings with command picker for navigation)
   # Up/Down keys already bound above
@@ -1164,70 +1194,6 @@ proc initBindings*() =
     longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
-  # Order Entry Context (Target Selection)
-  # =========================================================================
-
-  registerBinding(Binding(
-    key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "Mov", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyK, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "K", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "Mov", priority: 2))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyJ, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "J", priority: 2))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "Mov", priority: 3))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyH, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "H", priority: 3))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyRight, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "Mov", priority: 4))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionKind: ActionKind.moveCursor,
-    context: BindingContext.OrderEntry,
-    longLabel: "MOVE", shortLabel: "L", priority: 4))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.confirmOrder,
-    context: BindingContext.OrderEntry,
-    longLabel: "CONFIRM", shortLabel: "OK", priority: 10))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.cancelOrder,
-    context: BindingContext.OrderEntry,
-    longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
-
-  # =========================================================================
   # Expert Mode Context
   # =========================================================================
 
@@ -1525,8 +1491,6 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     if model.ui.fleetDetailModal.subModal != FleetSubModal.None:
       return some(actionFleetDetailCancel())
     return some(actionCloseFleetDetailModal())
-  if model.ui.orderEntryActive:
-    return some(actionCancelOrder())
   if model.ui.expertModeActive:
     return some(actionExitExpertMode())
   if model.ui.appPhase == AppPhase.Lobby:
@@ -1594,9 +1558,12 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Fleet detail view mode: use registry
   if model.ui.mode == ViewMode.FleetDetail:
-    # Handle digit keys for quick entry in CommandPicker, ROEPicker, or ZTCPicker sub-modals
-    if model.ui.fleetDetailModal.subModal in {FleetSubModal.CommandPicker,
-        FleetSubModal.ROEPicker, FleetSubModal.ZTCPicker}:
+    # Handle digit keys for quick entry in sub-modals
+    if model.ui.fleetDetailModal.subModal in {
+        FleetSubModal.CommandPicker,
+        FleetSubModal.ROEPicker,
+        FleetSubModal.ZTCPicker,
+        FleetSubModal.SystemPicker}:
       if modifier == KeyModifier.None:
         let digitChar = case key
           of KeyCode.Key0: '0'
@@ -1611,7 +1578,43 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           of KeyCode.Key9: '9'
           else: '\0'
         if digitChar != '\0':
-          return some(actionFleetDetailDigitInput(digitChar))
+          return some(actionFleetDetailDigitInput(
+            digitChar))
+    # Handle letter keys for SystemPicker filter
+    if model.ui.fleetDetailModal.subModal ==
+        FleetSubModal.SystemPicker:
+      if modifier == KeyModifier.None:
+        let letterChar = case key
+          of KeyCode.KeyA: 'A'
+          of KeyCode.KeyB: 'B'
+          of KeyCode.KeyC: 'C'
+          of KeyCode.KeyD: 'D'
+          of KeyCode.KeyE: 'E'
+          of KeyCode.KeyF: 'F'
+          of KeyCode.KeyG: 'G'
+          of KeyCode.KeyH: 'H'
+          of KeyCode.KeyI: 'I'
+          of KeyCode.KeyJ: 'J'
+          of KeyCode.KeyK: 'K'
+          of KeyCode.KeyL: 'L'
+          of KeyCode.KeyM: 'M'
+          of KeyCode.KeyN: 'N'
+          of KeyCode.KeyO: 'O'
+          of KeyCode.KeyP: 'P'
+          of KeyCode.KeyQ: 'Q'
+          of KeyCode.KeyR: 'R'
+          of KeyCode.KeyS: 'S'
+          of KeyCode.KeyT: 'T'
+          of KeyCode.KeyU: 'U'
+          of KeyCode.KeyV: 'V'
+          of KeyCode.KeyW: 'W'
+          of KeyCode.KeyX: 'X'
+          of KeyCode.KeyY: 'Y'
+          of KeyCode.KeyZ: 'Z'
+          else: '\0'
+        if letterChar != '\0':
+          return some(actionFleetDetailDigitInput(
+            letterChar))
     
     if key != KeyCode.KeyEscape:
       let fleetDetailResult = lookupAndDispatch(key, modifier,
@@ -1659,18 +1662,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       else: '\0'
     if jumpChar != '\0':
       return some(actionFleetDigitJump(jumpChar))
-
-  # Order entry mode: use registry
-  if model.ui.orderEntryActive and modifier == KeyModifier.None:
-    if key != KeyCode.KeyEscape:
-      let orderResult = lookupAndDispatch(key, KeyModifier.None,
-          BindingContext.OrderEntry, model)
-      if orderResult.isSome:
-        return orderResult
-      # Q also cancels (not in registry for cleanliness)
-      if key == KeyCode.KeyQ:
-        return some(actionCancelOrder())
-      # Fall through to global bindings (allows Ctrl+key view switching)
 
   # Expert mode: use registry
   if model.ui.expertModeActive and modifier == KeyModifier.None:
@@ -1790,7 +1781,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
 proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
   ## Build bar items based on current model state
-  ## Always show global view tabs (except in expert/order entry mode)
+  ## Always show global view tabs (except in expert mode)
   ## Modals and views have their own footers for context-specific actions
 
   result = @[]
@@ -1798,8 +1789,7 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
   # Determine which bindings to show
   # Always show view tabs in all views for consistent navigation
   let showGlobalTabs = model.ui.appPhase == AppPhase.InGame and
-      not model.ui.expertModeActive and
-      not model.ui.orderEntryActive
+      not model.ui.expertModeActive
 
   if showGlobalTabs:
   # Show view tabs (Ctrl+Letter) + quit + expert mode hint
@@ -1836,9 +1826,8 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
       ))
       idx.inc
   else:
-    # Expert mode or order entry - show their specific actions
-    let ctx = if model.ui.expertModeActive: BindingContext.ExpertMode
-              else: BindingContext.OrderEntry
+    # Expert mode - show their specific actions
+    let ctx = BindingContext.ExpertMode
 
     let bindings = getBindingsForContext(ctx)
 

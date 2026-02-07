@@ -241,6 +241,47 @@ proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
     selectedIdx = state.fleetPickerIdx,
     itemCount = count)
 
+proc renderSystemPicker(state: FleetDetailModalState,
+                        area: Rect,
+                        buf: var CellBuffer) =
+  ## Render system picker using Table widget.
+  ## Two-column table: Coord (6 wide) | System Name (fill).
+  ## Shows filter indicator at top if filter is active.
+  if area.isEmpty:
+    return
+
+  var renderArea = area
+  # Show filter indicator if active
+  if state.systemPickerFilter.len > 0:
+    let filterText = "Filter: " &
+      state.systemPickerFilter & "_"
+    discard buf.setString(area.x, area.y, filterText,
+      canvasHeaderStyle())
+    renderArea = rect(area.x, area.y + 1,
+      area.width, area.height - 1)
+
+  var sysTable = table([
+    tableColumn("Coord", width = 6,
+      align = table.Alignment.Left),
+    tableColumn("System", width = 0,
+      align = table.Alignment.Left, minWidth = 20)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .headerStyle(canvasHeaderStyle())
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
+
+  for sys in state.systemPickerSystems:
+    sysTable.addRow([sys.coordLabel, sys.name])
+
+  let count = max(1, state.systemPickerSystems.len)
+  renderPickerTable(sysTable, renderArea, buf,
+    selectedIdx = state.systemPickerIdx,
+    itemCount = count)
+
 proc renderPlaceholderSubModal(label: string, area: Rect,
                               buf: var CellBuffer) =
   ## Render placeholder for not-yet-implemented sub-modals
@@ -331,12 +372,14 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.ZTCPicker:
       # No(3) + Command(18) + Description(44) + padding(6) + borders(4)
       75
+    of FleetSubModal.SystemPicker:
+      # Coord(6) + System(20) + padding(4) + borders(3)
+      40
     else:
       0
 
   let desiredWidth = min(maxWidth, max(desiredInnerWidth, subModalMinInner) + 2)
-  let isSubModal = state.subModal != FleetSubModal.None and
-                   state.subModal != FleetSubModal.OrderEntry
+  let isSubModal = state.subModal != FleetSubModal.None
   let modal = widget.modal
     .maxWidth(desiredWidth)
     .minWidth(desiredWidth)
@@ -373,12 +416,14 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.ConfirmPrompt:
       # Confirmation dialog: compact centered message
       10
-    of FleetSubModal.OrderEntry:
-      # OrderEntry: not rendered in modal (uses hex map), treat as None
-      let shipsContentHeight = FleetDetailShipsHeaderHeight +
-        shipTable.renderHeight(visibleRows)
-      FleetDetailInfoHeight + FleetDetailSeparatorHeight +
-        shipsContentHeight + FleetDetailFooterHeight
+    of FleetSubModal.SystemPicker:
+      # Cap at 20 visible rows + tableBase(4) + footer(2) + filter(1)
+      let sysCount = min(20, max(1,
+        state.systemPickerSystems.len))
+      let tableBaseHeight = 4
+      let footerHeight = 2
+      let filterHeight = 1
+      sysCount + tableBaseHeight + footerHeight + filterHeight
     of FleetSubModal.FleetPicker:
       # Table-based picker: itemCount + tableBase(4) + footer(2)
       let fleetCount = max(1, state.fleetPickerCandidates.len)
@@ -426,6 +471,10 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       (true, "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.FleetPicker:
       (true, "[↑↓]Select [Enter]Confirm [Esc]Cancel")
+    of FleetSubModal.SystemPicker:
+      (true,
+        "[↑↓←→]Nav [type]Filter [PgUp/Dn] " &
+        "[Enter]Select [Esc]Back")
     else:
       (false, "")
 
@@ -445,37 +494,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     renderROEPicker(state, inner, buf)
   of FleetSubModal.ConfirmPrompt:
     renderConfirmDialog(state, inner, buf)
-  of FleetSubModal.OrderEntry:
-    # OrderEntry is handled by switching to Overview mode (hex map)
-    # If we somehow end up here, render as if None
-    # Fleet info section (top 4 lines)
-    let infoArea = rect(inner.x, inner.y, inner.width,
-      FleetDetailInfoHeight)
-    renderFleetInfo(fleetData, infoArea, buf)
-    
-    # Separator
-    let separatorY = inner.y + FleetDetailInfoHeight
-    let bs = PlainBorderSet
-    discard buf.put(modalArea.x, separatorY, "├", modalBorderStyle())
-    for x in (modalArea.x + 1)..<(modalArea.right - 1):
-      discard buf.put(x, separatorY, bs.horizontal, modalBorderStyle())
-    discard buf.put(modalArea.right - 1, separatorY, "┤", modalBorderStyle())
-    
-    # Ship list (boxed table)
-    let shipsHeight = max(1, inner.height - (FleetDetailInfoHeight +
-      FleetDetailSeparatorHeight + FleetDetailFooterHeight))
-    let shipsArea = rect(inner.x, separatorY + 1, inner.width, shipsHeight)
-    let shipHeader = "SHIPS (" & $state.shipCount & ")"
-    for i, ch in shipHeader:
-      if shipsArea.x + i < shipsArea.right:
-        discard buf.put(shipsArea.x + i, shipsArea.y, $ch,
-          canvasHeaderStyle())
-    
-    let tableArea = rect(shipsArea.x,
-      shipsArea.y + FleetDetailShipsHeaderHeight,
-      shipsArea.width,
-      shipsArea.height - FleetDetailShipsHeaderHeight)
-    shipTable.render(tableArea, buf)
+  of FleetSubModal.SystemPicker:
+    renderSystemPicker(state, inner, buf)
   of FleetSubModal.FleetPicker:
     renderFleetPicker(state, inner, buf)
   of FleetSubModal.Staged:

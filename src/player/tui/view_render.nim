@@ -512,11 +512,8 @@ proc buildFleetListTable*(model: TuiModel,
     var prefix = " " & fleet.name
     if fleet.needsAttention:
       prefix = GlyphWarning & fleet.name
-    else:
-      for cmd in model.ui.stagedFleetCommands:
-        if int(cmd.fleetId) == fleet.id:
-          prefix = GlyphOk & fleet.name
-          break
+    elif fleet.id in model.ui.stagedFleetCommands:
+      prefix = GlyphOk & fleet.name
     let etaLabel = if fleet.destinationSystemId != 0 and fleet.eta > 0:
       $fleet.eta
     else:
@@ -607,7 +604,7 @@ proc renderFleetConsoleFleets(
   fleets: seq[FleetConsoleFleet],
   selectedIdx: int,
   hasFocus: bool,
-  stagedCommands: seq[FleetCommand],
+  stagedCommands: stdtables.Table[int, FleetCommand],
   scrollOffset: int = 0
 ) =
   ## Render fleets pane as table (fleets at selected system)
@@ -629,11 +626,7 @@ proc renderFleetConsoleFleets(
   # Add rows
   for flt in fleets:
     # Check if this fleet has a staged command
-    var hasStaged = false
-    for cmd in stagedCommands:
-      if int(cmd.fleetId) == flt.fleetId:
-        hasStaged = true
-        break
+    let hasStaged = flt.fleetId in stagedCommands
     
     # Add indicator "●" for staged commands
     let fleetIdStr = if hasStaged: "●" & flt.name else: flt.name
@@ -1821,13 +1814,6 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.feedback = model.ui.expertModeFeedback
   else:
     result.feedback = model.ui.statusMessage
-
-  # Order entry mode has special context actions
-  if model.ui.orderEntryActive:
-    result.contextActions = orderEntryContextActions(
-      model.ui.orderEntryCommandType
-    )
-    return
 
   case model.ui.mode
   of ViewMode.Overview:

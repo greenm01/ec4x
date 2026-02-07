@@ -66,6 +66,10 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
   model.ui.fleetDetailModal.fleetPickerCandidates = @[]
   model.ui.fleetDetailModal.fleetPickerIdx = 0
+  model.ui.fleetDetailModal.systemPickerIdx = 0
+  model.ui.fleetDetailModal.systemPickerSystems = @[]
+  model.ui.fleetDetailModal.systemPickerFilter = ""
+  model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
 
 proc advanceSortColumn*(state: var TableSortState) =
   ## Move to next sort column, reset to ascending
@@ -812,7 +816,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.addToExpertHistory(model.ui.expertModeInput)
         of MetaCommandType.Clear:
           let count = model.stagedCommandCount()
-          model.ui.stagedFleetCommands.setLen(0)
+          model.ui.stagedFleetCommands.clear()
           model.ui.stagedBuildCommands.setLen(0)
           model.ui.stagedRepairCommands.setLen(0)
           model.ui.stagedScrapCommands.setLen(0)
@@ -1060,49 +1064,6 @@ proc quitAcceptor*(model: var TuiModel, proposal: Proposal) =
   model.ui.quitConfirmationActive = true
   model.ui.quitConfirmationChoice = QuitConfirmationChoice.QuitStay
   model.ui.statusMessage = "Quit? (Y/N)"
-
-# ============================================================================
-# Order Entry Acceptor
-# ============================================================================
-
-proc orderEntryAcceptor*(model: var TuiModel, proposal: Proposal) =
-  ## Handle order entry proposals (Move/Patrol/Hold commands)
-  if proposal.kind != ProposalKind.pkGameAction:
-    return
-
-  case proposal.actionKind
-  of ActionKind.startOrderMove:
-    let fleetId = try: parseInt(proposal.gameActionData) except: 0
-    if fleetId > 0:
-      model.startOrderEntry(fleetId, CmdMove)
-  of ActionKind.startOrderPatrol:
-    let fleetId = try: parseInt(proposal.gameActionData) except: 0
-    if fleetId > 0:
-      model.startOrderEntry(fleetId, CmdPatrol)
-  of ActionKind.startOrderHold:
-    let fleetId = try: parseInt(proposal.gameActionData) except: 0
-    if fleetId > 0:
-      # Hold is immediate - no target selection needed
-      model.queueImmediateOrder(fleetId, CmdHold)
-      model.ui.statusMessage = "Hold command staged for fleet " & $fleetId
-  of ActionKind.confirmOrder:
-    if model.ui.orderEntryActive:
-      # Look up system ID at cursor position
-      let cursorCoord = model.ui.mapState.cursor
-      let sysOpt = model.systemAt(cursorCoord)
-      if sysOpt.isSome:
-        let targetSystemId = sysOpt.get().id
-        model.confirmOrderEntry(targetSystemId)
-        let cmdLabel = commandLabel(model.ui.orderEntryCommandType)
-        model.ui.statusMessage = cmdLabel & " command staged to system " &
-          sysOpt.get().name
-      else:
-        model.ui.statusMessage = "No system at cursor position"
-  of ActionKind.cancelOrder:
-    if model.ui.orderEntryActive:
-      model.cancelOrderEntry()
-  else:
-    discard
 
 # ============================================================================
 # Build Modal Acceptor
@@ -1360,6 +1321,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
       if model.ui.fleetDetailModal.fleetPickerIdx > 0:
         model.ui.fleetDetailModal.fleetPickerIdx -= 1
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      if model.ui.fleetDetailModal.systemPickerIdx > 0:
+        model.ui.fleetDetailModal.systemPickerIdx -= 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       discard model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll
@@ -1383,6 +1347,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let maxIdx = model.ui.fleetDetailModal.fleetPickerCandidates.len - 1
       if model.ui.fleetDetailModal.fleetPickerIdx < maxIdx:
         model.ui.fleetDetailModal.fleetPickerIdx += 1
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      let maxIdx = model.ui.fleetDetailModal.systemPickerSystems.len - 1
+      if model.ui.fleetDetailModal.systemPickerIdx < maxIdx:
+        model.ui.fleetDetailModal.systemPickerIdx += 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       let (_, maxOffset) = model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll
@@ -1474,13 +1442,16 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.mode = ViewMode.Fleets
             model.resetBreadcrumbs(ViewMode.Fleets)
             return
-          if orderEntryNeedsTarget(int32(cmdType)):
-            model.ui.orderEntryBatch = true
-            model.ui.orderEntryFleetIds = model.ui.selectedFleetIds
-            model.ui.orderEntryROE =
-              some(int32(model.ui.fleetDetailModal.roeValue))
-            model.startOrderEntry(model.ui.selectedFleetIds[0], int(cmdType))
-            resetFleetDetailSubModal(model)
+          if needsTargetSystem(int(cmdType)):
+            # Open SystemPicker sub-modal for batch
+            let systems = model.buildSystemPickerList()
+            model.ui.fleetDetailModal.systemPickerSystems = systems
+            model.ui.fleetDetailModal.systemPickerIdx = 0
+            model.ui.fleetDetailModal.systemPickerFilter = ""
+            model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
+            model.ui.fleetDetailModal.systemPickerCommandType = cmdType
+            model.ui.fleetDetailModal.subModal =
+              FleetSubModal.SystemPicker
             return
           for fleetId in model.ui.selectedFleetIds:
             let cmd = FleetCommand(
@@ -1585,15 +1556,16 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           return
 
         # Check if command requires target system selection
-        if orderEntryNeedsTarget(int32(cmdType)):
-          # Transition to OrderEntry mode: exit modal, enter hex map target
-          # selection
-          model.startOrderEntry(
-            int(model.ui.fleetDetailModal.fleetId),
-            int(cmdType)
-          )
-          # Close the modal sub-modal (startOrderEntry sets mode to Overview)
-          resetFleetDetailSubModal(model)
+        if needsTargetSystem(int(cmdType)):
+          # Open SystemPicker sub-modal for single fleet
+          let systems = model.buildSystemPickerList()
+          model.ui.fleetDetailModal.systemPickerSystems = systems
+          model.ui.fleetDetailModal.systemPickerIdx = 0
+          model.ui.fleetDetailModal.systemPickerFilter = ""
+          model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
+          model.ui.fleetDetailModal.systemPickerCommandType = cmdType
+          model.ui.fleetDetailModal.subModal =
+            FleetSubModal.SystemPicker
         else:
           # Stage command immediately (no target needed)
           let cmd = FleetCommand(
@@ -1649,6 +1621,45 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
         model.resetBreadcrumbs(ViewMode.Fleets)
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      let systems = model.ui.fleetDetailModal.systemPickerSystems
+      let idx = model.ui.fleetDetailModal.systemPickerIdx
+      if idx >= 0 and idx < systems.len:
+        let target = systems[idx]
+        let cmdType = model.ui.fleetDetailModal.systemPickerCommandType
+        # Stage command for batch or single fleet
+        if model.ui.selectedFleetIds.len > 0:
+          for fleetId in model.ui.selectedFleetIds:
+            let cmd = FleetCommand(
+              fleetId: FleetId(fleetId),
+              commandType: cmdType,
+              targetSystem: some(
+                SystemId(target.systemId.uint32)),
+              targetFleet: none(FleetId),
+              roe: some(int32(
+                model.ui.fleetDetailModal.roeValue))
+            )
+            model.stageFleetCommand(cmd)
+          model.ui.statusMessage = "Staged " &
+            $model.ui.selectedFleetIds.len & " " &
+            $cmdType & " to " & target.coordLabel
+        else:
+          let cmd = FleetCommand(
+            fleetId: FleetId(
+              model.ui.fleetDetailModal.fleetId),
+            commandType: cmdType,
+            targetSystem: some(
+              SystemId(target.systemId.uint32)),
+            targetFleet: none(FleetId),
+            roe: some(int32(
+              model.ui.fleetDetailModal.roeValue))
+          )
+          model.stageFleetCommand(cmd)
+          model.ui.statusMessage = "Staged " &
+            $cmdType & " to " & target.coordLabel
+        resetFleetDetailSubModal(model)
+        model.ui.mode = ViewMode.Fleets
+        model.resetBreadcrumbs(ViewMode.Fleets)
   of ActionKind.fleetDetailOpenROE:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       model.ui.fleetDetailModal.subModal = FleetSubModal.ROEPicker
@@ -1667,39 +1678,23 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ActionKind.fleetDetailSelectROE:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       model.ui.fleetDetailModal.subModal = FleetSubModal.None
+      let newRoe = model.ui.fleetDetailModal.roeValue
       if model.ui.selectedFleetIds.len > 0:
-        # TODO(Phase 2): Preserve each fleet's current command instead of forcing Hold
-        # Current limitation: ROE change always stages Hold command with new ROE
-        # Ideal: preserve current command (Move/Patrol/etc) and only update ROE
-        # Requires either: engine support for ROE-only updates, or storing fleet 
-        # current commands in modal state
+        # Batch: update ROE on each fleet, preserving
+        # whatever command is already staged or active.
         for fleetId in model.ui.selectedFleetIds:
-          let cmd = FleetCommand(
-            fleetId: FleetId(fleetId),
-            commandType: FleetCommandType.Hold,
-            targetSystem: none(SystemId),
-            targetFleet: none(FleetId),
-            roe: some(int32(model.ui.fleetDetailModal.roeValue))
-          )
-          model.stageFleetCommand(cmd)
+          model.updateStagedROE(fleetId, newRoe)
         model.ui.statusMessage = "Staged ROE " &
-          $model.ui.fleetDetailModal.roeValue & " for " &
+          $newRoe & " for " &
           $model.ui.selectedFleetIds.len & " fleets"
         model.ui.mode = ViewMode.Fleets
         model.resetBreadcrumbs(ViewMode.Fleets)
       else:
-        # TODO(Phase 2): Preserve fleet's current command instead of forcing Hold
-        # Single-fleet ROE change: currently stages a Hold command with updated ROE
-        let cmd = FleetCommand(
-          fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
-          commandType: FleetCommandType.Hold,
-          targetSystem: none(SystemId),
-          targetFleet: none(FleetId),
-          roe: some(int32(model.ui.fleetDetailModal.roeValue))
-        )
-        model.stageFleetCommand(cmd)
+        # Single fleet: update ROE, preserve command.
+        model.updateStagedROE(
+          model.ui.fleetDetailModal.fleetId, newRoe)
         model.ui.statusMessage = "Staged ROE " &
-          $model.ui.fleetDetailModal.roeValue
+          $newRoe
   of ActionKind.fleetDetailOpenZTC:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
@@ -1715,23 +1710,16 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let cmdType = model.ui.fleetDetailModal.pendingCommandType
       
       # Check if the confirmed command also requires a target
-      if orderEntryNeedsTarget(int32(cmdType)):
-        # Route to OrderEntry for target selection
-        if model.ui.selectedFleetIds.len > 0:
-          # Batch mode: set up batch order entry
-          model.ui.orderEntryBatch = true
-          model.ui.orderEntryFleetIds = model.ui.selectedFleetIds
-          model.ui.orderEntryROE =
-            some(int32(model.ui.fleetDetailModal.roeValue))
-          model.startOrderEntry(model.ui.selectedFleetIds[0], int(cmdType))
-        else:
-          # Single fleet mode
-          model.startOrderEntry(
-            int(model.ui.fleetDetailModal.fleetId),
-            int(cmdType)
-          )
-        # Close the modal sub-modal (startOrderEntry sets mode to Overview)
-        resetFleetDetailSubModal(model)
+      if needsTargetSystem(int(cmdType)):
+        # Open SystemPicker sub-modal for target selection
+        let systems = model.buildSystemPickerList()
+        model.ui.fleetDetailModal.systemPickerSystems = systems
+        model.ui.fleetDetailModal.systemPickerIdx = 0
+        model.ui.fleetDetailModal.systemPickerFilter = ""
+        model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
+        model.ui.fleetDetailModal.systemPickerCommandType = cmdType
+        model.ui.fleetDetailModal.subModal =
+          FleetSubModal.SystemPicker
         return
       
       # Command doesn't need target, stage immediately
@@ -1805,6 +1793,11 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         FleetSubModal.CargoParams, FleetSubModal.FighterParams}:
       # Cancel placeholder sub-modal, go back to ZTC picker
       model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      # Cancel system picker, go back to command picker
+      model.ui.fleetDetailModal.systemPickerSystems = @[]
+      model.ui.fleetDetailModal.systemPickerFilter = ""
+      model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
       # Cancel fleet picker (from ZTC Merge), go back to ZTC picker
       model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
@@ -1821,12 +1814,21 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let scroll = model.ui.fleetDetailModal.shipScroll
       model.ui.fleetDetailModal.shipScroll.verticalOffset = max(0,
         scroll.verticalOffset - pageSize)
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      let pageSize = 20  # Match max visible rows
+      model.ui.fleetDetailModal.systemPickerIdx = max(0,
+        model.ui.fleetDetailModal.systemPickerIdx - pageSize)
   of ActionKind.fleetDetailPageDown:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       let (pageSize, maxOffset) = model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll
       model.ui.fleetDetailModal.shipScroll.verticalOffset = min(maxOffset,
         scroll.verticalOffset + pageSize)
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      let pageSize = 20  # Match max visible rows
+      let maxIdx = model.ui.fleetDetailModal.systemPickerSystems.len - 1
+      model.ui.fleetDetailModal.systemPickerIdx = min(maxIdx,
+        model.ui.fleetDetailModal.systemPickerIdx + pageSize)
   of ActionKind.fleetDetailDigitInput:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Handle two-digit quick entry for command selection (00-19)
@@ -1899,6 +1901,34 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             of ZeroTurnCommandType.LoadFighters, ZeroTurnCommandType.UnloadFighters,
                ZeroTurnCommandType.TransferFighters:
               model.ui.fleetDetailModal.subModal = FleetSubModal.FighterParams
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      # Letter/digit filter for SystemPicker: jump to matching coord
+      if proposal.kind == ProposalKind.pkGameAction:
+        let ch = if proposal.gameActionData.len > 0:
+          proposal.gameActionData[0] else: '\0'
+        if ch != '\0':
+          let now = epochTime()
+          let lastTime =
+            model.ui.fleetDetailModal.systemPickerFilterTime
+          let oldFilter =
+            model.ui.fleetDetailModal.systemPickerFilter
+          # Reset filter if timed out
+          let filter = if oldFilter.len > 0 and
+              (now - lastTime) < DigitBufferTimeout:
+            oldFilter & $ch
+          else:
+            $ch
+          model.ui.fleetDetailModal.systemPickerFilter = filter
+          model.ui.fleetDetailModal.systemPickerFilterTime = now
+          # Jump to first matching system by coordLabel prefix
+          let systems =
+            model.ui.fleetDetailModal.systemPickerSystems
+          let upperFilter = filter.toUpperAscii()
+          for i, sys in systems:
+            if sys.coordLabel.toUpperAscii().startsWith(
+                upperFilter):
+              model.ui.fleetDetailModal.systemPickerIdx = i
+              break
   else:
     discard
 
@@ -1974,6 +2004,6 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    orderEntryAcceptor, buildModalAcceptor, fleetDetailModalAcceptor,
+    buildModalAcceptor, fleetDetailModalAcceptor,
     fleetListInputAcceptor, quitAcceptor, errorAcceptor,
   ]

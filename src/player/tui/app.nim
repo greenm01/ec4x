@@ -1146,7 +1146,7 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.statusMessage = "Turn submitted"
         logInfo("TUI Player SAM", "Turn submitted via Nostr")
         # Clear staged commands on successful submission
-        sam.model.ui.stagedFleetCommands.setLen(0)
+        sam.model.ui.stagedFleetCommands.clear()
         sam.model.ui.stagedBuildCommands.setLen(0)
         sam.model.ui.stagedRepairCommands.setLen(0)
         sam.model.ui.stagedScrapCommands.setLen(0)

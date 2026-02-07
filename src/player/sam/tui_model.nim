@@ -16,7 +16,7 @@
 ##   F7 Reports    - Turn summaries, combat/intel reports
 ##   F8 Settings   - Display options, automation defaults
 
-import std/[options, tables, algorithm, strutils]
+import std/[options, tables, algorithm, strutils, sequtils]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../tui/hex_labels
@@ -250,13 +250,19 @@ type
     roe*: int
     status*: string
 
+  SystemPickerEntry* = object
+    ## System entry for target selection picker
+    systemId*: int
+    name*: string
+    coordLabel*: string      ## Ring+position label ("H", "A1", "B3")
+
   FleetSubModal* {.pure.} = enum
     ## Sub-modal states for fleet detail modal
     None
     CommandPicker
     ROEPicker
     ConfirmPrompt
-    OrderEntry        # Target system selection on hex map (for Move, Patrol, etc.)
+    SystemPicker      # Target system selection table (for Move, Patrol, etc.)
     FleetPicker       # Select target fleet (for JoinFleet command)
     Staged            # Terminal state: command staged successfully
     ZTCPicker         # Zero-Turn Command picker (1-9)
@@ -298,6 +304,12 @@ type
     # ZTCPicker state (for Zero-Turn Commands)
     ztcIdx*: int               # Selected ZTC index (0-8, maps to ZeroTurnCommandType)
     ztcDigitBuffer*: string    # Single-digit quick select buffer (1-9)
+    # SystemPicker state (for target system selection)
+    systemPickerIdx*: int      # Selected system index
+    systemPickerSystems*: seq[SystemPickerEntry]  # Sorted system list
+    systemPickerFilter*: string  # Typed coordinate filter
+    systemPickerFilterTime*: float  # Filter timeout
+    systemPickerCommandType*: FleetCommandType  # Command being targeted
     # Direct sub-modal tracking: when true, Esc from the top-level sub-modal
     # closes the entire FleetDetail modal (because it was opened directly into
     # a sub-modal via C/R/Z from the fleet list, not via Enter→detail view)
@@ -658,18 +670,8 @@ type
     expertModeFeedback*: string
     expertPaletteSelection*: int
 
-    # Order entry state
-    orderEntryActive*: bool
-    orderEntryFleetId*: int
-    orderEntryCommandType*: int
-    orderEntryPreviousMode*: ViewMode
-    # Batch order entry (multiple fleets -> single target)
-    orderEntryBatch*: bool
-    orderEntryFleetIds*: seq[int]
-    orderEntryROE*: Option[int32]
-
     # Staged commands (for turn submission)
-    stagedFleetCommands*: seq[FleetCommand]
+    stagedFleetCommands*: Table[int, FleetCommand]
     stagedBuildCommands*: seq[BuildCommand]
     stagedRepairCommands*: seq[RepairCommand]
     stagedScrapCommands*: seq[ScrapCommand]
@@ -858,14 +860,7 @@ proc initTuiUiState*(): TuiUiState =
     expertModeHistoryIdx: 0,
     expertModeFeedback: "",
     expertPaletteSelection: -1,
-    orderEntryActive: false,
-    orderEntryFleetId: 0,
-    orderEntryCommandType: 0,
-    orderEntryPreviousMode: ViewMode.Fleets,
-    orderEntryBatch: false,
-    orderEntryFleetIds: @[],
-    orderEntryROE: none(int32),
-    stagedFleetCommands: @[],
+    stagedFleetCommands: initTable[int, FleetCommand](),
     stagedBuildCommands: @[],
     stagedRepairCommands: @[],
     stagedScrapCommands: @[],
@@ -1563,8 +1558,9 @@ proc stagedCommandCount*(model: TuiModel): int =
 proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   ## Get flattened list of staged commands in display order
   result = @[]
-  for idx in 0 ..< model.ui.stagedFleetCommands.len:
-    result.add(StagedCommandEntry(kind: StagedCommandKind.Fleet, index: idx))
+  for fleetId in model.ui.stagedFleetCommands.keys:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.Fleet, index: fleetId))
   for idx in 0 ..< model.ui.stagedBuildCommands.len:
     result.add(StagedCommandEntry(kind: StagedCommandKind.Build, index: idx))
   for idx in 0 ..< model.ui.stagedRepairCommands.len:
@@ -1618,7 +1614,8 @@ proc stagedCommandsSummary*(model: TuiModel): string =
     let label =
       case entry.kind
       of StagedCommandKind.Fleet:
-        formatFleetOrder(model.ui.stagedFleetCommands[entry.index])
+        formatFleetOrder(
+          model.ui.stagedFleetCommands[entry.index])
       of StagedCommandKind.Build:
         formatBuildOrder(model.ui.stagedBuildCommands[entry.index])
       of StagedCommandKind.Repair:
@@ -1632,8 +1629,8 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   ## Remove staged command by entry
   case entry.kind
   of StagedCommandKind.Fleet:
-    if entry.index < model.ui.stagedFleetCommands.len:
-      model.ui.stagedFleetCommands.delete(entry.index)
+    if entry.index in model.ui.stagedFleetCommands:
+      model.ui.stagedFleetCommands.del(entry.index)
       return true
   of StagedCommandKind.Build:
     if entry.index < model.ui.stagedBuildCommands.len:
@@ -1650,29 +1647,35 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   false
 
 # =============================================================================
-# Order Entry Helpers
+# System Picker Helpers
 # =============================================================================
 
-proc startOrderEntry*(model: var TuiModel, fleetId: int, cmdType: int) =
-  ## Begin order entry mode for a fleet
-  model.ui.orderEntryActive = true
-  model.ui.orderEntryFleetId = fleetId
-  model.ui.orderEntryCommandType = cmdType
-  model.ui.orderEntryPreviousMode = model.ui.mode
-  # Switch to Overview (map) for target selection
-  model.ui.mode = ViewMode.Overview
-  model.ui.statusMessage =
-    "Select target: [arrows] move | [Enter] confirm | [Esc] cancel"
+proc needsTargetSystem*(cmdType: int): bool =
+  ## Check if a command type needs target system selection.
+  ## Hold (00) auto-targets current location, SeekHome (02)
+  ## auto-computes nearest drydock, JoinFleet (14) uses
+  ## FleetPicker.
+  cmdType in [CmdMove, CmdPatrol, CmdGuardStarbase,
+              CmdGuardColony, CmdBlockade, CmdBombard,
+              CmdInvade, CmdBlitz, CmdColonize,
+              CmdScoutColony, CmdScoutSystem,
+              CmdHackStarbase, CmdRendezvous, CmdSalvage,
+              CmdReserve, CmdMothball, CmdView]
 
-proc cancelOrderEntry*(model: var TuiModel) =
-  ## Cancel order entry and return to previous view
-  model.ui.orderEntryActive = false
-  model.ui.orderEntryBatch = false
-  model.ui.orderEntryFleetIds = @[]
-  model.ui.orderEntryROE = none(int32)
-  model.ui.mode = model.ui.orderEntryPreviousMode
-  model.ui.mapState.selected = none(HexCoord)
-  model.ui.statusMessage = "Order cancelled"
+proc buildSystemPickerList*(
+    model: TuiModel): seq[SystemPickerEntry] =
+  ## Build a sorted list of all known systems for the
+  ## SystemPicker sub-modal.
+  result = @[]
+  for coord, sys in model.view.systems.pairs:
+    result.add(SystemPickerEntry(
+      systemId: sys.id,
+      name: sys.name,
+      coordLabel: coordLabel(coord)
+    ))
+  result.sort(proc(a, b: SystemPickerEntry): int =
+    cmp(a.coordLabel, b.coordLabel)
+  )
 
 # =============================================================================
 # Fleet Command Staging (optimistic update)
@@ -1729,41 +1732,46 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
   ## Stage a fleet command and optimistically update fleet display data.
   ## Single entry point — all fleet command staging goes through here.
-  model.ui.stagedFleetCommands.add(cmd)
+  ## Uses table keyed by fleetId so re-staging the same fleet replaces
+  ## the previous command (one fleet, one staged command).
+  model.ui.stagedFleetCommands[int(cmd.fleetId)] = cmd
   model.updateFleetInfoFromStagedCommand(cmd)
+
+proc updateStagedROE*(model: var TuiModel,
+    fleetId: int, newRoe: int) =
+  ## Update ROE without changing the fleet's command.
+  ## If a staged command exists for this fleet, update its
+  ## ROE in-place. Otherwise reconstruct a command from the
+  ## fleet's current displayed state so the command type,
+  ## target, etc. are preserved.
+  if fleetId in model.ui.stagedFleetCommands:
+    model.ui.stagedFleetCommands[fleetId].roe =
+      some(int32(newRoe))
+    model.updateFleetInfoFromStagedCommand(
+      model.ui.stagedFleetCommands[fleetId])
+  else:
+    # No staged command — preserve current command
+    var cmdType = FleetCommandType.Hold
+    var targetSys = none(SystemId)
+    for fleet in model.view.fleets:
+      if fleet.id == fleetId:
+        cmdType = FleetCommandType(fleet.command)
+        if fleet.destinationSystemId > 0:
+          targetSys = some(
+            SystemId(fleet.destinationSystemId.uint32))
+        break
+    let cmd = FleetCommand(
+      fleetId: FleetId(fleetId.uint32),
+      commandType: cmdType,
+      targetSystem: targetSys,
+      targetFleet: none(FleetId),
+      roe: some(int32(newRoe))
+    )
+    model.stageFleetCommand(cmd)
 
 # =============================================================================
 # Order Entry — Target Selection
 # =============================================================================
-
-proc confirmOrderEntry*(model: var TuiModel, targetSystemId: int) =
-  ## Confirm order entry — stage the command with target for batch submission
-  if model.ui.orderEntryBatch:
-    let roeOpt = model.ui.orderEntryROE
-    for fleetId in model.ui.orderEntryFleetIds:
-      let cmd = FleetCommand(
-        fleetId: FleetId(fleetId.uint32),
-        commandType: FleetCommandType(model.ui.orderEntryCommandType),
-        targetSystem: some(SystemId(targetSystemId.uint32)),
-        targetFleet: none(FleetId),
-        roe: roeOpt
-      )
-      model.stageFleetCommand(cmd)
-  else:
-    let cmd = FleetCommand(
-      fleetId: FleetId(model.ui.orderEntryFleetId.uint32),
-      commandType: FleetCommandType(model.ui.orderEntryCommandType),
-      targetSystem: some(SystemId(targetSystemId.uint32)),
-      targetFleet: none(FleetId),
-      roe: none(int32)
-    )
-    model.stageFleetCommand(cmd)
-  model.ui.orderEntryActive = false
-  model.ui.orderEntryBatch = false
-  model.ui.orderEntryFleetIds = @[]
-  model.ui.orderEntryROE = none(int32)
-  model.ui.mode = model.ui.orderEntryPreviousMode
-  model.ui.mapState.selected = none(HexCoord)
 
 proc queueImmediateOrder*(model: var TuiModel, fleetId: int, cmdType: int) =
   ## Stage an immediate order (no target needed, like Hold)
@@ -1775,17 +1783,6 @@ proc queueImmediateOrder*(model: var TuiModel, fleetId: int, cmdType: int) =
     roe: none(int32)
   )
   model.stageFleetCommand(cmd)
-
-proc orderEntryNeedsTarget*(cmdType: int): bool =
-  ## Check if a command type needs target selection on hex map.
-  ## Hold (00) auto-targets current location, SeekHome (02)
-  ## auto-computes nearest drydock, JoinFleet (14) uses FleetPicker.
-  cmdType in [CmdMove, CmdPatrol, CmdGuardStarbase,
-              CmdGuardColony, CmdBlockade, CmdBombard,
-              CmdInvade, CmdBlitz, CmdColonize,
-              CmdScoutColony, CmdScoutSystem,
-              CmdHackStarbase, CmdRendezvous, CmdSalvage,
-              CmdReserve, CmdMothball, CmdView]
 
 proc validateFleetCommand*(fleet: FleetInfo,
     cmdType: FleetCommandType): string =
@@ -1828,7 +1825,7 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
   CommandPacket(
     houseId: houseId,
     turn: turn,
-    fleetCommands: model.ui.stagedFleetCommands,
+    fleetCommands: model.ui.stagedFleetCommands.values.toSeq,
     buildCommands: model.ui.stagedBuildCommands,
     repairCommands: model.ui.stagedRepairCommands,
     scrapCommands: model.ui.stagedScrapCommands,

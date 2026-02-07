@@ -223,20 +223,6 @@ proc settingsContextActions*(): seq[ContextAction] =
     ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 
-proc orderEntryContextActions*(cmdType: int): seq[ContextAction] =
-  ## Context actions for order entry target selection mode
-  ## cmdType: 1=Move, 3=Patrol, etc.
-  let cmdLabel = case cmdType
-    of 1: "Move"
-    of 3: "Patrol"
-    else: "Order"
-  @[
-    ContextAction(key: "Arrows", label: "Navigate map", enabled: true),
-    ContextAction(key: "Enter", label: "Confirm " & cmdLabel, enabled: true),
-    ContextAction(key: "Esc", label: "Cancel", enabled: true),
-    ContextAction(key: "H", label: "Home system", enabled: true),
-  ]
-
 # =============================================================================
 # Command Dock Rendering
 # =============================================================================
