@@ -423,6 +423,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.FleetDetail:
       # Return to fleet list
       model.ui.mode = ViewMode.Fleets
+      model.clearFleetSelection()
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
     elif model.ui.mode == ViewMode.PlanetDetail:
@@ -1350,6 +1351,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Always navigate back to Fleets view
       resetFleetDetailSubModal(model)
       model.ui.mode = ViewMode.Fleets
+      model.clearFleetSelection()
       model.resetBreadcrumbs(ViewMode.Fleets)
       model.ui.statusMessage = ""
   of ActionKind.fleetDetailNextCategory:
@@ -1469,6 +1471,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               " Hold command(s)"
             resetFleetDetailSubModal(model)
             model.ui.mode = ViewMode.Fleets
+            model.clearFleetSelection()
             model.resetBreadcrumbs(ViewMode.Fleets)
             return
           # SeekHome: auto-target nearest drydock colony
@@ -1498,6 +1501,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               " Seek Home command(s)"
             resetFleetDetailSubModal(model)
             model.ui.mode = ViewMode.Fleets
+            model.clearFleetSelection()
             model.resetBreadcrumbs(ViewMode.Fleets)
             return
           if needsTargetSystem(int(cmdType)):
@@ -1520,6 +1524,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             " fleet command(s)"
           resetFleetDetailSubModal(model)
           model.ui.mode = ViewMode.Fleets
+          model.clearFleetSelection()
           model.resetBreadcrumbs(ViewMode.Fleets)
           return
         
@@ -1554,6 +1559,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "Staged command: Hold"
           resetFleetDetailSubModal(model)
           model.ui.mode = ViewMode.Fleets
+          model.clearFleetSelection()
           model.resetBreadcrumbs(ViewMode.Fleets)
           return
         # SeekHome: auto-target nearest drydock colony
@@ -1575,6 +1581,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "Staged command: Seek Home"
           resetFleetDetailSubModal(model)
           model.ui.mode = ViewMode.Fleets
+          model.clearFleetSelection()
           model.resetBreadcrumbs(ViewMode.Fleets)
           return
         
@@ -1629,6 +1636,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "Staged command: " & $cmdType
           resetFleetDetailSubModal(model)
           model.ui.mode = ViewMode.Fleets
+          model.clearFleetSelection()
           model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       # Select ZTC from the picker
@@ -1670,6 +1678,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.statusMessage = "Staged JoinFleet: " & target.name
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
       let systems = model.ui.fleetDetailModal.systemPickerSystems
@@ -1746,6 +1755,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             $cmdType & " to " & target.coordLabel
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
   of ActionKind.fleetDetailOpenROE:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
@@ -1775,6 +1785,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           $newRoe & " for " &
           $model.ui.selectedFleetIds.len & " fleets"
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
       else:
         # Single fleet: update ROE, preserve command.
@@ -1784,6 +1795,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           $newRoe
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
   of ActionKind.fleetDetailOpenZTC:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
@@ -1823,6 +1835,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           " fleet command(s)"
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
         return
       let cmd = FleetCommand(
@@ -1836,6 +1849,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = "Staged command: " & $cmdType
       resetFleetDetailSubModal(model)
       model.ui.mode = ViewMode.Fleets
+      model.clearFleetSelection()
       model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       # C key from main detail view - open command picker
@@ -1859,6 +1873,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         # Opened directly via C from fleet list — close entire modal
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
         model.ui.statusMessage = ""
       else:
@@ -1869,6 +1884,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         # Opened directly via R from fleet list — close entire modal
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
         model.ui.statusMessage = ""
       else:
@@ -1879,6 +1895,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         # Opened directly via Z from fleet list — close entire modal
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
+        model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
         model.ui.statusMessage = ""
       else:
@@ -1901,6 +1918,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Always navigate back to Fleets view
       resetFleetDetailSubModal(model)
       model.ui.mode = ViewMode.Fleets
+      model.clearFleetSelection()
       model.resetBreadcrumbs(ViewMode.Fleets)
       model.ui.statusMessage = ""
   of ActionKind.fleetDetailPageUp:

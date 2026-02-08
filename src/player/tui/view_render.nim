@@ -511,7 +511,9 @@ proc buildFleetListTable*(model: TuiModel,
   for i in startIdx ..< endIdx:
     let fleet = fleets[i]
     var flag = " "
-    if fleet.needsAttention:
+    if model.isFleetSelected(fleet.id):
+      flag = "X"
+    elif fleet.needsAttention:
       flag = GlyphWarning
     elif fleet.id in model.ui.stagedFleetCommands:
       flag = GlyphOk
@@ -607,6 +609,7 @@ proc renderFleetConsoleFleets(
   selectedIdx: int,
   hasFocus: bool,
   stagedCommands: stdtables.Table[int, FleetCommand],
+  selectedFleetIds: seq[int],
   scrollOffset: int = 0
 ) =
   ## Render fleets pane as table (fleets at selected system)
@@ -630,7 +633,12 @@ proc renderFleetConsoleFleets(
     # Check if this fleet has a staged command
     let hasStaged = flt.fleetId in stagedCommands
     
-    let flag = if hasStaged: GlyphOk else: " "
+    let flag = if flt.fleetId in selectedFleetIds:
+      "X"
+    elif hasStaged:
+      GlyphOk
+    else:
+      " "
     
     fleetsTable.addRow([
       flag,
@@ -699,6 +707,7 @@ proc renderFleetConsole*(
   renderFleetConsoleFleets(fleetsPane, buf, fleets, fleetIdx,
     model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane,
     model.ui.stagedFleetCommands,
+    model.ui.selectedFleetIds,
     model.ui.fleetConsoleFleetScroll.verticalOffset)
 
 proc renderPlanetSummaryTab*(
@@ -1498,7 +1507,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let contentArea = rect(inner.x, inner.y, inner.width,
       max(1, inner.height - 2))
     let hintLine =
-      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md [R]OE [Z]TC"
+      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md [R]OE [Z]TC [V]iew"
     let footerY = inner.bottom - 1
     discard buf.setString(inner.x, footerY, hintLine,
       canvasDimStyle())
@@ -1547,7 +1556,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     
     # Use content-aware sizing
     let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
-    modal.renderWithFooter(modalArea, buf, "[↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]md [R]OE [Z]eroTurn")
+    modal.renderWithFooter(modalArea, buf, "[↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]md [R]OE [Z]eroTurn [V]iew")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 
