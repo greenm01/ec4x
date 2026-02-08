@@ -1278,6 +1278,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   case proposal.actionKind
   of ActionKind.openFleetDetailModal:
     # Open fleet detail view for selected fleet
+    model.clearFleetSelection()
     if model.ui.mode == ViewMode.Fleets and model.ui.fleetViewMode == FleetViewMode.SystemView:
       # SystemView: Get fleet from cached console data
       let systems = model.ui.fleetConsoleSystems
