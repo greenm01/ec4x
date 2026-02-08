@@ -324,6 +324,7 @@ type
     directSubModal*: bool
 
   FleetListSort* {.pure.} = enum
+    Flag
     FleetId
     Location
     Sector
@@ -857,7 +858,7 @@ proc initTuiUiState*(): TuiUiState =
     fleetConsoleSystems: @[],
     fleetConsoleFleetsBySystem: initTable[int, seq[FleetConsoleFleet]](),
     fleetListState: FleetListState(
-      sortState: initTableSortState(11),
+      sortState: initTableSortState(12),
       searchActive: false,
       searchQuery: "",
       jumpBuffer: "",
@@ -1228,6 +1229,8 @@ proc fleetMatchesSearch*(fleet: FleetInfo, query: string): bool =
 proc compareFleetSort(a, b: FleetInfo, sort: FleetListSort): int =
   ## Compare fleets for sorting
   case sort
+  of FleetListSort.Flag:
+    cmp(a.needsAttention, b.needsAttention)
   of FleetListSort.FleetId:
     cmp(a.name, b.name)
   of FleetListSort.Location:
