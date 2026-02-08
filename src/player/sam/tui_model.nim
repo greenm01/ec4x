@@ -256,12 +256,17 @@ type
     name*: string
     coordLabel*: string      ## Ring+position label ("H", "A1", "B3")
 
+  SystemPickerFilterResult* = object
+    systems*: seq[SystemPickerEntry]
+    emptyMessage*: string
+
   FleetSubModal* {.pure.} = enum
     ## Sub-modal states for fleet detail modal
     None
     CommandPicker
     ROEPicker
     ConfirmPrompt
+    NoticePrompt
     SystemPicker      # Target system selection table (for Move, Patrol, etc.)
     FleetPicker       # Select target fleet (for JoinFleet command)
     Staged            # Terminal state: command staged successfully
@@ -293,6 +298,8 @@ type
     confirmPending*: bool
     confirmMessage*: string
     pendingCommandType*: FleetCommandType  # For confirmation flow
+    noticeMessage*: string
+    noticeReturnSubModal*: FleetSubModal
     shipScroll*: ScrollState
     commandDigitBuffer*: string  # Buffer for two-digit quick entry (e.g., "0", "07")
     commandDigitTime*: float     # Time when first digit was entered (for timeout)
@@ -770,6 +777,7 @@ type
     laneTypes*: Table[(int, int), int]
     laneNeighbors*: Table[int, seq[int]]
     ownedSystemIds*: HashSet[int]
+    knownEnemyColonySystemIds*: HashSet[int]
     systemCoords*: Table[int, HexCoord]
 
   # ============================================================================
@@ -927,6 +935,8 @@ proc initTuiUiState*(): TuiUiState =
       confirmPending: false,
       confirmMessage: "",
       pendingCommandType: FleetCommandType.Hold,
+      noticeMessage: "",
+      noticeReturnSubModal: FleetSubModal.None,
       shipScroll: initScrollState(),
       shipCount: 0,
       fleetPickerIdx: 0,
@@ -1042,7 +1052,8 @@ proc initTuiViewState*(): TuiViewState =
     maxRing: 3,
     homeworld: none(HexCoord),
     lobbyActiveGames: @[],
-    lobbyJoinGames: @[]
+    lobbyJoinGames: @[],
+    knownEnemyColonySystemIds: initHashSet[int]()
   )
 
 proc initTuiModel*(): TuiModel =
@@ -1683,6 +1694,90 @@ proc buildSystemPickerList*(
   result.sort(proc(a, b: SystemPickerEntry): int =
     cmp(a.coordLabel, b.coordLabel)
   )
+
+proc filterSystemsBySet(
+    systems: seq[SystemPickerEntry],
+    allowed: HashSet[int]
+): seq[SystemPickerEntry] =
+  result = @[]
+  for sys in systems:
+    if sys.systemId in allowed:
+      result.add(sys)
+
+proc buildSystemPickerListForCommand*(
+    model: TuiModel,
+    cmdType: FleetCommandType
+): SystemPickerFilterResult =
+  let allSystems = model.buildSystemPickerList()
+  result.systems = allSystems
+  result.emptyMessage = ""
+
+  var ownedColonies = initHashSet[int]()
+  var ownedStarbases = initHashSet[int]()
+  var salvageSystems = initHashSet[int]()
+
+  for row in model.view.planetsRows:
+    if row.isOwned:
+      ownedColonies.incl(row.systemId)
+      if row.starbaseCount > 0:
+        ownedStarbases.incl(row.systemId)
+      if row.cdTotal.isSome and row.cdTotal.get > 0:
+        salvageSystems.incl(row.systemId)
+
+  var knownEnemyStarbases = initHashSet[int]()
+  for row in model.view.intelRows:
+    if row.starbaseCount.isSome and row.starbaseCount.get > 0:
+      if row.systemId in model.view.knownEnemyColonySystemIds:
+        knownEnemyStarbases.incl(row.systemId)
+
+  case cmdType
+  of FleetCommandType.GuardStarbase:
+    result.systems = filterSystemsBySet(
+      allSystems, ownedStarbases
+    )
+    result.emptyMessage = "No friendly starbases found"
+  of FleetCommandType.GuardColony:
+    result.systems = filterSystemsBySet(
+      allSystems, ownedColonies
+    )
+    result.emptyMessage = "No friendly colonies found"
+  of FleetCommandType.Blockade:
+    result.systems = filterSystemsBySet(
+      allSystems, model.view.knownEnemyColonySystemIds
+    )
+    result.emptyMessage = "No known enemy colonies to blockade"
+  of FleetCommandType.Bombard:
+    result.systems = filterSystemsBySet(
+      allSystems, model.view.knownEnemyColonySystemIds
+    )
+    result.emptyMessage = "No known enemy colonies to bombard"
+  of FleetCommandType.Invade:
+    result.systems = filterSystemsBySet(
+      allSystems, model.view.knownEnemyColonySystemIds
+    )
+    result.emptyMessage = "No known enemy colonies to invade"
+  of FleetCommandType.Blitz:
+    result.systems = filterSystemsBySet(
+      allSystems, model.view.knownEnemyColonySystemIds
+    )
+    result.emptyMessage = "No known enemy colonies to blitz"
+  of FleetCommandType.HackStarbase:
+    result.systems = filterSystemsBySet(
+      allSystems, knownEnemyStarbases
+    )
+    result.emptyMessage = "No known enemy starbases to hack"
+  of FleetCommandType.Salvage:
+    result.systems = filterSystemsBySet(
+      allSystems, salvageSystems
+    )
+    result.emptyMessage = "No friendly colonies with salvage facilities"
+  of FleetCommandType.Reserve, FleetCommandType.Mothball:
+    result.systems = filterSystemsBySet(
+      allSystems, ownedColonies
+    )
+    result.emptyMessage = "No friendly colonies found"
+  else:
+    discard
 
 # =============================================================================
 # Client-Side ETA Estimation (for optimistic updates)

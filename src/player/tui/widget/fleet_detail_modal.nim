@@ -180,6 +180,39 @@ proc renderConfirmDialog(state: FleetDetailModalState, area: Rect,
         discard buf.put(lineX + i, y, $ch, canvasStyle())
     y += 1
 
+proc renderNoticeDialog(state: FleetDetailModalState, area: Rect,
+                        buf: var CellBuffer) =
+  ## Render notice dialog for empty target lists
+  if area.isEmpty:
+    return
+
+  var y = area.y + (area.height div 2) - 2
+
+  # Notice header
+  let header = "NOTICE"
+  let headerX = area.x + (area.width div 2) -
+    (header.len div 2)
+  for i, ch in header:
+    if headerX + i < area.right:
+      discard buf.put(headerX + i, y, $ch, alertStyle())
+  y += 2
+
+  # Notice message
+  let msgLines = @[
+    state.noticeMessage,
+    "",
+    "Press [Esc] to go back"
+  ]
+  for line in msgLines:
+    if y >= area.bottom:
+      break
+    let lineX = area.x + (area.width div 2) -
+      (line.len div 2)
+    for i, ch in line:
+      if lineX + i < area.right:
+        discard buf.put(lineX + i, y, $ch, canvasStyle())
+    y += 1
+
 proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
                     buf: var CellBuffer) =
   ## Render Zero-Turn Command picker using Table widget
@@ -416,6 +449,9 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.ConfirmPrompt:
       # Confirmation dialog: compact centered message
       10
+    of FleetSubModal.NoticePrompt:
+      # Notice dialog: compact centered message
+      10
     of FleetSubModal.SystemPicker:
       # Cap at 20 visible rows + tableBase(4) + footer(2) + filter(1)
       let sysCount = min(20, max(1,
@@ -494,6 +530,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     renderROEPicker(state, inner, buf)
   of FleetSubModal.ConfirmPrompt:
     renderConfirmDialog(state, inner, buf)
+  of FleetSubModal.NoticePrompt:
+    renderNoticeDialog(state, inner, buf)
   of FleetSubModal.SystemPicker:
     renderSystemPicker(state, inner, buf)
   of FleetSubModal.FleetPicker:

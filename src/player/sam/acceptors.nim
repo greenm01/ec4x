@@ -64,12 +64,40 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.confirmPending = false
   model.ui.fleetDetailModal.confirmMessage = ""
   model.ui.fleetDetailModal.pendingCommandType = FleetCommandType.Hold
+  model.ui.fleetDetailModal.noticeMessage = ""
+  model.ui.fleetDetailModal.noticeReturnSubModal = FleetSubModal.None
   model.ui.fleetDetailModal.fleetPickerCandidates = @[]
   model.ui.fleetDetailModal.fleetPickerIdx = 0
   model.ui.fleetDetailModal.systemPickerIdx = 0
   model.ui.fleetDetailModal.systemPickerSystems = @[]
   model.ui.fleetDetailModal.systemPickerFilter = ""
   model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
+
+proc openSystemPickerForCommand(
+    model: var TuiModel,
+    cmdType: FleetCommandType,
+    returnSubModal: FleetSubModal
+) =
+  let filtered = model.buildSystemPickerListForCommand(
+    cmdType
+  )
+  if filtered.systems.len == 0 and
+      filtered.emptyMessage.len > 0:
+    model.ui.fleetDetailModal.noticeMessage =
+      filtered.emptyMessage
+    model.ui.fleetDetailModal.noticeReturnSubModal =
+      returnSubModal
+    model.ui.fleetDetailModal.subModal =
+      FleetSubModal.NoticePrompt
+    return
+  model.ui.fleetDetailModal.systemPickerSystems =
+    filtered.systems
+  model.ui.fleetDetailModal.systemPickerIdx = 0
+  model.ui.fleetDetailModal.systemPickerFilter = ""
+  model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
+  model.ui.fleetDetailModal.systemPickerCommandType = cmdType
+  model.ui.fleetDetailModal.subModal =
+    FleetSubModal.SystemPicker
 
 proc advanceSortColumn*(state: var TableSortState) =
   ## Move to next sort column, reset to ascending
@@ -1444,14 +1472,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             return
           if needsTargetSystem(int(cmdType)):
             # Open SystemPicker sub-modal for batch
-            let systems = model.buildSystemPickerList()
-            model.ui.fleetDetailModal.systemPickerSystems = systems
-            model.ui.fleetDetailModal.systemPickerIdx = 0
-            model.ui.fleetDetailModal.systemPickerFilter = ""
-            model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
-            model.ui.fleetDetailModal.systemPickerCommandType = cmdType
-            model.ui.fleetDetailModal.subModal =
-              FleetSubModal.SystemPicker
+            model.openSystemPickerForCommand(
+              cmdType,
+              FleetSubModal.CommandPicker
+            )
             return
           for fleetId in model.ui.selectedFleetIds:
             let cmd = FleetCommand(
@@ -1558,14 +1582,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         # Check if command requires target system selection
         if needsTargetSystem(int(cmdType)):
           # Open SystemPicker sub-modal for single fleet
-          let systems = model.buildSystemPickerList()
-          model.ui.fleetDetailModal.systemPickerSystems = systems
-          model.ui.fleetDetailModal.systemPickerIdx = 0
-          model.ui.fleetDetailModal.systemPickerFilter = ""
-          model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
-          model.ui.fleetDetailModal.systemPickerCommandType = cmdType
-          model.ui.fleetDetailModal.subModal =
-            FleetSubModal.SystemPicker
+          model.openSystemPickerForCommand(
+            cmdType,
+            FleetSubModal.CommandPicker
+          )
         else:
           # Stage command immediately (no target needed)
           let cmd = FleetCommand(
@@ -1752,14 +1772,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Check if the confirmed command also requires a target
       if needsTargetSystem(int(cmdType)):
         # Open SystemPicker sub-modal for target selection
-        let systems = model.buildSystemPickerList()
-        model.ui.fleetDetailModal.systemPickerSystems = systems
-        model.ui.fleetDetailModal.systemPickerIdx = 0
-        model.ui.fleetDetailModal.systemPickerFilter = ""
-        model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
-        model.ui.fleetDetailModal.systemPickerCommandType = cmdType
-        model.ui.fleetDetailModal.subModal =
-          FleetSubModal.SystemPicker
+        model.openSystemPickerForCommand(
+          cmdType,
+          FleetSubModal.CommandPicker
+        )
         return
       
       # Command doesn't need target, stage immediately
@@ -1801,6 +1817,14 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Cancel confirmation, go back to main detail view
       resetFleetDetailSubModal(model)
       model.ui.statusMessage = "Action cancelled"
+    elif model.ui.fleetDetailModal.subModal ==
+        FleetSubModal.NoticePrompt:
+      let returnSubModal =
+        model.ui.fleetDetailModal.noticeReturnSubModal
+      model.ui.fleetDetailModal.noticeMessage = ""
+      model.ui.fleetDetailModal.noticeReturnSubModal =
+        FleetSubModal.None
+      model.ui.fleetDetailModal.subModal = returnSubModal
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       if model.ui.fleetDetailModal.directSubModal:
         # Opened directly via C from fleet list — close entire modal

@@ -294,6 +294,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker
   of "isSystemPicker":
     model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker
+  of "isNoticePrompt":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.NoticePrompt
   else:
     true
 
@@ -793,6 +795,13 @@ proc initBindings*() =
     context: BindingContext.FleetDetail,
     longLabel: "SELECT", shortLabel: "Enter", priority: 34,
     enabledCheck: "isSystemPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailCancel,
+    context: BindingContext.FleetDetail,
+    longLabel: "BACK", shortLabel: "Enter", priority: 34,
+    enabledCheck: "isNoticePrompt"))
 
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,

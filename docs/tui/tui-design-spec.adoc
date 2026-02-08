@@ -582,6 +582,51 @@ Wireframe (actual commands from code):
 | Show ConfirmPrompt, then stage or request target
 |===
 
+===== Per-Command Target Filtering Rules
+
+Based on what the engine's dispatcher
+(`src/engine/systems/fleet/dispatcher.nim`) validates at execution
+time, the SystemPicker is pre-filtered to only show valid targets
+for the selected command. If the filtered list is empty, a notice
+is shown instead of opening the picker.
+
+[%header,cols="1,2,4,4"]
+|===
+| Cmd | Name | Target Filter | Empty-list Error
+
+| 01 | Move | Any system | (always has targets)
+| 03 | Patrol | Any system | (always has targets)
+| 04 | Guard Starbase | Owned colony with starbase (`planetsRows`: `isOwned` +
+  `starbaseCount > 0`) | "No friendly starbases found"
+| 05 | Guard Colony | Owned colony (`planetsRows`: `isOwned`) |
+  "No friendly colonies found"
+| 06 | Blockade | Enemy colony (non-owned, non-eliminated) |
+  "No known enemy colonies to blockade"
+| 07 | Bombard | Enemy colony (non-owned, non-eliminated) |
+  "No known enemy colonies to bombard"
+| 08 | Invade | Enemy colony (non-owned, non-eliminated) |
+  "No known enemy colonies to invade"
+| 09 | Blitz | Enemy colony (non-owned, non-eliminated) |
+  "No known enemy colonies to blitz"
+| 10 | Colonize | Any system (engine handles uncolonized check) |
+  (always has targets)
+| 11 | Scout Colony | Any system (fails only if target house eliminated) |
+  (always has targets)
+| 12 | Scout System | Any system (fails only if target house eliminated) |
+  (always has targets)
+| 13 | Hack Starbase | System with known rival starbase (`intelRows`:
+  `starbaseCount.isSome` + `> 0`) |
+  "No known enemy starbases to hack"
+| 15 | Rendezvous | Any system | (always has targets)
+| 16 | Salvage | Owned colony with spaceport or shipyard |
+  "No friendly colonies with salvage facilities"
+| 17 | Reserve | Owned colony (`planetsRows`: `isOwned`) |
+  "No friendly colonies found"
+| 18 | Mothball | Owned colony (`planetsRows`: `isOwned`) |
+  "No friendly colonies found"
+| 19 | View | Any system | (always has targets)
+|===
+
 ===== Order Entry Mode
 
 After selecting a command that requires a target system (Move, Patrol, Attack, Scout, etc.), the fleet modal closes and the main view switches to the hex map in **Order Entry Mode**.

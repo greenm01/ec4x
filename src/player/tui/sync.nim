@@ -6,7 +6,7 @@ import std/[options, tables, algorithm, deques, sets, heapqueue]
 
 import ../../engine/types/[core, colony, fleet, ship, facilities, player_state as
   ps_types, diplomacy, starmap, capacity, ground_unit, combat]
-import ../../engine/state/[engine, iterators]
+import ../../engine/state/[engine, iterators, player_state]
 import ../../engine/systems/capacity/[c2_pool, construction_docks]
 import ../../engine/systems/production/engine as production_engine
 import ../../engine/systems/fleet/movement
@@ -19,6 +19,20 @@ import ../tui/widget/hexmap/symbols
 # Forward declaration for PlayerState sync helpers
 proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState)
 proc syncIntelRows*(model: var TuiModel, ps: PlayerState)
+
+proc syncKnownEnemyColonies(
+    model: var TuiModel,
+    ps: ps_types.PlayerState
+) =
+  model.view.knownEnemyColonySystemIds = initHashSet[int]()
+  for colony in ps.visibleColonies:
+    if colony.owner == ps.viewingHouse:
+      continue
+    if colony.owner in ps.eliminatedHouses:
+      continue
+    model.view.knownEnemyColonySystemIds.incl(
+      int(colony.systemId)
+    )
 
 proc syncGameStateToModel*(
     model: var TuiModel,
@@ -333,6 +347,9 @@ proc syncGameStateToModel*(
     model.view.ownedSystemIds.incl(
       int(colony.systemId)
     )
+
+  let playerState = state.createPlayerState(viewingHouse)
+  model.syncKnownEnemyColonies(playerState)
 
 # =============================================================================
 # PlayerState ETA Helpers (A* pathfinding + turn simulation)
@@ -1007,6 +1024,8 @@ proc syncPlayerStateToModel*(
     model.view.ownedSystemIds.incl(
       int(colony.systemId)
     )
+
+  model.syncKnownEnemyColonies(ps)
 
   # Prestige rank
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
