@@ -27,6 +27,7 @@ import ../tui/styles/ec_palette
 import ../tui/adapters
 import ../tui/columns
 import ../tui/hex_labels
+import ../tui/help_registry
 import ./sync
 
 const
@@ -41,6 +42,77 @@ var
   cachedReportSignature = 0'u64
   cachedReportCount = 0
   cachedReportBuckets: seq[TurnBucket] = @[]
+
+proc helpContextFor(model: TuiModel): HelpContext =
+  case model.ui.mode
+  of ViewMode.Overview:
+    HelpContext.Overview
+  of ViewMode.Planets, ViewMode.PlanetDetail:
+    HelpContext.Planets
+  of ViewMode.Fleets:
+    if model.ui.fleetViewMode == FleetViewMode.ListView:
+      HelpContext.FleetList
+    else:
+      HelpContext.FleetConsole
+  of ViewMode.FleetDetail:
+    HelpContext.FleetDetail
+  of ViewMode.Reports:
+    HelpContext.Reports
+  of ViewMode.ReportDetail:
+    HelpContext.ReportDetail
+  of ViewMode.Research:
+    HelpContext.Research
+  of ViewMode.Espionage:
+    HelpContext.Espionage
+  of ViewMode.Economy:
+    HelpContext.Economy
+  of ViewMode.IntelDb:
+    HelpContext.IntelDb
+  of ViewMode.Settings:
+    HelpContext.Settings
+
+proc renderHelpOverlay(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  if not model.ui.showHelpOverlay:
+    return
+  if model.ui.appPhase != AppPhase.InGame:
+    return
+  if area.width < 20 or area.height < 6:
+    return
+  let ctx = helpContextFor(model)
+  var lines = helpLines(ctx)
+  if lines.len == 0:
+    lines = @["No help available for this screen."]
+  let footerText = "Ctrl+/ Toggle Help"
+  let footerHeight = 2
+  let maxVisible = max(1, area.height - footerHeight - 2)
+  let visible = min(lines.len, maxVisible)
+  var maxLen = 0
+  for i in 0 ..< visible:
+    if lines[i].len > maxLen:
+      maxLen = lines[i].len
+  let maxWidth = max(20, area.width - 2)
+  let width = clamp(maxLen + 2, 20, maxWidth)
+  let height = min(area.height, visible + footerHeight + 2)
+  let x = area.x + (area.width - width) div 2
+  let y = area.bottom - height
+  let modalArea = rect(x, y, width, height)
+  let modal = newModal()
+    .title("HELP")
+    .maxWidth(width)
+    .minWidth(width)
+    .minHeight(height)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  for i in 0 ..< visible:
+    let rowY = contentArea.y + i
+    if rowY >= contentArea.bottom:
+      break
+    var line = lines[i]
+    if line.len > contentArea.width:
+      line = line[0 ..< contentArea.width]
+    discard buf.setString(contentArea.x, rowY, line, canvasStyle())
 
 proc reportSignature(reports: seq[ReportEntry]): uint64 =
   var sig = 1469598103934665603'u64
@@ -483,6 +555,19 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
 
   intelTable.render(area, buf)
 
+proc fleetFlag(
+  needsAttention: bool,
+  isSelected: bool,
+  hasStaged: bool
+): string =
+  if isSelected:
+    return "X"
+  if needsAttention:
+    return GlyphWarning
+  if hasStaged:
+    return GlyphOk
+  " "
+
 proc buildFleetListTable*(model: TuiModel,
                           scroll: ScrollState): table.Table =
   ## Build fleet list table (ListView)
@@ -510,13 +595,11 @@ proc buildFleetListTable*(model: TuiModel,
 
   for i in startIdx ..< endIdx:
     let fleet = fleets[i]
-    var flag = " "
-    if model.isFleetSelected(fleet.id):
-      flag = "X"
-    elif fleet.needsAttention:
-      flag = GlyphWarning
-    elif fleet.id in model.ui.stagedFleetCommands:
-      flag = GlyphOk
+    let flag = fleetFlag(
+      fleet.needsAttention,
+      model.isFleetSelected(fleet.id),
+      fleet.id in model.ui.stagedFleetCommands
+    )
     let etaLabel = if fleet.destinationSystemId != 0:
       $fleet.eta
     else:
@@ -630,15 +713,11 @@ proc renderFleetConsoleFleets(
   
   # Add rows
   for flt in fleets:
-    # Check if this fleet has a staged command
-    let hasStaged = flt.fleetId in stagedCommands
-    
-    let flag = if flt.fleetId in selectedFleetIds:
-      "X"
-    elif hasStaged:
-      GlyphOk
-    else:
-      " "
+    let flag = fleetFlag(
+      flt.needsAttention,
+      flt.fleetId in selectedFleetIds,
+      flt.fleetId in stagedCommands
+    )
     
     fleetsTable.addRow([
       flag,
@@ -1464,7 +1543,8 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   # Use content-aware sizing: +2 for footer separator + text
   let modalArea = modal.calculateArea(canvas, tableWidth, tableHeight + 2)
   
-  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
+  modal.renderWithFooter(modalArea, buf,
+    "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll  [/]Help")
   
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   table.render(contentArea, buf)
@@ -1507,7 +1587,8 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let contentArea = rect(inner.x, inner.y, inner.width,
       max(1, inner.height - 2))
     let hintLine =
-      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md [R]OE [Z]TC [V]iew"
+      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md " &
+      "[R]OE [Z]TC [V]iew [/]Help"
     let footerY = inner.bottom - 1
     discard buf.setString(inner.x, footerY, hintLine,
       canvasDimStyle())
@@ -1556,7 +1637,9 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     
     # Use content-aware sizing
     let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
-    modal.renderWithFooter(modalArea, buf, "[↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]md [R]OE [Z]eroTurn [V]iew")
+    modal.renderWithFooter(modalArea, buf,
+      "[↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]md [R]OE " &
+      "[Z]eroTurn [V]iew [/]Help")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 
@@ -1572,7 +1655,8 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = 15 + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  modal.renderWithFooter(modalArea, buf,
+    "[↑↓] Navigate  [Enter] Select  [/]Help")
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   discard buf.setString(contentArea.x, contentArea.y,
     "Tech view (TODO)", dimStyle())
@@ -1589,7 +1673,8 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = 12 + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  modal.renderWithFooter(modalArea, buf,
+    "[↑↓] Navigate  [Enter] Select  [/]Help")
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   discard buf.setString(contentArea.x, contentArea.y,
     "Espionage view (TODO)", dimStyle())
@@ -1606,7 +1691,8 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = 12 + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  modal.renderWithFooter(modalArea, buf,
+    "[↑↓] Navigate  [Enter] Select  [/]Help")
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   discard buf.setString(contentArea.x, contentArea.y,
     "General view (TODO)", dimStyle())
@@ -1624,7 +1710,8 @@ proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = max(15, 20) + 2  # Use scrolling for long lists
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll")
+  modal.renderWithFooter(modalArea, buf,
+    "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll  [/]Help")
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   renderReportsList(contentArea, buf, model)
 
@@ -1640,7 +1727,8 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = 10 + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf, "[↑↓] Navigate  [Enter] Select")
+  modal.renderWithFooter(modalArea, buf,
+    "[↑↓] Navigate  [Enter] Select  [/]Help")
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   discard buf.setString(contentArea.x, contentArea.y,
     "Settings view (TODO)", dimStyle())
@@ -1977,6 +2065,8 @@ proc renderDashboard*(
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)
+
+  renderHelpOverlay(canvasArea, buf, model)
 
   # Render Zellij-style status bar (1 line)
   if model.ui.appPhase == AppPhase.InGame:

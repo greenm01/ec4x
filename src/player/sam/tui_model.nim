@@ -249,6 +249,7 @@ type
     eta*: int
     roe*: int
     status*: string
+    needsAttention*: bool
 
   SystemPickerEntry* = object
     ## System entry for target selection picker
@@ -699,6 +700,7 @@ type
     statusMessage*: string
     quitConfirmationActive*: bool
     quitConfirmationChoice*: QuitConfirmationChoice
+    showHelpOverlay*: bool
 
     # Map export flags
     exportMapRequested*: bool
@@ -891,6 +893,7 @@ proc initTuiUiState*(): TuiUiState =
     statusMessage: "",
     quitConfirmationActive: false,
     quitConfirmationChoice: QuitStay,
+    showHelpOverlay: false,
     exportMapRequested: false,
     openMapRequested: false,
     lastExportPath: "",
@@ -2013,6 +2016,7 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
         if newRoe >= 0: flt.roe = newRoe
         if destLabel.len > 0:
           flt.destinationLabel = destLabel
+        flt.needsAttention = false
         if isStationary:
           flt.eta = 0
         elif cmd.targetSystem.isSome:

@@ -263,6 +263,10 @@ proc actionSubmitTurn*(): Proposal =
   ## Submit turn with all staged commands
   gameActionProposal(ActionKind.submitTurn, "")
 
+proc actionToggleHelpOverlay*(): Proposal =
+  ## Toggle help overlay
+  gameActionProposal(ActionKind.toggleHelpOverlay, "")
+
 # ============================================================================
 # Fleet List Actions
 # ============================================================================

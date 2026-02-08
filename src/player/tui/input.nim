@@ -177,6 +177,7 @@ proc parseControlChar(b: byte): Event =
   of 0x19: newKeyEvent(Key.CtrlY)
   of 0x1A: newKeyEvent(Key.CtrlZ)
   of 0x1B: newKeyEvent(Key.Escape)
+  of 0x1F: newKeyEvent(Key.CtrlSlash)
   else: newKeyEvent(Key.None)
 
 proc feedByte*(p: var InputParser, b: byte): seq[Event] =

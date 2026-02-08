@@ -20,6 +20,14 @@ import ../tui/widget/hexmap/symbols
 proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState)
 proc syncIntelRows*(model: var TuiModel, ps: PlayerState)
 
+proc fleetNeedsAttention(
+    hasCrippled: bool,
+    isIdle: bool,
+    hasSupportShips: bool,
+    hasCombatShips: bool
+): bool =
+  hasCrippled or isIdle or (hasSupportShips and not hasCombatShips)
+
 proc syncKnownEnemyColonies(
     model: var TuiModel,
     ps: ps_types.PlayerState
@@ -321,8 +329,12 @@ proc syncGameStateToModel*(
         seekHomeTarget: seekHome,
         needsAttention: false,
       )
-    info.needsAttention = info.hasCrippled or info.isIdle or
-      (info.hasSupportShips and not info.hasCombatShips)
+    info.needsAttention = fleetNeedsAttention(
+      info.hasCrippled,
+      info.isIdle,
+      info.hasSupportShips,
+      info.hasCombatShips,
+    )
     model.view.fleets.add(info)
 
   # Populate lane/ownership data for client-side ETA
@@ -543,6 +555,7 @@ proc syncFleetConsoleFleets*(
       (SystemId, SystemId), LaneClass
     ],
     psOwnedSystems: HashSet[SystemId],
+    needsAttentionByFleet: Table[int, bool],
 ): seq[FleetConsoleFleet] =
   ## Get list of fleets at a specific system for console
   result = @[]
@@ -557,10 +570,15 @@ proc syncFleetConsoleFleets*(
     var shipCount = 0
     var ttCount = 0
     var etacCount = 0
+    var hasCrippled = false
+    var hasCombatShips = false
+    var hasSupportShips = false
     
     for shipId in fleet.ships:
       for ship in ps.ownShips:
         if ship.id == shipId and ship.state != CombatState.Destroyed:
+          if ship.state == CombatState.Crippled:
+            hasCrippled = true
           attackStr += int(ship.stats.attackStrength)
           defenseStr += int(ship.stats.defenseStrength)
           shipCount += 1
@@ -568,8 +586,12 @@ proc syncFleetConsoleFleets*(
           # Count ship types
           if ship.shipClass == ShipClass.TroopTransport:
             ttCount += 1
+            hasSupportShips = true
           elif ship.shipClass == ShipClass.ETAC:
             etacCount += 1
+            hasSupportShips = true
+          elif ship.shipClass != ShipClass.Scout:
+            hasCombatShips = true
           
           break
     
@@ -608,6 +630,17 @@ proc syncFleetConsoleFleets*(
       of FleetStatus.Reserve: "R"
       of FleetStatus.Mothballed: "M"
     
+    let isIdle = fleet.command.commandType == FleetCommandType.Hold
+    let needsAttention = if needsAttentionByFleet.hasKey(int(fleet.id)):
+      needsAttentionByFleet[int(fleet.id)]
+    else:
+      fleetNeedsAttention(
+        hasCrippled,
+        isIdle,
+        hasSupportShips,
+        hasCombatShips,
+      )
+    
     result.add(FleetConsoleFleet(
       fleetId: int(fleet.id),
       name: fleet.name,
@@ -620,7 +653,8 @@ proc syncFleetConsoleFleets*(
       destinationLabel: destLabel,
       eta: eta,
       roe: int(fleet.roe),
-      status: statusStr
+      status: statusStr,
+      needsAttention: needsAttention
     ))
 
 proc syncPlayerStateToOverview*(
@@ -998,8 +1032,12 @@ proc syncPlayerStateToModel*(
         seekHomeTarget: seekHome,
         needsAttention: false,
       )
-    info.needsAttention = info.hasCrippled or info.isIdle or
-      (info.hasSupportShips and not info.hasCombatShips)
+    info.needsAttention = fleetNeedsAttention(
+      info.hasCrippled,
+      info.isIdle,
+      info.hasSupportShips,
+      info.hasCombatShips,
+    )
     model.view.fleets.add(info)
   
   # Populate lane/ownership data for client-side ETA
@@ -1054,6 +1092,9 @@ proc syncPlayerStateToModel*(
   syncIntelRows(model, ps)
   
   # Sync fleet console cached data for SystemView mode
+  var needsAttentionByFleet = initTable[int, bool]()
+  for fleet in model.view.fleets:
+    needsAttentionByFleet[fleet.id] = fleet.needsAttention
   model.ui.fleetConsoleSystems = syncFleetConsoleSystems(ps)
   model.ui.fleetConsoleFleetsBySystem.clear()
   for sys in model.ui.fleetConsoleSystems:
@@ -1061,6 +1102,7 @@ proc syncPlayerStateToModel*(
       syncFleetConsoleFleets(
         ps, SystemId(sys.systemId),
         psNeighbors, psConnInfo, psOwnedSystems,
+        needsAttentionByFleet,
       )
 
 # =============================================================================

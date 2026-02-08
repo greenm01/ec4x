@@ -51,6 +51,7 @@ type
     expertHistoryNext
     expertSubmit
     submitTurn
+    toggleHelpOverlay
     toggleFleetSelect
     switchPlanetTab
     switchFleetView

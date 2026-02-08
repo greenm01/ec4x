@@ -28,7 +28,7 @@ type
     CtrlA, CtrlB, CtrlC, CtrlD, CtrlE, CtrlF, CtrlG
     CtrlH, CtrlI, CtrlJ, CtrlK, CtrlL, CtrlM, CtrlN
     CtrlO, CtrlP, CtrlQ, CtrlR, CtrlS, CtrlT, CtrlU
-    CtrlV, CtrlW, CtrlX, CtrlY, CtrlZ
+    CtrlV, CtrlW, CtrlX, CtrlY, CtrlZ, CtrlSlash
 
   ModMask* = distinct uint8
     ## Bitmask for modifier keys.
@@ -168,6 +168,7 @@ proc name*(key: Key): string =
   of Key.CtrlX: "Ctrl-X"
   of Key.CtrlY: "Ctrl-Y"
   of Key.CtrlZ: "Ctrl-Z"
+  of Key.CtrlSlash: "Ctrl-/"
 
 proc `$`*(ke: KeyEvent): string =
   ## String representation of key event with modifiers.

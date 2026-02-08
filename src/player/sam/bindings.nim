@@ -411,6 +411,12 @@ proc initBindings*() =
     longLabel: "QUIT", shortLabel: "QUIT", priority: 10))
 
   registerBinding(Binding(
+    key: KeyCode.KeySlash, modifier: KeyModifier.Ctrl,
+    actionKind: ActionKind.toggleHelpOverlay,
+    context: BindingContext.Global,
+    longLabel: "HELP", shortLabel: "Help", priority: 11))
+
+  registerBinding(Binding(
     key: KeyCode.KeyColon, modifier: KeyModifier.None,
     actionKind: ActionKind.enterExpertMode,
     context: BindingContext.Global,
@@ -1357,6 +1363,9 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   # Turn submission
   of ActionKind.submitTurn:
     return some(actionSubmitTurn())
+
+  of ActionKind.toggleHelpOverlay:
+    return some(actionToggleHelpOverlay())
 
   # View-specific tabs
   of ActionKind.switchPlanetTab:

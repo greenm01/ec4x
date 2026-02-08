@@ -568,6 +568,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
 
   of ProposalKind.pkGameAction:
     case proposal.actionKind
+    of ActionKind.toggleHelpOverlay:
+      model.ui.showHelpOverlay = not model.ui.showHelpOverlay
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"
@@ -1605,7 +1607,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
                   destinationLabel: fleet.destinationLabel,
                   eta: fleet.eta,
                   roe: fleet.roe,
-                  status: fleet.statusLabel
+                  status: fleet.statusLabel,
+                  needsAttention: fleet.needsAttention
                 )
               )
           if model.ui.fleetDetailModal.fleetPickerCandidates.len == 0:
