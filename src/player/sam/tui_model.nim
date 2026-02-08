@@ -16,7 +16,7 @@
 ##   F7 Reports    - Turn summaries, combat/intel reports
 ##   F8 Settings   - Display options, automation defaults
 
-import std/[options, tables, algorithm, strutils, sequtils, sets]
+import std/[options, tables, algorithm, strutils, sequtils, sets, heapqueue]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../tui/hex_labels
@@ -769,6 +769,7 @@ type
     laneTypes*: Table[(int, int), int]
     laneNeighbors*: Table[int, seq[int]]
     ownedSystemIds*: HashSet[int]
+    systemCoords*: Table[int, HexCoord]
 
   # ============================================================================
   # The Complete TUI Model (SAM wrapper)
@@ -1688,44 +1689,94 @@ proc buildSystemPickerList*(
 
 const
   LaneTypeMajor = 0  ## Matches LaneClass.Major ord
+  LaneTypeRestricted = 2  ## Matches LaneClass.Restricted
+
+type EtaPathNode = tuple[f: uint32, system: int]
+
+proc `<`(a, b: EtaPathNode): bool = a.f < b.f
+
+proc hexDist(
+    coords: Table[int, HexCoord],
+    a: int, b: int,
+): uint32 =
+  ## Hex distance heuristic for A*.
+  ## Falls back to 1 if coords missing.
+  if coords.hasKey(a) and coords.hasKey(b):
+    let ca = coords[a]
+    let cb = coords[b]
+    let dq = abs(ca.q - cb.q)
+    let dr = abs(ca.r - cb.r)
+    let ds = abs((-ca.q - ca.r) - (-cb.q - cb.r))
+    return uint32(max(dq, max(dr, ds)))
+  return 1'u32
 
 proc estimateETA*(model: TuiModel,
-    fromSys: int, toSys: int): int =
+    fromSys: int, toSys: int,
+    etacOnly: bool = false): int =
   ## Estimate turns to travel from fromSys to toSys
-  ## using stored lane data and turn-by-turn sim.
+  ## using A* pathfinding and turn-by-turn sim.
+  ## Set etacOnly=true for ETAC-only fleets that
+  ## can traverse Restricted lanes.
   ## Returns 0 if same system or unreachable.
   if fromSys == toSys:
     return 0
 
-  # BFS to find shortest-hop path
-  var parent = initTable[int, int]()
-  var queue: seq[int] = @[fromSys]
-  parent[fromSys] = -1
+  # A* pathfinding with lane-cost weights
+  var openSet: HeapQueue[EtaPathNode]
+  var cameFrom = initTable[int, int]()
+  var gScore = initTable[int, uint32]()
 
-  block bfsSearch:
-    while queue.len > 0:
-      let cur = queue[0]
-      queue.delete(0)
-      let neighs =
-        model.view.laneNeighbors.getOrDefault(
-          cur, @[]
+  gScore[fromSys] = 0'u32
+  let h = hexDist(
+    model.view.systemCoords, fromSys, toSys
+  )
+  openSet.push((h, fromSys))
+
+  var found = false
+  while openSet.len > 0:
+    let current = openSet.pop().system
+    if current == toSys:
+      found = true
+      break
+
+    let neighs =
+      model.view.laneNeighbors.getOrDefault(
+        current, @[]
+      )
+    for neighbor in neighs:
+      let lt =
+        model.view.laneTypes.getOrDefault(
+          (current, neighbor), -1
         )
-      for n in neighs:
-        if n notin parent:
-          parent[n] = cur
-          if n == toSys:
-            break bfsSearch
-          queue.add(n)
+      # Skip Restricted lanes for non-ETAC fleets
+      if lt == LaneTypeRestricted and not etacOnly:
+        continue
 
-  if toSys notin parent:
+      let edgeCost: uint32 =
+        case lt
+        of LaneTypeMajor: 1'u32
+        of 1: 2'u32  # Minor
+        else: 3'u32  # Restricted or unknown
+      let tentG = gScore[current] + edgeCost
+      if neighbor notin gScore or
+          tentG < gScore[neighbor]:
+        cameFrom[neighbor] = current
+        gScore[neighbor] = tentG
+        let fVal = tentG + hexDist(
+          model.view.systemCoords,
+          neighbor, toSys,
+        )
+        openSet.push((fVal, neighbor))
+
+  if not found:
     return 0  # Unreachable
 
   # Reconstruct path
-  var path: seq[int] = @[]
+  var path: seq[int] = @[toSys]
   var node = toSys
-  while node != -1:
+  while node != fromSys:
+    node = cameFrom[node]
     path.insert(node, 0)
-    node = parent[node]
 
   # Turn-by-turn simulation
   var pos = 0
@@ -1764,10 +1815,10 @@ proc estimateETA*(model: TuiModel,
 # =============================================================================
 
 proc systemNameById(model: TuiModel, systemId: int): string =
-  ## Look up system coord label by ID, or return "-" if not found
-  for sys in model.view.systems.values:
-    if sys.id == systemId:
-      return coordLabel(sys.coords.q, sys.coords.r)
+  ## Look up system coord label by ID via O(1) lookup
+  if model.view.systemCoords.hasKey(systemId):
+    let c = model.view.systemCoords[systemId]
+    return coordLabel(c.q, c.r)
   "-"
 
 proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
@@ -1799,9 +1850,16 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
       if isStationary:
         fleet.eta = 0
       elif cmd.targetSystem.isSome:
+        let isEtacOnly = fleet.hasEtacs and
+          not fleet.hasCombatShips and
+          not fleet.hasScouts and
+          not fleet.hasTroopTransports and
+          not fleet.hasCrippled and
+          fleet.shipCount > 0
         fleet.eta = model.estimateETA(
           fleet.location,
           int(cmd.targetSystem.get()),
+          isEtacOnly,
         )
       fleet.needsAttention = false
       break
@@ -1817,9 +1875,13 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
         if isStationary:
           flt.eta = 0
         elif cmd.targetSystem.isSome:
+          let isEtacOnly =
+            flt.etacs > 0 and
+            flt.shipCount == flt.etacs
           flt.eta = model.estimateETA(
             systemId,
             int(cmd.targetSystem.get()),
+            isEtacOnly,
           )
         return
 

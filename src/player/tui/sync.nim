@@ -75,6 +75,7 @@ proc syncGameStateToModel*(
   # Build systems table from fog-of-war map data
   let mapData = toFogOfWarMapData(state, viewingHouse)
   model.view.systems.clear()
+  model.view.systemCoords.clear()
   model.view.maxRing = mapData.maxRing
 
   for coord, sysInfo in mapData.systems.pairs:
@@ -91,6 +92,8 @@ proc syncGameStateToModel*(
       fleetCount: sysInfo.fleetCount,
     )
     model.view.systems[(coord.q, coord.r)] = samSys
+    model.view.systemCoords[sysInfo.id] =
+      (coord.q, coord.r)
 
     # Track homeworld
     if sysInfo.isHomeworld and sysInfo.owner.isSome and
@@ -773,6 +776,7 @@ proc syncPlayerStateToModel*(
   # Build systems table from visible systems
   # VisibleSystem only has: id, name, visibility, lastScoutedTurn, coordinates
   model.view.systems.clear()
+  model.view.systemCoords.clear()
   model.view.maxRing = 0
   
   for sysId, visSys in ps.visibleSystems.pairs:
@@ -804,6 +808,8 @@ proc syncPlayerStateToModel*(
       fleetCount: 0,  # Not in VisibleSystem
     )
     model.view.systems[(hexQ, hexR)] = samSys
+    model.view.systemCoords[int(sysId)] =
+      (hexQ, hexR)
   
   # Build colonies list from own colonies
   model.view.colonies = @[]
