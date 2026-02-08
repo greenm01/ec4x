@@ -294,6 +294,7 @@ type
     subModal*: FleetSubModal
     commandCategory*: CommandCategory  # DEPRECATED: now using flat list
     commandIdx*: int           # Index in flat command list (0-19)
+    commandPickerCommands*: seq[FleetCommandType]
     roeValue*: int             # 0-10
     confirmPending*: bool
     confirmMessage*: string
@@ -931,6 +932,7 @@ proc initTuiUiState*(): TuiUiState =
       subModal: FleetSubModal.None,
       commandCategory: CommandCategory.Movement,
       commandIdx: 0,
+      commandPickerCommands: allFleetCommands(),
       roeValue: 6,  # Standard ROE
       confirmPending: false,
       confirmMessage: "",
@@ -1665,8 +1667,11 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   false
 
 # =============================================================================
-# System Picker Helpers
+# Command Picker Helpers
 # =============================================================================
+
+proc validateFleetCommand*(fleet: FleetInfo,
+  cmdType: FleetCommandType): string
 
 proc needsTargetSystem*(cmdType: int): bool =
   ## Check if a command type needs target system selection.
@@ -1679,6 +1684,44 @@ proc needsTargetSystem*(cmdType: int): bool =
               CmdScoutColony, CmdScoutSystem,
               CmdHackStarbase, CmdRendezvous, CmdSalvage,
               CmdReserve, CmdMothball, CmdView]
+
+proc buildCommandPickerList*(model: TuiModel): seq[FleetCommandType] =
+  result = @[]
+  let commands = allFleetCommands()
+
+  if model.ui.selectedFleetIds.len > 0:
+    var selectedFleets: seq[FleetInfo]
+    for fleet in model.view.fleets:
+      if fleet.id in model.ui.selectedFleetIds:
+        selectedFleets.add(fleet)
+    for cmdType in commands:
+      if cmdType == FleetCommandType.JoinFleet:
+        continue
+      var validForAll = true
+      for fleet in selectedFleets:
+        if validateFleetCommand(fleet, cmdType).len > 0:
+          validForAll = false
+          break
+      if validForAll:
+        result.add(cmdType)
+    return
+
+  var currentFleet: Option[FleetInfo]
+  for fleet in model.view.fleets:
+    if fleet.id == model.ui.fleetDetailModal.fleetId:
+      currentFleet = some(fleet)
+      break
+  if currentFleet.isNone:
+    result = commands
+    return
+  let current = currentFleet.get()
+  for cmdType in commands:
+    if validateFleetCommand(current, cmdType).len == 0:
+      result.add(cmdType)
+
+# =============================================================================
+# System Picker Helpers
+# =============================================================================
 
 proc buildSystemPickerList*(
     model: TuiModel): seq[SystemPickerEntry] =

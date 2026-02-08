@@ -114,8 +114,7 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  # Populate with all commands
-  let commands = allFleetCommands()
+  let commands = state.commandPickerCommands
   for cmdType in commands:
     let cmdCode = fleetCommandCode(cmdType)
     let cmdLabel = fleetCommandLabel(cmdType)
@@ -433,10 +432,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   # Calculate content height based on active sub-modal
   let contentHeight = case state.subModal
     of FleetSubModal.CommandPicker:
-      # Command picker: 20 commands + header + separator + borders + footer
+      # Command picker: itemCount + header + separator + borders + footer
       # Table base height: 4 (top border + header + separator + bottom border)
       # Footer: 2 lines
-      let commandCount = 20
+      let commandCount = max(1,
+        state.commandPickerCommands.len)
       let tableBaseHeight = 4
       let footerHeight = 2
       commandCount + tableBaseHeight + footerHeight

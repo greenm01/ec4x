@@ -99,6 +99,36 @@ proc openSystemPickerForCommand(
   model.ui.fleetDetailModal.subModal =
     FleetSubModal.SystemPicker
 
+proc commandIndexForCode(
+    commands: seq[FleetCommandType],
+    code: int
+): int =
+  let allCommands = allFleetCommands()
+  if code < 0 or code >= allCommands.len:
+    return -1
+  let cmdType = allCommands[code]
+  for idx, cmd in commands:
+    if cmd == cmdType:
+      return idx
+  -1
+
+proc openCommandPicker(model: var TuiModel) =
+  let commands = model.buildCommandPickerList()
+  if commands.len == 0:
+    model.ui.fleetDetailModal.noticeMessage =
+      "No valid commands available"
+    model.ui.fleetDetailModal.noticeReturnSubModal =
+      FleetSubModal.None
+    model.ui.fleetDetailModal.subModal =
+      FleetSubModal.NoticePrompt
+    return
+  model.ui.fleetDetailModal.commandPickerCommands = commands
+  model.ui.fleetDetailModal.commandIdx = 0
+  model.ui.fleetDetailModal.commandDigitBuffer = ""
+  model.ui.fleetDetailModal.commandDigitTime = 0.0
+  model.ui.fleetDetailModal.subModal =
+    FleetSubModal.CommandPicker
+
 proc advanceSortColumn*(state: var TableSortState) =
   ## Move to next sort column, reset to ascending
   state.columnIdx =
@@ -961,20 +991,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.resetBreadcrumbs(ViewMode.FleetDetail)
             model.ui.fleetDetailModal.fleetId = fleetId
             model.ui.fleetDetailModal.roeValue = roe
-            model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
-            model.ui.fleetDetailModal.commandIdx = 0
-            model.ui.fleetDetailModal.commandDigitBuffer = ""
-            model.ui.fleetDetailModal.commandDigitTime = 0.0
+            model.openCommandPicker()
             model.ui.fleetDetailModal.directSubModal = true
         else:
           # Batch mode: act on all X-selected fleets
           model.ui.mode = ViewMode.FleetDetail
           model.resetBreadcrumbs(ViewMode.FleetDetail)
-          model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
-          model.ui.fleetDetailModal.commandIdx = 0
           model.ui.fleetDetailModal.fleetId = 0
-          model.ui.fleetDetailModal.commandDigitBuffer = ""
-          model.ui.fleetDetailModal.commandDigitTime = 0.0
+          model.openCommandPicker()
           model.ui.fleetDetailModal.directSubModal = true
     of ActionKind.fleetBatchROE:
       if model.ui.mode == ViewMode.Fleets:
@@ -1335,7 +1359,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     discard
   of ActionKind.fleetDetailListUp:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      # Navigate flat list of 20 commands (0-19)
+      # Navigate filtered command list
       if model.ui.fleetDetailModal.commandIdx > 0:
         model.ui.fleetDetailModal.commandIdx -= 1
         model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
@@ -1359,8 +1383,11 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         scroll.verticalOffset - 1)
   of ActionKind.fleetDetailListDown:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      # Navigate flat list of 20 commands (0-19)
-      if model.ui.fleetDetailModal.commandIdx < 19:
+      # Navigate filtered command list
+      let maxIdx =
+        model.ui.fleetDetailModal.commandPickerCommands.len - 1
+      if maxIdx >= 0 and
+          model.ui.fleetDetailModal.commandIdx < maxIdx:
         model.ui.fleetDetailModal.commandIdx += 1
         model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
@@ -1386,18 +1413,20 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         scroll.verticalOffset + 1)
   of ActionKind.fleetDetailSelectCommand:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
-      # Check if there's a pending single digit - auto-prepend '0' and select
+      # Check if there's a pending single digit - map to command code
       if model.ui.fleetDetailModal.commandDigitBuffer.len == 1:
         let digit = model.ui.fleetDetailModal.commandDigitBuffer[0]
         if digit >= '0' and digit <= '9':
-          let cmdNum = parseInt("0" & $digit)  # Prepend 0: "1" becomes "01"
-          if cmdNum >= 0 and cmdNum <= 19:
-            model.ui.fleetDetailModal.commandIdx = cmdNum
+          let cmdNum = parseInt("0" & $digit)
+          let commands =
+            model.ui.fleetDetailModal.commandPickerCommands
+          let idx = commandIndexForCode(commands, cmdNum)
+          if idx >= 0:
+            model.ui.fleetDetailModal.commandIdx = idx
           model.ui.fleetDetailModal.commandDigitBuffer = ""
           # Fall through to select the command
       
-      # Get selected command from flat list (0-19)
-      let commands = allFleetCommands()
+      let commands = model.ui.fleetDetailModal.commandPickerCommands
       let idx = model.ui.fleetDetailModal.commandIdx
       
       if idx >= 0 and idx < commands.len:
@@ -1809,8 +1838,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       # C key from main detail view - open command picker
-      model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
-      model.ui.fleetDetailModal.commandIdx = 0  # Reset selection
+      model.openCommandPicker()
       model.ui.fleetDetailModal.directSubModal = false
   of ActionKind.fleetDetailCancel:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.ConfirmPrompt:
@@ -1899,23 +1927,28 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Handle two-digit quick entry for command selection (00-19)
       if proposal.kind == ProposalKind.pkGameAction:
-        let digit = if proposal.gameActionData.len > 0: proposal.gameActionData[0] else: '\0'
+        let digit = if proposal.gameActionData.len > 0:
+          proposal.gameActionData[0] else: '\0'
         if digit >= '0' and digit <= '9':
           let now = epochTime()
           let buffer = model.ui.fleetDetailModal.commandDigitBuffer
           let lastTime = model.ui.fleetDetailModal.commandDigitTime
+          let commands =
+            model.ui.fleetDetailModal.commandPickerCommands
           
           if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
-            # Second digit - combine with first to get command index
+            # Second digit - combine with first to get command code
             let cmdNum = parseInt(buffer & $digit)
-            if cmdNum >= 0 and cmdNum <= 19:
-              model.ui.fleetDetailModal.commandIdx = cmdNum
+            let idx = commandIndexForCode(commands, cmdNum)
+            if idx >= 0:
+              model.ui.fleetDetailModal.commandIdx = idx
             model.ui.fleetDetailModal.commandDigitBuffer = ""
           else:
             # First digit - jump immediately and wait for second
             let cmdNum = parseInt($digit)
-            if cmdNum >= 0 and cmdNum <= 19:
-              model.ui.fleetDetailModal.commandIdx = cmdNum
+            let idx = commandIndexForCode(commands, cmdNum)
+            if idx >= 0:
+              model.ui.fleetDetailModal.commandIdx = idx
             model.ui.fleetDetailModal.commandDigitBuffer = $digit
             model.ui.fleetDetailModal.commandDigitTime = now
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
