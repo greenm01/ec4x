@@ -278,19 +278,9 @@ proc renderSystemPicker(state: FleetDetailModalState,
                         buf: var CellBuffer) =
   ## Render system picker using Table widget.
   ## Two-column table: Coord (6 wide) | System Name (fill).
-  ## Shows filter indicator at top if filter is active.
+  ## Filter input jumps selection silently.
   if area.isEmpty:
     return
-
-  var renderArea = area
-  # Show filter indicator if active
-  if state.systemPickerFilter.len > 0:
-    let filterText = "Filter: " &
-      state.systemPickerFilter & "_"
-    discard buf.setString(area.x, area.y, filterText,
-      canvasHeaderStyle())
-    renderArea = rect(area.x, area.y + 1,
-      area.width, area.height - 1)
 
   var sysTable = table([
     tableColumn("Coord", width = 6,
@@ -310,7 +300,7 @@ proc renderSystemPicker(state: FleetDetailModalState,
     sysTable.addRow([sys.coordLabel, sys.name])
 
   let count = max(1, state.systemPickerSystems.len)
-  renderPickerTable(sysTable, renderArea, buf,
+  renderPickerTable(sysTable, area, buf,
     selectedIdx = state.systemPickerIdx,
     itemCount = count)
 
@@ -347,7 +337,9 @@ proc renderFleetInfo(fleetData: FleetDetailData, area: Rect,
     return
 
   # Current command and ROE
-  let line2 = "Command: " & fleetData.command & "  ROE: " & $fleetData.roe
+  let line2 = "Command: " & fleetData.command & "  " &
+    "Target: " & fleetData.targetLabel & "  " &
+    "ROE: " & $fleetData.roe
   for i, ch in line2:
     if area.x + i < area.right:
       discard buf.put(area.x + i, y, $ch, canvasStyle())
@@ -383,7 +375,9 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   let maxWidth = max(4, viewport.width - 4)
   let tableWidth = shipTableBase.renderWidth(maxWidth)
   let line1 = "Fleet " & fleetData.fleetName & " at " & fleetData.location
-  let line2 = "Command: " & fleetData.command & "  ROE: " & $fleetData.roe
+  let line2 = "Command: " & fleetData.command & "  " &
+    "Target: " & fleetData.targetLabel & "  " &
+    "ROE: " & $fleetData.roe
   let line3 = "Ships: " & $state.shipCount & "  AS: " &
     $fleetData.totalAttack & "  DS: " & $fleetData.totalDefense
   let shipHeader = "SHIPS (" & $state.shipCount & ")"
@@ -453,13 +447,12 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       # Notice dialog: compact centered message
       10
     of FleetSubModal.SystemPicker:
-      # Cap at 20 visible rows + tableBase(4) + footer(2) + filter(1)
+      # Cap at 20 visible rows + tableBase(4) + footer(2)
       let sysCount = min(20, max(1,
         state.systemPickerSystems.len))
       let tableBaseHeight = 4
       let footerHeight = 2
-      let filterHeight = 1
-      sysCount + tableBaseHeight + footerHeight + filterHeight
+      sysCount + tableBaseHeight + footerHeight
     of FleetSubModal.FleetPicker:
       # Table-based picker: itemCount + tableBase(4) + footer(2)
       let fleetCount = max(1, state.fleetPickerCandidates.len)

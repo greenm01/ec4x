@@ -26,6 +26,7 @@ import ../sam/bindings
 import ../tui/styles/ec_palette
 import ../tui/adapters
 import ../tui/columns
+import ../tui/hex_labels
 import ./sync
 
 const
@@ -514,7 +515,7 @@ proc buildFleetListTable*(model: TuiModel,
       prefix = GlyphWarning & fleet.name
     elif fleet.id in model.ui.stagedFleetCommands:
       prefix = GlyphOk & fleet.name
-    let etaLabel = if fleet.destinationSystemId != 0 and fleet.eta > 0:
+    let etaLabel = if fleet.destinationSystemId != 0:
       $fleet.eta
     else:
       "-"
@@ -1924,8 +1925,38 @@ proc renderDashboard*(
     of ViewMode.FleetDetail:
       # Render fleet detail as full-screen view
       let fleetDetailWidget = newFleetDetailModalWidget()
-      let fleetData = fleetToDetailDataFromPS(playerState, FleetId(model.ui.fleetDetailModal.fleetId))
-      fleetDetailWidget.render(model.ui.fleetDetailModal, fleetData, canvasArea, buf)
+      var fleetData = fleetToDetailDataFromPS(
+        playerState, FleetId(model.ui.fleetDetailModal.fleetId)
+      )
+      let fid = int(model.ui.fleetDetailModal.fleetId)
+      if fid in model.ui.stagedFleetCommands:
+        let staged = model.ui.stagedFleetCommands[fid]
+        let cmdNum = sam_pkg.fleetCommandNumber(
+          staged.commandType
+        )
+        fleetData.command = sam_pkg.commandLabel(cmdNum)
+        fleetData.commandType = int(staged.commandType)
+        if staged.roe.isSome:
+          fleetData.roe = int(staged.roe.get())
+        if staged.targetSystem.isSome:
+          let targetId = staged.targetSystem.get()
+          if playerState.visibleSystems.hasKey(targetId):
+            let target = playerState.visibleSystems[targetId]
+            if target.coordinates.isSome:
+              let coords = target.coordinates.get()
+              fleetData.targetLabel = coordLabel(
+                coords.q.int, coords.r.int
+              )
+            else:
+              fleetData.targetLabel = $targetId
+          else:
+            fleetData.targetLabel = $targetId
+        else:
+          fleetData.targetLabel = "-"
+      fleetDetailWidget.render(
+        model.ui.fleetDetailModal,
+        fleetData, canvasArea, buf
+      )
     of ViewMode.ReportDetail:
       renderReportDetail(canvasArea, buf, model)
 

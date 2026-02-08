@@ -19,7 +19,8 @@ import ./widget/hexmap/hexmap_pkg
 import ./widget/system_list
 import ./hex_labels
 import ./widget/hexmap/symbols
-from ../sam/tui_model import BuildOption, BuildOptionKind, DockSummary
+from ../sam/tui_model import BuildOption, BuildOptionKind, DockSummary,
+  commandLabel, fleetCommandNumber
 
 # -----------------------------------------------------------------------------
 # Coordinate conversions
@@ -535,6 +536,7 @@ type
     totalDefense*: int      # Sum of all ship DS
     command*: string        # Human-readable command (e.g., "Hold")
     commandType*: int       # FleetCommandType as int for logic
+    targetLabel*: string    # Target system coord (e.g., "A10") or "-"
     status*: string         # "Active", "Reserve", "Mothballed"
     roe*: int               # Rules of engagement 0-10
     ships*: seq[ShipDetailRow]
@@ -556,6 +558,7 @@ proc fleetToDetailData*(
       shipCount: 0,
       totalAttack: 0,
       totalDefense: 0,
+      targetLabel: "-",
       ships: @[],
       auxShips: ""
     )
@@ -567,56 +570,24 @@ proc fleetToDetailData*(
   if systemOpt.isSome:
     locationName = systemOpt.get().name
   
-  # Convert command to string
-  var commandStr = "Hold"
-  case fleet.command.commandType:
-  of FleetCommandType.Hold:
-    commandStr = "Hold (awaiting orders)"
-  of FleetCommandType.Move:
-    if fleet.command.targetSystem.isSome:
-      let targetOpt = state.system(fleet.command.targetSystem.get())
-      if targetOpt.isSome:
-        commandStr = "Move to " & targetOpt.get().name
-      else:
-        commandStr = "Move to System " & $fleet.command.targetSystem.get()
+  # Convert command to short label
+  let cmdNum = fleetCommandNumber(
+    fleet.command.commandType
+  )
+  let commandStr = commandLabel(cmdNum)
+
+  # Target label (coord if known)
+  var targetLabel = "-"
+  if fleet.command.targetSystem.isSome:
+    let targetId = fleet.command.targetSystem.get()
+    let targetOpt = state.system(targetId)
+    if targetOpt.isSome:
+      let target = targetOpt.get()
+      targetLabel = coordLabel(
+        int(target.coords.q), int(target.coords.r)
+      )
     else:
-      commandStr = "Move (no target)"
-  of FleetCommandType.SeekHome:
-    commandStr = "Seek Home"
-  of FleetCommandType.Patrol:
-    commandStr = "Patrol"
-  of FleetCommandType.GuardStarbase:
-    commandStr = "Guard Starbase"
-  of FleetCommandType.GuardColony:
-    commandStr = "Guard Colony"
-  of FleetCommandType.Blockade:
-    commandStr = "Blockade"
-  of FleetCommandType.Bombard:
-    commandStr = "Bombard"
-  of FleetCommandType.Invade:
-    commandStr = "Invade"
-  of FleetCommandType.Blitz:
-    commandStr = "Blitz"
-  of FleetCommandType.Colonize:
-    commandStr = "Colonize"
-  of FleetCommandType.ScoutColony:
-    commandStr = "Scout Colony"
-  of FleetCommandType.ScoutSystem:
-    commandStr = "Scout System"
-  of FleetCommandType.HackStarbase:
-    commandStr = "Hack Starbase"
-  of FleetCommandType.JoinFleet:
-    commandStr = "Join Fleet"
-  of FleetCommandType.Rendezvous:
-    commandStr = "Rendezvous"
-  of FleetCommandType.Salvage:
-    commandStr = "Salvage"
-  of FleetCommandType.Reserve:
-    commandStr = "Reserve"
-  of FleetCommandType.Mothball:
-    commandStr = "Mothball"
-  of FleetCommandType.View:
-    commandStr = "View"
+      targetLabel = $targetId
   
   # Convert status to string
   var statusStr = "Active"
@@ -743,6 +714,7 @@ proc fleetToDetailData*(
     totalDefense: totalDS,
     command: commandStr,
     commandType: int(fleet.command.commandType),
+    targetLabel: targetLabel,
     status: statusStr,
     roe: int(fleet.roe),
     ships: shipRows,
@@ -1179,27 +1151,33 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
   ## Limited data compared to full GameState version
   for fleet in ps.ownFleets:
     if fleet.id == fleetId:
-      # Get location name
+      # Get location name (include coords if known)
       var locationName = "Unknown"
       if ps.visibleSystems.hasKey(fleet.location):
-        locationName = ps.visibleSystems[fleet.location].name
+        let visSys = ps.visibleSystems[fleet.location]
+        locationName = visSys.name
+        if visSys.coordinates.isSome:
+          let coords = visSys.coordinates.get()
+          let label = coordLabel(coords.q.int, coords.r.int)
+          locationName &= " (" & label & ")"
 
-      # Build command string
-      var commandStr = $fleet.command.commandType
-      case fleet.command.commandType:
-      of FleetCommandType.Hold:
-        commandStr = "Hold (awaiting orders)"
-      of FleetCommandType.Move:
-        if fleet.command.targetSystem.isSome:
-          let targetId = fleet.command.targetSystem.get()
-          if ps.visibleSystems.hasKey(targetId):
-            commandStr = "Move to " & ps.visibleSystems[targetId].name
-          else:
-            commandStr = "Move to System " & $targetId
+      # Build command string (short label)
+      let cmdNum = fleetCommandNumber(
+        fleet.command.commandType
+      )
+      let commandStr = commandLabel(cmdNum)
+
+      # Target label (coord if known)
+      var targetLabel = "-"
+      if fleet.command.targetSystem.isSome:
+        let targetId = fleet.command.targetSystem.get()
+        if ps.visibleSystems.hasKey(targetId):
+          let target = ps.visibleSystems[targetId]
+          if target.coordinates.isSome:
+            let coords = target.coordinates.get()
+            targetLabel = coordLabel(coords.q.int, coords.r.int)
         else:
-          commandStr = "Move (no target)"
-      else:
-        commandStr = $fleet.command.commandType
+          targetLabel = $targetId
 
       # Build status string
       var statusStr = "Active"
@@ -1253,6 +1231,7 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
         totalDefense: totalDS,
         command: commandStr,
         commandType: fleet.command.commandType.int,
+        targetLabel: targetLabel,
         status: statusStr,
         roe: fleet.roe.int,
         ships: shipRows,
@@ -1267,6 +1246,7 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
     shipCount: 0,
     totalAttack: 0,
     totalDefense: 0,
+    targetLabel: "-",
     ships: @[],
     auxShips: ""
   )
