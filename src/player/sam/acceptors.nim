@@ -1695,6 +1695,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.fleetDetailModal.fleetId, newRoe)
         model.ui.statusMessage = "Staged ROE " &
           $newRoe
+        resetFleetDetailSubModal(model)
+        model.ui.mode = ViewMode.Fleets
+        model.resetBreadcrumbs(ViewMode.Fleets)
   of ActionKind.fleetDetailOpenZTC:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
@@ -1749,6 +1752,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.stageFleetCommand(cmd)
       model.ui.statusMessage = "Staged command: " & $cmdType
       resetFleetDetailSubModal(model)
+      model.ui.mode = ViewMode.Fleets
+      model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       # C key from main detail view - open command picker
       model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
