@@ -77,7 +77,7 @@ proc coordLabel*(q, r: int): string =
   let label = ringLabel(ring)
 
   if position > 0:
-    label & $position
+    label & $position.intToStr(2)
   else:
     label
 
