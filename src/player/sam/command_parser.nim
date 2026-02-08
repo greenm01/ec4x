@@ -846,9 +846,9 @@ proc parseExpertCommand*(input: string): ParseResult =
   of "seek":
     parseFleetSimple(tokens, FleetCommandType.SeekHome, "seek")
   of "guard":
-    parseFleetSimple(tokens, FleetCommandType.GuardColony, "guard")
+    parseFleetTargetSystem(tokens, FleetCommandType.GuardColony, "guard")
   of "guard-starbase":
-    parseFleetSimple(tokens, FleetCommandType.GuardStarbase, "guard-starbase")
+    parseFleetTargetSystem(tokens, FleetCommandType.GuardStarbase, "guard-starbase")
   of "blockade":
     parseFleetTargetSystem(tokens, FleetCommandType.Blockade, "blockade")
   of "bombard":

@@ -172,7 +172,7 @@ Explicit commands that execute until completed or overridden:
 | 15  | Rendezvous     | None                                     | Player-selected system             |
 | 16  | Salvage        | None                                     | Friendly colony system (player)    |
 | 17  | Reserve        | None                                     | Friendly colony system (player)    |
-| 18  | Mothball       | None                                     | Colony with Spaceport (player)     |
+| 18  | Mothball       | None                                     | Friendly colony system (player)    |
 | 19  | View           | None                                     | Player-selected system             |
 
 **Destinations and Requirements:**
@@ -486,7 +486,7 @@ Instantly places a fleet into **Reserve** status during the Command Phase.
 - **Combat Effectiveness**: Ships fight at 50% AS (Crippled state).
 - **Command Assignment**: Automatically assigned **Blockade (06)** command to participate in orbital defense.
 - **Mobility**: Immobile. Cannot execute movement commands.
-- **Requirements**: Fleet must be at a friendly starbase or shipyard.
+- **Requirements**: Fleet must be at a house-controlled colony.
 
 **Use Reserve Status to:**
 - Reduce C2/Maintenance costs while maintaining a credible defensive deterrent.
@@ -502,7 +502,7 @@ Instantly places a fleet into **Mothballed** status during the Command Phase.
 - **Combat Effectiveness**: None. Ships are offline and defenseless.
 - **Defense**: Must be screened by active/reserve fleets or starbases. Vulnerable to destruction if defenders lost.
 - **Mobility**: Immobile.
-- **Requirements**: Fleet must be at a friendly starbase or shipyard.
+- **Requirements**: Fleet must be at a house-controlled colony.
 
 **Use Mothball to:**
 - Store valuable ships at minimal cost during peacetime.

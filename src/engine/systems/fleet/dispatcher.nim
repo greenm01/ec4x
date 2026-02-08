@@ -1734,29 +1734,28 @@ proc executeMothballCommand(
 ): OrderOutcome =
   ## Mothball fleet (0% maintenance, offline, screened in combat)
   ## Per economy.md:3.9
-  ## If not at friendly colony with spaceport, auto-seeks nearest one first
+  ## If not at friendly colony, auto-seeks nearest one first
 
-  # Check if already at a friendly colony with spaceport
-  var atFriendlyColonyWithSpaceport = false
+  # Check if already at a friendly colony
+  var atFriendlyColony = false
   let colonyOpt = state.colonyBySystem(fleet.location)
   if colonyOpt.isSome:
     let colony = colonyOpt.get()
-    if colony.owner == fleet.houseId and colony.neoriaIds.len > 0:
-      atFriendlyColonyWithSpaceport = true
+    if colony.owner == fleet.houseId:
+      atFriendlyColony = true
 
-  # If not at friendly colony with spaceport, find closest one and move there
-  if not atFriendlyColonyWithSpaceport:
-    # Find all friendly colonies with spaceports (neoria facilities)
-    var friendlyColoniesWithSpaceports: seq[SystemId] = @[]
+  # If not at friendly colony, find closest one and move there
+  if not atFriendlyColony:
+    # Find all friendly colonies
+    var friendlyColonies: seq[SystemId] = @[]
     for colony in state.coloniesOwned(fleet.houseId):
-      if colony.neoriaIds.len > 0:
-        friendlyColoniesWithSpaceports.add(colony.systemId)
+      friendlyColonies.add(colony.systemId)
 
-    if friendlyColoniesWithSpaceports.len == 0:
+    if friendlyColonies.len == 0:
       return OrderOutcome.Failed
 
     # Find closest colony using pathfinding
-    let (closestColony, _) = findNearestColonyFromList(state, fleet, friendlyColoniesWithSpaceports)
+    let (closestColony, _) = findNearestColonyFromList(state, fleet, friendlyColonies)
 
     # Not at colony yet - move toward it
     if fleet.location != closestColony:
@@ -1798,7 +1797,7 @@ proc executeMothballCommand(
       # Silent - movement in progress
       return OrderOutcome.Success
 
-  # At friendly colony with spaceport - apply mothball status
+  # At friendly colony - apply mothball status
   var updatedFleet = fleet
   updatedFleet.status = FleetStatus.Mothballed
   state.updateFleet(fleet.id, updatedFleet)

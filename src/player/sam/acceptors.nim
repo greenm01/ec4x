@@ -1627,6 +1627,43 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if idx >= 0 and idx < systems.len:
         let target = systems[idx]
         let cmdType = model.ui.fleetDetailModal.systemPickerCommandType
+        # Validate target for starbase/colony-specific commands
+        case cmdType
+        of FleetCommandType.GuardStarbase:
+          var hasStarbase = false
+          for row in model.view.planetsRows:
+            if row.systemId == target.systemId and row.isOwned and
+                row.starbaseCount > 0:
+              hasStarbase = true
+              break
+          if not hasStarbase:
+            model.ui.statusMessage =
+              "No friendly starbase in that system"
+            return
+        of FleetCommandType.GuardColony:
+          var hasColony = false
+          for row in model.view.planetsRows:
+            if row.systemId == target.systemId and row.isOwned:
+              hasColony = true
+              break
+          if not hasColony:
+            model.ui.statusMessage =
+              "No friendly colony in that system"
+            return
+        of FleetCommandType.HackStarbase:
+          var hasKnownStarbase = false
+          for row in model.view.intelRows:
+            if row.systemId == target.systemId and
+                row.starbaseCount.isSome and
+                row.starbaseCount.get > 0:
+              hasKnownStarbase = true
+              break
+          if not hasKnownStarbase:
+            model.ui.statusMessage =
+              "No known starbase in that system"
+            return
+        else:
+          discard
         # Stage command for batch or single fleet
         if model.ui.selectedFleetIds.len > 0:
           for fleetId in model.ui.selectedFleetIds:

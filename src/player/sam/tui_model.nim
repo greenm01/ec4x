@@ -454,6 +454,7 @@ type
     intelLabel*: string
     ltuLabel*: string
     notes*: string
+    starbaseCount*: Option[int]
 
   FleetInfo* = object
     ## Fleet info for list display
@@ -1828,8 +1829,7 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
   let cmdLbl = commandLabel(cmdNum)
   let newRoe = if cmd.roe.isSome: int(cmd.roe.get()) else: -1
   let isStationary = cmd.commandType in {
-    FleetCommandType.Hold, FleetCommandType.GuardStarbase,
-    FleetCommandType.GuardColony, FleetCommandType.SeekHome}
+    FleetCommandType.Hold, FleetCommandType.SeekHome}
   let destLabel = if cmd.targetSystem.isSome:
       model.systemNameById(int(cmd.targetSystem.get()))
     elif isStationary: "-"

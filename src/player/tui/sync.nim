@@ -1219,7 +1219,8 @@ type
   IntelOwnerInfo = tuple[
     colonyId: Option[ColonyId],
     ownerName: string,
-    isOwned: bool
+    isOwned: bool,
+    starbaseCount: Option[int]
   ]
 
 proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
@@ -1230,7 +1231,8 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
   let defaultOwner = (
     colonyId: none(ColonyId),
     ownerName: "---",
-    isOwned: false
+    isOwned: false,
+    starbaseCount: none(int)
   )
 
   for colony in ps.ownColonies:
@@ -1238,17 +1240,23 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
     colonyOwners[colony.systemId] = (
       colonyId: some(colony.id),
       ownerName: ownerName,
-      isOwned: true
+      isOwned: true,
+      starbaseCount: some(colony.kastraIds.len)
     )
 
   for visColony in ps.visibleColonies:
     if colonyOwners.hasKey(visColony.systemId):
       continue
     let ownerName = ps.houseNames.getOrDefault(visColony.owner, "Unknown")
+    let sbCount = if visColony.starbaseLevel.isSome:
+        some(int(visColony.starbaseLevel.get))
+      else:
+        none(int)
     colonyOwners[visColony.systemId] = (
       colonyId: some(visColony.colonyId),
       ownerName: ownerName,
-      isOwned: false
+      isOwned: false,
+      starbaseCount: sbCount
     )
 
   for systemId, visSys in ps.visibleSystems.pairs:
@@ -1273,7 +1281,8 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
       ownerName: ownerInfo.ownerName,
       intelLabel: visibilityLabel(visSys.visibility, ownerInfo.isOwned),
       ltuLabel: ltuLabel,
-      notes: notes
+      notes: notes,
+      starbaseCount: ownerInfo.starbaseCount
     ))
 
   model.view.intelRows.sort(proc(a, b: IntelRow): int =
