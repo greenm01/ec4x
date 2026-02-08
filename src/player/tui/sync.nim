@@ -318,11 +318,17 @@ proc syncGameStateToModel*(
   for lane in state.starMap.lanes.data:
     let src = int(lane.source)
     let dst = int(lane.destination)
-    model.view.laneTypes[(src, dst)] =
-      int(lane.laneType)
+    let lt = int(lane.laneType)
+    # Bidirectional: lanes.data stores each lane
+    # once but graph must be traversable both ways
+    model.view.laneTypes[(src, dst)] = lt
+    model.view.laneTypes[(dst, src)] = lt
     if src notin model.view.laneNeighbors:
       model.view.laneNeighbors[src] = @[]
     model.view.laneNeighbors[src].add(dst)
+    if dst notin model.view.laneNeighbors:
+      model.view.laneNeighbors[dst] = @[]
+    model.view.laneNeighbors[dst].add(src)
   for colony in state.coloniesOwned(viewingHouse):
     model.view.ownedSystemIds.incl(
       int(colony.systemId)
@@ -762,11 +768,18 @@ proc syncPlayerStateToModel*(
   var psConnInfo =
     initTable[(SystemId, SystemId), LaneClass]()
   for lane in ps.jumpLanes:
+    # Bidirectional: jumpLanes stores each lane
+    # once but graph must be traversable both ways
     psConnInfo[(lane.source, lane.destination)] =
+      lane.laneType
+    psConnInfo[(lane.destination, lane.source)] =
       lane.laneType
     if lane.source notin psNeighbors:
       psNeighbors[lane.source] = @[]
     psNeighbors[lane.source].add(lane.destination)
+    if lane.destination notin psNeighbors:
+      psNeighbors[lane.destination] = @[]
+    psNeighbors[lane.destination].add(lane.source)
 
   # Build owned system set for 2-jump rule
   var psOwnedSystems = initHashSet[SystemId]()
@@ -979,11 +992,17 @@ proc syncPlayerStateToModel*(
   for lane in ps.jumpLanes:
     let src = int(lane.source)
     let dst = int(lane.destination)
-    model.view.laneTypes[(src, dst)] =
-      int(lane.laneType)
+    let lt = int(lane.laneType)
+    # Bidirectional: jumpLanes stores each lane
+    # once but graph must be traversable both ways
+    model.view.laneTypes[(src, dst)] = lt
+    model.view.laneTypes[(dst, src)] = lt
     if src notin model.view.laneNeighbors:
       model.view.laneNeighbors[src] = @[]
     model.view.laneNeighbors[src].add(dst)
+    if dst notin model.view.laneNeighbors:
+      model.view.laneNeighbors[dst] = @[]
+    model.view.laneNeighbors[dst].add(src)
   for colony in ps.ownColonies:
     model.view.ownedSystemIds.incl(
       int(colony.systemId)
