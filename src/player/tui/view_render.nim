@@ -898,13 +898,8 @@ proc renderPlanetSummaryTab*(
     rightY += 1
   if rightY < right.bottom:
     let dockLine =
-      "Docks: CDK " & dockLabel(
-        data.dockSummary.constructionAvailable,
-        data.dockSummary.constructionTotal
-      ) & "  RDK " & dockLabel(
-        data.dockSummary.repairAvailable,
-        data.dockSummary.repairTotal
-      )
+      "Docks: CD " & $data.dockSummary.constructionTotal &
+      "  RD " & $data.dockSummary.repairTotal
     discard buf.setString(right.x, rightY, dockLine, normalStyle())
     rightY += 1
 
@@ -962,14 +957,8 @@ proc renderPlanetConstructionTab*(
 
   var y = area.y
   let docksLine =
-    "Construction Docks: " & dockLabel(
-      data.dockSummary.constructionAvailable,
-      data.dockSummary.constructionTotal
-    ) &
-    "  Repair Docks: " & dockLabel(
-      data.dockSummary.repairAvailable,
-      data.dockSummary.repairTotal
-    )
+    "Docks: CD " & $data.dockSummary.constructionTotal &
+    "  RD " & $data.dockSummary.repairTotal
   discard buf.setString(area.x, y, docksLine, canvasHeaderStyle())
   y += 1
   if y >= area.bottom:
@@ -1193,7 +1182,7 @@ proc renderPlanetUnifiedView*(
     let right = columns[1]
 
     let surfaceFrame = bordered()
-      .title("SURFACE OPERATIONS")
+      .title("SURFACE ASSETS")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
     surfaceFrame.render(left, buf)
@@ -1208,16 +1197,10 @@ proc renderPlanetUnifiedView*(
         normalStyle())
       leftY += 1
     if leftY < surfaceInner.bottom:
-      let outputLine =
-        "Output: " & $data.populationOutput &
-        " / " & $data.industrialOutput
-      discard buf.setString(surfaceInner.x, leftY, outputLine,
-        normalStyle())
-      leftY += 1
-    if leftY < surfaceInner.bottom:
       let garrisonLine =
         "Armies: " & $data.armies &
-        "  Marines: " & $data.marines
+        "  Marines: " & $data.marines &
+        "  Fighters: " & $data.fighters
       discard buf.setString(surfaceInner.x, leftY, garrisonLine,
         normalStyle())
       leftY += 1
@@ -1230,7 +1213,7 @@ proc renderPlanetUnifiedView*(
         normalStyle())
 
     let orbitalFrame = bordered()
-      .title("ORBITAL INFRASTRUCTURE")
+      .title("FACILITIES")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
     orbitalFrame.render(right, buf)
@@ -1253,23 +1236,11 @@ proc renderPlanetUnifiedView*(
       rightY += 1
     if rightY < orbitalInner.bottom:
       let dockLine =
-        "Docks: CDK " & dockLabel(
-          data.dockSummary.constructionAvailable,
-          data.dockSummary.constructionTotal
-        ) & "  RDK " & dockLabel(
-          data.dockSummary.repairAvailable,
-          data.dockSummary.repairTotal
-        )
+        "Docks: CD " & $data.dockSummary.constructionTotal &
+        "  RD " & $data.dockSummary.repairTotal
       discard buf.setString(orbitalInner.x, rightY, dockLine,
         normalStyle())
       rightY += 1
-    if rightY < orbitalInner.bottom:
-      let fleetLine =
-        "Fleets: Act " & $data.fleetsActive &
-        "  Rsv " & $data.fleetsReserve &
-        "  Mtb " & $data.fleetsMothball
-      discard buf.setString(orbitalInner.x, rightY, fleetLine,
-        normalStyle())
   else:
     let stacked = vertical()
       .constraints(fill(), fill())
@@ -1278,7 +1249,7 @@ proc renderPlanetUnifiedView*(
     let bottomPanel = stacked[1]
 
     let surfaceFrame = bordered()
-      .title("SURFACE OPERATIONS")
+      .title("SURFACE ASSETS")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
     surfaceFrame.render(topPanel, buf)
@@ -1293,16 +1264,10 @@ proc renderPlanetUnifiedView*(
         normalStyle())
       leftY += 1
     if leftY < surfaceInner.bottom:
-      let outputLine =
-        "Output: " & $data.populationOutput &
-        " / " & $data.industrialOutput
-      discard buf.setString(surfaceInner.x, leftY, outputLine,
-        normalStyle())
-      leftY += 1
-    if leftY < surfaceInner.bottom:
       let garrisonLine =
         "Armies: " & $data.armies &
-        "  Marines: " & $data.marines
+        "  Marines: " & $data.marines &
+        "  Fighters: " & $data.fighters
       discard buf.setString(surfaceInner.x, leftY, garrisonLine,
         normalStyle())
       leftY += 1
@@ -1315,7 +1280,7 @@ proc renderPlanetUnifiedView*(
         normalStyle())
 
     let orbitalFrame = bordered()
-      .title("ORBITAL INFRASTRUCTURE")
+      .title("FACILITIES")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
     orbitalFrame.render(bottomPanel, buf)
@@ -1338,23 +1303,11 @@ proc renderPlanetUnifiedView*(
       rightY += 1
     if rightY < orbitalInner.bottom:
       let dockLine =
-        "Docks: CDK " & dockLabel(
-          data.dockSummary.constructionAvailable,
-          data.dockSummary.constructionTotal
-        ) & "  RDK " & dockLabel(
-          data.dockSummary.repairAvailable,
-          data.dockSummary.repairTotal
-        )
+        "Docks: CD " & $data.dockSummary.constructionTotal &
+        "  RD " & $data.dockSummary.repairTotal
       discard buf.setString(orbitalInner.x, rightY, dockLine,
         normalStyle())
       rightY += 1
-    if rightY < orbitalInner.bottom:
-      let fleetLine =
-        "Fleets: Act " & $data.fleetsActive &
-        "  Rsv " & $data.fleetsReserve &
-        "  Mtb " & $data.fleetsMothball
-      discard buf.setString(orbitalInner.x, rightY, fleetLine,
-        normalStyle())
 
   let repairLabel = if data.autoRepair: "ON" else: "OFF"
   let marinesLabel = if data.autoLoadMarines: "ON" else: "OFF"
@@ -1927,17 +1880,20 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
     .borderStyle(primaryBorderStyle())
     .bgStyle(modalBgStyle())
   let headerLines = 3
-  let panelContentLines = 4
+  let panelContentLines = 3
   let panelHeight = panelContentLines + 2
   let footerLines = 1
   let useColumns = canvas.width >= 80
   let bodyHeight = if useColumns: panelHeight else: panelHeight * 2
-  let desiredHeight = headerLines + bodyHeight + footerLines
-  let maxHeight = max(8, canvas.height - 4)
-  let contentHeight = min(desiredHeight, maxHeight)
+  let desiredContentHeight =
+    headerLines + bodyHeight + footerLines + 2
+  let maxContentHeight = max(1, canvas.height - 4)
+  let contentHeight = min(desiredContentHeight, maxContentHeight)
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.render(modalArea, buf)
-  let contentArea = modal.contentArea(modalArea, hasFooter = false)
+  let footerText =
+    "[R]epair [M]arines [F]ighters [B]uild [←/→]Next [H/L]Prev/Next"
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
 
   # Render planet detail inside the modal
   renderPlanetDetailFromPS(contentArea, buf, model, ps)

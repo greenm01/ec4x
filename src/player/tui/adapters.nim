@@ -769,6 +769,7 @@ type
     fleetsActive*: int
     fleetsReserve*: int
     fleetsMothball*: int
+    fighters*: int
     armies*: int
     marines*: int
     batteries*: int
@@ -944,6 +945,8 @@ proc colonyToDetailData*(
     of GroundClass.PlanetaryShield:
       shields.inc
 
+  let fighters = colony.fighterIds.len
+
   var fleetsActive = 0
   var fleetsReserve = 0
   var fleetsMothball = 0
@@ -1110,6 +1113,7 @@ proc colonyToDetailData*(
     fleetsActive: fleetsActive,
     fleetsReserve: fleetsReserve,
     fleetsMothball: fleetsMothball,
+    fighters: fighters,
     armies: armies,
     marines: marines,
     batteries: batteries,
@@ -1322,6 +1326,7 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
       var fleetsActive = 0
       var fleetsReserve = 0
       var fleetsMothball = 0
+      let fighters = colony.fighterIds.len
       for fleet in ps.ownFleets:
         if fleet.location != colony.systemId:
           continue
@@ -1363,6 +1368,7 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
         fleetsActive: fleetsActive,
         fleetsReserve: fleetsReserve,
         fleetsMothball: fleetsMothball,
+        fighters: fighters,
         armies: 0,  # Would need ground unit data
         marines: 0,
         batteries: 0,

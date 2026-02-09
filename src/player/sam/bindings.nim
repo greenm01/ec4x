@@ -535,6 +535,30 @@ proc initBindings*() =
   # =========================================================================
 
   registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.cycleColony,
+    context: BindingContext.PlanetDetail,
+    longLabel: "PREV COL", shortLabel: "←", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.cycleColony,
+    context: BindingContext.PlanetDetail,
+    longLabel: "PREV COL", shortLabel: "H", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.cycleColony,
+    context: BindingContext.PlanetDetail,
+    longLabel: "NEXT COL", shortLabel: "→", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.cycleColony,
+    context: BindingContext.PlanetDetail,
+    longLabel: "NEXT COL", shortLabel: "L", priority: 2))
+
+  registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
     actionKind: ActionKind.openBuildModal,
     context: BindingContext.PlanetDetail,
@@ -1309,6 +1333,9 @@ proc dispatchAction*(b: Binding, model: TuiModel,
 
   of ActionKind.switchFleetView:
     return some(actionSwitchFleetView())
+  of ActionKind.cycleColony:
+    let reverse = key in {KeyCode.KeyLeft, KeyCode.KeyH}
+    return some(actionCycleColony(reverse))
   of ActionKind.cycleReportFilter:
     return some(actionCycleReportFilter())
   of ActionKind.reportFocusNext:
