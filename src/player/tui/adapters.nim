@@ -578,7 +578,15 @@ proc fleetToDetailData*(
 
   # Target label (coord if known)
   var targetLabel = "-"
-  if fleet.command.targetSystem.isSome:
+  if fleet.command.commandType == FleetCommandType.JoinFleet and
+      fleet.command.targetFleet.isSome:
+    let targetId = fleet.command.targetFleet.get()
+    let targetOpt = state.fleet(targetId)
+    if targetOpt.isSome:
+      targetLabel = "Fleet " & targetOpt.get().name
+    else:
+      targetLabel = "Fleet " & $targetId
+  elif fleet.command.targetSystem.isSome:
     let targetId = fleet.command.targetSystem.get()
     let targetOpt = state.system(targetId)
     if targetOpt.isSome:
@@ -736,10 +744,6 @@ type
     cost*: int
     status*: string
 
-  DockedFleetInfo* = object
-    name*: string
-    shipCount*: int
-
   PlanetDetailData* = object
     colonyId*: int
     systemName*: string
@@ -762,11 +766,13 @@ type
     drydocks*: int
     starbases*: int
     dockSummary*: DockSummary
+    fleetsActive*: int
+    fleetsReserve*: int
+    fleetsMothball*: int
     armies*: int
     marines*: int
     batteries*: int
     shields*: int
-    dockedFleets*: seq[DockedFleetInfo]
     queue*: seq[QueueItem]
     buildOptions*: seq[BuildOption]
     autoRepair*: bool
@@ -938,14 +944,19 @@ proc colonyToDetailData*(
     of GroundClass.PlanetaryShield:
       shields.inc
 
-  var dockedFleets: seq[DockedFleetInfo] = @[]
+  var fleetsActive = 0
+  var fleetsReserve = 0
+  var fleetsMothball = 0
   for fleet in state.fleetsInSystem(colony.systemId):
     if fleet.houseId != houseId:
       continue
-    dockedFleets.add(DockedFleetInfo(
-      name: "Fleet " & fleet.name,
-      shipCount: fleet.ships.len
-    ))
+    case fleet.status
+    of FleetStatus.Active:
+      fleetsActive.inc
+    of FleetStatus.Reserve:
+      fleetsReserve.inc
+    of FleetStatus.Mothballed:
+      fleetsMothball.inc
 
   var queue: seq[QueueItem] = @[]
   for project in state.constructionProjectsAtColony(colonyId):
@@ -1096,11 +1107,13 @@ proc colonyToDetailData*(
     drydocks: drydocks,
     starbases: starbasesCount,
     dockSummary: dockInfo,
+    fleetsActive: fleetsActive,
+    fleetsReserve: fleetsReserve,
+    fleetsMothball: fleetsMothball,
     armies: armies,
     marines: marines,
     batteries: batteries,
     shields: shields,
-    dockedFleets: dockedFleets,
     queue: queue,
     buildOptions: buildOptions,
     autoRepair: colony.autoRepair,
@@ -1169,7 +1182,19 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
 
       # Target label (coord if known)
       var targetLabel = "-"
-      if fleet.command.targetSystem.isSome:
+      if fleet.command.commandType == FleetCommandType.JoinFleet and
+          fleet.command.targetFleet.isSome:
+        let targetId = fleet.command.targetFleet.get()
+        var targetName = ""
+        for candidate in ps.ownFleets:
+          if candidate.id == targetId:
+            targetName = candidate.name
+            break
+        if targetName.len > 0:
+          targetLabel = "Fleet " & targetName
+        else:
+          targetLabel = "Fleet " & $targetId
+      elif fleet.command.targetSystem.isSome:
         let targetId = fleet.command.targetSystem.get()
         if ps.visibleSystems.hasKey(targetId):
           let target = ps.visibleSystems[targetId]
@@ -1293,6 +1318,20 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
           if kastra.id == kastraId:
             starbases.inc
             break
+      
+      var fleetsActive = 0
+      var fleetsReserve = 0
+      var fleetsMothball = 0
+      for fleet in ps.ownFleets:
+        if fleet.location != colony.systemId:
+          continue
+        case fleet.status
+        of FleetStatus.Active:
+          fleetsActive.inc
+        of FleetStatus.Reserve:
+          fleetsReserve.inc
+        of FleetStatus.Mothballed:
+          fleetsMothball.inc
 
       return PlanetDetailData(
         colonyId: colonyId.int,
@@ -1321,11 +1360,13 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
           repairAvailable: 0,
           repairTotal: colony.repairDocks.int,
         ),
+        fleetsActive: fleetsActive,
+        fleetsReserve: fleetsReserve,
+        fleetsMothball: fleetsMothball,
         armies: 0,  # Would need ground unit data
         marines: 0,
         batteries: 0,
         shields: 0,
-        dockedFleets: @[],  # Could build from ps.ownFleets
         queue: @[],  # Construction queue not fully detailed in PlayerState
         buildOptions: @[],  # Would need full GameState to compute
         autoRepair: colony.autoRepair,

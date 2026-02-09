@@ -196,11 +196,14 @@ proc render*(widget: BuildModalWidget, state: BuildModalState,
   let separatorY = inner.y + 2
 
   # Draw separator line after header
-  let bs = PlainBorderSet
-  discard buf.put(modalArea.x, separatorY, "├", modalBorderStyle())
+  let glyphs = widget.modal.separatorGlyphs()
+  discard buf.put(modalArea.x, separatorY, glyphs.left,
+    modalBorderStyle())
   for x in (modalArea.x + 1)..<(modalArea.right - 1):
-    discard buf.put(x, separatorY, bs.horizontal, modalBorderStyle())
-  discard buf.put(modalArea.right - 1, separatorY, "┤", modalBorderStyle())
+    discard buf.put(x, separatorY, glyphs.horizontal,
+      modalBorderStyle())
+  discard buf.put(modalArea.right - 1, separatorY, glyphs.right,
+    modalBorderStyle())
 
   # Content area (build list and queue)
   let contentArea = rect(inner.x, separatorY + 1, inner.width,

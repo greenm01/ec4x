@@ -5,7 +5,7 @@
 ##
 ## Features:
 ## - Automatically centers within the given area
-## - Single-line border (dialog style per ec-style-layout.md)
+## - Configurable border style (default: Double)
 ## - Optional title bar with centered title
 ## - Calculates max width as min(termWidth - 4, maxWidth)
 
@@ -24,6 +24,7 @@ type
     titleStyle: CellStyle
     borderStyle: CellStyle
     bgStyle: CellStyle
+    borderType: BorderType
     maxWidth: int
     minWidth: int
     minHeight: int
@@ -35,6 +36,7 @@ proc newModal*(): Modal =
     titleStyle: canvasHeaderStyle(),
     borderStyle: modalBorderStyle(),
     bgStyle: modalBgStyle(),
+    borderType: BorderType.Double,
     maxWidth: 72,
     minWidth: 40,
     minHeight: 10
@@ -56,6 +58,23 @@ proc borderStyle*(m: Modal, s: CellStyle): Modal =
   ## Set the border style.
   result = m
   result.borderStyle = s
+
+proc borderType*(m: Modal, bt: BorderType): Modal =
+  ## Set the border type.
+  result = m
+  result.borderType = bt
+
+proc borderType*(m: Modal): BorderType =
+  ## Get the border type.
+  m.borderType
+
+proc separatorGlyphs*(m: Modal): tuple[left, right, horizontal: string] =
+  ## Separator line glyphs to use inside a modal.
+  ## Keeps interior separators single-line even for double borders.
+  if m.borderType == BorderType.Double:
+    return ("╟", "╢", "─")
+  let bs = m.borderType.borderSet()
+  (left: "├", right: "┤", horizontal: bs.horizontal)
 
 proc bgStyle*(m: Modal, s: CellStyle): Modal =
   ## Set the background style.
@@ -137,10 +156,10 @@ proc render*(m: Modal, area: Rect, buf: var CellBuffer) =
   for pos in area.positions:
     discard buf.put(pos.x, pos.y, " ", m.bgStyle)
   
-  # Create frame with single-line border
+  # Create frame with modal border type
   var frame = bordered()
     .borderStyle(m.borderStyle)
-    .borderType(BorderType.Plain)
+    .borderType(m.borderType)
   
   # Add title if present
   if m.title.isSome:
@@ -159,15 +178,15 @@ proc renderWithSeparator*(m: Modal, area: Rect, buf: var CellBuffer,
   if footerHeight > 0 and area.height > footerHeight + 2:
     # Draw separator line
     let sepY = area.bottom - footerHeight - 1
-    let bs = PlainBorderSet
+    let glyphs = m.separatorGlyphs()
     
     # Left junction
-    discard buf.put(area.x, sepY, "├", m.borderStyle)
+    discard buf.put(area.x, sepY, glyphs.left, m.borderStyle)
     # Horizontal line
     for x in (area.x + 1)..<(area.right - 1):
-      discard buf.put(x, sepY, bs.horizontal, m.borderStyle)
+      discard buf.put(x, sepY, glyphs.horizontal, m.borderStyle)
     # Right junction
-    discard buf.put(area.right - 1, sepY, "┤", m.borderStyle)
+    discard buf.put(area.right - 1, sepY, glyphs.right, m.borderStyle)
 
 proc renderWithFooter*(m: Modal, area: Rect, buf: var CellBuffer,
                        footerText: string) =

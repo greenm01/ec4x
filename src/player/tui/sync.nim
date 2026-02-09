@@ -222,7 +222,15 @@ proc syncGameStateToModel*(
     var destLabel = "-"
     var destSystemId = 0
     var eta = 0
-    if fleet.command.targetSystem.isSome:
+    if fleet.command.commandType == FleetCommandType.JoinFleet and
+        fleet.command.targetFleet.isSome:
+      let targetId = fleet.command.targetFleet.get()
+      let targetOpt = state.fleet(targetId)
+      if targetOpt.isSome:
+        destLabel = "Fleet " & targetOpt.get().name
+      else:
+        destLabel = "Fleet " & $targetId
+    elif fleet.command.targetSystem.isSome:
       let targetId = fleet.command.targetSystem.get()
       destSystemId = int(targetId)
       let targetOpt = state.system(targetId)
@@ -602,7 +610,19 @@ proc syncFleetConsoleFleets*(
     # Get destination and ETA
     var destLabel = ""
     var eta = 0
-    if fleet.command.targetSystem.isSome:
+    if fleet.command.commandType == FleetCommandType.JoinFleet and
+        fleet.command.targetFleet.isSome:
+      let targetId = fleet.command.targetFleet.get()
+      var targetName = ""
+      for candidate in ps.ownFleets:
+        if candidate.id == targetId:
+          targetName = candidate.name
+          break
+      if targetName.len > 0:
+        destLabel = "Fleet " & targetName
+      else:
+        destLabel = "Fleet " & $targetId
+    elif fleet.command.targetSystem.isSome:
       let targetId = fleet.command.targetSystem.get()
       if ps.visibleSystems.hasKey(targetId):
         let target = ps.visibleSystems[targetId]
@@ -929,7 +949,19 @@ proc syncPlayerStateToModel*(
     var destLabel = "-"
     var destSystemId = 0
     var eta = 0
-    if fleet.command.targetSystem.isSome:
+    if fleet.command.commandType == FleetCommandType.JoinFleet and
+        fleet.command.targetFleet.isSome:
+      let targetId = fleet.command.targetFleet.get()
+      var targetName = ""
+      for candidate in ps.ownFleets:
+        if candidate.id == targetId:
+          targetName = candidate.name
+          break
+      if targetName.len > 0:
+        destLabel = "Fleet " & targetName
+      else:
+        destLabel = "Fleet " & $targetId
+    elif fleet.command.targetSystem.isSome:
       let targetId = fleet.command.targetSystem.get()
       destSystemId = int(targetId)
       if ps.visibleSystems.hasKey(targetId):

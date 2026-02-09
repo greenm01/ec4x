@@ -359,18 +359,13 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   ## Render the fleet detail view
   ## NOTE: No longer checks state.active - called only when ViewMode == FleetDetail
   
-  let maxRows = fleetDetailMaxRows(viewport.height)
-  let visibleRows = min(state.shipCount, max(1, maxRows))
   var renderScroll = state.shipScroll
-  renderScroll.contentLength = state.shipCount
-  renderScroll.viewportLength = max(1, maxRows)
-  renderScroll.clampOffsets()
+  var visibleRows = 0
 
   let shipTableBase = shipListTable()
     .showBorders(true)
     .showHeader(true)
     .showSeparator(true)
-    .fillHeight(true)
 
   let maxWidth = max(4, viewport.width - 4)
   let tableWidth = shipTableBase.renderWidth(maxWidth)
@@ -409,7 +404,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   let modal = widget.modal
     .maxWidth(desiredWidth)
     .minWidth(desiredWidth)
-    .minHeight(if isSubModal: 0 else: 25)
+    .minHeight(0)
 
   var shipTable = shipTableBase
     .scrollOffset(renderScroll.verticalOffset)
@@ -479,12 +474,18 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       10
     of FleetSubModal.None:
       # Normal fleet detail view with ship list
+      let maxRows = fleetDetailMaxRows(viewport.height)
+      visibleRows = min(state.shipCount, max(0, maxRows))
+      renderScroll.contentLength = state.shipCount
+      renderScroll.viewportLength = max(1, visibleRows)
+      renderScroll.clampOffsets()
       let shipsContentHeight = FleetDetailShipsHeaderHeight +
         shipTable.renderHeight(visibleRows)
       FleetDetailInfoHeight + FleetDetailSeparatorHeight +
         shipsContentHeight + FleetDetailFooterHeight
   
-  let modalArea = modal.calculateArea(viewport, contentHeight)
+  var modalArea = modal.calculateArea(viewport, contentHeight)
+  var effectiveModalArea = modalArea
 
   # Render modal frame with title
   # Determine footer text per sub-modal (pickers get bordered footers too)
@@ -507,13 +508,36 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     else:
       (false, "")
 
+  if state.subModal == FleetSubModal.None:
+    let estimatedInnerHeight = max(1,
+      contentHeight - FleetDetailFooterHeight)
+    let estimatedShipsHeight = max(1, estimatedInnerHeight -
+      (FleetDetailInfoHeight + FleetDetailSeparatorHeight))
+    let estimatedTableHeight = max(0,
+      estimatedShipsHeight - FleetDetailShipsHeaderHeight)
+    visibleRows = min(state.shipCount, max(0,
+      estimatedTableHeight - FleetDetailTableBaseHeight))
+    renderScroll.contentLength = state.shipCount
+    renderScroll.viewportLength = max(1, visibleRows)
+    renderScroll.clampOffsets()
+    let shipsContentHeight = FleetDetailShipsHeaderHeight +
+      shipTable.renderHeight(visibleRows)
+    let desiredContentHeight = FleetDetailInfoHeight +
+      FleetDetailSeparatorHeight + shipsContentHeight +
+      FleetDetailFooterHeight
+    if desiredContentHeight != contentHeight:
+      effectiveModalArea = modal.calculateArea(viewport,
+        desiredContentHeight)
+
   if hasFooter:
-    modal.title(title).renderWithFooter(modalArea, buf, footerText)
+    modal.title(title).renderWithFooter(effectiveModalArea, buf, footerText)
   else:
-    modal.title(title).render(modalArea, buf)
+    modal.title(title).render(effectiveModalArea, buf)
 
   # Get content area (excludes footer if present)
-  let inner = modal.contentArea(modalArea, hasFooter = hasFooter)
+  let inner = modal.contentArea(effectiveModalArea, hasFooter = hasFooter)
+  if state.subModal == FleetSubModal.None:
+    shipTable = shipTable.scrollOffset(renderScroll.verticalOffset)
 
   # Check for sub-modals
   case state.subModal
@@ -553,22 +577,19 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     
     # Separator
     let separatorY = inner.y + FleetDetailInfoHeight
-    let bs = PlainBorderSet
-    discard buf.put(modalArea.x, separatorY, "├", modalBorderStyle())
-    for x in (modalArea.x + 1)..<(modalArea.right - 1):
-      discard buf.put(x, separatorY, bs.horizontal, modalBorderStyle())
-    discard buf.put(modalArea.right - 1, separatorY, "┤", modalBorderStyle())
+    let glyphs = modal.separatorGlyphs()
+    discard buf.put(effectiveModalArea.x, separatorY, glyphs.left,
+      modalBorderStyle())
+    for x in (effectiveModalArea.x + 1)..<(effectiveModalArea.right - 1):
+      discard buf.put(x, separatorY, glyphs.horizontal,
+        modalBorderStyle())
+    discard buf.put(effectiveModalArea.right - 1, separatorY, glyphs.right,
+      modalBorderStyle())
     
     # Ship list (boxed table)
     let shipsHeight = max(1, inner.height - (FleetDetailInfoHeight +
-      FleetDetailSeparatorHeight + FleetDetailFooterHeight))
+      FleetDetailSeparatorHeight))
     let shipsArea = rect(inner.x, separatorY + 1, inner.width, shipsHeight)
-    let shipHeader = "SHIPS (" & $state.shipCount & ")"
-    for i, ch in shipHeader:
-      if shipsArea.x + i < shipsArea.right:
-        discard buf.put(shipsArea.x + i, shipsArea.y, $ch,
-          canvasHeaderStyle())
-    
     let tableArea = rect(shipsArea.x,
       shipsArea.y + FleetDetailShipsHeaderHeight,
       shipsArea.width,

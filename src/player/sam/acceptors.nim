@@ -240,26 +240,6 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.mapState.cursor = coords[0]
         else:
           model.ui.mapState.cursor = coords[currentIdx + 1]
-  of ActionKind.switchPlanetTab:
-    # navMode: -1 = prev tab, 0/1 = next tab, 2-5 = direct tab selection
-    let currentTab = ord(model.ui.planetDetailTab)
-    let nextTab =
-      if proposal.navMode == -1:
-        # Previous tab (left arrow) - wrap from 1 back to 5
-        if currentTab <= 1:
-          5
-        else:
-          currentTab - 1
-      elif proposal.navMode == 0 or proposal.navMode == 1:
-        # Next tab (right arrow, tab key) - wrap from 5 back to 1
-        if currentTab >= 5:
-          1
-        else:
-          currentTab + 1
-      else:
-        # Direct tab selection (2-5)
-        max(1, min(5, proposal.navMode))
-    model.ui.planetDetailTab = PlanetDetailTab(nextTab)
   of ActionKind.switchFleetView:
     if model.ui.fleetViewMode == FleetViewMode.SystemView:
       model.ui.fleetViewMode = FleetViewMode.ListView

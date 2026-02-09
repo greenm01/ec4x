@@ -74,14 +74,14 @@ proc fleetListColumns*(): seq[TableColumn] =
   ## Column definitions for fleet list table (ListView)
   @[
     tableColumn("!", 1, table.Alignment.Center),
-    tableColumn("Flt", 3, table.Alignment.Left),
+    tableColumn("Fleet", 5, table.Alignment.Left),
     tableColumn("Location", 14, table.Alignment.Left),
     tableColumn("Sect", 5, table.Alignment.Center),
     tableColumn("Ships", 6, table.Alignment.Right),
     tableColumn("AS", 4, table.Alignment.Right),
     tableColumn("DS", 4, table.Alignment.Right),
     tableColumn("CMD", 7, table.Alignment.Left),
-    tableColumn("Dest", 10, table.Alignment.Left),
+    tableColumn("Target", 10, table.Alignment.Left),
     tableColumn("ETA", 4, table.Alignment.Right),
     tableColumn("ROE", 4, table.Alignment.Right),
     tableColumn("Status", 8, table.Alignment.Left)

@@ -907,18 +907,6 @@ proc renderPlanetSummaryTab*(
       )
     discard buf.setString(right.x, rightY, dockLine, normalStyle())
     rightY += 1
-  if rightY < right.bottom and data.dockedFleets.len > 0:
-    discard buf.setString(right.x, rightY, "Docked Fleets:",
-      canvasHeaderStyle())
-    rightY += 1
-    for fleet in data.dockedFleets:
-      if rightY >= right.bottom:
-        break
-      let fleetLine =
-        "  " & fleet.name &
-        " (" & $fleet.shipCount & " ships)"
-      discard buf.setString(right.x, rightY, fleetLine, normalStyle())
-      rightY += 1
 
 proc renderPlanetEconomyTab*(
   area: Rect,
@@ -1107,18 +1095,6 @@ proc renderPlanetDefenseTab*(
       "Armies: " & $data.armies & "  Marines: " & $data.marines
     discard buf.setString(right.x, rightY, garrisonLine, normalStyle())
     rightY += 1
-  if rightY < right.bottom and data.dockedFleets.len > 0:
-    discard buf.setString(right.x, rightY, "Guard Fleets:",
-      canvasHeaderStyle())
-    rightY += 1
-    for fleet in data.dockedFleets:
-      if rightY >= right.bottom:
-        break
-      let fleetLine =
-        "  " & fleet.name &
-        " (" & $fleet.shipCount & " ships)"
-      discard buf.setString(right.x, rightY, fleetLine, normalStyle())
-      rightY += 1
 
 proc renderPlanetSettingsTab*(
   area: Rect,
@@ -1149,6 +1125,247 @@ proc renderPlanetSettingsTab*(
     let fightersLine = "Auto-Load Fighters: " & fightersLabel
     discard buf.setString(area.x, y, fightersLine, normalStyle())
 
+proc buildColonyStatusChips(data: PlanetDetailData): string =
+  var parts: seq[string] = @[]
+  if data.blockaded:
+    parts.add("[BLK]")
+  var hasConstruction = false
+  var hasRepair = false
+  for item in data.queue:
+    case item.kind
+    of QueueKind.Construction:
+      hasConstruction = true
+    of QueueKind.Repair:
+      hasRepair = true
+  if hasRepair:
+    parts.add("[RPR]")
+  if hasConstruction:
+    parts.add("[CN]")
+  if parts.len == 0:
+    parts.add("[OK]")
+  result = parts.join(" ")
+
+proc renderPlanetUnifiedView*(
+  area: Rect,
+  buf: var CellBuffer,
+  data: PlanetDetailData
+) =
+  if area.isEmpty:
+    return
+
+  let sections = vertical()
+    .constraints(length(3), fill(), length(1))
+    .split(area)
+  let headerArea = sections[0]
+  let bodyArea = sections[1]
+  let footerArea = sections[2]
+
+  var y = headerArea.y
+  if y < headerArea.bottom:
+    let statusLine = "STATUS: " & buildColonyStatusChips(data)
+    discard buf.setString(headerArea.x, y, statusLine, normalStyle())
+    y += 1
+  if y < headerArea.bottom:
+    let rawLabel = formatFloat(data.rawIndex, ffDecimal, 2)
+    let locationLine =
+      "Sector: " & data.sectorLabel &
+      "  Class: " & data.planetClass &
+      "  Resources: " & data.resourceRating &
+      "  RAW: " & rawLabel
+    discard buf.setString(headerArea.x, y, locationLine, normalStyle())
+    y += 1
+  if y < headerArea.bottom:
+    let growthLabel = formatGrowthLabel(data.populationGrowthPu)
+    let economyLine =
+      "GCO: " & $data.gco &
+      "  NCV: " & $data.ncv &
+      "  Tax: " & $data.taxRate & "%" &
+      "  Growth: " & growthLabel &
+      "  Bonus: " & $data.starbaseBonusPct & "%"
+    discard buf.setString(headerArea.x, y, economyLine, normalStyle())
+
+  let useColumns = area.width >= 80
+  if useColumns:
+    let columns = horizontal()
+      .constraints(percentage(50), fill())
+      .split(bodyArea)
+    let left = columns[0]
+    let right = columns[1]
+
+    let surfaceFrame = bordered()
+      .title("SURFACE OPERATIONS")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    surfaceFrame.render(left, buf)
+    let surfaceInner = surfaceFrame.inner(left)
+
+    var leftY = surfaceInner.y
+    if leftY < surfaceInner.bottom:
+      let popLine =
+        "Population: " & $data.populationUnits & " PU" &
+        "  Industry: " & $data.industrialUnits & " IU"
+      discard buf.setString(surfaceInner.x, leftY, popLine,
+        normalStyle())
+      leftY += 1
+    if leftY < surfaceInner.bottom:
+      let outputLine =
+        "Output: " & $data.populationOutput &
+        " / " & $data.industrialOutput
+      discard buf.setString(surfaceInner.x, leftY, outputLine,
+        normalStyle())
+      leftY += 1
+    if leftY < surfaceInner.bottom:
+      let garrisonLine =
+        "Armies: " & $data.armies &
+        "  Marines: " & $data.marines
+      discard buf.setString(surfaceInner.x, leftY, garrisonLine,
+        normalStyle())
+      leftY += 1
+    if leftY < surfaceInner.bottom:
+      let shieldLabel = if data.shields > 0: "Present" else: "None"
+      let defenseLine =
+        "Batteries: " & $data.batteries &
+        "  Shields: " & shieldLabel
+      discard buf.setString(surfaceInner.x, leftY, defenseLine,
+        normalStyle())
+
+    let orbitalFrame = bordered()
+      .title("ORBITAL INFRASTRUCTURE")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    orbitalFrame.render(right, buf)
+    let orbitalInner = orbitalFrame.inner(right)
+
+    var rightY = orbitalInner.y
+    if rightY < orbitalInner.bottom:
+      let facilityLine =
+        "Spaceports: " & $data.spaceports &
+        "  Shipyards: " & $data.shipyards
+      discard buf.setString(orbitalInner.x, rightY, facilityLine,
+        normalStyle())
+      rightY += 1
+    if rightY < orbitalInner.bottom:
+      let orbitalLine =
+        "Drydocks: " & $data.drydocks &
+        "  Starbases: " & $data.starbases
+      discard buf.setString(orbitalInner.x, rightY, orbitalLine,
+        normalStyle())
+      rightY += 1
+    if rightY < orbitalInner.bottom:
+      let dockLine =
+        "Docks: CDK " & dockLabel(
+          data.dockSummary.constructionAvailable,
+          data.dockSummary.constructionTotal
+        ) & "  RDK " & dockLabel(
+          data.dockSummary.repairAvailable,
+          data.dockSummary.repairTotal
+        )
+      discard buf.setString(orbitalInner.x, rightY, dockLine,
+        normalStyle())
+      rightY += 1
+    if rightY < orbitalInner.bottom:
+      let fleetLine =
+        "Fleets: Act " & $data.fleetsActive &
+        "  Rsv " & $data.fleetsReserve &
+        "  Mtb " & $data.fleetsMothball
+      discard buf.setString(orbitalInner.x, rightY, fleetLine,
+        normalStyle())
+  else:
+    let stacked = vertical()
+      .constraints(fill(), fill())
+      .split(bodyArea)
+    let topPanel = stacked[0]
+    let bottomPanel = stacked[1]
+
+    let surfaceFrame = bordered()
+      .title("SURFACE OPERATIONS")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    surfaceFrame.render(topPanel, buf)
+    let surfaceInner = surfaceFrame.inner(topPanel)
+
+    var leftY = surfaceInner.y
+    if leftY < surfaceInner.bottom:
+      let popLine =
+        "Population: " & $data.populationUnits & " PU" &
+        "  Industry: " & $data.industrialUnits & " IU"
+      discard buf.setString(surfaceInner.x, leftY, popLine,
+        normalStyle())
+      leftY += 1
+    if leftY < surfaceInner.bottom:
+      let outputLine =
+        "Output: " & $data.populationOutput &
+        " / " & $data.industrialOutput
+      discard buf.setString(surfaceInner.x, leftY, outputLine,
+        normalStyle())
+      leftY += 1
+    if leftY < surfaceInner.bottom:
+      let garrisonLine =
+        "Armies: " & $data.armies &
+        "  Marines: " & $data.marines
+      discard buf.setString(surfaceInner.x, leftY, garrisonLine,
+        normalStyle())
+      leftY += 1
+    if leftY < surfaceInner.bottom:
+      let shieldLabel = if data.shields > 0: "Present" else: "None"
+      let defenseLine =
+        "Batteries: " & $data.batteries &
+        "  Shields: " & shieldLabel
+      discard buf.setString(surfaceInner.x, leftY, defenseLine,
+        normalStyle())
+
+    let orbitalFrame = bordered()
+      .title("ORBITAL INFRASTRUCTURE")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    orbitalFrame.render(bottomPanel, buf)
+    let orbitalInner = orbitalFrame.inner(bottomPanel)
+
+    var rightY = orbitalInner.y
+    if rightY < orbitalInner.bottom:
+      let facilityLine =
+        "Spaceports: " & $data.spaceports &
+        "  Shipyards: " & $data.shipyards
+      discard buf.setString(orbitalInner.x, rightY, facilityLine,
+        normalStyle())
+      rightY += 1
+    if rightY < orbitalInner.bottom:
+      let orbitalLine =
+        "Drydocks: " & $data.drydocks &
+        "  Starbases: " & $data.starbases
+      discard buf.setString(orbitalInner.x, rightY, orbitalLine,
+        normalStyle())
+      rightY += 1
+    if rightY < orbitalInner.bottom:
+      let dockLine =
+        "Docks: CDK " & dockLabel(
+          data.dockSummary.constructionAvailable,
+          data.dockSummary.constructionTotal
+        ) & "  RDK " & dockLabel(
+          data.dockSummary.repairAvailable,
+          data.dockSummary.repairTotal
+        )
+      discard buf.setString(orbitalInner.x, rightY, dockLine,
+        normalStyle())
+      rightY += 1
+    if rightY < orbitalInner.bottom:
+      let fleetLine =
+        "Fleets: Act " & $data.fleetsActive &
+        "  Rsv " & $data.fleetsReserve &
+        "  Mtb " & $data.fleetsMothball
+      discard buf.setString(orbitalInner.x, rightY, fleetLine,
+        normalStyle())
+
+  let repairLabel = if data.autoRepair: "ON" else: "OFF"
+  let marinesLabel = if data.autoLoadMarines: "ON" else: "OFF"
+  let fightersLabel = if data.autoLoadFighters: "ON" else: "OFF"
+  let automationLine =
+    "Auto-Repair: " & repairLabel &
+    "  Auto-Load Marines: " & marinesLabel &
+    "  Auto-Load Fighters: " & fightersLabel
+  discard buf.setString(footerArea.x, footerArea.y, automationLine,
+    normalStyle())
+
 proc renderPlanetDetail*(
   area: Rect,
   buf: var CellBuffer,
@@ -1172,27 +1389,7 @@ proc renderPlanetDetail*(
   if area.isEmpty:
     return
 
-  var y = area.y
-  let tabArea = rect(area.x, y, area.width, 1)
-  let activeIdx = ord(model.ui.planetDetailTab) - 1
-  let tabs = planetDetailTabs(activeIdx)
-  tabs.render(tabArea, buf)
-  y += 2
-  if y >= area.bottom:
-    return
-
-  let contentArea = rect(area.x, y, area.width, area.bottom - y)
-  case model.ui.planetDetailTab
-  of PlanetDetailTab.Summary:
-    renderPlanetSummaryTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Economy:
-    renderPlanetEconomyTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Construction:
-    renderPlanetConstructionTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Defense:
-    renderPlanetDefenseTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Settings:
-    renderPlanetSettingsTab(contentArea, buf, planetData)
+  renderPlanetUnifiedView(area, buf, planetData)
 
 proc renderPlanetDetailFromPS*(
   area: Rect,
@@ -1212,27 +1409,7 @@ proc renderPlanetDetailFromPS*(
   if area.isEmpty:
     return
 
-  var y = area.y
-  let tabArea = rect(area.x, y, area.width, 1)
-  let activeIdx = ord(model.ui.planetDetailTab) - 1
-  let tabs = planetDetailTabs(activeIdx)
-  tabs.render(tabArea, buf)
-  y += 2
-  if y >= area.bottom:
-    return
-
-  let contentArea = rect(area.x, y, area.width, area.bottom - y)
-  case model.ui.planetDetailTab
-  of PlanetDetailTab.Summary:
-    renderPlanetSummaryTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Economy:
-    renderPlanetEconomyTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Construction:
-    renderPlanetConstructionTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Defense:
-    renderPlanetDefenseTab(contentArea, buf, planetData)
-  of PlanetDetailTab.Settings:
-    renderPlanetSettingsTab(contentArea, buf, planetData)
+  renderPlanetUnifiedView(area, buf, planetData)
 
 # renderFleetDetailFromPS removed - see deprecated section above
 
@@ -1749,7 +1926,15 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
     .minWidth(100)
     .borderStyle(primaryBorderStyle())
     .bgStyle(modalBgStyle())
-  let contentHeight = 25  # Enough for tabs + content
+  let headerLines = 3
+  let panelContentLines = 4
+  let panelHeight = panelContentLines + 2
+  let footerLines = 1
+  let useColumns = canvas.width >= 80
+  let bodyHeight = if useColumns: panelHeight else: panelHeight * 2
+  let desiredHeight = headerLines + bodyHeight + footerLines
+  let maxHeight = max(8, canvas.height - 4)
+  let contentHeight = min(desiredHeight, maxHeight)
   let modalArea = modal.calculateArea(canvas, contentHeight)
   modal.render(modalArea, buf)
   let contentArea = modal.contentArea(modalArea, hasFooter = false)
@@ -2036,7 +2221,19 @@ proc renderDashboard*(
         fleetData.commandType = int(staged.commandType)
         if staged.roe.isSome:
           fleetData.roe = int(staged.roe.get())
-        if staged.targetSystem.isSome:
+        if staged.commandType == FleetCommandType.JoinFleet and
+            staged.targetFleet.isSome:
+          let targetId = staged.targetFleet.get()
+          var targetName = ""
+          for candidate in playerState.ownFleets:
+            if candidate.id == targetId:
+              targetName = candidate.name
+              break
+          if targetName.len > 0:
+            fleetData.targetLabel = "Fleet " & targetName
+          else:
+            fleetData.targetLabel = "Fleet " & $targetId
+        elif staged.targetSystem.isSome:
           let targetId = staged.targetSystem.get()
           if playerState.visibleSystems.hasKey(targetId):
             let target = playerState.visibleSystems[targetId]

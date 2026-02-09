@@ -53,7 +53,6 @@ type
     submitTurn
     toggleHelpOverlay
     toggleFleetSelect
-    switchPlanetTab
     switchFleetView
     fleetSortToggle
     fleetDigitJump

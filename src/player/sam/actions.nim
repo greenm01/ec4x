@@ -317,16 +317,6 @@ proc actionToggleFleetSelect*(fleetId: int): Proposal =
 # Sub-View Navigation Actions
 # ============================================================================
 
-proc actionSwitchPlanetTab*(tab: int): Proposal =
-  ## Switch planet detail tab (1-5)
-  Proposal(
-    kind: ProposalKind.pkNavigation,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.switchPlanetTab,
-    navMode: tab,
-    navCursor: (0, 0)
-  )
-
 proc actionSwitchFleetView*(): Proposal =
   ## Toggle between fleet System View and List View
   Proposal(

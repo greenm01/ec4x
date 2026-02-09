@@ -56,9 +56,9 @@ const
 
 const
   FleetDetailVerticalMargin* = 6
-  FleetDetailInfoHeight* = 4
+  FleetDetailInfoHeight* = 3
   FleetDetailSeparatorHeight* = 1
-  FleetDetailShipsHeaderHeight* = 1
+  FleetDetailShipsHeaderHeight* = 0
   FleetDetailFooterHeight* = 2
   FleetDetailTableBaseHeight* = 4
 
@@ -513,14 +513,6 @@ type
     viewMode*: ViewMode
     entityId*: int              ## Entity ID for drill-down (colony/fleet ID)
 
-  PlanetDetailTab* {.pure.} = enum
-    ## Tabs in planet detail view
-    Summary = 1
-    Economy = 2
-    Construction = 3
-    Defense = 4
-    Settings = 5
-
   FleetViewMode* {.pure.} = enum
     ## Fleet console sub-modes
     SystemView    ## Grouped by location
@@ -641,7 +633,6 @@ type
     breadcrumbs*: seq[BreadcrumbItem]
 
     # Sub-view state
-    planetDetailTab*: PlanetDetailTab
     fleetViewMode*: FleetViewMode
     selectedFleetIds*: seq[int]
     selectedColonyId*: int
@@ -844,7 +835,6 @@ proc initTuiUiState*(): TuiUiState =
     loadGameRequested: false,
     loadGameId: "",
     loadHouseId: 0,
-    planetDetailTab: PlanetDetailTab.Summary,
     fleetViewMode: FleetViewMode.ListView,
     selectedFleetIds: @[],
     selectedColonyId: 0,
@@ -1974,10 +1964,25 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
   let newRoe = if cmd.roe.isSome: int(cmd.roe.get()) else: -1
   let isStationary = cmd.commandType in {
     FleetCommandType.Hold, FleetCommandType.SeekHome}
-  let destLabel = if cmd.targetSystem.isSome:
-      model.systemNameById(int(cmd.targetSystem.get()))
-    elif isStationary: "-"
-    else: ""  # keep existing
+  var destLabel = ""
+  var destSystemId = 0
+  if cmd.commandType == FleetCommandType.JoinFleet and
+      cmd.targetFleet.isSome:
+    let targetId = int(cmd.targetFleet.get())
+    var targetName = ""
+    for fleet in model.view.fleets:
+      if fleet.id == targetId:
+        targetName = fleet.name
+        break
+    if targetName.len > 0:
+      destLabel = "Fleet " & targetName
+    else:
+      destLabel = "Fleet " & $targetId
+  elif cmd.targetSystem.isSome:
+    destLabel = model.systemNameById(int(cmd.targetSystem.get()))
+    destSystemId = int(cmd.targetSystem.get())
+  elif isStationary:
+    destLabel = "-"
   let fid = int(cmd.fleetId)
 
   # Update FleetInfo in model.view.fleets (ListView)
@@ -1989,8 +1994,7 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
       if newRoe >= 0: fleet.roe = newRoe
       if destLabel.len > 0:
         fleet.destinationLabel = destLabel
-        fleet.destinationSystemId =
-          if cmd.targetSystem.isSome: int(cmd.targetSystem.get()) else: 0
+        fleet.destinationSystemId = destSystemId
       if isStationary:
         fleet.eta = 0
       elif cmd.targetSystem.isSome:
@@ -2014,21 +2018,21 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
       if flt.fleetId == fid:
         flt.commandLabel = cmdLbl
         if newRoe >= 0: flt.roe = newRoe
-        if destLabel.len > 0:
-          flt.destinationLabel = destLabel
-        flt.needsAttention = false
-        if isStationary:
-          flt.eta = 0
-        elif cmd.targetSystem.isSome:
-          let isEtacOnly =
-            flt.etacs > 0 and
-            flt.shipCount == flt.etacs
-          flt.eta = model.estimateETA(
-            systemId,
-            int(cmd.targetSystem.get()),
-            isEtacOnly,
-          )
-        return
+      if destLabel.len > 0:
+        flt.destinationLabel = destLabel
+      flt.needsAttention = false
+      if isStationary:
+        flt.eta = 0
+      elif cmd.targetSystem.isSome:
+        let isEtacOnly =
+          flt.etacs > 0 and
+          flt.shipCount == flt.etacs
+        flt.eta = model.estimateETA(
+          systemId,
+          int(cmd.targetSystem.get()),
+          isEtacOnly,
+        )
+      return
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
   ## Stage a fleet command and optimistically update fleet display data.
