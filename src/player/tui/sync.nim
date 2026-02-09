@@ -204,6 +204,9 @@ proc syncGameStateToModel*(
         repairDockTotal: repairTotal,
         blockaded: colony.blockaded,
         idleConstruction: idleConstruction,
+        autoRepair: colony.autoRepair,
+        autoLoadMarines: colony.autoLoadMarines,
+        autoLoadFighters: colony.autoLoadFighters,
         owner: int(viewingHouse),
       )
     )
@@ -927,6 +930,9 @@ proc syncPlayerStateToModel*(
         repairDockTotal: 0,
         blockaded: colony.blockaded,
         idleConstruction: false,
+        autoRepair: colony.autoRepair,
+        autoLoadMarines: colony.autoLoadMarines,
+        autoLoadFighters: colony.autoLoadFighters,
         owner: int(ps.viewingHouse),
       )
     )

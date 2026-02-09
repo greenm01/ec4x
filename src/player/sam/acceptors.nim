@@ -16,7 +16,8 @@ import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
 import ../../common/logger
-import ../../engine/types/[core, production, ship, facilities, ground_unit, fleet]
+import ../../engine/types/[core, production, ship, facilities, ground_unit,
+  fleet, command]
 
 export types, tui_model, actions
 
@@ -550,6 +551,66 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     case proposal.actionKind
     of ActionKind.toggleHelpOverlay:
       model.ui.showHelpOverlay = not model.ui.showHelpOverlay
+    of ActionKind.toggleAutoRepair,
+       ActionKind.toggleAutoLoadMarines,
+       ActionKind.toggleAutoLoadFighters:
+      if model.ui.mode != ViewMode.PlanetDetail:
+        return
+      let colonyId = model.ui.selectedColonyId
+      if colonyId <= 0:
+        model.ui.statusMessage = "No colony selected"
+        return
+      let baseOpt = model.colonyInfoById(colonyId)
+      if baseOpt.isNone:
+        model.ui.statusMessage = "No colony selected"
+        return
+      let base = baseOpt.get()
+      var autoRepair = base.autoRepair
+      var autoLoadMarines = base.autoLoadMarines
+      var autoLoadFighters = base.autoLoadFighters
+      var existingIdx = -1
+      for idx, cmd in model.ui.stagedColonyManagement:
+        if int(cmd.colonyId) == colonyId:
+          existingIdx = idx
+          autoRepair = cmd.autoRepair
+          autoLoadMarines = cmd.autoLoadMarines
+          autoLoadFighters = cmd.autoLoadFighters
+          break
+      case proposal.actionKind
+      of ActionKind.toggleAutoRepair:
+        autoRepair = not autoRepair
+        model.ui.statusMessage = "Auto-Repair: " &
+          (if autoRepair: "ON" else: "OFF")
+      of ActionKind.toggleAutoLoadMarines:
+        autoLoadMarines = not autoLoadMarines
+        model.ui.statusMessage = "Auto-Load Marines: " &
+          (if autoLoadMarines: "ON" else: "OFF")
+      of ActionKind.toggleAutoLoadFighters:
+        autoLoadFighters = not autoLoadFighters
+        model.ui.statusMessage = "Auto-Load Fighters: " &
+          (if autoLoadFighters: "ON" else: "OFF")
+      else:
+        discard
+      let matchesBase =
+        autoRepair == base.autoRepair and
+        autoLoadMarines == base.autoLoadMarines and
+        autoLoadFighters == base.autoLoadFighters
+      if matchesBase:
+        if existingIdx >= 0:
+          model.ui.stagedColonyManagement.delete(existingIdx)
+      else:
+        let cmd = ColonyManagementCommand(
+          colonyId: ColonyId(colonyId),
+          autoRepair: autoRepair,
+          autoLoadFighters: autoLoadFighters,
+          autoLoadMarines: autoLoadMarines,
+          taxRate: none(int32)
+        )
+        if existingIdx >= 0:
+          model.ui.stagedColonyManagement[existingIdx] = cmd
+        else:
+          model.ui.stagedColonyManagement.add(cmd)
+        model.ui.turnSubmissionConfirmed = false
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"
@@ -861,6 +922,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedBuildCommands.setLen(0)
           model.ui.stagedRepairCommands.setLen(0)
           model.ui.stagedScrapCommands.setLen(0)
+          model.ui.stagedColonyManagement.setLen(0)
           model.ui.turnSubmissionConfirmed = false
           model.setExpertFeedback("Cleared " & $count & " staged commands")
           model.addToExpertHistory(model.ui.expertModeInput)

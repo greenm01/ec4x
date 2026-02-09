@@ -1150,6 +1150,7 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.stagedBuildCommands.setLen(0)
         sam.model.ui.stagedRepairCommands.setLen(0)
         sam.model.ui.stagedScrapCommands.setLen(0)
+        sam.model.ui.stagedColonyManagement.setLen(0)
       else:
         sam.model.ui.statusMessage =
           "Cannot submit: not connected to relay"

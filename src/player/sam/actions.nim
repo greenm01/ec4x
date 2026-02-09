@@ -797,6 +797,33 @@ proc actionOpenBuildModal*(colonyId: int): Proposal =
     gameActionData: $colonyId
   )
 
+proc actionToggleAutoRepair*(): Proposal =
+  ## Toggle colony auto-repair (planet detail)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.toggleAutoRepair,
+    gameActionData: ""
+  )
+
+proc actionToggleAutoLoadMarines*(): Proposal =
+  ## Toggle colony auto-load marines (planet detail)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.toggleAutoLoadMarines,
+    gameActionData: ""
+  )
+
+proc actionToggleAutoLoadFighters*(): Proposal =
+  ## Toggle colony auto-load fighters (planet detail)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.toggleAutoLoadFighters,
+    gameActionData: ""
+  )
+
 proc actionCloseBuildModal*(): Proposal =
   ## Close build modal
   Proposal(

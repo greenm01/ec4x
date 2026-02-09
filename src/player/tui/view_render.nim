@@ -1333,11 +1333,17 @@ proc renderPlanetDetail*(
     )
     return
 
-  let planetData = colonyToDetailData(
+  var planetData = colonyToDetailData(
     state,
     ColonyId(model.ui.selectedColonyId),
     viewingHouse
   )
+  for cmd in model.ui.stagedColonyManagement:
+    if int(cmd.colonyId) == planetData.colonyId:
+      planetData.autoRepair = cmd.autoRepair
+      planetData.autoLoadMarines = cmd.autoLoadMarines
+      planetData.autoLoadFighters = cmd.autoLoadFighters
+      break
 
   if area.isEmpty:
     return
@@ -1357,7 +1363,14 @@ proc renderPlanetDetailFromPS*(
     )
     return
 
-  let planetData = colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
+  var planetData =
+    colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
+  for cmd in model.ui.stagedColonyManagement:
+    if int(cmd.colonyId) == planetData.colonyId:
+      planetData.autoRepair = cmd.autoRepair
+      planetData.autoLoadMarines = cmd.autoLoadMarines
+      planetData.autoLoadFighters = cmd.autoLoadFighters
+      break
 
   if area.isEmpty:
     return

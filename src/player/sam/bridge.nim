@@ -105,6 +105,9 @@ proc toSamColonyInfo*(
     repairDockTotal: int = 0,
     blockaded: bool = false,
     idleConstruction: bool = false,
+    autoRepair: bool = false,
+    autoLoadMarines: bool = false,
+    autoLoadFighters: bool = false,
     owner: int = 0,
 ): ColonyInfo =
   ## Convert colony data to SAM ColonyInfo
@@ -125,6 +128,9 @@ proc toSamColonyInfo*(
     repairDockTotal: repairDockTotal,
     blockaded: blockaded,
     idleConstruction: idleConstruction,
+    autoRepair: autoRepair,
+    autoLoadMarines: autoLoadMarines,
+    autoLoadFighters: autoLoadFighters,
     owner: owner
   )
 

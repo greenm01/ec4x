@@ -383,6 +383,7 @@ type
     Build
     Repair
     Scrap
+    ColonyManagement
 
   StagedCommandEntry* = object
     kind*: StagedCommandKind
@@ -426,6 +427,9 @@ type
     repairDockTotal*: int
     blockaded*: bool
     idleConstruction*: bool
+    autoRepair*: bool
+    autoLoadMarines*: bool
+    autoLoadFighters*: bool
     owner*: int
 
   PlanetRow* = object
@@ -677,6 +681,7 @@ type
     stagedBuildCommands*: seq[BuildCommand]
     stagedRepairCommands*: seq[RepairCommand]
     stagedScrapCommands*: seq[ScrapCommand]
+    stagedColonyManagement*: seq[ColonyManagementCommand]
     turnSubmissionRequested*: bool
     turnSubmissionPending*: bool
     turnSubmissionConfirmed*: bool
@@ -873,6 +878,7 @@ proc initTuiUiState*(): TuiUiState =
     stagedBuildCommands: @[],
     stagedRepairCommands: @[],
     stagedScrapCommands: @[],
+    stagedColonyManagement: @[],
     turnSubmissionRequested: false,
     turnSubmissionPending: false,
     turnSubmissionConfirmed: false,
@@ -1294,6 +1300,13 @@ proc selectedColony*(model: TuiModel): Option[ColonyInfo] =
       return some(colony)
   none(ColonyInfo)
 
+proc colonyInfoById*(model: TuiModel, colonyId: int): Option[ColonyInfo] =
+  ## Find colony info by colony ID
+  for colony in model.view.colonies:
+    if colony.colonyId == colonyId:
+      return some(colony)
+  none(ColonyInfo)
+
 proc selectedFleet*(model: TuiModel): Option[FleetInfo] =
   ## Get selected fleet
   if model.ui.mode != ViewMode.Fleets:
@@ -1569,7 +1582,8 @@ proc stagedCommandCount*(model: TuiModel): int =
   model.ui.stagedFleetCommands.len +
     model.ui.stagedBuildCommands.len +
     model.ui.stagedRepairCommands.len +
-    model.ui.stagedScrapCommands.len
+    model.ui.stagedScrapCommands.len +
+    model.ui.stagedColonyManagement.len
 
 proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   ## Get flattened list of staged commands in display order
@@ -1583,6 +1597,9 @@ proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
     result.add(StagedCommandEntry(kind: StagedCommandKind.Repair, index: idx))
   for idx in 0 ..< model.ui.stagedScrapCommands.len:
     result.add(StagedCommandEntry(kind: StagedCommandKind.Scrap, index: idx))
+  for idx in 0 ..< model.ui.stagedColonyManagement.len:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.ColonyManagement, index: idx))
 
 proc formatFleetOrder*(cmd: FleetCommand): string =
   ## Format a fleet command for display
@@ -1618,6 +1635,16 @@ proc formatBuildOrder*(cmd: BuildCommand): string =
   if cmd.quantity != 1:
     result.add(" x" & $cmd.quantity)
 
+proc formatColonyManagementOrder*(cmd: ColonyManagementCommand): string =
+  ## Format colony automation toggle command for display
+  proc onOff(value: bool): string =
+    if value: "ON" else: "OFF"
+  result =
+    "Colony " & $int(cmd.colonyId) & ": Auto " &
+    "Repair " & onOff(cmd.autoRepair) &
+    "  Marines " & onOff(cmd.autoLoadMarines) &
+    "  Fighters " & onOff(cmd.autoLoadFighters)
+
 proc stagedCommandsSummary*(model: TuiModel): string =
   ## Summarize staged commands with numbered list
   let entries = model.stagedCommandEntries()
@@ -1638,6 +1665,9 @@ proc stagedCommandsSummary*(model: TuiModel): string =
         "Repair command " & $entry.index
       of StagedCommandKind.Scrap:
         "Scrap command " & $entry.index
+      of StagedCommandKind.ColonyManagement:
+        formatColonyManagementOrder(
+          model.ui.stagedColonyManagement[entry.index])
     lines.add("  " & $(idx + 1) & ". " & label)
   lines.join(" | ")
 
@@ -1659,6 +1689,10 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   of StagedCommandKind.Scrap:
     if entry.index < model.ui.stagedScrapCommands.len:
       model.ui.stagedScrapCommands.delete(entry.index)
+      return true
+  of StagedCommandKind.ColonyManagement:
+    if entry.index < model.ui.stagedColonyManagement.len:
+      model.ui.stagedColonyManagement.delete(entry.index)
       return true
   false
 
@@ -2143,7 +2177,7 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
     diplomaticCommand: @[],
     populationTransfers: @[],
     terraformCommands: @[],
-    colonyManagement: @[],
+    colonyManagement: model.ui.stagedColonyManagement,
     espionageActions: @[],
     ebpInvestment: 0,
     cipInvestment: 0

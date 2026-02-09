@@ -116,6 +116,9 @@ type
     manageGamesCancel
     openBuildModal
     closeBuildModal
+    toggleAutoRepair
+    toggleAutoLoadMarines
+    toggleAutoLoadFighters
     buildCategorySwitch
     buildListUp
     buildListDown

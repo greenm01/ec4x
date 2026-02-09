@@ -565,6 +565,24 @@ proc initBindings*() =
     longLabel: "BUILD", shortLabel: "Bld", priority: 20))
 
   registerBinding(Binding(
+    key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionKind: ActionKind.toggleAutoRepair,
+    context: BindingContext.PlanetDetail,
+    longLabel: "AUTO REPAIR", shortLabel: "Repair", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyM, modifier: KeyModifier.None,
+    actionKind: ActionKind.toggleAutoLoadMarines,
+    context: BindingContext.PlanetDetail,
+    longLabel: "AUTO MARINES", shortLabel: "Marines", priority: 31))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyF, modifier: KeyModifier.None,
+    actionKind: ActionKind.toggleAutoLoadFighters,
+    context: BindingContext.PlanetDetail,
+    longLabel: "AUTO FIGHTERS", shortLabel: "Fighters", priority: 32))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.PlanetDetail,
@@ -1355,6 +1373,12 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.openBuildModal:
     # Will be handled in acceptor to get colony ID
     return some(actionOpenBuildModal(0))
+  of ActionKind.toggleAutoRepair:
+    return some(actionToggleAutoRepair())
+  of ActionKind.toggleAutoLoadMarines:
+    return some(actionToggleAutoLoadMarines())
+  of ActionKind.toggleAutoLoadFighters:
+    return some(actionToggleAutoLoadFighters())
   of ActionKind.closeBuildModal:
     return some(actionCloseBuildModal())
   of ActionKind.buildCategorySwitch:
