@@ -1343,6 +1343,8 @@ proc incSelectedQty(model: var TuiModel) =
       cmd.facilityClass = key.facilityClass
     model.ui.stagedBuildCommands.add(cmd)
   model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
+  if model.ui.queueModal.active:
+    model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
   model.ui.statusMessage = "Qty +1"
 
 proc decSelectedQty(model: var TuiModel) =
@@ -1366,6 +1368,8 @@ proc decSelectedQty(model: var TuiModel) =
   else:
     model.ui.stagedBuildCommands.delete(existingIdx)
   model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
+  if model.ui.queueModal.active:
+    model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
   model.ui.statusMessage = "Qty -1"
 
 proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
@@ -1376,7 +1380,14 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   case proposal.actionKind
   of ActionKind.openBuildModal:
     # Open the build modal for the currently selected colony
-    if model.ui.mode == ViewMode.PlanetDetail:
+    if model.ui.mode == ViewMode.PlanetDetail or
+        model.ui.mode == ViewMode.Planets:
+      if model.ui.mode == ViewMode.Planets:
+        let selectedOpt = model.selectedColony()
+        if selectedOpt.isNone:
+          model.ui.statusMessage = "No colony selected"
+          return
+        model.ui.selectedColonyId = selectedOpt.get().colonyId
       model.ui.buildModal.active = true
       model.ui.buildModal.colonyId = model.ui.selectedColonyId
       model.ui.buildModal.category = BuildCategory.Ships
@@ -1388,6 +1399,8 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.buildModal.cstLevel = model.view.techLevels.get().cst
       else:
         model.ui.buildModal.cstLevel = 1
+      model.ui.buildModal.stagedBuildCommands =
+        model.ui.stagedBuildCommands
       # Note: availableOptions and dockSummary will be populated by the reactor
       model.ui.statusMessage = "Build modal opened"
   of ActionKind.closeBuildModal:
@@ -1451,6 +1464,105 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     incSelectedQty(model)
   of ActionKind.buildQtyDec:
     decSelectedQty(model)
+  else:
+    discard
+
+# ============================================================================
+# Queue Modal Acceptor
+# ============================================================================
+
+proc queueStagedIndices(model: TuiModel): seq[int] =
+  let colonyId = ColonyId(model.ui.queueModal.colonyId.uint32)
+  for idx, cmd in model.ui.stagedBuildCommands:
+    if cmd.colonyId == colonyId and cmd.quantity > 0:
+      result.add(idx)
+
+proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
+  ## Handle queue modal proposals
+  if proposal.kind != ProposalKind.pkGameAction:
+    return
+
+  case proposal.actionKind
+  of ActionKind.openQueueModal:
+    if model.ui.mode == ViewMode.Planets or
+        model.ui.mode == ViewMode.PlanetDetail:
+      if model.ui.mode == ViewMode.Planets:
+        let selectedOpt = model.selectedColony()
+        if selectedOpt.isNone:
+          model.ui.statusMessage = "No colony selected"
+          return
+        let selected = selectedOpt.get()
+        model.ui.queueModal.colonyId = selected.colonyId
+        model.ui.queueModal.colonyName = selected.systemName
+        model.ui.selectedColonyId = selected.colonyId
+      else:
+        let colonyId = model.ui.selectedColonyId
+        if colonyId <= 0:
+          model.ui.statusMessage = "No colony selected"
+          return
+        let infoOpt = model.colonyInfoById(colonyId)
+        if infoOpt.isSome:
+          model.ui.queueModal.colonyName = infoOpt.get().systemName
+        model.ui.queueModal.colonyId = colonyId
+      model.ui.queueModal.selectedIdx = 0
+      model.ui.queueModal.stagedBuildCommands =
+        model.ui.stagedBuildCommands
+      model.ui.queueModal.active = true
+      model.ui.statusMessage = "Queue opened"
+  of ActionKind.closeQueueModal:
+    model.ui.queueModal.active = false
+    model.ui.statusMessage = "Queue closed"
+  of ActionKind.queueListUp:
+    let indices = model.queueStagedIndices()
+    if indices.len == 0:
+      return
+    if model.ui.queueModal.selectedIdx > 0:
+      model.ui.queueModal.selectedIdx -= 1
+  of ActionKind.queueListDown:
+    let indices = model.queueStagedIndices()
+    if indices.len == 0:
+      return
+    if model.ui.queueModal.selectedIdx < indices.len - 1:
+      model.ui.queueModal.selectedIdx += 1
+  of ActionKind.queueListPageUp:
+    let indices = model.queueStagedIndices()
+    if indices.len == 0:
+      return
+    let pageSize = max(1, model.ui.termHeight - 12)
+    model.ui.queueModal.selectedIdx = max(
+      0, model.ui.queueModal.selectedIdx - pageSize
+    )
+  of ActionKind.queueListPageDown:
+    let indices = model.queueStagedIndices()
+    if indices.len == 0:
+      return
+    let pageSize = max(1, model.ui.termHeight - 12)
+    model.ui.queueModal.selectedIdx = min(
+      indices.len - 1, model.ui.queueModal.selectedIdx + pageSize
+    )
+  of ActionKind.queueDelete:
+    let indices = model.queueStagedIndices()
+    if model.ui.queueModal.selectedIdx < 0 or
+        model.ui.queueModal.selectedIdx >= indices.len:
+      return
+    let idx = indices[model.ui.queueModal.selectedIdx]
+    if model.ui.stagedBuildCommands[idx].quantity > 1:
+      model.ui.stagedBuildCommands[idx].quantity -= 1
+    else:
+      model.ui.stagedBuildCommands.delete(idx)
+      let newCount = max(0, indices.len - 1)
+      if newCount == 0:
+        model.ui.queueModal.selectedIdx = 0
+      else:
+        model.ui.queueModal.selectedIdx = min(
+          model.ui.queueModal.selectedIdx, newCount - 1
+        )
+    model.ui.queueModal.stagedBuildCommands =
+      model.ui.stagedBuildCommands
+    if model.ui.buildModal.active:
+      model.ui.buildModal.stagedBuildCommands =
+        model.ui.stagedBuildCommands
+    model.ui.statusMessage = "Deleted"
   else:
     discard
 
@@ -2307,6 +2419,6 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    buildModalAcceptor, fleetDetailModalAcceptor,
+    buildModalAcceptor, queueModalAcceptor, fleetDetailModalAcceptor,
     fleetListInputAcceptor, quitAcceptor, errorAcceptor,
   ]

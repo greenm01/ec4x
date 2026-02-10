@@ -132,6 +132,13 @@ type
     buildConfirmQueue
     buildQtyInc
     buildQtyDec
+    openQueueModal
+    closeQueueModal
+    queueListUp
+    queueListDown
+    queueListPageUp
+    queueListPageDown
+    queueDelete
     fleetConsoleNextPane
     fleetConsolePrevPane
     openFleetDetailModal

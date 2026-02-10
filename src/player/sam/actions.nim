@@ -950,6 +950,69 @@ proc actionBuildQtyDec*(): Proposal =
     gameActionData: ""
   )
 
+proc actionOpenQueueModal*(): Proposal =
+  ## Open queue modal for selected colony
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.openQueueModal,
+    gameActionData: ""
+  )
+
+proc actionCloseQueueModal*(): Proposal =
+  ## Close queue modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.closeQueueModal,
+    gameActionData: ""
+  )
+
+proc actionQueueListUp*(): Proposal =
+  ## Move selection up in queue modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.queueListUp,
+    gameActionData: ""
+  )
+
+proc actionQueueListDown*(): Proposal =
+  ## Move selection down in queue modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.queueListDown,
+    gameActionData: ""
+  )
+
+proc actionQueueListPageUp*(): Proposal =
+  ## Page up in queue modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.queueListPageUp,
+    gameActionData: ""
+  )
+
+proc actionQueueListPageDown*(): Proposal =
+  ## Page down in queue modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.queueListPageDown,
+    gameActionData: ""
+  )
+
+proc actionQueueDelete*(): Proposal =
+  ## Delete queued item (decrement staged quantity)
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.queueDelete,
+    gameActionData: ""
+  )
+
 # ============================================================================
 # Order Entry Actions
 # ============================================================================

@@ -21,6 +21,7 @@ import ../tui/widget/scrollbar
 import ../tui/widget/modal
 import ../tui/widget/table
 import ../tui/widget/build_modal
+import ../tui/widget/queue_modal
 import ../tui/widget/fleet_detail_modal
 import ../sam/bindings
 import ../tui/styles/ec_palette
@@ -1686,8 +1687,10 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   # Use content-aware sizing: +2 for footer separator + text
   let modalArea = modal.calculateArea(canvas, tableWidth, tableHeight + 2)
   
-  modal.renderWithFooter(modalArea, buf,
-    "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll  [/]Help")
+  let footerText =
+    "[↑↓] Navigate  [Enter] Details  [B] Build  [Q] Queue  " &
+    "[PgUp/PgDn] Scroll  [/]Help"
+  modal.renderWithFooter(modalArea, buf, footerText)
   
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   table.render(contentArea, buf)
@@ -2228,6 +2231,9 @@ proc renderDashboard*(
   if model.ui.buildModal.active:
     let buildModalWidget = newBuildModalWidget()
     buildModalWidget.render(model.ui.buildModal, canvasArea, buf)
+  if model.ui.queueModal.active:
+    let queueModalWidget = newQueueModalWidget()
+    queueModalWidget.render(model.ui.queueModal, canvasArea, buf)
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)

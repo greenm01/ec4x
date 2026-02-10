@@ -49,6 +49,7 @@ type
     Lobby         ## Entry screen / lobby
     ExpertMode    ## Expert command mode
     BuildModal    ## Build command modal
+    QueueModal    ## Queue modal
 
   Binding* = object
     key*: actions.KeyCode
@@ -258,6 +259,7 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
   of BindingContext.ReportDetail: some(ViewMode.ReportDetail)
+  of BindingContext.QueueModal: none(ViewMode)
   else: none(ViewMode)
 
 # =============================================================================
@@ -527,9 +529,16 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.openBuildModal,
     context: BindingContext.Planets,
     longLabel: "BUILD", shortLabel: "Bld", priority: 20,
+    enabledCheck: "hasColonySelection"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyQ, modifier: KeyModifier.None,
+    actionKind: ActionKind.openQueueModal,
+    context: BindingContext.Planets,
+    longLabel: "QUEUE", shortLabel: "Que", priority: 21,
     enabledCheck: "hasColonySelection"))
 
   # =========================================================================
@@ -1199,6 +1208,58 @@ proc initBindings*() =
     longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
+  # Queue Modal Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueListUp,
+    context: BindingContext.QueueModal,
+    longLabel: "NAV", shortLabel: "↑", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueListUp,
+    context: BindingContext.QueueModal,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueListDown,
+    context: BindingContext.QueueModal,
+    longLabel: "NAV", shortLabel: "↓", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueListDown,
+    context: BindingContext.QueueModal,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueListPageUp,
+    context: BindingContext.QueueModal,
+    longLabel: "PGUP", shortLabel: "PgU", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueListPageDown,
+    context: BindingContext.QueueModal,
+    longLabel: "PGDN", shortLabel: "PgD", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyD, modifier: KeyModifier.None,
+    actionKind: ActionKind.queueDelete,
+    context: BindingContext.QueueModal,
+    longLabel: "DELETE", shortLabel: "Del", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.closeQueueModal,
+    context: BindingContext.QueueModal,
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
+
+  # =========================================================================
   # Expert Mode Context
   # =========================================================================
 
@@ -1415,6 +1476,20 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionBuildQtyInc())
   of ActionKind.buildQtyDec:
     return some(actionBuildQtyDec())
+  of ActionKind.openQueueModal:
+    return some(actionOpenQueueModal())
+  of ActionKind.closeQueueModal:
+    return some(actionCloseQueueModal())
+  of ActionKind.queueListUp:
+    return some(actionQueueListUp())
+  of ActionKind.queueListDown:
+    return some(actionQueueListDown())
+  of ActionKind.queueListPageUp:
+    return some(actionQueueListPageUp())
+  of ActionKind.queueListPageDown:
+    return some(actionQueueListPageDown())
+  of ActionKind.queueDelete:
+    return some(actionQueueDelete())
   
   # Fleet console pane navigation
   of ActionKind.fleetConsoleNextPane:
@@ -1487,6 +1562,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
   ## Return the layered back action for current state
   if model.ui.quitConfirmationActive:
     return some(actionQuitCancel())
+  if model.ui.queueModal.active:
+    return some(actionCloseQueueModal())
   if model.ui.buildModal.active:
     return some(actionCloseBuildModal())
   if model.ui.mode == ViewMode.FleetDetail:
@@ -1547,6 +1624,16 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionQuitConfirm())
       return some(actionQuitCancel())
     else:
+      return none(Proposal)
+
+  # Build modal mode: use registry
+  if model.ui.queueModal.active and modifier == KeyModifier.None:
+    if key != KeyCode.KeyEscape:
+      let queueResult = lookupAndDispatch(
+        key, KeyModifier.None, BindingContext.QueueModal, model
+      )
+      if queueResult.isSome:
+        return queueResult
       return none(Proposal)
 
   # Build modal mode: use registry

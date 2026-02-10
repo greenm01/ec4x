@@ -25,6 +25,7 @@ import ./scrollbar
 import ./modal
 import ./entry_modal
 import ./build_modal
+import ./queue_modal
 import ./text_input
 import ./progress_bar
 import ./tabs
@@ -42,6 +43,7 @@ export scrollbar
 export modal
 export entry_modal
 export build_modal
+export queue_modal
 export text_input
 export progress_bar
 export tabs

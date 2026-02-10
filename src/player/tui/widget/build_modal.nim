@@ -387,7 +387,54 @@ proc render*(
     return
 
   # Calculate modal area
-  let contentHeight = 18  # Approximate content height
+  let columns = case state.category
+    of BuildCategory.Ships:
+      @[
+        tableColumn("Class", 5, table.Alignment.Left),
+        tableColumn("Name", 18, table.Alignment.Left),
+        tableColumn("CST", 3, table.Alignment.Right),
+        tableColumn("PC", 4, table.Alignment.Right),
+        tableColumn("MC", 4, table.Alignment.Right),
+        tableColumn("AS", 4, table.Alignment.Right),
+        tableColumn("DS", 4, table.Alignment.Right),
+        tableColumn("CC", 4, table.Alignment.Right),
+        tableColumn("CL", 4, table.Alignment.Right),
+        tableColumn("Qty", 4, table.Alignment.Right)
+      ]
+    of BuildCategory.Ground:
+      @[
+        tableColumn("Class", 5, table.Alignment.Left),
+        tableColumn("Name", 18, table.Alignment.Left),
+        tableColumn("CST", 3, table.Alignment.Right),
+        tableColumn("PC", 4, table.Alignment.Right),
+        tableColumn("MC", 4, table.Alignment.Right),
+        tableColumn("AS", 4, table.Alignment.Right),
+        tableColumn("DS", 4, table.Alignment.Right),
+        tableColumn("Qty", 4, table.Alignment.Right)
+      ]
+    of BuildCategory.Facilities:
+      @[
+        tableColumn("Class", 5, table.Alignment.Left),
+        tableColumn("Name", 14, table.Alignment.Left),
+        tableColumn("CST", 3, table.Alignment.Right),
+        tableColumn("PC", 4, table.Alignment.Right),
+        tableColumn("MC", 4, table.Alignment.Right),
+        tableColumn("AS", 4, table.Alignment.Right),
+        tableColumn("DS", 4, table.Alignment.Right),
+        tableColumn("Docks", 5, table.Alignment.Right),
+        tableColumn("Time", 4, table.Alignment.Right),
+        tableColumn("Qty", 4, table.Alignment.Right)
+      ]
+
+  var tableView = table(columns)
+    .showBorders(true)
+    .zebraStripe(true)
+
+  let totalRows = buildRowCount(state.category)
+  let tableHeight = tableView.renderHeight(totalRows)
+  let maxTableHeight = max(1, viewport.height - 6)
+  let clampedTableHeight = min(tableHeight, maxTableHeight)
+  let contentHeight = clampedTableHeight + 5
   let modalArea = widget.modal.calculateArea(viewport, contentHeight)
 
   # Render modal frame with title
