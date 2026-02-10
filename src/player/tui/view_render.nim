@@ -1907,7 +1907,8 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
   let contentHeight = min(desiredContentHeight, maxContentHeight)
   let modalArea = modal.calculateArea(canvas, contentHeight)
   let footerText =
-    "[R]epair [M]arines [F]ighters [B]uild [←/→]Next [H/L]Prev/Next"
+    "[←/→]Next [H/L]Prev/Next  [B]uild [Q]ueue  " &
+    "[R]epair [M]arines [F]ighters"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
 

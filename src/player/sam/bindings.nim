@@ -576,6 +576,12 @@ proc initBindings*() =
     longLabel: "BUILD", shortLabel: "Bld", priority: 20))
 
   registerBinding(Binding(
+    key: KeyCode.KeyQ, modifier: KeyModifier.None,
+    actionKind: ActionKind.openQueueModal,
+    context: BindingContext.PlanetDetail,
+    longLabel: "QUEUE", shortLabel: "Que", priority: 21))
+
+  registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
     actionKind: ActionKind.toggleAutoRepair,
     context: BindingContext.PlanetDetail,
