@@ -192,6 +192,12 @@ type
     cost*: int
     cstReq*: int
 
+  BuildRowKey* = object
+    kind*: BuildOptionKind
+    shipClass*: Option[ShipClass]
+    facilityClass*: Option[FacilityClass]
+    groundClass*: Option[GroundClass]
+
   DockSummary* = object
     constructionAvailable*: int
     constructionTotal*: int
@@ -222,9 +228,10 @@ type
     selectedBuildIdx*: int
     selectedQueueIdx*: int
     pendingQueue*: seq[PendingBuildItem]
-    quantityInput*: int  # For ship quantity (1-99)
+    quantityInput*: int  # Legacy ship quantity input (unused)
     availableOptions*: seq[BuildOption]
     dockSummary*: DockSummary
+    ppAvailable*: int
     buildListScroll*: ScrollState
     queueScroll*: ScrollState
 
@@ -923,6 +930,7 @@ proc initTuiUiState*(): TuiUiState =
       pendingQueue: @[],
       quantityInput: 1,
       availableOptions: @[],
+      ppAvailable: -1,
       buildListScroll: initScrollState(),
       queueScroll: initScrollState()
     ),

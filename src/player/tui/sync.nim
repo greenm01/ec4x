@@ -1438,3 +1438,4 @@ proc syncBuildModalData*(
   let result = computeBuildOptionsFromPS(ps, colonyId)
   model.ui.buildModal.availableOptions = result.options
   model.ui.buildModal.dockSummary = result.dockSummary
+  model.ui.buildModal.ppAvailable = model.view.treasury

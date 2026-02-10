@@ -3,13 +3,19 @@
 ## A modal popup for browsing categorized build options, adding items to a
 ## pending queue, and confirming to stage them for turn submission.
 
+import std/[options, strutils]
+
 import ./modal
-import ./borders
 import ./text/text_pkg
+import ./table
+import ./scroll_state
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
+import ../build_spec
 import ../../sam/tui_model
+import ../../../engine/types/production
+import ../../../engine/types/[ship, ground_unit, facilities]
 
 type
   BuildModalWidget* = object
@@ -24,8 +30,9 @@ proc newBuildModalWidget*(): BuildModalWidget =
       .minHeight(20)
   )
 
-proc renderCategoryTabs(state: BuildModalState, area: Rect,
-                       buf: var CellBuffer) =
+proc renderCategoryTabs(
+    state: BuildModalState, area: Rect, buf: var CellBuffer
+) =
   ## Render category tabs at the top of the modal
   if area.isEmpty:
     return
@@ -47,110 +54,241 @@ proc renderCategoryTabs(state: BuildModalState, area: Rect,
     else:
       modalBgStyle()
 
-    let tabText = if isSelected: "[" & label & "]" else: " " & label & " "
+    let tabText =
+      if isSelected: "[" & label & "]" else: " " & label & " "
     for i, ch in tabText:
       if x + i < area.right:
         discard buf.put(x + i, y, $ch, style)
     x += tabText.len + 1
 
-proc renderDockSummary(state: BuildModalState, area: Rect,
-                      buf: var CellBuffer) =
+proc renderDockSummary(
+    state: BuildModalState, area: Rect, buf: var CellBuffer
+) =
   ## Render dock capacity summary
   if area.isEmpty:
     return
 
   let docks = state.dockSummary
-  let text = "Docks: " & $docks.constructionAvailable & "/" &
+  let used = max(0, docks.constructionTotal - docks.constructionAvailable)
+  let ppLabel = if state.ppAvailable >= 0:
+    $state.ppAvailable
+  else:
+    "—"
+  let text = "Docks: " & $used & "/" &
     $docks.constructionTotal & " CDK | " &
-    $docks.repairAvailable & "/" & $docks.repairTotal & " RDK"
+    "PP Available: " & ppLabel
 
   for i, ch in text:
     if area.x + i < area.right:
       discard buf.put(area.x + i, area.y, $ch, canvasDimStyle())
 
-proc renderBuildList(state: BuildModalState, area: Rect,
-                    buf: var CellBuffer) =
-  ## Render available build options list
+proc pendingQty(state: BuildModalState, key: BuildRowKey): int =
+  for item in state.pendingQueue:
+    case key.kind
+    of BuildOptionKind.Ship:
+      if item.buildType == BuildType.Ship and
+          item.shipClass.isSome and key.shipClass.isSome and
+          item.shipClass.get() == key.shipClass.get():
+        return item.quantity
+    of BuildOptionKind.Ground:
+      if item.buildType == BuildType.Ground and
+          item.groundClass.isSome and key.groundClass.isSome and
+          item.groundClass.get() == key.groundClass.get():
+        return item.quantity
+    of BuildOptionKind.Facility:
+      if item.buildType == BuildType.Facility and
+          item.facilityClass.isSome and key.facilityClass.isSome and
+          item.facilityClass.get() == key.facilityClass.get():
+        return item.quantity
+  0
+
+proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
+  for opt in state.availableOptions:
+    case opt.kind
+    of BuildOptionKind.Ship:
+      if key.shipClass.isSome:
+        try:
+          let cls =
+            parseEnum[ShipClass](opt.name.replace(" ", ""))
+          if cls == key.shipClass.get():
+            return true
+        except:
+          discard
+    of BuildOptionKind.Ground:
+      if key.groundClass.isSome:
+        try:
+          let cls =
+            parseEnum[GroundClass](opt.name.replace(" ", ""))
+          if cls == key.groundClass.get():
+            return true
+        except:
+          discard
+    of BuildOptionKind.Facility:
+      if key.facilityClass.isSome:
+        try:
+          let cls =
+            parseEnum[FacilityClass](opt.name.replace(" ", ""))
+          if cls == key.facilityClass.get():
+            return true
+        except:
+          discard
+  false
+
+proc renderBuildTable(
+    state: BuildModalState, area: Rect, buf: var CellBuffer
+) =
+  ## Render spec-aligned build table with qty column
   if area.isEmpty:
     return
 
-  # Header
-  let headerText = "AVAILABLE"
-  for i, ch in headerText:
-    if area.x + i < area.right:
-      discard buf.put(area.x + i, area.y, $ch, canvasHeaderStyle())
+  proc dashIf(value: int): string =
+    if value < 0: "—" else: $value
 
-  # List items
-  let listArea = rect(area.x, area.y + 1, area.width, area.height - 1)
-  var y = listArea.y
+  proc pct(value: int): string =
+    $value & "%"
 
-  for idx, option in state.availableOptions:
-    if y >= listArea.bottom:
-      break
+  let columns = case state.category
+    of BuildCategory.Ships:
+      @[
+        tableColumn("Class", 5, table.Alignment.Left),
+        tableColumn("Name", 18, table.Alignment.Left),
+        tableColumn("CST", 3, table.Alignment.Right),
+        tableColumn("PC", 4, table.Alignment.Right),
+        tableColumn("MC", 4, table.Alignment.Right),
+        tableColumn("AS", 4, table.Alignment.Right),
+        tableColumn("DS", 4, table.Alignment.Right),
+        tableColumn("CC", 4, table.Alignment.Right),
+        tableColumn("CL", 4, table.Alignment.Right),
+        tableColumn("Qty", 4, table.Alignment.Right)
+      ]
+    of BuildCategory.Ground:
+      @[
+        tableColumn("Class", 5, table.Alignment.Left),
+        tableColumn("Name", 18, table.Alignment.Left),
+        tableColumn("CST", 3, table.Alignment.Right),
+        tableColumn("PC", 4, table.Alignment.Right),
+        tableColumn("MC", 4, table.Alignment.Right),
+        tableColumn("AS", 4, table.Alignment.Right),
+        tableColumn("DS", 4, table.Alignment.Right),
+        tableColumn("Qty", 4, table.Alignment.Right)
+      ]
+    of BuildCategory.Facilities:
+      @[
+        tableColumn("Class", 5, table.Alignment.Left),
+        tableColumn("Name", 14, table.Alignment.Left),
+        tableColumn("CST", 3, table.Alignment.Right),
+        tableColumn("PC", 4, table.Alignment.Right),
+        tableColumn("MC", 4, table.Alignment.Right),
+        tableColumn("AS", 4, table.Alignment.Right),
+        tableColumn("DS", 4, table.Alignment.Right),
+        tableColumn("Docks", 5, table.Alignment.Right),
+        tableColumn("Time", 4, table.Alignment.Right),
+        tableColumn("Qty", 4, table.Alignment.Right)
+      ]
 
-    let isSelected = state.focus == BuildModalFocus.BuildList and
-                    idx == state.selectedBuildIdx
-    let prefix = if isSelected: "► " else: "  "
-    let text = prefix & option.name & " " & $option.cost
+  var tableView = table(columns)
+    .showBorders(true)
+    .zebraStripe(true)
 
-    let style = if isSelected:
-      selectedStyle()
-    else:
-      canvasStyle()
+  let rowCount = buildRowCount(state.category)
+  let headerHeight = tableView.renderHeight(0)
+  let visibleRows = max(1, area.height - headerHeight)
 
-    for i, ch in text:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, y, $ch, style)
+  var scroll = state.buildListScroll
+  scroll.contentLength = rowCount
+  scroll.viewportLength = visibleRows
+  scroll.ensureVisible(state.selectedBuildIdx)
+  scroll.clampOffsets()
 
-    y += 1
+  tableView = tableView
+    .selectedIdx(state.selectedBuildIdx)
+    .scrollOffset(scroll.verticalOffset)
 
-proc renderQueue(state: BuildModalState, area: Rect,
-                buf: var CellBuffer) =
-  ## Render pending build queue
-  if area.isEmpty:
-    return
+  case state.category
+  of BuildCategory.Ships:
+    for idx, row in ShipSpecRows:
+      let key = buildRowKey(state.category, idx)
+      let qty = pendingQty(state, key)
+      let buildable = isBuildable(state, key)
+      let qtyStyle =
+        if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)
+      var cellStyles: seq[Option[CellStyle]] = @[]
+      cellStyles.setLen(columns.len)
+      if qtyStyle.isSome:
+        cellStyles[^1] = qtyStyle
+      if not buildable:
+        for i in 0 ..< cellStyles.len:
+          if cellStyles[i].isNone:
+            cellStyles[i] = some(canvasDimStyle())
+      let cells = @[
+        row.code,
+        row.name,
+        $row.cst,
+        $row.pc,
+        pct(row.mcPct),
+        dashIf(row.attack),
+        dashIf(row.defense),
+        dashIf(row.command),
+        dashIf(row.carry),
+        $qty
+      ]
+      tableView.addRow(TableRow(cells: cells, cellStyles: cellStyles))
+  of BuildCategory.Ground:
+    for idx, row in GroundSpecRows:
+      let key = buildRowKey(state.category, idx)
+      let qty = pendingQty(state, key)
+      let buildable = isBuildable(state, key)
+      let qtyStyle =
+        if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)
+      var cellStyles: seq[Option[CellStyle]] = @[]
+      cellStyles.setLen(columns.len)
+      if qtyStyle.isSome:
+        cellStyles[^1] = qtyStyle
+      if not buildable:
+        for i in 0 ..< cellStyles.len:
+          if cellStyles[i].isNone:
+            cellStyles[i] = some(canvasDimStyle())
+      let cells = @[
+        row.code,
+        row.name,
+        $row.cst,
+        $row.pc,
+        pct(row.mcPct),
+        $row.attack,
+        $row.defense,
+        $qty
+      ]
+      tableView.addRow(TableRow(cells: cells, cellStyles: cellStyles))
+  of BuildCategory.Facilities:
+    for idx, row in FacilitySpecRows:
+      let key = buildRowKey(state.category, idx)
+      let qty = pendingQty(state, key)
+      let buildable = isBuildable(state, key)
+      let qtyStyle =
+        if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)
+      var cellStyles: seq[Option[CellStyle]] = @[]
+      cellStyles.setLen(columns.len)
+      if qtyStyle.isSome:
+        cellStyles[^1] = qtyStyle
+      if not buildable:
+        for i in 0 ..< cellStyles.len:
+          if cellStyles[i].isNone:
+            cellStyles[i] = some(canvasDimStyle())
+      let cells = @[
+        row.code,
+        row.name,
+        $row.cst,
+        $row.pc,
+        pct(row.mcPct),
+        dashIf(row.attack),
+        $row.defense,
+        dashIf(row.docks),
+        $row.time,
+        $qty
+      ]
+      tableView.addRow(TableRow(cells: cells, cellStyles: cellStyles))
 
-  # Header
-  let headerText = "QUEUE (" & $state.pendingQueue.len & ")"
-  for i, ch in headerText:
-    if area.x + i < area.right:
-      discard buf.put(area.x + i, area.y, $ch, canvasHeaderStyle())
-
-  # Queue items
-  let listArea = rect(area.x, area.y + 1, area.width, area.height - 3)
-  var y = listArea.y
-  var totalCost = 0
-
-  for idx, item in state.pendingQueue:
-    if y >= listArea.bottom:
-      break
-
-    let isSelected = state.focus == BuildModalFocus.QueueList and
-                    idx == state.selectedQueueIdx
-    let prefix = if isSelected: "► " else: "  "
-    let quantityText = if item.quantity > 1: " ×" & $item.quantity else: ""
-    let itemCost = item.cost * item.quantity
-    let text = prefix & item.name & quantityText & " " & $itemCost
-
-    let style = if isSelected:
-      selectedStyle()
-    else:
-      canvasStyle()
-
-    for i, ch in text:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, y, $ch, style)
-
-    totalCost += itemCost
-    y += 1
-
-  # Total cost
-  y = listArea.bottom
-  if y < area.bottom:
-    let totalText = "TOTAL: " & $totalCost & " CR"
-    for i, ch in totalText:
-      if area.x + i < area.right:
-        discard buf.put(area.x + i, y, $ch, alertStyle())
+  tableView.render(area, buf)
 
 proc renderFooter(state: BuildModalState, area: Rect,
                  buf: var CellBuffer) =
@@ -158,23 +296,17 @@ proc renderFooter(state: BuildModalState, area: Rect,
   if area.isEmpty:
     return
 
-  var text = ""
-
-  # Quantity selector for ships
-  if state.category == BuildCategory.Ships:
-    text = "Qty: ◄ " & $state.quantityInput & " ► "
-  else:
-    text = "           "
-
-  # Action hints
-  text &= "[Tab]Cat [Enter]Add [Q]Done"
+  let text =
+    "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab]Cat  [Q]Confirm  [Esc]Close"
 
   for i, ch in text:
     if area.x + i < area.right:
       discard buf.put(area.x + i, area.y, $ch, canvasDimStyle())
 
-proc render*(widget: BuildModalWidget, state: BuildModalState,
-            viewport: Rect, buf: var CellBuffer) =
+proc render*(
+    widget: BuildModalWidget, state: BuildModalState,
+    viewport: Rect, buf: var CellBuffer
+) =
   ## Render the build modal
   if not state.active:
     return
@@ -205,22 +337,10 @@ proc render*(widget: BuildModalWidget, state: BuildModalState,
   discard buf.put(modalArea.right - 1, separatorY, glyphs.right,
     modalBorderStyle())
 
-  # Content area (build list and queue)
-  let contentArea = rect(inner.x, separatorY + 1, inner.width,
-                        inner.height - 5)
-
-  # Split content area into two columns
-  let leftWidth = contentArea.width div 2
-  let rightWidth = contentArea.width - leftWidth - 1
-
-  let buildListArea = rect(contentArea.x, contentArea.y, leftWidth,
-                          contentArea.height)
-  let queueArea = rect(contentArea.x + leftWidth + 1, contentArea.y,
-                      rightWidth, contentArea.height)
-
-  # Draw vertical separator between columns
-  for y in contentArea.y..<contentArea.bottom:
-    discard buf.put(contentArea.x + leftWidth, y, "│", modalBorderStyle())
+  # Content area (single table)
+  let contentArea = rect(
+    inner.x, separatorY + 1, inner.width, inner.height - 5
+  )
 
   # Footer area (above the bottom separator)
   let footerArea = rect(inner.x, inner.bottom - 1, inner.width, 1)
@@ -228,6 +348,5 @@ proc render*(widget: BuildModalWidget, state: BuildModalState,
   # Render all sections
   renderCategoryTabs(state, tabsArea, buf)
   renderDockSummary(state, docksArea, buf)
-  renderBuildList(state, buildListArea, buf)
-  renderQueue(state, queueArea, buf)
+  renderBuildTable(state, contentArea, buf)
   renderFooter(state, footerArea, buf)

@@ -860,6 +860,24 @@ proc actionBuildListDown*(): Proposal =
     gameActionData: ""
   )
 
+proc actionBuildListPageUp*(): Proposal =
+  ## Page up in build list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildListPageUp,
+    gameActionData: ""
+  )
+
+proc actionBuildListPageDown*(): Proposal =
+  ## Page down in build list
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildListPageDown,
+    gameActionData: ""
+  )
+
 proc actionBuildQueueUp*(): Proposal =
   ## Navigate up in queue list
   Proposal(
@@ -914,21 +932,21 @@ proc actionBuildConfirmQueue*(): Proposal =
     gameActionData: ""
   )
 
-proc actionBuildQuantityInc*(): Proposal =
-  ## Increase build quantity
+proc actionBuildQtyInc*(): Proposal =
+  ## Increase build quantity for selected row
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionKind: ActionKind.buildQuantityInc,
+    actionKind: ActionKind.buildQtyInc,
     gameActionData: ""
   )
 
-proc actionBuildQuantityDec*(): Proposal =
-  ## Decrease build quantity
+proc actionBuildQtyDec*(): Proposal =
+  ## Decrease build quantity for selected row
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
-    actionKind: ActionKind.buildQuantityDec,
+    actionKind: ActionKind.buildQtyDec,
     gameActionData: ""
   )
 
@@ -1104,6 +1122,7 @@ type
       KeyQ, KeyC, KeyF, KeyO, KeyM, KeyE, KeyH, KeyX, KeyS, KeyL
       KeyB, KeyG, KeyR, KeyJ, KeyK, KeyD, KeyP, KeyV, KeyN, KeyW, KeyI, KeyT
       KeyA, KeyY, KeyU, KeyZ
+      KeyPlus, KeyMinus
       # Navigation
       KeyUp, KeyDown, KeyLeft, KeyRight
       KeyEnter, KeyEscape, KeyTab, KeyShiftTab

@@ -12,6 +12,7 @@ import ./tui_model
 import ./actions
 import ./command_parser
 import ../tui/widget/scroll_state
+import ../tui/build_spec
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
@@ -1166,6 +1167,141 @@ proc quitAcceptor*(model: var TuiModel, proposal: Proposal) =
 # Build Modal Acceptor
 # ============================================================================
 
+proc buildRowCountForCategory(category: BuildCategory): int =
+  buildRowCount(category)
+
+proc buildRowKeyAt(state: BuildModalState, idx: int): BuildRowKey =
+  buildRowKey(state.category, idx)
+
+proc buildOptionMatchesRow(opt: BuildOption, key: BuildRowKey): bool =
+  case opt.kind
+  of BuildOptionKind.Ship:
+    if key.shipClass.isNone:
+      return false
+    try:
+      let cls =
+        parseEnum[ShipClass](opt.name.replace(" ", ""))
+      cls == key.shipClass.get()
+    except:
+      false
+  of BuildOptionKind.Ground:
+    if key.groundClass.isNone:
+      return false
+    try:
+      let cls =
+        parseEnum[GroundClass](opt.name.replace(" ", ""))
+      cls == key.groundClass.get()
+    except:
+      false
+  of BuildOptionKind.Facility:
+    if key.facilityClass.isNone:
+      return false
+    try:
+      let cls =
+        parseEnum[FacilityClass](opt.name.replace(" ", ""))
+      cls == key.facilityClass.get()
+    except:
+      false
+
+proc buildOptionCost(state: BuildModalState, key: BuildRowKey): int =
+  for opt in state.availableOptions:
+    if buildOptionMatchesRow(opt, key):
+      return opt.cost
+  0
+
+proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
+  for opt in state.availableOptions:
+    if buildOptionMatchesRow(opt, key):
+      return true
+  false
+
+proc findPendingIdx(state: BuildModalState, key: BuildRowKey): int =
+  for idx, item in state.pendingQueue:
+    case key.kind
+    of BuildOptionKind.Ship:
+      if item.buildType == BuildType.Ship and
+          item.shipClass.isSome and key.shipClass.isSome and
+          item.shipClass.get() == key.shipClass.get():
+        return idx
+    of BuildOptionKind.Ground:
+      if item.buildType == BuildType.Ground and
+          item.groundClass.isSome and key.groundClass.isSome and
+          item.groundClass.get() == key.groundClass.get():
+        return idx
+    of BuildOptionKind.Facility:
+      if item.buildType == BuildType.Facility and
+          item.facilityClass.isSome and key.facilityClass.isSome and
+          item.facilityClass.get() == key.facilityClass.get():
+        return idx
+  -1
+
+proc incSelectedQty(model: var TuiModel) =
+  if model.ui.buildModal.focus != BuildModalFocus.BuildList:
+    return
+  let maxIdx = buildRowCountForCategory(
+    model.ui.buildModal.category
+  ) - 1
+  if model.ui.buildModal.selectedBuildIdx < 0 or
+      model.ui.buildModal.selectedBuildIdx > maxIdx:
+    return
+  let key = buildRowKeyAt(
+    model.ui.buildModal,
+    model.ui.buildModal.selectedBuildIdx
+  )
+  if not isBuildable(model.ui.buildModal, key):
+    model.ui.statusMessage = "Not buildable"
+    return
+  let cost = buildOptionCost(model.ui.buildModal, key)
+  let pendingIdx = findPendingIdx(model.ui.buildModal, key)
+  if pendingIdx >= 0:
+    model.ui.buildModal.pendingQueue[pendingIdx].quantity += 1
+  else:
+    var item = PendingBuildItem(
+      name: "",
+      cost: cost,
+      quantity: 1
+    )
+    case key.kind
+    of BuildOptionKind.Ship:
+      item.buildType = BuildType.Ship
+      item.shipClass = key.shipClass
+      if key.shipClass.isSome:
+        item.name = $key.shipClass.get()
+    of BuildOptionKind.Ground:
+      item.buildType = BuildType.Ground
+      item.groundClass = key.groundClass
+      if key.groundClass.isSome:
+        item.name = $key.groundClass.get()
+    of BuildOptionKind.Facility:
+      item.buildType = BuildType.Facility
+      item.facilityClass = key.facilityClass
+      if key.facilityClass.isSome:
+        item.name = $key.facilityClass.get()
+    model.ui.buildModal.pendingQueue.add(item)
+  model.ui.statusMessage = "Qty +1"
+
+proc decSelectedQty(model: var TuiModel) =
+  if model.ui.buildModal.focus != BuildModalFocus.BuildList:
+    return
+  let maxIdx = buildRowCountForCategory(
+    model.ui.buildModal.category
+  ) - 1
+  if model.ui.buildModal.selectedBuildIdx < 0 or
+      model.ui.buildModal.selectedBuildIdx > maxIdx:
+    return
+  let key = buildRowKeyAt(
+    model.ui.buildModal,
+    model.ui.buildModal.selectedBuildIdx
+  )
+  let pendingIdx = findPendingIdx(model.ui.buildModal, key)
+  if pendingIdx < 0:
+    return
+  if model.ui.buildModal.pendingQueue[pendingIdx].quantity > 1:
+    model.ui.buildModal.pendingQueue[pendingIdx].quantity -= 1
+  else:
+    model.ui.buildModal.pendingQueue.delete(pendingIdx)
+  model.ui.statusMessage = "Qty -1"
+
 proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle build modal proposals
   if proposal.kind != ProposalKind.pkGameAction:
@@ -1183,6 +1319,7 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.buildModal.selectedQueueIdx = 0
       model.ui.buildModal.pendingQueue = @[]
       model.ui.buildModal.quantityInput = 1
+      model.ui.buildModal.ppAvailable = model.view.treasury
       # Note: availableOptions and dockSummary will be populated by the reactor
       model.ui.statusMessage = "Build modal opened"
   of ActionKind.closeBuildModal:
@@ -1199,6 +1336,7 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     of BuildCategory.Ground:
       model.ui.buildModal.category = BuildCategory.Ships
     model.ui.buildModal.selectedBuildIdx = 0
+    model.ui.buildModal.focus = BuildModalFocus.BuildList
     # Note: availableOptions will be refreshed by reactor
   of ActionKind.buildListUp:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
@@ -1206,7 +1344,9 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.buildModal.selectedBuildIdx -= 1
   of ActionKind.buildListDown:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
-      let maxIdx = model.ui.buildModal.availableOptions.len - 1
+      let maxIdx = buildRowCountForCategory(
+        model.ui.buildModal.category
+      ) - 1
       if model.ui.buildModal.selectedBuildIdx < maxIdx:
         model.ui.buildModal.selectedBuildIdx += 1
     elif model.ui.buildModal.focus == BuildModalFocus.QueueList:
@@ -1221,68 +1361,30 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let maxIdx = model.ui.buildModal.pendingQueue.len - 1
       if model.ui.buildModal.selectedQueueIdx < maxIdx:
         model.ui.buildModal.selectedQueueIdx += 1
-  of ActionKind.buildFocusSwitch:
-    # Toggle between BuildList and QueueList
+  of ActionKind.buildListPageUp:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
-      if model.ui.buildModal.pendingQueue.len > 0:
-        model.ui.buildModal.focus = BuildModalFocus.QueueList
-    else:
-      model.ui.buildModal.focus = BuildModalFocus.BuildList
-  of ActionKind.buildAddToQueue:
-    # Add selected build option to pending queue
-    if model.ui.buildModal.selectedBuildIdx < model.ui.buildModal.availableOptions.len:
-      let option = model.ui.buildModal.availableOptions[model.ui.buildModal.selectedBuildIdx]
-      var buildItem = PendingBuildItem(
-        name: option.name,
-        cost: option.cost,
-        quantity: model.ui.buildModal.quantityInput
+      let pageSize = max(1, model.ui.termHeight - 12)
+      model.ui.buildModal.selectedBuildIdx = max(
+        0, model.ui.buildModal.selectedBuildIdx - pageSize
       )
-
-      # Set build type and class based on option kind
-      case option.kind
-      of BuildOptionKind.Ship:
-        buildItem.buildType = BuildType.Ship
-        # Parse ship class from name
-        try:
-          buildItem.shipClass = some(parseEnum[ShipClass](option.name.replace(" ", "")))
-        except:
-          # If parsing fails, skip this item
-          model.ui.statusMessage = "Failed to parse ship class: " & option.name
-          return
-      of BuildOptionKind.Facility:
-        buildItem.buildType = BuildType.Facility
-        buildItem.quantity = 1  # Facilities are always quantity 1
-        # Parse facility class from name
-        try:
-          buildItem.facilityClass = some(parseEnum[FacilityClass](option.name.replace(" ", "")))
-        except:
-          model.ui.statusMessage = "Failed to parse facility class: " & option.name
-          return
-      of BuildOptionKind.Ground:
-        buildItem.buildType = BuildType.Ground
-        buildItem.quantity = 1  # Ground units are always quantity 1
-        # Parse ground class from name
-        try:
-          buildItem.groundClass = some(parseEnum[GroundClass](option.name.replace(" ", "")))
-        except:
-          model.ui.statusMessage = "Failed to parse ground class: " & option.name
-          return
-
-      model.ui.buildModal.pendingQueue.add(buildItem)
-      model.ui.statusMessage = "Added " & option.name & " to queue"
+  of ActionKind.buildListPageDown:
+    if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      let maxIdx = buildRowCountForCategory(
+        model.ui.buildModal.category
+      ) - 1
+      let pageSize = max(1, model.ui.termHeight - 12)
+      model.ui.buildModal.selectedBuildIdx = min(
+        maxIdx, model.ui.buildModal.selectedBuildIdx + pageSize
+      )
+  of ActionKind.buildFocusSwitch:
+    # Queue list no longer shown in build modal
+    model.ui.buildModal.focus = BuildModalFocus.BuildList
+  of ActionKind.buildAddToQueue:
+    # Legacy add action: treat as qty increment
+    incSelectedQty(model)
   of ActionKind.buildRemoveFromQueue:
-    # Remove selected item from pending queue
-    if model.ui.buildModal.focus == BuildModalFocus.QueueList and
-       model.ui.buildModal.selectedQueueIdx < model.ui.buildModal.pendingQueue.len:
-      let item = model.ui.buildModal.pendingQueue[model.ui.buildModal.selectedQueueIdx]
-      model.ui.buildModal.pendingQueue.delete(model.ui.buildModal.selectedQueueIdx)
-      model.ui.statusMessage = "Removed " & item.name & " from queue"
-      # Adjust selection if needed
-      if model.ui.buildModal.selectedQueueIdx >= model.ui.buildModal.pendingQueue.len:
-        model.ui.buildModal.selectedQueueIdx = max(0, model.ui.buildModal.pendingQueue.len - 1)
-      # Switch focus back to build list if queue is now empty
-      if model.ui.buildModal.pendingQueue.len == 0:
-        model.ui.buildModal.focus = BuildModalFocus.BuildList
+    # Legacy remove action: treat as qty decrement
+    decSelectedQty(model)
   of ActionKind.buildConfirmQueue:
     # Convert pending queue to staged build commands
     for item in model.ui.buildModal.pendingQueue:
@@ -1301,16 +1403,10 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.ui.statusMessage = "Staged " & $count & " build command(s)"
     model.ui.buildModal.active = false
     model.ui.buildModal.pendingQueue = @[]
-  of ActionKind.buildQuantityInc:
-    # Only for ships
-    if model.ui.buildModal.category == BuildCategory.Ships:
-      if model.ui.buildModal.quantityInput < 99:
-        model.ui.buildModal.quantityInput += 1
-  of ActionKind.buildQuantityDec:
-    # Only for ships
-    if model.ui.buildModal.category == BuildCategory.Ships:
-      if model.ui.buildModal.quantityInput > 1:
-        model.ui.buildModal.quantityInput -= 1
+  of ActionKind.buildQtyInc:
+    incSelectedQty(model)
+  of ActionKind.buildQtyDec:
+    decSelectedQty(model)
   else:
     discard
 

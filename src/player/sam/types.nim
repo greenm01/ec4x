@@ -122,14 +122,16 @@ type
     buildCategorySwitch
     buildListUp
     buildListDown
+    buildListPageUp
+    buildListPageDown
     buildQueueUp
     buildQueueDown
     buildFocusSwitch
     buildAddToQueue
     buildRemoveFromQueue
     buildConfirmQueue
-    buildQuantityInc
-    buildQuantityDec
+    buildQtyInc
+    buildQtyDec
     fleetConsoleNextPane
     fleetConsolePrevPane
     openFleetDetailModal

@@ -140,6 +140,12 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         keyCode = KeyCode.KeyU
       of "z", "Z":
         keyCode = KeyCode.KeyZ
+      of "+":
+        keyCode = KeyCode.KeyPlus
+      of "-":
+        keyCode = KeyCode.KeyMinus
+      of "=":
+        keyCode = KeyCode.KeyPlus
       of ":":
         keyCode = KeyCode.KeyColon
       of "/":

@@ -168,6 +168,8 @@ proc formatKeyCode*(key: actions.KeyCode): string =
   of actions.KeyCode.KeyY: "y"
   of actions.KeyCode.KeyU: "u"
   of actions.KeyCode.KeyZ: "z"
+  of actions.KeyCode.KeyPlus: "+"
+  of actions.KeyCode.KeyMinus: "-"
   of actions.KeyCode.KeyUp: "↑"
   of actions.KeyCode.KeyDown: "↓"
   of actions.KeyCode.KeyLeft: "←"
@@ -1156,27 +1158,33 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildAddToQueue,
+    actionKind: ActionKind.buildQtyInc,
     context: BindingContext.BuildModal,
-    longLabel: "ADD", shortLabel: "Add", priority: 10))
+    longLabel: "QTY+", shortLabel: "+", priority: 10))
 
   registerBinding(Binding(
-    key: KeyCode.KeyX, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildRemoveFromQueue,
+    key: KeyCode.KeyPlus, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildQtyInc,
     context: BindingContext.BuildModal,
-    longLabel: "REMOVE", shortLabel: "Rem", priority: 15))
+    longLabel: "QTY+", shortLabel: "+", priority: 11))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.buildQtyDec,
+    context: BindingContext.BuildModal,
+    longLabel: "QTY-", shortLabel: "-", priority: 12))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildQuantityInc,
+    actionKind: ActionKind.buildListPageUp,
     context: BindingContext.BuildModal,
-    longLabel: "QTY+", shortLabel: "+", priority: 20))
+    longLabel: "PGUP", shortLabel: "PgU", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildQuantityDec,
+    actionKind: ActionKind.buildListPageDown,
     context: BindingContext.BuildModal,
-    longLabel: "QTY-", shortLabel: "-", priority: 21))
+    longLabel: "PGDN", shortLabel: "PgD", priority: 21))
 
   registerBinding(Binding(
     key: KeyCode.KeyQ, modifier: KeyModifier.None,
@@ -1387,6 +1395,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionBuildListUp())
   of ActionKind.buildListDown:
     return some(actionBuildListDown())
+  of ActionKind.buildListPageUp:
+    return some(actionBuildListPageUp())
+  of ActionKind.buildListPageDown:
+    return some(actionBuildListPageDown())
   of ActionKind.buildQueueUp:
     return some(actionBuildQueueUp())
   of ActionKind.buildQueueDown:
@@ -1399,10 +1411,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionBuildRemoveFromQueue())
   of ActionKind.buildConfirmQueue:
     return some(actionBuildConfirmQueue())
-  of ActionKind.buildQuantityInc:
-    return some(actionBuildQuantityInc())
-  of ActionKind.buildQuantityDec:
-    return some(actionBuildQuantityDec())
+  of ActionKind.buildQtyInc:
+    return some(actionBuildQtyInc())
+  of ActionKind.buildQtyDec:
+    return some(actionBuildQtyDec())
   
   # Fleet console pane navigation
   of ActionKind.fleetConsoleNextPane:
