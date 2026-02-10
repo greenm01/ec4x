@@ -19,6 +19,7 @@ import ../../common/invite_code
 import ../../common/logger
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
   fleet, command]
+import ../../engine/systems/capacity/construction_docks
 
 export types, tui_model, actions
 
@@ -1207,11 +1208,24 @@ proc buildOptionCost(state: BuildModalState, key: BuildRowKey): int =
   for opt in state.availableOptions:
     if buildOptionMatchesRow(opt, key):
       return opt.cost
-  0
+  buildRowCost(key)
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   for opt in state.availableOptions:
     if buildOptionMatchesRow(opt, key):
+      if key.kind == BuildOptionKind.Ship and key.shipClass.isSome:
+        let cls = key.shipClass.get()
+        if construction_docks.shipRequiresDock(cls):
+          var pendingUsed = 0
+          for item in state.pendingQueue:
+            if item.buildType == BuildType.Ship and
+                item.shipClass.isSome and
+                construction_docks.shipRequiresDock(item.shipClass.get()):
+              pendingUsed += item.quantity
+          let available =
+            state.dockSummary.constructionAvailable - pendingUsed
+          if available <= 0:
+            return false
       return true
   false
 
@@ -1252,6 +1266,41 @@ proc incSelectedQty(model: var TuiModel) =
     model.ui.statusMessage = "Not buildable"
     return
   let cost = buildOptionCost(model.ui.buildModal, key)
+  var pendingCost = 0
+  for item in model.ui.buildModal.pendingQueue:
+    var itemCost = 0
+    case item.buildType
+    of BuildType.Ship:
+      if item.shipClass.isSome:
+        itemCost = buildRowCost(BuildRowKey(
+          kind: BuildOptionKind.Ship,
+          shipClass: item.shipClass,
+          groundClass: none(GroundClass),
+          facilityClass: none(FacilityClass)
+        ))
+    of BuildType.Ground:
+      if item.groundClass.isSome:
+        itemCost = buildRowCost(BuildRowKey(
+          kind: BuildOptionKind.Ground,
+          shipClass: none(ShipClass),
+          groundClass: item.groundClass,
+          facilityClass: none(FacilityClass)
+        ))
+    of BuildType.Facility:
+      if item.facilityClass.isSome:
+        itemCost = buildRowCost(BuildRowKey(
+          kind: BuildOptionKind.Facility,
+          shipClass: none(ShipClass),
+          groundClass: none(GroundClass),
+          facilityClass: item.facilityClass
+        ))
+    else:
+      discard
+    pendingCost += itemCost * item.quantity
+  if model.ui.buildModal.ppAvailable >= 0 and
+      pendingCost + cost > model.ui.buildModal.ppAvailable:
+    model.ui.statusMessage = "Insufficient PP"
+    return
   let pendingIdx = findPendingIdx(model.ui.buildModal, key)
   if pendingIdx >= 0:
     model.ui.buildModal.pendingQueue[pendingIdx].quantity += 1

@@ -118,6 +118,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   result.viewingHouse = houseId
   result.turn = state.turn
   result.homeworldSystemId = none(SystemId)
+  result.treasuryBalance = none(int32)
+  result.netIncome = none(int32)
   result.ltuSystems = initTable[SystemId, int32]()
   result.ltuColonies = initTable[ColonyId, int32]()
   result.ltuFleets = initTable[FleetId, int32]()
@@ -129,6 +131,14 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
       table[key] = turn
 
   # === Visibility Tracking ===
+  let houseOpt = state.house(houseId)
+  if houseOpt.isSome:
+    let house = houseOpt.get()
+    result.treasuryBalance = some(house.treasury)
+    if house.latestIncomeReport.isSome:
+      result.netIncome =
+        some(house.latestIncomeReport.get().totalNet)
+
   for systemId, owner in state.starMap.homeWorlds.pairs:
     if owner == houseId:
       result.homeworldSystemId = some(systemId)

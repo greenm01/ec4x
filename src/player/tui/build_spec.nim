@@ -332,3 +332,25 @@ proc buildRowKey*(category: BuildCategory, idx: int): BuildRowKey =
       groundClass: none(GroundClass),
       facilityClass: some(row.facilityClass)
     )
+
+proc buildRowCost*(key: BuildRowKey): int =
+  case key.kind
+  of BuildOptionKind.Ship:
+    if key.shipClass.isNone:
+      return 0
+    for row in ShipSpecRows:
+      if row.shipClass == key.shipClass.get():
+        return row.pc
+  of BuildOptionKind.Ground:
+    if key.groundClass.isNone:
+      return 0
+    for row in GroundSpecRows:
+      if row.groundClass == key.groundClass.get():
+        return row.pc
+  of BuildOptionKind.Facility:
+    if key.facilityClass.isNone:
+      return 0
+    for row in FacilitySpecRows:
+      if row.facilityClass == key.facilityClass.get():
+        return row.pc
+  0

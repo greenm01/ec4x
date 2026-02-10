@@ -47,6 +47,8 @@ type
     viewingHouse*: HouseId
     turn*: int32
     homeworldSystemId*: Option[SystemId]
+    treasuryBalance*: Option[int32]
+    netIncome*: Option[int32]
     ownColonies*: seq[Colony]
     ownFleets*: seq[Fleet]
     ownShips*: seq[Ship]
@@ -72,6 +74,8 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.viewingHouse = ps.viewingHouse
   result.turn = ps.turn
   result.homeworldSystemId = ps.homeworldSystemId
+  result.treasuryBalance = ps.treasuryBalance
+  result.netIncome = ps.netIncome
   result.ownColonies = ps.ownColonies
   result.ownFleets = ps.ownFleets
   result.ownShips = ps.ownShips

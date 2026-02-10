@@ -38,6 +38,10 @@ proc applyDeltaToPlayerState*(
   state.viewingHouse = delta.viewingHouse
   if delta.homeworldSystemIdChanged:
     state.homeworldSystemId = delta.homeworldSystemId
+  if delta.treasuryBalanceChanged:
+    state.treasuryBalance = delta.treasuryBalance
+  if delta.netIncomeChanged:
+    state.netIncome = delta.netIncome
   
   # Apply ownColonies delta
   for colony in delta.ownColonies.added:

@@ -16,6 +16,7 @@ import ../build_spec
 import ../../sam/tui_model
 import ../../../engine/types/production
 import ../../../engine/types/[ship, ground_unit, facilities]
+import ../../../engine/systems/capacity/construction_docks
 
 type
   BuildModalWidget* = object
@@ -61,6 +62,9 @@ proc renderCategoryTabs(
         discard buf.put(x + i, y, $ch, style)
     x += tabText.len + 1
 
+proc pendingDockUse(state: BuildModalState): int
+proc pendingPpCost(state: BuildModalState): int
+
 proc renderDockSummary(
     state: BuildModalState, area: Rect, buf: var CellBuffer
 ) =
@@ -69,11 +73,20 @@ proc renderDockSummary(
     return
 
   let docks = state.dockSummary
-  let used = max(0, docks.constructionTotal - docks.constructionAvailable)
-  let ppLabel = if state.ppAvailable >= 0:
-    $state.ppAvailable
+  let pendingUsed = pendingDockUse(state)
+  var used = max(0, docks.constructionTotal - docks.constructionAvailable)
+  used += pendingUsed
+  if used > docks.constructionTotal:
+    used = docks.constructionTotal
+  let availablePp =
+    if state.ppAvailable >= 0:
+      max(0, state.ppAvailable - pendingPpCost(state))
+    else:
+      -1
+  let ppLabel = if availablePp >= 0:
+    $availablePp & "/" & $state.ppAvailable
   else:
-    "—"
+    "N/A"
   let text = "Docks: " & $used & "/" &
     $docks.constructionTotal & " CDK | " &
     "PP Available: " & ppLabel
@@ -102,6 +115,51 @@ proc pendingQty(state: BuildModalState, key: BuildRowKey): int =
         return item.quantity
   0
 
+proc pendingDockUse(state: BuildModalState): int =
+  var used = 0
+  for item in state.pendingQueue:
+    if item.buildType != BuildType.Ship or item.shipClass.isNone:
+      continue
+    if construction_docks.shipRequiresDock(item.shipClass.get()):
+      used += item.quantity
+  used
+
+proc pendingItemCost(item: PendingBuildItem): int =
+  case item.buildType
+  of BuildType.Ship:
+    if item.shipClass.isSome:
+      return buildRowCost(BuildRowKey(
+        kind: BuildOptionKind.Ship,
+        shipClass: item.shipClass,
+        groundClass: none(GroundClass),
+        facilityClass: none(FacilityClass)
+      ))
+  of BuildType.Ground:
+    if item.groundClass.isSome:
+      return buildRowCost(BuildRowKey(
+        kind: BuildOptionKind.Ground,
+        shipClass: none(ShipClass),
+        groundClass: item.groundClass,
+        facilityClass: none(FacilityClass)
+      ))
+  of BuildType.Facility:
+    if item.facilityClass.isSome:
+      return buildRowCost(BuildRowKey(
+        kind: BuildOptionKind.Facility,
+        shipClass: none(ShipClass),
+        groundClass: none(GroundClass),
+        facilityClass: item.facilityClass
+      ))
+  else:
+    discard
+  0
+
+proc pendingPpCost(state: BuildModalState): int =
+  var total = 0
+  for item in state.pendingQueue:
+    total += pendingItemCost(item) * item.quantity
+  total
+
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   for opt in state.availableOptions:
     case opt.kind
@@ -111,6 +169,11 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
           let cls =
             parseEnum[ShipClass](opt.name.replace(" ", ""))
           if cls == key.shipClass.get():
+            if construction_docks.shipRequiresDock(cls):
+              let pendingUsed = pendingDockUse(state)
+              let available =
+                state.dockSummary.constructionAvailable - pendingUsed
+              return available > 0
             return true
         except:
           discard

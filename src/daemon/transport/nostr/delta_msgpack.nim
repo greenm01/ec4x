@@ -28,6 +28,10 @@ type
     turn*: int32
     homeworldSystemIdChanged*: bool
     homeworldSystemId*: Option[SystemId]
+    treasuryBalanceChanged*: bool
+    treasuryBalance*: Option[int32]
+    netIncomeChanged*: bool
+    netIncome*: Option[int32]
     ownColonies*: EntityDelta[Colony]
     ownFleets*: EntityDelta[Fleet]
     ownShips*: EntityDelta[Ship]
@@ -358,6 +362,10 @@ proc diffPlayerState*(
     result.actProgression = some(current.actProgression)
     result.homeworldSystemIdChanged = true
     result.homeworldSystemId = current.homeworldSystemId
+    result.treasuryBalanceChanged = true
+    result.treasuryBalance = current.treasuryBalance
+    result.netIncomeChanged = true
+    result.netIncome = current.netIncome
     return
 
   let oldSnapshot = oldSnapshotOpt.get()
@@ -420,6 +428,14 @@ proc diffPlayerState*(
   if oldSnapshot.homeworldSystemId != current.homeworldSystemId:
     result.homeworldSystemIdChanged = true
     result.homeworldSystemId = current.homeworldSystemId
+
+  if oldSnapshot.treasuryBalance != current.treasuryBalance:
+    result.treasuryBalanceChanged = true
+    result.treasuryBalance = current.treasuryBalance
+
+  if oldSnapshot.netIncome != current.netIncome:
+    result.netIncomeChanged = true
+    result.netIncome = current.netIncome
 
 # =============================================================================
 # Msgpack Serialization

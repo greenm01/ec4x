@@ -828,13 +828,19 @@ proc syncPlayerStateToModel*(
   model.view.viewingHouse = int(ps.viewingHouse)
   model.view.houseName =
     ps.houseNames.getOrDefault(ps.viewingHouse, "Unknown")
-  model.view.treasury = 0  # Not available in PlayerState
+  if ps.treasuryBalance.isSome:
+    model.view.treasury = ps.treasuryBalance.get().int
+  else:
+    model.view.treasury = 0
   model.view.prestige =
     ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
   model.view.alertCount = 0
   model.view.unreadReports = 0
   model.view.unreadMessages = 0
-  model.view.production = 0  # Would need income report
+  if ps.netIncome.isSome:
+    model.view.production = ps.netIncome.get().int
+  else:
+    model.view.production = 0
   model.view.houseTaxRate = 0
 
   # Build lane lookup structures from jumpLanes
