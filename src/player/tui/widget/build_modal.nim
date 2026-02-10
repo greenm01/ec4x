@@ -14,7 +14,7 @@ import ../layout/rect
 import ../styles/ec_palette
 import ../build_spec
 import ../../sam/tui_model
-import ../../../engine/types/production
+import ../../../engine/types/[core, production]
 import ../../../engine/types/[ship, ground_unit, facilities]
 import ../../../engine/systems/capacity/construction_docks
 
@@ -64,6 +64,7 @@ proc renderCategoryTabs(
 
 proc pendingDockUse(state: BuildModalState): int
 proc pendingPpCost(state: BuildModalState): int
+proc stagedQty(state: BuildModalState, key: BuildRowKey): int
 
 proc renderDockSummary(
     state: BuildModalState, area: Rect, buf: var CellBuffer
@@ -95,42 +96,78 @@ proc renderDockSummary(
     if area.x + i < area.right:
       discard buf.put(area.x + i, area.y, $ch, canvasDimStyle())
 
-proc pendingQty(state: BuildModalState, key: BuildRowKey): int =
-  for item in state.pendingQueue:
+proc stagedQty(state: BuildModalState, key: BuildRowKey): int =
+  var total = 0
+  let colonyId = ColonyId(state.colonyId.uint32)
+  for cmd in state.stagedBuildCommands:
+    if cmd.colonyId != colonyId:
+      continue
     case key.kind
     of BuildOptionKind.Ship:
-      if item.buildType == BuildType.Ship and
-          item.shipClass.isSome and key.shipClass.isSome and
-          item.shipClass.get() == key.shipClass.get():
-        return item.quantity
+      if cmd.buildType == BuildType.Ship and
+          cmd.shipClass.isSome and key.shipClass.isSome and
+          cmd.shipClass.get() == key.shipClass.get():
+        total += cmd.quantity.int
     of BuildOptionKind.Ground:
-      if item.buildType == BuildType.Ground and
-          item.groundClass.isSome and key.groundClass.isSome and
-          item.groundClass.get() == key.groundClass.get():
-        return item.quantity
+      if cmd.buildType == BuildType.Ground and
+          cmd.groundClass.isSome and key.groundClass.isSome and
+          cmd.groundClass.get() == key.groundClass.get():
+        total += cmd.quantity.int
     of BuildOptionKind.Facility:
-      if item.buildType == BuildType.Facility and
-          item.facilityClass.isSome and key.facilityClass.isSome and
-          item.facilityClass.get() == key.facilityClass.get():
-        return item.quantity
-  0
+      if cmd.buildType == BuildType.Facility and
+          cmd.facilityClass.isSome and key.facilityClass.isSome and
+          cmd.facilityClass.get() == key.facilityClass.get():
+        total += cmd.quantity.int
+  total
 
 proc pendingDockUse(state: BuildModalState): int =
   var used = 0
-  for item in state.pendingQueue:
-    if item.buildType != BuildType.Ship or item.shipClass.isNone:
+  let colonyId = ColonyId(state.colonyId.uint32)
+  for cmd in state.stagedBuildCommands:
+    if cmd.colonyId != colonyId:
       continue
-    if construction_docks.shipRequiresDock(item.shipClass.get()):
-      used += item.quantity
+    if cmd.buildType != BuildType.Ship or cmd.shipClass.isNone:
+      continue
+    if construction_docks.shipRequiresDock(cmd.shipClass.get()):
+      used += cmd.quantity.int
   used
-
-proc pendingItemCost(item: PendingBuildItem): int =
-  item.cost
 
 proc pendingPpCost(state: BuildModalState): int =
   var total = 0
-  for item in state.pendingQueue:
-    total += pendingItemCost(item) * item.quantity
+  let colonyId = ColonyId(state.colonyId.uint32)
+  for cmd in state.stagedBuildCommands:
+    if cmd.colonyId != colonyId:
+      continue
+    case cmd.buildType
+    of BuildType.Ship:
+      if cmd.shipClass.isSome:
+        let key = BuildRowKey(
+          kind: BuildOptionKind.Ship,
+          shipClass: cmd.shipClass,
+          groundClass: none(GroundClass),
+          facilityClass: none(FacilityClass)
+        )
+        total += buildRowCost(key) * cmd.quantity.int
+    of BuildType.Ground:
+      if cmd.groundClass.isSome:
+        let key = BuildRowKey(
+          kind: BuildOptionKind.Ground,
+          shipClass: none(ShipClass),
+          groundClass: cmd.groundClass,
+          facilityClass: none(FacilityClass)
+        )
+        total += buildRowCost(key) * cmd.quantity.int
+    of BuildType.Facility:
+      if cmd.facilityClass.isSome:
+        let key = BuildRowKey(
+          kind: BuildOptionKind.Facility,
+          shipClass: none(ShipClass),
+          groundClass: none(GroundClass),
+          facilityClass: cmd.facilityClass
+        )
+        total += buildRowCost(key) * cmd.quantity.int
+    else:
+      discard
   total
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
@@ -246,7 +283,7 @@ proc renderBuildTable(
   of BuildCategory.Ships:
     for idx, row in ShipSpecRows:
       let key = buildRowKey(state.category, idx)
-      let qty = pendingQty(state, key)
+      let qty = stagedQty(state, key)
       let buildable = isBuildable(state, key)
       let qtyStyle =
         if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)
@@ -274,7 +311,7 @@ proc renderBuildTable(
   of BuildCategory.Ground:
     for idx, row in GroundSpecRows:
       let key = buildRowKey(state.category, idx)
-      let qty = pendingQty(state, key)
+      let qty = stagedQty(state, key)
       let buildable = isBuildable(state, key)
       let qtyStyle =
         if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)
@@ -300,7 +337,7 @@ proc renderBuildTable(
   of BuildCategory.Facilities:
     for idx, row in FacilitySpecRows:
       let key = buildRowKey(state.category, idx)
-      let qty = pendingQty(state, key)
+      let qty = stagedQty(state, key)
       let buildable = isBuildable(state, key)
       let qtyStyle =
         if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)

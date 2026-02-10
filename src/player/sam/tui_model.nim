@@ -210,15 +210,6 @@ type
   BuildModalFocus* {.pure.} = enum
     CategoryTabs, BuildList, QueueList
 
-  PendingBuildItem* = object
-    buildType*: BuildType
-    name*: string
-    cost*: int
-    quantity*: int
-    shipClass*: Option[ShipClass]
-    facilityClass*: Option[FacilityClass]
-    groundClass*: Option[GroundClass]
-
   BuildModalState* = object
     active*: bool
     colonyId*: int
@@ -227,12 +218,11 @@ type
     focus*: BuildModalFocus
     selectedBuildIdx*: int
     selectedQueueIdx*: int
-    pendingQueue*: seq[PendingBuildItem]
-    quantityInput*: int  # Legacy ship quantity input (unused)
     availableOptions*: seq[BuildOption]
     dockSummary*: DockSummary
     ppAvailable*: int
     cstLevel*: int
+    stagedBuildCommands*: seq[BuildCommand]
     buildListScroll*: ScrollState
     queueScroll*: ScrollState
 
@@ -930,11 +920,10 @@ proc initTuiUiState*(): TuiUiState =
       focus: BuildModalFocus.BuildList,
       selectedBuildIdx: 0,
       selectedQueueIdx: 0,
-      pendingQueue: @[],
-      quantityInput: 1,
       availableOptions: @[],
       ppAvailable: -1,
       cstLevel: 1,
+      stagedBuildCommands: @[],
       buildListScroll: initScrollState(),
       queueScroll: initScrollState()
     ),

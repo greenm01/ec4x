@@ -1449,6 +1449,7 @@ proc syncBuildModalData*(
   model.ui.buildModal.availableOptions = result.options
   model.ui.buildModal.dockSummary = result.dockSummary
   model.ui.buildModal.ppAvailable = model.view.treasury
+  model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
   if ps.techLevels.isSome:
     model.ui.buildModal.cstLevel = ps.techLevels.get().cst
   else:

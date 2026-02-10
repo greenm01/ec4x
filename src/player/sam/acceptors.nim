@@ -1219,11 +1219,14 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
         let cls = key.shipClass.get()
         if construction_docks.shipRequiresDock(cls):
           var pendingUsed = 0
-          for item in state.pendingQueue:
-            if item.buildType == BuildType.Ship and
-                item.shipClass.isSome and
-                construction_docks.shipRequiresDock(item.shipClass.get()):
-              pendingUsed += item.quantity
+          let colonyId = ColonyId(state.colonyId.uint32)
+          for cmd in state.stagedBuildCommands:
+            if cmd.colonyId != colonyId:
+              continue
+            if cmd.buildType == BuildType.Ship and
+                cmd.shipClass.isSome and
+                construction_docks.shipRequiresDock(cmd.shipClass.get()):
+              pendingUsed += cmd.quantity.int
           let available =
             state.dockSummary.constructionAvailable - pendingUsed
           if available <= 0:
@@ -1231,31 +1234,67 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
       return true
   false
 
-proc findPendingIdx(state: BuildModalState, key: BuildRowKey): int =
-  for idx, item in state.pendingQueue:
-    case key.kind
-    of BuildOptionKind.Ship:
-      if item.buildType == BuildType.Ship and
-          item.shipClass.isSome and key.shipClass.isSome and
-          item.shipClass.get() == key.shipClass.get():
-        return idx
-    of BuildOptionKind.Ground:
-      if item.buildType == BuildType.Ground and
-          item.groundClass.isSome and key.groundClass.isSome and
-          item.groundClass.get() == key.groundClass.get():
-        return idx
-    of BuildOptionKind.Facility:
-      if item.buildType == BuildType.Facility and
-          item.facilityClass.isSome and key.facilityClass.isSome and
-          item.facilityClass.get() == key.facilityClass.get():
-        return idx
-  -1
-
 proc pendingPpCost(state: BuildModalState): int =
   var total = 0
-  for item in state.pendingQueue:
-    total += item.cost * item.quantity
+  let colonyId = ColonyId(state.colonyId.uint32)
+  for cmd in state.stagedBuildCommands:
+    if cmd.colonyId != colonyId:
+      continue
+    var itemCost = 0
+    case cmd.buildType
+    of BuildType.Ship:
+      if cmd.shipClass.isSome:
+        itemCost = buildRowCost(BuildRowKey(
+          kind: BuildOptionKind.Ship,
+          shipClass: cmd.shipClass,
+          groundClass: none(GroundClass),
+          facilityClass: none(FacilityClass)
+        ))
+    of BuildType.Ground:
+      if cmd.groundClass.isSome:
+        itemCost = buildRowCost(BuildRowKey(
+          kind: BuildOptionKind.Ground,
+          shipClass: none(ShipClass),
+          groundClass: cmd.groundClass,
+          facilityClass: none(FacilityClass)
+        ))
+    of BuildType.Facility:
+      if cmd.facilityClass.isSome:
+        itemCost = buildRowCost(BuildRowKey(
+          kind: BuildOptionKind.Facility,
+          shipClass: none(ShipClass),
+          groundClass: none(GroundClass),
+          facilityClass: cmd.facilityClass
+        ))
+    else:
+      discard
+    total += itemCost * cmd.quantity.int
   total
+
+proc stagedBuildIdx(
+    state: BuildModalState, key: BuildRowKey
+): int =
+  let colonyId = ColonyId(state.colonyId.uint32)
+  for idx, cmd in state.stagedBuildCommands:
+    if cmd.colonyId != colonyId:
+      continue
+    case key.kind
+    of BuildOptionKind.Ship:
+      if cmd.buildType == BuildType.Ship and
+          cmd.shipClass.isSome and key.shipClass.isSome and
+          cmd.shipClass.get() == key.shipClass.get():
+        return idx
+    of BuildOptionKind.Ground:
+      if cmd.buildType == BuildType.Ground and
+          cmd.groundClass.isSome and key.groundClass.isSome and
+          cmd.groundClass.get() == key.groundClass.get():
+        return idx
+    of BuildOptionKind.Facility:
+      if cmd.buildType == BuildType.Facility and
+          cmd.facilityClass.isSome and key.facilityClass.isSome and
+          cmd.facilityClass.get() == key.facilityClass.get():
+        return idx
+  -1
 
 proc incSelectedQty(model: var TuiModel) =
   if model.ui.buildModal.focus != BuildModalFocus.BuildList:
@@ -1273,38 +1312,37 @@ proc incSelectedQty(model: var TuiModel) =
   if not isBuildable(model.ui.buildModal, key):
     model.ui.statusMessage = "Not buildable"
     return
-  let cost = buildOptionCost(model.ui.buildModal, key)
+  let cost = buildRowCost(key)
   let pendingCost = pendingPpCost(model.ui.buildModal)
   if model.ui.buildModal.ppAvailable >= 0 and
       pendingCost + cost > model.ui.buildModal.ppAvailable:
     model.ui.statusMessage = "Insufficient PP"
     return
-  let pendingIdx = findPendingIdx(model.ui.buildModal, key)
-  if pendingIdx >= 0:
-    model.ui.buildModal.pendingQueue[pendingIdx].quantity += 1
+  let existingIdx = stagedBuildIdx(model.ui.buildModal, key)
+  if existingIdx >= 0:
+    model.ui.stagedBuildCommands[existingIdx].quantity += 1
   else:
-    var item = PendingBuildItem(
-      name: "",
-      cost: cost,
-      quantity: 1
+    var cmd = BuildCommand(
+      colonyId: ColonyId(model.ui.buildModal.colonyId.uint32),
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: none(ShipClass),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0
     )
     case key.kind
     of BuildOptionKind.Ship:
-      item.buildType = BuildType.Ship
-      item.shipClass = key.shipClass
-      if key.shipClass.isSome:
-        item.name = $key.shipClass.get()
+      cmd.buildType = BuildType.Ship
+      cmd.shipClass = key.shipClass
     of BuildOptionKind.Ground:
-      item.buildType = BuildType.Ground
-      item.groundClass = key.groundClass
-      if key.groundClass.isSome:
-        item.name = $key.groundClass.get()
+      cmd.buildType = BuildType.Ground
+      cmd.groundClass = key.groundClass
     of BuildOptionKind.Facility:
-      item.buildType = BuildType.Facility
-      item.facilityClass = key.facilityClass
-      if key.facilityClass.isSome:
-        item.name = $key.facilityClass.get()
-    model.ui.buildModal.pendingQueue.add(item)
+      cmd.buildType = BuildType.Facility
+      cmd.facilityClass = key.facilityClass
+    model.ui.stagedBuildCommands.add(cmd)
+  model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
   model.ui.statusMessage = "Qty +1"
 
 proc decSelectedQty(model: var TuiModel) =
@@ -1320,13 +1358,14 @@ proc decSelectedQty(model: var TuiModel) =
     model.ui.buildModal,
     model.ui.buildModal.selectedBuildIdx
   )
-  let pendingIdx = findPendingIdx(model.ui.buildModal, key)
-  if pendingIdx < 0:
+  let existingIdx = stagedBuildIdx(model.ui.buildModal, key)
+  if existingIdx < 0:
     return
-  if model.ui.buildModal.pendingQueue[pendingIdx].quantity > 1:
-    model.ui.buildModal.pendingQueue[pendingIdx].quantity -= 1
+  if model.ui.stagedBuildCommands[existingIdx].quantity > 1:
+    model.ui.stagedBuildCommands[existingIdx].quantity -= 1
   else:
-    model.ui.buildModal.pendingQueue.delete(pendingIdx)
+    model.ui.stagedBuildCommands.delete(existingIdx)
+  model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
   model.ui.statusMessage = "Qty -1"
 
 proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
@@ -1344,8 +1383,6 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.buildModal.focus = BuildModalFocus.BuildList
       model.ui.buildModal.selectedBuildIdx = 0
       model.ui.buildModal.selectedQueueIdx = 0
-      model.ui.buildModal.pendingQueue = @[]
-      model.ui.buildModal.quantityInput = 1
       model.ui.buildModal.ppAvailable = model.view.treasury
       if model.view.techLevels.isSome:
         model.ui.buildModal.cstLevel = model.view.techLevels.get().cst
@@ -1355,7 +1392,6 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = "Build modal opened"
   of ActionKind.closeBuildModal:
     model.ui.buildModal.active = false
-    model.ui.buildModal.pendingQueue = @[]
     model.ui.statusMessage = "Build modal closed"
   of ActionKind.buildCategorySwitch:
     # Cycle through categories: Ships -> Facilities -> Ground -> Ships
@@ -1380,18 +1416,10 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       ) - 1
       if model.ui.buildModal.selectedBuildIdx < maxIdx:
         model.ui.buildModal.selectedBuildIdx += 1
-    elif model.ui.buildModal.focus == BuildModalFocus.QueueList:
-      if model.ui.buildModal.selectedQueueIdx > 0:
-        model.ui.buildModal.selectedQueueIdx -= 1
   of ActionKind.buildQueueUp:
-    if model.ui.buildModal.focus == BuildModalFocus.QueueList:
-      if model.ui.buildModal.selectedQueueIdx > 0:
-        model.ui.buildModal.selectedQueueIdx -= 1
+    discard
   of ActionKind.buildQueueDown:
-    if model.ui.buildModal.focus == BuildModalFocus.QueueList:
-      let maxIdx = model.ui.buildModal.pendingQueue.len - 1
-      if model.ui.buildModal.selectedQueueIdx < maxIdx:
-        model.ui.buildModal.selectedQueueIdx += 1
+    discard
   of ActionKind.buildListPageUp:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
       let pageSize = max(1, model.ui.termHeight - 12)
@@ -1417,23 +1445,8 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     # Legacy remove action: treat as qty decrement
     decSelectedQty(model)
   of ActionKind.buildConfirmQueue:
-    # Convert pending queue to staged build commands
-    for item in model.ui.buildModal.pendingQueue:
-      let cmd = BuildCommand(
-        colonyId: ColonyId(model.ui.buildModal.colonyId),
-        buildType: item.buildType,
-        quantity: int32(item.quantity),
-        shipClass: item.shipClass,
-        facilityClass: item.facilityClass,
-        groundClass: item.groundClass,
-        industrialUnits: 0
-      )
-      model.ui.stagedBuildCommands.add(cmd)
-
-    let count = model.ui.buildModal.pendingQueue.len
-    model.ui.statusMessage = "Staged " & $count & " build command(s)"
+    model.ui.statusMessage = "Build commands staged"
     model.ui.buildModal.active = false
-    model.ui.buildModal.pendingQueue = @[]
   of ActionKind.buildQtyInc:
     incSelectedQty(model)
   of ActionKind.buildQtyDec:
