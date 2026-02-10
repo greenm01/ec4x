@@ -42,6 +42,10 @@ proc applyDeltaToPlayerState*(
     state.treasuryBalance = delta.treasuryBalance
   if delta.netIncomeChanged:
     state.netIncome = delta.netIncome
+  if delta.techLevelsChanged:
+    state.techLevels = delta.techLevels
+  if delta.researchPointsChanged:
+    state.researchPoints = delta.researchPoints
   
   # Apply ownColonies delta
   for colony in delta.ownColonies.added:

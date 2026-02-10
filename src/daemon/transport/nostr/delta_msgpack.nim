@@ -6,7 +6,7 @@
 import std/[options, tables]
 import msgpack4nim
 import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_state,
-  progression, capacity]
+  progression, capacity, tech]
 import ../../../engine/types/game_state
 import ../../../engine/state/fog_of_war
 import ../../persistence/player_state_snapshot
@@ -32,6 +32,10 @@ type
     treasuryBalance*: Option[int32]
     netIncomeChanged*: bool
     netIncome*: Option[int32]
+    techLevelsChanged*: bool
+    techLevels*: Option[TechLevel]
+    researchPointsChanged*: bool
+    researchPoints*: Option[ResearchPoints]
     ownColonies*: EntityDelta[Colony]
     ownFleets*: EntityDelta[Fleet]
     ownShips*: EntityDelta[Ship]
@@ -366,6 +370,10 @@ proc diffPlayerState*(
     result.treasuryBalance = current.treasuryBalance
     result.netIncomeChanged = true
     result.netIncome = current.netIncome
+    result.techLevelsChanged = true
+    result.techLevels = current.techLevels
+    result.researchPointsChanged = true
+    result.researchPoints = current.researchPoints
     return
 
   let oldSnapshot = oldSnapshotOpt.get()
@@ -436,6 +444,14 @@ proc diffPlayerState*(
   if oldSnapshot.netIncome != current.netIncome:
     result.netIncomeChanged = true
     result.netIncome = current.netIncome
+
+  if oldSnapshot.techLevels != current.techLevels:
+    result.techLevelsChanged = true
+    result.techLevels = current.techLevels
+
+  if oldSnapshot.researchPoints != current.researchPoints:
+    result.researchPointsChanged = true
+    result.researchPoints = current.researchPoints
 
 # =============================================================================
 # Msgpack Serialization

@@ -1426,10 +1426,9 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
 
   let col = colony.get()
 
-  # TODO: Get tech levels from PlayerState
-  # For now, use default tech levels (CST=1)
-  # This means only basic builds will be available
   var techLevels = defaultTechLevels()
+  if ps.techLevels.isSome:
+    techLevels = ps.techLevels.get()
 
   # Get dock summary from colony data
   let dockInfo = DockSummary(

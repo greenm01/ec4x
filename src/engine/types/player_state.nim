@@ -192,6 +192,8 @@ type
     homeworldSystemId*: Option[SystemId]
     treasuryBalance*: Option[int32]
     netIncome*: Option[int32]
+    techLevels*: Option[TechLevel]
+    researchPoints*: Option[ResearchPoints]
 
     # === Owned Assets (Full Entity Data) ===
     # Players get complete information about their own assets

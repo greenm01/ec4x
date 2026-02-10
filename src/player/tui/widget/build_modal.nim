@@ -125,34 +125,7 @@ proc pendingDockUse(state: BuildModalState): int =
   used
 
 proc pendingItemCost(item: PendingBuildItem): int =
-  case item.buildType
-  of BuildType.Ship:
-    if item.shipClass.isSome:
-      return buildRowCost(BuildRowKey(
-        kind: BuildOptionKind.Ship,
-        shipClass: item.shipClass,
-        groundClass: none(GroundClass),
-        facilityClass: none(FacilityClass)
-      ))
-  of BuildType.Ground:
-    if item.groundClass.isSome:
-      return buildRowCost(BuildRowKey(
-        kind: BuildOptionKind.Ground,
-        shipClass: none(ShipClass),
-        groundClass: item.groundClass,
-        facilityClass: none(FacilityClass)
-      ))
-  of BuildType.Facility:
-    if item.facilityClass.isSome:
-      return buildRowCost(BuildRowKey(
-        kind: BuildOptionKind.Facility,
-        shipClass: none(ShipClass),
-        groundClass: none(GroundClass),
-        facilityClass: item.facilityClass
-      ))
-  else:
-    discard
-  0
+  item.cost
 
 proc pendingPpCost(state: BuildModalState): int =
   var total = 0
@@ -161,6 +134,8 @@ proc pendingPpCost(state: BuildModalState): int =
   total
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
+  if buildRowCst(key) > state.cstLevel:
+    return false
   for opt in state.availableOptions:
     case opt.kind
     of BuildOptionKind.Ship:

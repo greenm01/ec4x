@@ -6,7 +6,8 @@
 import std/[tables, base64, options]
 import msgpack4nim
 import ../../engine/types/player_state
-import ../../engine/types/[core, colony, fleet, ship, ground_unit, diplomacy, progression]
+import ../../engine/types/[core, colony, fleet, ship, ground_unit, diplomacy,
+  progression, tech]
 import ./msgpack_state
 
 # =============================================================================
@@ -49,6 +50,8 @@ type
     homeworldSystemId*: Option[SystemId]
     treasuryBalance*: Option[int32]
     netIncome*: Option[int32]
+    techLevels*: Option[TechLevel]
+    researchPoints*: Option[ResearchPoints]
     ownColonies*: seq[Colony]
     ownFleets*: seq[Fleet]
     ownShips*: seq[Ship]
@@ -76,6 +79,8 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.homeworldSystemId = ps.homeworldSystemId
   result.treasuryBalance = ps.treasuryBalance
   result.netIncome = ps.netIncome
+  result.techLevels = ps.techLevels
+  result.researchPoints = ps.researchPoints
   result.ownColonies = ps.ownColonies
   result.ownFleets = ps.ownFleets
   result.ownShips = ps.ownShips

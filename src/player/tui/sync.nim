@@ -66,6 +66,8 @@ proc syncGameStateToModel*(
     model.view.production = 0
 
   model.view.houseTaxRate = house.taxPolicy.currentRate.int
+  model.view.techLevels = some(house.techTree.levels)
+  model.view.researchPoints = some(house.techTree.accumulated)
 
   var colonyReports = initTable[ColonyId, ColonyIncomeReport]()
   if house.latestIncomeReport.isSome:
@@ -842,6 +844,8 @@ proc syncPlayerStateToModel*(
   else:
     model.view.production = 0
   model.view.houseTaxRate = 0
+  model.view.techLevels = ps.techLevels
+  model.view.researchPoints = ps.researchPoints
 
   # Build lane lookup structures from jumpLanes
   var psNeighbors = initTable[SystemId, seq[SystemId]]()
@@ -1445,3 +1449,7 @@ proc syncBuildModalData*(
   model.ui.buildModal.availableOptions = result.options
   model.ui.buildModal.dockSummary = result.dockSummary
   model.ui.buildModal.ppAvailable = model.view.treasury
+  if ps.techLevels.isSome:
+    model.ui.buildModal.cstLevel = ps.techLevels.get().cst
+  else:
+    model.ui.buildModal.cstLevel = 1

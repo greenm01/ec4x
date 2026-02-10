@@ -1211,6 +1211,8 @@ proc buildOptionCost(state: BuildModalState, key: BuildRowKey): int =
   buildRowCost(key)
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
+  if buildRowCst(key) > state.cstLevel:
+    return false
   for opt in state.availableOptions:
     if buildOptionMatchesRow(opt, key):
       if key.kind == BuildOptionKind.Ship and key.shipClass.isSome:
@@ -1249,6 +1251,12 @@ proc findPendingIdx(state: BuildModalState, key: BuildRowKey): int =
         return idx
   -1
 
+proc pendingPpCost(state: BuildModalState): int =
+  var total = 0
+  for item in state.pendingQueue:
+    total += item.cost * item.quantity
+  total
+
 proc incSelectedQty(model: var TuiModel) =
   if model.ui.buildModal.focus != BuildModalFocus.BuildList:
     return
@@ -1266,37 +1274,7 @@ proc incSelectedQty(model: var TuiModel) =
     model.ui.statusMessage = "Not buildable"
     return
   let cost = buildOptionCost(model.ui.buildModal, key)
-  var pendingCost = 0
-  for item in model.ui.buildModal.pendingQueue:
-    var itemCost = 0
-    case item.buildType
-    of BuildType.Ship:
-      if item.shipClass.isSome:
-        itemCost = buildRowCost(BuildRowKey(
-          kind: BuildOptionKind.Ship,
-          shipClass: item.shipClass,
-          groundClass: none(GroundClass),
-          facilityClass: none(FacilityClass)
-        ))
-    of BuildType.Ground:
-      if item.groundClass.isSome:
-        itemCost = buildRowCost(BuildRowKey(
-          kind: BuildOptionKind.Ground,
-          shipClass: none(ShipClass),
-          groundClass: item.groundClass,
-          facilityClass: none(FacilityClass)
-        ))
-    of BuildType.Facility:
-      if item.facilityClass.isSome:
-        itemCost = buildRowCost(BuildRowKey(
-          kind: BuildOptionKind.Facility,
-          shipClass: none(ShipClass),
-          groundClass: none(GroundClass),
-          facilityClass: item.facilityClass
-        ))
-    else:
-      discard
-    pendingCost += itemCost * item.quantity
+  let pendingCost = pendingPpCost(model.ui.buildModal)
   if model.ui.buildModal.ppAvailable >= 0 and
       pendingCost + cost > model.ui.buildModal.ppAvailable:
     model.ui.statusMessage = "Insufficient PP"
@@ -1369,6 +1347,10 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.buildModal.pendingQueue = @[]
       model.ui.buildModal.quantityInput = 1
       model.ui.buildModal.ppAvailable = model.view.treasury
+      if model.view.techLevels.isSome:
+        model.ui.buildModal.cstLevel = model.view.techLevels.get().cst
+      else:
+        model.ui.buildModal.cstLevel = 1
       # Note: availableOptions and dockSummary will be populated by the reactor
       model.ui.statusMessage = "Build modal opened"
   of ActionKind.closeBuildModal:

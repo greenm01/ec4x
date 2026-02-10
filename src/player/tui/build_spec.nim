@@ -354,3 +354,25 @@ proc buildRowCost*(key: BuildRowKey): int =
       if row.facilityClass == key.facilityClass.get():
         return row.pc
   0
+
+proc buildRowCst*(key: BuildRowKey): int =
+  case key.kind
+  of BuildOptionKind.Ship:
+    if key.shipClass.isNone:
+      return 0
+    for row in ShipSpecRows:
+      if row.shipClass == key.shipClass.get():
+        return row.cst
+  of BuildOptionKind.Ground:
+    if key.groundClass.isNone:
+      return 0
+    for row in GroundSpecRows:
+      if row.groundClass == key.groundClass.get():
+        return row.cst
+  of BuildOptionKind.Facility:
+    if key.facilityClass.isNone:
+      return 0
+    for row in FacilitySpecRows:
+      if row.facilityClass == key.facilityClass.get():
+        return row.cst
+  0

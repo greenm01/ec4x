@@ -12,7 +12,8 @@
 
 import std/[tables, options, sets]
 import
-  ../types/[colony, core, diplomacy, fleet, game_state, house, player_state, starmap, facilities]
+  ../types/[colony, core, diplomacy, fleet, game_state, house, player_state,
+    starmap, facilities, tech]
 import ./[engine, iterators]
 import ../systems/capacity/construction_docks
 
@@ -120,6 +121,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   result.homeworldSystemId = none(SystemId)
   result.treasuryBalance = none(int32)
   result.netIncome = none(int32)
+  result.techLevels = none(TechLevel)
+  result.researchPoints = none(ResearchPoints)
   result.ltuSystems = initTable[SystemId, int32]()
   result.ltuColonies = initTable[ColonyId, int32]()
   result.ltuFleets = initTable[FleetId, int32]()
@@ -138,6 +141,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
     if house.latestIncomeReport.isSome:
       result.netIncome =
         some(house.latestIncomeReport.get().totalNet)
+    result.techLevels = some(house.techTree.levels)
+    result.researchPoints = some(house.techTree.accumulated)
 
   for systemId, owner in state.starMap.homeWorlds.pairs:
     if owner == houseId:

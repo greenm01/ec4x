@@ -232,6 +232,7 @@ type
     availableOptions*: seq[BuildOption]
     dockSummary*: DockSummary
     ppAvailable*: int
+    cstLevel*: int
     buildListScroll*: ScrollState
     queueScroll*: ScrollState
 
@@ -763,6 +764,8 @@ type
     alertCount*: int
     unreadReports*: int
     unreadMessages*: int
+    techLevels*: Option[TechLevel]
+    researchPoints*: Option[ResearchPoints]
 
     # Collections for display
     systems*: Table[HexCoord, SystemInfo]
@@ -931,6 +934,7 @@ proc initTuiUiState*(): TuiUiState =
       quantityInput: 1,
       availableOptions: @[],
       ppAvailable: -1,
+      cstLevel: 1,
       buildListScroll: initScrollState(),
       queueScroll: initScrollState()
     ),
@@ -976,6 +980,8 @@ proc initTuiViewState*(): TuiViewState =
     alertCount: 0,
     unreadReports: 0,
     unreadMessages: 0,
+    techLevels: none(TechLevel),
+    researchPoints: none(ResearchPoints),
     systems: initTable[HexCoord, SystemInfo](),
     colonies: @[],
     planetsRows: @[],
