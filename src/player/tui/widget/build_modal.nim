@@ -13,6 +13,7 @@ import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
 import ../build_spec
+import ../columns
 import ../../sam/tui_model
 import ../../../engine/types/[core, production]
 import ../../../engine/types/[ship, ground_unit, facilities]
@@ -26,10 +27,50 @@ proc newBuildModalWidget*(): BuildModalWidget =
   ## Create a new build modal widget
   BuildModalWidget(
     modal: newModal()
-      .maxWidth(80)
-      .minWidth(60)
-      .minHeight(20)
+      .maxWidth(96)
+      .minWidth(44)
+      .minHeight(10)
   )
+
+proc columnsForCategory(category: BuildCategory): seq[TableColumn] =
+  case category
+  of BuildCategory.Ships:
+    @[
+      tableColumn("Class", 5, table.Alignment.Left),
+      tableColumn("Name", 18, table.Alignment.Left),
+      tableColumn("CST", 3, table.Alignment.Right),
+      tableColumn("PC", 4, table.Alignment.Right),
+      tableColumn("MC", 4, table.Alignment.Right),
+      tableColumn("AS", 4, table.Alignment.Right),
+      tableColumn("DS", 4, table.Alignment.Right),
+      tableColumn("CC", 4, table.Alignment.Right),
+      tableColumn("CL", 4, table.Alignment.Right),
+      tableColumn("Qty", 4, table.Alignment.Right)
+    ]
+  of BuildCategory.Ground:
+    @[
+      tableColumn("Class", 5, table.Alignment.Left),
+      tableColumn("Name", 18, table.Alignment.Left),
+      tableColumn("CST", 3, table.Alignment.Right),
+      tableColumn("PC", 4, table.Alignment.Right),
+      tableColumn("MC", 4, table.Alignment.Right),
+      tableColumn("AS", 4, table.Alignment.Right),
+      tableColumn("DS", 4, table.Alignment.Right),
+      tableColumn("Qty", 4, table.Alignment.Right)
+    ]
+  of BuildCategory.Facilities:
+    @[
+      tableColumn("Class", 5, table.Alignment.Left),
+      tableColumn("Name", 14, table.Alignment.Left),
+      tableColumn("CST", 3, table.Alignment.Right),
+      tableColumn("PC", 4, table.Alignment.Right),
+      tableColumn("MC", 4, table.Alignment.Right),
+      tableColumn("AS", 4, table.Alignment.Right),
+      tableColumn("DS", 4, table.Alignment.Right),
+      tableColumn("Docks", 5, table.Alignment.Right),
+      tableColumn("Time", 4, table.Alignment.Right),
+      tableColumn("Qty", 4, table.Alignment.Right)
+    ]
 
 proc renderCategoryTabs(
     state: BuildModalState, area: Rect, buf: var CellBuffer
@@ -222,44 +263,7 @@ proc renderBuildTable(
   proc pct(value: int): string =
     $value & "%"
 
-  let columns = case state.category
-    of BuildCategory.Ships:
-      @[
-        tableColumn("Class", 5, table.Alignment.Left),
-        tableColumn("Name", 18, table.Alignment.Left),
-        tableColumn("CST", 3, table.Alignment.Right),
-        tableColumn("PC", 4, table.Alignment.Right),
-        tableColumn("MC", 4, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("CC", 4, table.Alignment.Right),
-        tableColumn("CL", 4, table.Alignment.Right),
-        tableColumn("Qty", 4, table.Alignment.Right)
-      ]
-    of BuildCategory.Ground:
-      @[
-        tableColumn("Class", 5, table.Alignment.Left),
-        tableColumn("Name", 18, table.Alignment.Left),
-        tableColumn("CST", 3, table.Alignment.Right),
-        tableColumn("PC", 4, table.Alignment.Right),
-        tableColumn("MC", 4, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("Qty", 4, table.Alignment.Right)
-      ]
-    of BuildCategory.Facilities:
-      @[
-        tableColumn("Class", 5, table.Alignment.Left),
-        tableColumn("Name", 14, table.Alignment.Left),
-        tableColumn("CST", 3, table.Alignment.Right),
-        tableColumn("PC", 4, table.Alignment.Right),
-        tableColumn("MC", 4, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("Docks", 5, table.Alignment.Right),
-        tableColumn("Time", 4, table.Alignment.Right),
-        tableColumn("Qty", 4, table.Alignment.Right)
-      ]
+  let columns = columnsForCategory(state.category)
 
   var tableView = table(columns)
     .showBorders(true)
@@ -387,44 +391,7 @@ proc render*(
     return
 
   # Calculate modal area
-  let columns = case state.category
-    of BuildCategory.Ships:
-      @[
-        tableColumn("Class", 5, table.Alignment.Left),
-        tableColumn("Name", 18, table.Alignment.Left),
-        tableColumn("CST", 3, table.Alignment.Right),
-        tableColumn("PC", 4, table.Alignment.Right),
-        tableColumn("MC", 4, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("CC", 4, table.Alignment.Right),
-        tableColumn("CL", 4, table.Alignment.Right),
-        tableColumn("Qty", 4, table.Alignment.Right)
-      ]
-    of BuildCategory.Ground:
-      @[
-        tableColumn("Class", 5, table.Alignment.Left),
-        tableColumn("Name", 18, table.Alignment.Left),
-        tableColumn("CST", 3, table.Alignment.Right),
-        tableColumn("PC", 4, table.Alignment.Right),
-        tableColumn("MC", 4, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("Qty", 4, table.Alignment.Right)
-      ]
-    of BuildCategory.Facilities:
-      @[
-        tableColumn("Class", 5, table.Alignment.Left),
-        tableColumn("Name", 14, table.Alignment.Left),
-        tableColumn("CST", 3, table.Alignment.Right),
-        tableColumn("PC", 4, table.Alignment.Right),
-        tableColumn("MC", 4, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("Docks", 5, table.Alignment.Right),
-        tableColumn("Time", 4, table.Alignment.Right),
-        tableColumn("Qty", 4, table.Alignment.Right)
-      ]
+  let columns = columnsForCategory(state.category)
 
   var tableView = table(columns)
     .showBorders(true)
@@ -435,7 +402,13 @@ proc render*(
   let maxTableHeight = max(1, viewport.height - 6)
   let clampedTableHeight = min(tableHeight, maxTableHeight)
   let contentHeight = clampedTableHeight + 5
-  let modalArea = widget.modal.calculateArea(viewport, contentHeight)
+  let maxTableWidth = viewport.width - 4
+  let tableWidth = tableWidthFromColumns(
+    columns, maxTableWidth, showBorders = true
+  )
+  let modalArea = widget.modal.calculateArea(
+    viewport, tableWidth, contentHeight
+  )
 
   # Render modal frame with title
   let title = "BUILD - " & state.colonyName
