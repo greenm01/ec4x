@@ -6,7 +6,7 @@
 import std/[unittest, options, tables]
 import ../../src/engine/engine
 import ../../src/engine/types/[core, game_state, house, colony, facilities, ground_unit, ship]
-import ../../src/engine/state/[engine, iterators]
+import ../../src/engine/state/[engine, iterators, player_state]
 import ../../src/engine/globals
 
 suite "Game Initialization - Complete Flow":
@@ -63,6 +63,33 @@ suite "Game Initialization - Complete Flow":
         gameSetup.startingFacilities.drydocks
       check colony.neoriaIds.len == expectedNeorias
       check colony.kastraIds.len == 0  # No starting starbases
+
+  test "Homeworld systems use configured class and resources":
+    let game = newGame()
+
+    for systemId in game.starMap.houseSystemIds:
+      let systemOpt = game.system(systemId)
+      check systemOpt.isSome
+      if systemOpt.isSome:
+        let system = systemOpt.get()
+        check $system.planetClass == gameSetup.homeworld.planetClass
+        check $system.resourceRating == gameSetup.homeworld.rawQuality
+
+  test "PlayerState keeps owned system class and resource data":
+    let game = newGame()
+
+    for house in game.allHouses():
+      let ps = game.createPlayerState(house.id)
+      for colony in ps.ownColonies:
+        check ps.visibleSystems.hasKey(colony.systemId)
+        if ps.visibleSystems.hasKey(colony.systemId):
+          let visSys = ps.visibleSystems[colony.systemId]
+          let systemOpt = game.system(colony.systemId)
+          check systemOpt.isSome
+          if systemOpt.isSome:
+            let system = systemOpt.get()
+            check visSys.planetClass == ord(system.planetClass).int32
+            check visSys.resourceRating == ord(system.resourceRating).int32
 
   test "Facilities properly created":
     let game = newGame()

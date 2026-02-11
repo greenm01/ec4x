@@ -234,6 +234,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         name: system.name,
         visibility: VisibilityLevel.Owned,
         lastScoutedTurn: some(state.turn),
+        planetClass: ord(system.planetClass).int32,
+        resourceRating: ord(system.resourceRating).int32,
         coordinates: some(coords),
         jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
       )
@@ -251,6 +253,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
           name: system.name,
           visibility: VisibilityLevel.Occupied,
           lastScoutedTurn: some(state.turn),
+          planetClass: ord(system.planetClass).int32,
+          resourceRating: ord(system.resourceRating).int32,
           coordinates: some(coords),
           jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
         )
@@ -271,6 +275,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         name: system.name,
         visibility: VisibilityLevel.Scouted,
         lastScoutedTurn: some(lastTurn),
+        planetClass: ord(system.planetClass).int32,
+        resourceRating: ord(system.resourceRating).int32,
         coordinates: some(coords),
         jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(systemId),
       )
@@ -286,6 +292,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
         name: system.name,
         visibility: VisibilityLevel.Adjacent,
         lastScoutedTurn: none(int32),
+        planetClass: -1,
+        resourceRating: -1,
         coordinates: some(coords),
         jumpLaneIds: state.starMap.lanes.neighbors.getOrDefault(system.id),
       )
