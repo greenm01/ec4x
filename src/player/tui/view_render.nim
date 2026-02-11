@@ -8,6 +8,7 @@ import std/tables as stdtables
 import ../../engine/types/[core, player_state as ps_types, fleet]
 import ../../engine/state/engine
 import ../sam/sam_pkg
+import ../sam/client_limits
 import ../sam/command_parser
 import ../tui/buffer
 import ../tui/layout/layout_pkg
@@ -1784,8 +1785,8 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     # Use content-aware sizing
     let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
     modal.renderWithFooter(modalArea, buf,
-      "[↑↓←→]Nav [Enter]Details [Tab]Pane [X]Select [C]md [R]OE " &
-      "[Z]eroTurn [V]iew [/]Help")
+      "[↑↓]Nav  [Tab/→/L]Next  [←/H]Prev  [Enter]Details  [X]Select  " &
+      "[C]md  [R]OE  [Z]eroTurn  [V]iew  [/]Help")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 
@@ -1907,8 +1908,8 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
   let contentHeight = min(desiredContentHeight, maxContentHeight)
   let modalArea = modal.calculateArea(canvas, contentHeight)
   let footerText =
-    "[←/→]Next [H/L]Prev/Next  [B]uild [Q]ueue  " &
-    "[R]epair [M]arines [F]ighters"
+    "[Tab/→/L]Next  [←/H]Prev  [Esc]Close  [B]uild  [Q]ueue  " &
+    "[R]epair  [M]arines  [F]ighters"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
 
@@ -1993,15 +1994,23 @@ proc renderListPanel*(
 
 proc buildHudData*(model: TuiModel): HudData =
   ## Build HUD data from TUI model
+  let optimisticC2 = optimisticC2Used(
+    model.view.commandUsed,
+    model.ui.stagedBuildCommands,
+  )
+  let optimisticPp = optimisticTreasury(
+    model.view.treasury,
+    model.ui.stagedBuildCommands,
+  )
   HudData(
     houseName: model.view.houseName,
     turn: model.view.turn,
     prestige: model.view.prestige,
     prestigeRank: model.view.prestigeRank,
     totalHouses: model.view.totalHouses,
-    treasury: model.view.treasury,
+    treasury: optimisticPp,
     production: model.view.production,
-    commandUsed: model.view.commandUsed,
+    commandUsed: optimisticC2,
     commandMax: model.view.commandMax,
     alertCount: model.view.alertCount,
     unreadMessages: model.view.unreadMessages,

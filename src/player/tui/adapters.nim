@@ -4,7 +4,7 @@
 ## and TUI widget types. Maintains separation between engine (game logic)
 ## and presentation (TUI) layers.
 
-import std/[options, tables, algorithm, strutils]
+import std/[options, tables, algorithm, strutils, math]
 import ../../common/logger
 import ../../engine/types/[core, starmap, colony, fleet, player_state, ship,
   combat, production, facilities, ground_unit, tech]
@@ -15,6 +15,7 @@ import ../../engine/systems/capacity/[construction_docks, fighter,
   planet_breakers, planetary_shields, spaceports, starbases]
 import ../../engine/systems/production/engine as production_engine
 import ../../engine/globals
+import ../sam/client_limits
 import ./widget/hexmap/hexmap_pkg
 import ./widget/system_list
 import ./hex_labels
@@ -1403,8 +1404,6 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
                                  dockSummary: DockSummary] =
   ## Compute build options from PlayerState + gameConfig
   ## Used in Nostr mode where full GameState is not available
-  ##
-  ## TODO: Get tech levels from PlayerState (currently using defaults)
 
   # Find colony in PlayerState
   var colony: Option[Colony] = none(Colony)
@@ -1438,20 +1437,73 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     repairTotal: col.repairDocks.int
   )
 
+  # Build lookups for facility status checks
+  var neoriaById = initTable[NeoriaId, Neoria]()
+  for neoria in ps.ownNeorias:
+    neoriaById[neoria.id] = neoria
+
+  var hasOperationalSpaceport = false
+  var hasOperationalShipyard = false
+  for neoriaId in col.neoriaIds:
+    if neoriaId notin neoriaById:
+      continue
+    let neoria = neoriaById[neoriaId]
+    if neoria.state == CombatState.Crippled:
+      continue
+    case neoria.neoriaClass
+    of NeoriaClass.Spaceport:
+      hasOperationalSpaceport = true
+    of NeoriaClass.Shipyard:
+      hasOperationalShipyard = true
+    else:
+      discard
+
+  let colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)
+  let snapshot = colonyLimits.getOrDefault(int(colonyId))
+  let pbCurrent = countPlanetBreakersInFleets(ps)
+  let pbMax = ps.ownColonies.len
+  let maxSpaceports =
+    int(gameConfig.limits.quantityLimits.maxSpaceportsPerColony)
+  let maxStarbases =
+    int(gameConfig.limits.quantityLimits.maxStarbasesPerColony)
+  let maxShields =
+    int(gameConfig.limits.quantityLimits.maxPlanetaryShieldsPerColony)
+
+  let fdLevel =
+    if ps.techLevels.isSome:
+      max(1, int(ps.techLevels.get().fd))
+    else:
+      1
+  let fdMultiplier =
+    case fdLevel
+    of 1:
+      1.0'f32
+    of 2:
+      1.5'f32
+    of 3:
+      2.0'f32
+    else:
+      1.0'f32
+  let fighterDivisor = gameConfig.limits.fighterCapacity.iuDivisor
+  let fighterMax =
+    if fighterDivisor > 0'i32:
+      int(floor((float32(snapshot.industrialUnits) /
+        float32(fighterDivisor)) *
+        fdMultiplier))
+    else:
+      0
+
   # Compute available build options
   var options: seq[BuildOption] = @[]
-
-  # Note: Some checks like hasOperationalFacility, canCommissionFighter, etc.
-  # require GameState. For now, we skip those checks in PS-only mode.
-  # TODO: Add facility counts to PlayerState or compute from neoria counts
 
   # Ships
   for shipClass in ShipClass:
     let cstReq = gameConfig.ships.ships[shipClass].minCST.int
     if techLevels.cst < cstReq:
       continue
-    # Skip fighters and planet breakers for now (need special checks)
-    if shipClass in {ShipClass.Fighter, ShipClass.PlanetBreaker}:
+    if shipClass == ShipClass.Fighter and snapshot.fighters >= fighterMax:
+      continue
+    if shipClass == ShipClass.PlanetBreaker and pbCurrent >= pbMax:
       continue
     let requiresDock = construction_docks.shipRequiresDock(shipClass)
     if requiresDock and dockInfo.constructionTotal <= 0:
@@ -1469,8 +1521,8 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     let cstReq = gameConfig.groundUnits.units[groundClass].minCST.int
     if techLevels.cst < cstReq:
       continue
-    # Skip planetary shields for now (needs special check)
-    if groundClass == GroundClass.PlanetaryShield:
+    if groundClass == GroundClass.PlanetaryShield and
+        snapshot.shields >= maxShields:
       continue
     let cost = int(gameConfig.groundUnits.units[groundClass].productionCost)
     options.add(BuildOption(
@@ -1485,8 +1537,22 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     let cstReq = gameConfig.facilities.facilities[facilityClass].minCST.int
     if techLevels.cst < cstReq:
       continue
-    # Skip spaceport and starbase for now (need special checks)
-    if facilityClass in {FacilityClass.Spaceport, FacilityClass.Starbase}:
+    if facilityClass == FacilityClass.Spaceport and
+        snapshot.spaceports >= maxSpaceports:
+      continue
+    if facilityClass == FacilityClass.Starbase and
+        snapshot.starbases >= maxStarbases:
+      continue
+    if facilityClass == FacilityClass.Starbase and
+        gameConfig.construction.construction.starbaseRequiresShipyard and
+        not hasOperationalShipyard:
+      continue
+    if facilityClass in {FacilityClass.Shipyard, FacilityClass.Drydock} and
+        gameConfig.construction.construction.shipyardRequiresSpaceport and
+        not hasOperationalSpaceport:
+      continue
+    if facilityClass == FacilityClass.Starbase and
+        not hasOperationalSpaceport:
       continue
     let cost = int(gameConfig.facilities.facilities[facilityClass].buildCost)
     options.add(BuildOption(

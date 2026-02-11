@@ -204,6 +204,13 @@ type
     repairAvailable*: int
     repairTotal*: int
 
+  ColonyLimitSnapshot* = object
+    industrialUnits*: int
+    fighters*: int
+    spaceports*: int
+    starbases*: int
+    shields*: int
+
   BuildCategory* {.pure.} = enum
     Ships, Facilities, Ground
 
@@ -761,6 +768,7 @@ type
     houseTaxRate*: int
     commandUsed*: int
     commandMax*: int
+    planetBreakersInFleets*: int
     alertCount*: int
     unreadReports*: int
     unreadMessages*: int
@@ -789,6 +797,7 @@ type
     ownedSystemIds*: HashSet[int]
     knownEnemyColonySystemIds*: HashSet[int]
     systemCoords*: Table[int, HexCoord]
+    colonyLimits*: Table[int, ColonyLimitSnapshot]
 
   # ============================================================================
   # The Complete TUI Model (SAM wrapper)
@@ -984,6 +993,7 @@ proc initTuiViewState*(): TuiViewState =
     houseTaxRate: 0,
     commandUsed: 0,
     commandMax: 0,
+    planetBreakersInFleets: 0,
     alertCount: 0,
     unreadReports: 0,
     unreadMessages: 0,
@@ -1076,7 +1086,12 @@ proc initTuiViewState*(): TuiViewState =
     homeworld: none(HexCoord),
     lobbyActiveGames: @[],
     lobbyJoinGames: @[],
-    knownEnemyColonySystemIds: initHashSet[int]()
+    laneTypes: initTable[(int, int), int](),
+    laneNeighbors: initTable[int, seq[int]](),
+    ownedSystemIds: initHashSet[int](),
+    knownEnemyColonySystemIds: initHashSet[int](),
+    systemCoords: initTable[int, HexCoord](),
+    colonyLimits: initTable[int, ColonyLimitSnapshot](),
   )
 
 proc initTuiModel*(): TuiModel =

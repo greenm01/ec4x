@@ -3,7 +3,7 @@
 ## A modal popup for browsing categorized build options, adding items to a
 ## pending queue, and confirming to stage them for turn submission.
 
-import std/[options, strutils]
+import std/[options, strutils, unicode]
 
 import ./modal
 import ./text/text_pkg
@@ -376,11 +376,15 @@ proc renderFooter(state: BuildModalState, area: Rect,
     return
 
   let text =
-    "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab]Cat  [Q]Confirm  [Esc]Close"
-
-  for i, ch in text:
-    if area.x + i < area.right:
-      discard buf.put(area.x + i, area.y, $ch, canvasDimStyle())
+    "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab/→/L]Next  [←/H]Prev  [Esc]Close"
+  var x = area.x
+  for rune in text.runes:
+    if x >= area.right:
+      break
+    let width = buf.put(x, area.y, rune.toUTF8, canvasDimStyle())
+    if width <= 0:
+      break
+    x += width
 
 proc render*(
     widget: BuildModalWidget, state: BuildModalState,

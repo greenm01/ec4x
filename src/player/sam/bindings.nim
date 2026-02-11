@@ -570,6 +570,12 @@ proc initBindings*() =
     longLabel: "NEXT COL", shortLabel: "L", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.cycleColony,
+    context: BindingContext.PlanetDetail,
+    longLabel: "NEXT COL", shortLabel: "Tab", priority: 3))
+
+  registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
     actionKind: ActionKind.openBuildModal,
     context: BindingContext.PlanetDetail,
@@ -1121,7 +1127,7 @@ proc initBindings*() =
     key: KeyCode.KeyTab, modifier: KeyModifier.None,
     actionKind: ActionKind.buildCategorySwitch,
     context: BindingContext.BuildModal,
-    longLabel: "CATEGORY", shortLabel: "Cat", priority: 1))
+    longLabel: "CATEGORY+", shortLabel: "Cat+", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
@@ -1149,27 +1155,27 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildFocusSwitch,
+    actionKind: ActionKind.buildCategoryPrev,
     context: BindingContext.BuildModal,
-    longLabel: "FOCUS", shortLabel: "Foc", priority: 4))
+    longLabel: "CATEGORY-", shortLabel: "Cat-", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyH, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildFocusSwitch,
+    actionKind: ActionKind.buildCategoryPrev,
     context: BindingContext.BuildModal,
-    longLabel: "FOCUS", shortLabel: "H", priority: 4))
+    longLabel: "CATEGORY-", shortLabel: "Cat-", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildFocusSwitch,
+    actionKind: ActionKind.buildCategorySwitch,
     context: BindingContext.BuildModal,
-    longLabel: "FOCUS", shortLabel: "Foc", priority: 5))
+    longLabel: "CATEGORY+", shortLabel: "Cat+", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildFocusSwitch,
+    actionKind: ActionKind.buildCategorySwitch,
     context: BindingContext.BuildModal,
-    longLabel: "FOCUS", shortLabel: "L", priority: 5))
+    longLabel: "CATEGORY+", shortLabel: "Cat+", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -1202,16 +1208,10 @@ proc initBindings*() =
     longLabel: "PGDN", shortLabel: "PgD", priority: 21))
 
   registerBinding(Binding(
-    key: KeyCode.KeyQ, modifier: KeyModifier.None,
-    actionKind: ActionKind.buildConfirmQueue,
-    context: BindingContext.BuildModal,
-    longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
-
-  registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.closeBuildModal,
     context: BindingContext.BuildModal,
-    longLabel: "CANCEL", shortLabel: "Esc", priority: 90))
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
   # Queue Modal Context
@@ -1458,6 +1458,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionCloseBuildModal())
   of ActionKind.buildCategorySwitch:
     return some(actionBuildCategorySwitch())
+  of ActionKind.buildCategoryPrev:
+    return some(actionBuildCategoryPrev())
   of ActionKind.buildListUp:
     return some(actionBuildListUp())
   of ActionKind.buildListDown:
@@ -1643,12 +1645,25 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return none(Proposal)
 
   # Build modal mode: use registry
-  if model.ui.buildModal.active and modifier == KeyModifier.None:
+  if model.ui.buildModal.active:
     if key != KeyCode.KeyEscape:
-      let buildResult = lookupAndDispatch(key, KeyModifier.None,
-          BindingContext.BuildModal, model)
+      let buildResult = lookupAndDispatch(
+        key,
+        modifier,
+        BindingContext.BuildModal,
+        model
+      )
       if buildResult.isSome:
         return buildResult
+      if modifier == KeyModifier.Shift and key == KeyCode.KeyPlus:
+        let fallback = lookupAndDispatch(
+          key,
+          KeyModifier.None,
+          BindingContext.BuildModal,
+          model
+        )
+        if fallback.isSome:
+          return fallback
       return none(Proposal)
 
   # Fleet detail view mode: use registry

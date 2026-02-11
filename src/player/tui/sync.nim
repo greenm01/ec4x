@@ -11,6 +11,7 @@ import ../../engine/systems/capacity/[c2_pool, construction_docks]
 import ../../engine/systems/production/engine as production_engine
 import ../../engine/systems/fleet/movement
 import ../sam/sam_pkg
+import ../sam/client_limits
 import ../tui/adapters
 import ../tui/widget/overview
 import ../tui/hex_labels
@@ -78,6 +79,38 @@ proc syncGameStateToModel*(
   let c2Analysis = analyzeC2Capacity(state, viewingHouse)
   model.view.commandUsed = c2Analysis.totalFleetCC.int
   model.view.commandMax = c2Analysis.c2Pool.int
+  model.view.colonyLimits.clear()
+  model.view.planetBreakersInFleets = 0
+  for colony in state.coloniesOwned(viewingHouse):
+    var snapshot = ColonyLimitSnapshot(
+      industrialUnits: int(colony.industrial.units),
+      fighters: colony.fighterIds.len,
+      spaceports: 0,
+      starbases: 0,
+      shields: 0,
+    )
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = state.neoria(neoriaId)
+      if neoriaOpt.isSome and
+          neoriaOpt.get().neoriaClass == NeoriaClass.Spaceport:
+        snapshot.spaceports.inc
+    for kastraId in colony.kastraIds:
+      let kastraOpt = state.kastra(kastraId)
+      if kastraOpt.isSome and
+          kastraOpt.get().kastraClass == KastraClass.Starbase:
+        snapshot.starbases.inc
+    for groundUnitId in colony.groundUnitIds:
+      let groundOpt = state.groundUnit(groundUnitId)
+      if groundOpt.isSome and
+          groundOpt.get().stats.unitType == GroundClass.PlanetaryShield:
+        snapshot.shields.inc
+    model.view.colonyLimits[int(colony.id)] = snapshot
+  for fleet in state.fleetsOwned(viewingHouse):
+    for shipId in fleet.ships:
+      let shipOpt = state.ship(shipId)
+      if shipOpt.isSome and
+          shipOpt.get().shipClass == ShipClass.PlanetBreaker:
+        model.view.planetBreakersInFleets.inc
 
   # Prestige rank and total houses
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
@@ -846,6 +879,11 @@ proc syncPlayerStateToModel*(
   model.view.houseTaxRate = 0
   model.view.techLevels = ps.techLevels
   model.view.researchPoints = ps.researchPoints
+  model.view.colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)
+  model.view.planetBreakersInFleets = countPlanetBreakersInFleets(ps)
+  let c2 = computeBaseC2FromPlayerState(ps)
+  model.view.commandUsed = c2.used
+  model.view.commandMax = c2.max
 
   # Build lane lookup structures from jumpLanes
   var psNeighbors = initTable[SystemId, seq[SystemId]]()
@@ -1130,10 +1168,6 @@ proc syncPlayerStateToModel*(
       model.view.prestigeRank = i + 1
       break
   
-  # Command capacity (not available in PlayerState)
-  model.view.commandUsed = 0
-  model.view.commandMax = 0
-
   # Sync planets table data
   syncPlanetsRows(model, ps)
   # Sync intel database data

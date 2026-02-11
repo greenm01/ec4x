@@ -142,10 +142,16 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         keyCode = KeyCode.KeyZ
       of "+":
         keyCode = KeyCode.KeyPlus
+        modifier = KeyModifier.None
       of "-":
         keyCode = KeyCode.KeyMinus
+        modifier = KeyModifier.None
       of "=":
         keyCode = KeyCode.KeyPlus
+        modifier = KeyModifier.None
+      of "_":
+        keyCode = KeyCode.KeyMinus
+        modifier = KeyModifier.None
       of ":":
         keyCode = KeyCode.KeyColon
       of "/":

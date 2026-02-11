@@ -842,6 +842,15 @@ proc actionBuildCategorySwitch*(): Proposal =
     gameActionData: ""
   )
 
+proc actionBuildCategoryPrev*(): Proposal =
+  ## Switch build category in reverse direction
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.buildCategoryPrev,
+    gameActionData: ""
+  )
+
 proc actionBuildListUp*(): Proposal =
   ## Navigate up in build list
   Proposal(

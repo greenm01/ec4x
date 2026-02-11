@@ -11,6 +11,7 @@ import ./types
 import ./tui_model
 import ./actions
 import ./command_parser
+import ./client_limits
 import ../tui/widget/scroll_state
 import ../tui/build_spec
 import ../state/join_flow
@@ -959,7 +960,20 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         of MetaCommandType.None:
           # Regular command - add to staged commands
           if result.fleetCommand.isSome:
-            model.stageFleetCommand(result.fleetCommand.get())
+            let fleetCmd = result.fleetCommand.get()
+            if fleetCmd.commandType == FleetCommandType.JoinFleet and
+                fleetCmd.targetFleet.isSome:
+              let fcErr = validateJoinFleetFc(
+                model,
+                int(fleetCmd.fleetId),
+                int(fleetCmd.targetFleet.get()),
+              )
+              if fcErr.isSome:
+                model.setExpertFeedback(fcErr.get())
+                model.ui.expertModeInput = ""
+                resetExpertPaletteSelection(model)
+                return
+            model.stageFleetCommand(fleetCmd)
             model.ui.turnSubmissionConfirmed = false
             model.setExpertFeedback(
               "Fleet command staged (total: " &
@@ -967,7 +981,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             )
             model.addToExpertHistory(model.ui.expertModeInput)
           elif result.buildCommand.isSome:
-            model.ui.stagedBuildCommands.add(result.buildCommand.get())
+            let buildCmd = result.buildCommand.get()
+            let buildErr = validateBuildIncrement(model, buildCmd)
+            if buildErr.isSome:
+              model.setExpertFeedback(buildErr.get())
+              model.ui.expertModeInput = ""
+              resetExpertPaletteSelection(model)
+              return
+            model.ui.stagedBuildCommands.add(buildCmd)
             model.ui.turnSubmissionConfirmed = false
             model.setExpertFeedback(
               "Build command staged (total: " &
@@ -1318,34 +1339,46 @@ proc incSelectedQty(model: var TuiModel) =
       pendingCost + cost > model.ui.buildModal.ppAvailable:
     model.ui.statusMessage = "Insufficient PP"
     return
+  var candidate = BuildCommand(
+    colonyId: ColonyId(model.ui.buildModal.colonyId.uint32),
+    buildType: BuildType.Ship,
+    quantity: 1,
+    shipClass: none(ShipClass),
+    facilityClass: none(FacilityClass),
+    groundClass: none(GroundClass),
+    industrialUnits: 0
+  )
+  case key.kind
+  of BuildOptionKind.Ship:
+    candidate.buildType = BuildType.Ship
+    candidate.shipClass = key.shipClass
+  of BuildOptionKind.Ground:
+    candidate.buildType = BuildType.Ground
+    candidate.groundClass = key.groundClass
+  of BuildOptionKind.Facility:
+    candidate.buildType = BuildType.Facility
+    candidate.facilityClass = key.facilityClass
+  let limitErr = validateBuildIncrement(model, candidate)
+  if limitErr.isSome:
+    model.ui.statusMessage = limitErr.get()
+    return
   let existingIdx = stagedBuildIdx(model.ui.buildModal, key)
   if existingIdx >= 0:
     model.ui.stagedBuildCommands[existingIdx].quantity += 1
   else:
-    var cmd = BuildCommand(
-      colonyId: ColonyId(model.ui.buildModal.colonyId.uint32),
-      buildType: BuildType.Ship,
-      quantity: 1,
-      shipClass: none(ShipClass),
-      facilityClass: none(FacilityClass),
-      groundClass: none(GroundClass),
-      industrialUnits: 0
-    )
-    case key.kind
-    of BuildOptionKind.Ship:
-      cmd.buildType = BuildType.Ship
-      cmd.shipClass = key.shipClass
-    of BuildOptionKind.Ground:
-      cmd.buildType = BuildType.Ground
-      cmd.groundClass = key.groundClass
-    of BuildOptionKind.Facility:
-      cmd.buildType = BuildType.Facility
-      cmd.facilityClass = key.facilityClass
-    model.ui.stagedBuildCommands.add(cmd)
+    model.ui.stagedBuildCommands.add(candidate)
   model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
   if model.ui.queueModal.active:
     model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
-  model.ui.statusMessage = "Qty +1"
+  let c2Used = optimisticC2Used(
+    model.view.commandUsed,
+    model.ui.stagedBuildCommands,
+  )
+  let c2Excess = max(0, c2Used - model.view.commandMax)
+  if model.view.commandMax > 0 and c2Excess > 0:
+    model.ui.statusMessage = "Qty +1 (C2 +" & $c2Excess & " over)"
+  else:
+    model.ui.statusMessage = "Qty +1"
 
 proc decSelectedQty(model: var TuiModel) =
   if model.ui.buildModal.focus != BuildModalFocus.BuildList:
@@ -1371,6 +1404,26 @@ proc decSelectedQty(model: var TuiModel) =
   if model.ui.queueModal.active:
     model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
   model.ui.statusMessage = "Qty -1"
+
+proc switchBuildCategory(model: var TuiModel, reverse: bool) =
+  if reverse:
+    case model.ui.buildModal.category
+    of BuildCategory.Ships:
+      model.ui.buildModal.category = BuildCategory.Ground
+    of BuildCategory.Facilities:
+      model.ui.buildModal.category = BuildCategory.Ships
+    of BuildCategory.Ground:
+      model.ui.buildModal.category = BuildCategory.Facilities
+  else:
+    case model.ui.buildModal.category
+    of BuildCategory.Ships:
+      model.ui.buildModal.category = BuildCategory.Facilities
+    of BuildCategory.Facilities:
+      model.ui.buildModal.category = BuildCategory.Ground
+    of BuildCategory.Ground:
+      model.ui.buildModal.category = BuildCategory.Ships
+  model.ui.buildModal.selectedBuildIdx = 0
+  model.ui.buildModal.focus = BuildModalFocus.BuildList
 
 proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle build modal proposals
@@ -1407,16 +1460,10 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     model.ui.buildModal.active = false
     model.ui.statusMessage = "Build modal closed"
   of ActionKind.buildCategorySwitch:
-    # Cycle through categories: Ships -> Facilities -> Ground -> Ships
-    case model.ui.buildModal.category
-    of BuildCategory.Ships:
-      model.ui.buildModal.category = BuildCategory.Facilities
-    of BuildCategory.Facilities:
-      model.ui.buildModal.category = BuildCategory.Ground
-    of BuildCategory.Ground:
-      model.ui.buildModal.category = BuildCategory.Ships
-    model.ui.buildModal.selectedBuildIdx = 0
-    model.ui.buildModal.focus = BuildModalFocus.BuildList
+    switchBuildCategory(model, reverse = false)
+    # Note: availableOptions will be refreshed by reactor
+  of ActionKind.buildCategoryPrev:
+    switchBuildCategory(model, reverse = true)
     # Note: availableOptions will be refreshed by reactor
   of ActionKind.buildListUp:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
@@ -1964,6 +2011,14 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let idx = model.ui.fleetDetailModal.fleetPickerIdx
       if idx >= 0 and idx < candidates.len:
         let target = candidates[idx]
+        let fcErr = validateJoinFleetFc(
+          model,
+          model.ui.fleetDetailModal.fleetId,
+          target.fleetId,
+        )
+        if fcErr.isSome:
+          model.ui.statusMessage = fcErr.get()
+          return
         let cmd = FleetCommand(
           fleetId: FleetId(model.ui.fleetDetailModal.fleetId),
           commandType: FleetCommandType.JoinFleet,

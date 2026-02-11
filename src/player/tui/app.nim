@@ -6,8 +6,9 @@ import std/[options, strformat, tables, strutils, parseopt, os,
   asyncdispatch, sequtils, sets, times]
 
 import ../../common/logger
+import ../../engine/config/engine
+import ../../engine/globals
 import ../../engine/types/[core, fleet, player_state as ps_types]
-import ../../engine/state/engine
 import ../../daemon/transport/nostr/[types, events, filter, crypto, nip01]
 import ../nostr/client
 import ../tui/term/term
@@ -19,6 +20,7 @@ import ../tui/signals
 import ../tui/widget/overview
 import ../tui/widget/[hud, breadcrumb, command_dock]
 import ../sam/sam_pkg
+import ../sam/client_limits
 import ../sam/bindings
 import ../state/join_flow
 import ../state/lobby_profile
@@ -35,6 +37,12 @@ import ./output
 proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
+
+  try:
+    gameConfig = loadGameConfig("config")
+  except CatchableError as e:
+    logError("TUI Player SAM", "Failed to load game config: ", e.msg)
+    quit(1)
 
   # Initialize keybinding registry (single source of truth)
   initBindings()
@@ -1132,28 +1140,36 @@ proc runTui*(gameId: string = "") =
 
     # Handle turn submission (expert :submit)
     if sam.model.ui.turnSubmissionPending:
-      # Build command packet from staged commands
-      let packet = sam.model.buildCommandPacket(
-        playerState.turn,
-        viewingHouse
-      )
-
-      # Send via Nostr (only supported transport)
-      if sam.model.ui.nostrEnabled and nostrClient != nil and
-          nostrClient.isConnected():
-        let msgpack = serializeCommandPacket(packet)
-        asyncCheck nostrClient.submitCommands(msgpack, sam.model.view.turn)
-        sam.model.ui.statusMessage = "Turn submitted"
-        logInfo("TUI Player SAM", "Turn submitted via Nostr")
-        # Clear staged commands on successful submission
-        sam.model.ui.stagedFleetCommands.clear()
-        sam.model.ui.stagedBuildCommands.setLen(0)
-        sam.model.ui.stagedRepairCommands.setLen(0)
-        sam.model.ui.stagedScrapCommands.setLen(0)
-        sam.model.ui.stagedColonyManagement.setLen(0)
+      let buildErrors = validateStagedBuildLimits(sam.model)
+      let fleetErrors = validateStagedFleetLimits(sam.model)
+      if buildErrors.len > 0 or fleetErrors.len > 0:
+        if buildErrors.len > 0:
+          sam.model.ui.statusMessage = "Submit blocked: " & buildErrors[0]
+        else:
+          sam.model.ui.statusMessage = "Submit blocked: " & fleetErrors[0]
       else:
-        sam.model.ui.statusMessage =
-          "Cannot submit: not connected to relay"
+        # Build command packet from staged commands
+        let packet = sam.model.buildCommandPacket(
+          playerState.turn,
+          viewingHouse
+        )
+
+        # Send via Nostr (only supported transport)
+        if sam.model.ui.nostrEnabled and nostrClient != nil and
+            nostrClient.isConnected():
+          let msgpack = serializeCommandPacket(packet)
+          asyncCheck nostrClient.submitCommands(msgpack, sam.model.view.turn)
+          sam.model.ui.statusMessage = "Turn submitted"
+          logInfo("TUI Player SAM", "Turn submitted via Nostr")
+          # Clear staged commands on successful submission
+          sam.model.ui.stagedFleetCommands.clear()
+          sam.model.ui.stagedBuildCommands.setLen(0)
+          sam.model.ui.stagedRepairCommands.setLen(0)
+          sam.model.ui.stagedScrapCommands.setLen(0)
+          sam.model.ui.stagedColonyManagement.setLen(0)
+        else:
+          sam.model.ui.statusMessage =
+            "Cannot submit: not connected to relay"
 
       sam.model.ui.turnSubmissionPending = false
       needsRender = true

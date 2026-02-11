@@ -120,6 +120,7 @@ type
     toggleAutoLoadMarines
     toggleAutoLoadFighters
     buildCategorySwitch
+    buildCategoryPrev
     buildListUp
     buildListDown
     buildListPageUp

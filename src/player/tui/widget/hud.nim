@@ -3,13 +3,13 @@
 ## The HUD Strip is the top status bar showing empire-critical data at all times:
 ## - Empire name and turn number (left)
 ## - Prestige with standing (center-left)
-## - Treasury and production (center)
+## - Treasury PP and production (center)
 ## - Command capacity (center-right)
 ## - Alert/message counts (right)
 ##
 ## Layout (120 columns):
 ## ╔═══════════════════════════════════════════════════════════════════════════╗
-## ║ EMPIRE: House Valerian  ▸ Turn 42  ★ 487 (2nd)  CR: 1,820  PROD: 640  ⚠ 3 ║
+## ║ EMPIRE: House Valerian  ▸ Turn 42  ★ 487 (2nd)  PP: 1,820  PROD: 640  ⚠ 3 ║
 ## ╚═══════════════════════════════════════════════════════════════════════════╝
 ##
 ## Reference: ec-style-layout.md Section 2 "Screen Regions" and Section 5.1
@@ -163,10 +163,10 @@ proc renderHudStrip*(area: Rect, buf: var CellBuffer, data: HudData) =
     x += 3
   
   # === CENTER: Treasury + Production ===
-  # "CR: 1,820    PROD: 640"
+  # "PP: 1,820    PROD: 640"
   
   if x < contentEnd - 30:
-    discard buf.setString(x, contentY, "CR: ", hudDim)
+    discard buf.setString(x, contentY, "PP: ", hudDim)
     x += 4
     discard buf.setString(x, contentY, formatNumber(data.treasury), hudBold)
     x += formatNumber(data.treasury).len + 3
@@ -224,10 +224,10 @@ proc renderHudStrip*(area: Rect, buf: var CellBuffer, data: HudData) =
 proc renderHudStripCompact*(area: Rect, buf: var CellBuffer, data: HudData) =
   ## Render compact HUD for 80-column terminals
   ##
-  ## Layout:
-  ## ╔════════════════════════════════════════════════════════════════════════════╗
-  ## ║ VALERIAN ▸ T42  ★487 (2nd)  CR:1820  PROD:640  C2:82/120●  ⚠3  ✉2        ║
-  ## ╚════════════════════════════════════════════════════════════════════════════╝
+## Layout:
+## ╔════════════════════════════════════════════════════════════════════════════╗
+## ║ VALERIAN ▸ T42  ★487 (2nd)  PP:1820  PROD:640  C2:82/120●  ⚠3  ✉2        ║
+## ╚════════════════════════════════════════════════════════════════════════════╝
   
   if area.height < 2 or area.width < 40:
     return
@@ -290,7 +290,7 @@ proc renderHudStripCompact*(area: Rect, buf: var CellBuffer, data: HudData) =
   x += 2
   
   # Treasury (compact)
-  discard buf.setString(x, contentY, "CR:", hudDim)
+  discard buf.setString(x, contentY, "PP:", hudDim)
   x += 3
   discard buf.setString(x, contentY, $data.treasury, hudBold)
   x += ($data.treasury).len + 2
