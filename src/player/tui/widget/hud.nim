@@ -1,15 +1,16 @@
 ## HUD Strip Widget
 ##
-## The HUD Strip is the top status bar showing empire-critical data at all times:
+## The HUD Strip is the top status bar showing critical empire data at all
+## times:
 ## - Empire name and turn number (left)
-## - Prestige with standing (center-left)
+## - Prestige and tax rate (center-left)
 ## - Treasury PP and production (center)
 ## - Command capacity (center-right)
 ## - Alert/message counts (right)
 ##
 ## Layout (120 columns):
 ## ╔═══════════════════════════════════════════════════════════════════════════╗
-## ║ EMPIRE: House Valerian  ▸ Turn 42  ★ 487 (2nd)  PP: 1,820  PROD: 640  ⚠ 3 ║
+## ║ EMPIRE: House Valerian  ▸ Turn 42  Prestige: 487  Tax: 50% ...           ║
 ## ╚═══════════════════════════════════════════════════════════════════════════╝
 ##
 ## Reference: ec-style-layout.md Section 2 "Screen Regions" and Section 5.1
@@ -29,6 +30,7 @@ type
     prestige*: int
     prestigeRank*: int      ## 1st, 2nd, etc. (0 = unknown)
     totalHouses*: int       ## For "Xth of Y"
+    taxRate*: int           ## House-wide tax rate (%)
     treasury*: int          ## Credits/Production Points
     production*: int        ## Net House Value (production income)
     commandUsed*: int       ## Current command capacity used
@@ -145,22 +147,23 @@ proc renderHudStrip*(area: Rect, buf: var CellBuffer, data: HudData) =
   discard buf.setString(x, contentY, $data.turn, hudBold)
   x += ($data.turn).len + 3
   
-  # === CENTER-LEFT: Prestige ===
-  # "★ 487 (2nd)"
-  
-  if x < contentEnd - 40:
-    discard buf.setString(x, contentY, GlyphPrestige & " ", hudPrest)
-    x += 2
-    
+  # === CENTER-LEFT: Prestige + Tax ===
+  # "Prestige: 487  Tax: 50%"
+
+  if x < contentEnd - 52:
+    discard buf.setString(x, contentY, "Prestige: ", hudDim)
+    x += 10
+
     discard buf.setString(x, contentY, formatNumber(data.prestige), hudPrest)
     x += formatNumber(data.prestige).len
     
-    if data.prestigeRank > 0:
-      let rankStr = " (" & formatRank(data.prestigeRank) & ")"
-      discard buf.setString(x, contentY, rankStr, hudDim)
-      x += rankStr.len
-    
-    x += 3
+    x += 2
+
+    discard buf.setString(x, contentY, "Tax: ", hudDim)
+    x += 5
+    let taxStr = $data.taxRate & "%"
+    discard buf.setString(x, contentY, taxStr, hudBold)
+    x += taxStr.len + 3
   
   # === CENTER: Treasury + Production ===
   # "PP: 1,820    PROD: 640"
@@ -226,7 +229,7 @@ proc renderHudStripCompact*(area: Rect, buf: var CellBuffer, data: HudData) =
   ##
 ## Layout:
 ## ╔════════════════════════════════════════════════════════════════════════════╗
-## ║ VALERIAN ▸ T42  ★487 (2nd)  PP:1820  PROD:640  C2:82/120●  ⚠3  ✉2        ║
+## ║ VALERIAN ▸ T42  Prestige:487  Tax:50%  PP:1820  PROD:640 ...             ║
 ## ╚════════════════════════════════════════════════════════════════════════════╝
   
   if area.height < 2 or area.width < 40:
@@ -279,16 +282,20 @@ proc renderHudStripCompact*(area: Rect, buf: var CellBuffer, data: HudData) =
   x += ($data.turn).len + 2
   
   # Prestige (compact)
-  discard buf.setString(x, contentY, GlyphPrestige, hudPrest)
-  x += 1
+  discard buf.setString(x, contentY, "Prestige:", hudDim)
+  x += 9
   discard buf.setString(x, contentY, $data.prestige, hudPrest)
   x += ($data.prestige).len
-  if data.prestigeRank > 0:
-    let rankStr = "(" & formatRank(data.prestigeRank) & ")"
-    discard buf.setString(x, contentY, rankStr, hudDim)
-    x += rankStr.len
   x += 2
-  
+
+  # Tax (compact)
+  if x < contentEnd - 30:
+    discard buf.setString(x, contentY, "Tax:", hudDim)
+    x += 4
+    let taxStr = $data.taxRate & "%"
+    discard buf.setString(x, contentY, taxStr, hudBold)
+    x += taxStr.len + 2
+
   # Treasury (compact)
   discard buf.setString(x, contentY, "PP:", hudDim)
   x += 3

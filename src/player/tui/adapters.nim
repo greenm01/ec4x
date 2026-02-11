@@ -1328,6 +1328,26 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
       var fleetsReserve = 0
       var fleetsMothball = 0
       let fighters = colony.fighterIds.len
+      var armies = 0
+      var marines = 0
+      var batteries = 0
+      var shields = 0
+
+      for unit in ps.ownGroundUnits:
+        if unit.garrison.locationType != GroundUnitLocation.OnColony:
+          continue
+        if unit.garrison.colonyId != colony.id:
+          continue
+        case unit.stats.unitType
+        of GroundClass.Army:
+          armies.inc
+        of GroundClass.Marine:
+          marines.inc
+        of GroundClass.GroundBattery:
+          batteries.inc
+        of GroundClass.PlanetaryShield:
+          shields.inc
+
       for fleet in ps.ownFleets:
         if fleet.location != colony.systemId:
           continue
@@ -1370,10 +1390,10 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
         fleetsReserve: fleetsReserve,
         fleetsMothball: fleetsMothball,
         fighters: fighters,
-        armies: 0,  # Would need ground unit data
-        marines: 0,
-        batteries: 0,
-        shields: 0,
+        armies: armies,
+        marines: marines,
+        batteries: batteries,
+        shields: shields,
         queue: @[],  # Construction queue not fully detailed in PlayerState
         buildOptions: @[],  # Would need full GameState to compute
         autoRepair: colony.autoRepair,

@@ -766,8 +766,10 @@ proc syncPlayerStateToOverview*(
   # === Empire Status ===
   result.empireStatus.coloniesOwned = ps.ownColonies.len
 
-  # Tax rate not available in PlayerState
-  result.empireStatus.taxRate = 0
+  if ps.ownColonies.len > 0 and ps.ownColonies[0].taxRate > 0:
+    result.empireStatus.taxRate = ps.ownColonies[0].taxRate.int
+  else:
+    result.empireStatus.taxRate = 0
 
   # Fleet counts by status
   for fleet in ps.ownFleets:
@@ -876,7 +878,10 @@ proc syncPlayerStateToModel*(
     model.view.production = ps.netIncome.get().int
   else:
     model.view.production = 0
-  model.view.houseTaxRate = 0
+  if ps.ownColonies.len > 0 and ps.ownColonies[0].taxRate > 0:
+    model.view.houseTaxRate = ps.ownColonies[0].taxRate.int
+  else:
+    model.view.houseTaxRate = 0
   model.view.techLevels = ps.techLevels
   model.view.researchPoints = ps.researchPoints
   model.view.colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)

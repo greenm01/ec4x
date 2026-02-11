@@ -91,6 +91,32 @@ suite "Game Initialization - Complete Flow":
             check visSys.planetClass == ord(system.planetClass).int32
             check visSys.resourceRating == ord(system.resourceRating).int32
 
+  test "PlayerState includes starting ground forces":
+    let game = newGame()
+
+    for house in game.allHouses():
+      let ps = game.createPlayerState(house.id)
+      var armies = 0
+      var marines = 0
+      var batteries = 0
+      var shields = 0
+
+      for unit in ps.ownGroundUnits:
+        case unit.stats.unitType
+        of GroundClass.Army:
+          armies.inc
+        of GroundClass.Marine:
+          marines.inc
+        of GroundClass.GroundBattery:
+          batteries.inc
+        of GroundClass.PlanetaryShield:
+          shields.inc
+
+      check armies == int(gameSetup.startingGroundForces.armies)
+      check marines == int(gameSetup.startingGroundForces.marines)
+      check batteries == int(gameSetup.startingGroundForces.groundBatteries)
+      check shields == int(gameSetup.startingGroundForces.planetaryShields)
+
   test "Facilities properly created":
     let game = newGame()
 

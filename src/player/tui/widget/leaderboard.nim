@@ -75,19 +75,28 @@ proc addEntry*(data: var LeaderboardData, houseId: int, name: string,
   ))
 
 proc sortAndRank*(data: var LeaderboardData) =
-  ## Sort entries by prestige (descending) and assign ranks
+  ## Sort entries by prestige (descending) and assign ranks.
+  ## Ties share rank by prestige; player is shown first within tie groups.
   data.entries.sort(proc(a, b: HouseEntry): int =
-    # Sort by prestige descending, then colonies, then house id
+    # Primary ordering: prestige, then colonies.
     if a.prestige != b.prestige:
       return b.prestige - a.prestige
     if a.colonyCount != b.colonyCount:
       return b.colonyCount - a.colonyCount
+    # Keep viewer visible at top when everything else is tied.
+    if a.isPlayer != b.isPlayer:
+      return (if a.isPlayer: -1 else: 1)
     return a.houseId - b.houseId
   )
-  
-  # Assign ranks
+
+  # Assign ranks by prestige only (competition ranking: 1,1,3...)
   for i in 0 ..< data.entries.len:
-    data.entries[i].rank = i + 1
+    if i == 0:
+      data.entries[i].rank = 1
+    elif data.entries[i].prestige == data.entries[i - 1].prestige:
+      data.entries[i].rank = data.entries[i - 1].rank
+    else:
+      data.entries[i].rank = i + 1
 
 # =============================================================================
 # Diplomatic Status Display
