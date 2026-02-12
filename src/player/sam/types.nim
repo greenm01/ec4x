@@ -178,6 +178,8 @@ type
     intelNoteDelete
     intelNoteSave
     intelNoteCancel
+    intelDetailNext
+    intelDetailPrev
 
   # ============================================================================
   # Core SAM Types

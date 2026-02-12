@@ -166,13 +166,18 @@ type
     intelTurn*: Option[int32]
     estimatedPopulation*: Option[int32]
     estimatedIndustry*: Option[int32]
-    estimatedDefenses*: Option[int32]
+    # Ground assets
+    estimatedArmies*: Option[int32]
+    estimatedMarines*: Option[int32]
+    estimatedBatteries*: Option[int32]
+    estimatedShields*: Option[int32]
+    # Orbital assets
     starbaseLevel*: Option[int32]
-    # Orbital defense intel
-    unassignedSquadronCount*: Option[int32]
+    spaceportCount*: Option[int32]
+    shipyardCount*: Option[int32]
+    drydockCount*: Option[int32]
     reserveFleetCount*: Option[int32]
     mothballedFleetCount*: Option[int32]
-    shipyardCount*: Option[int32]
 
   VisibleFleet* = object
     ## Enemy fleet with limited intel (detection-based)

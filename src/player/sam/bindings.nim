@@ -1135,6 +1135,42 @@ proc initBindings*() =
     longLabel: "NOTE", shortLabel: "Note", priority: 20))
 
   registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelDetailNext,
+    context: BindingContext.IntelDetail,
+    longLabel: "NEXT", shortLabel: "Next", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.Shift,
+    actionKind: ActionKind.intelDetailPrev,
+    context: BindingContext.IntelDetail,
+    longLabel: "PREV", shortLabel: "Prev", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelDetailNext,
+    context: BindingContext.IntelDetail,
+    longLabel: "NEXT", shortLabel: "→", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelDetailPrev,
+    context: BindingContext.IntelDetail,
+    longLabel: "PREV", shortLabel: "←", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelDetailNext,
+    context: BindingContext.IntelDetail,
+    longLabel: "NEXT", shortLabel: "L", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelDetailPrev,
+    context: BindingContext.IntelDetail,
+    longLabel: "PREV", shortLabel: "H", priority: 10))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.breadcrumbBack,
     context: BindingContext.IntelDetail,
@@ -1514,6 +1550,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionReportFocusRight())
   of ActionKind.intelEditNote:
     return some(actionIntelEditNote())
+  of ActionKind.intelDetailNext:
+    return some(actionIntelDetailNext())
+  of ActionKind.intelDetailPrev:
+    return some(actionIntelDetailPrev())
   of ActionKind.intelNoteAppend:
     return some(actionIntelNoteAppend(""))
   of ActionKind.intelNoteBackspace:

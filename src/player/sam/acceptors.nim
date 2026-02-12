@@ -882,6 +882,54 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.intelNotePreferredColumn = 0
       model.ui.intelNoteScrollOffset = 0
       model.ui.statusMessage = "Intel note edit canceled"
+    of ActionKind.intelDetailNext:
+      # Navigate to next intel system in detail view
+      if model.ui.intelDetailSystemId <= 0 or
+          model.view.intelRows.len == 0:
+        return
+      # Find current index
+      var currentIdx = -1
+      for i, row in model.view.intelRows:
+        if row.systemId == model.ui.intelDetailSystemId:
+          currentIdx = i
+          break
+      if currentIdx < 0:
+        return
+      # Cycle to next (wrapping)
+      let nextIdx = if currentIdx >= model.view.intelRows.len - 1:
+        0
+      else:
+        currentIdx + 1
+      let nextRow = model.view.intelRows[nextIdx]
+      model.ui.intelDetailSystemId = nextRow.systemId
+      # Update breadcrumb
+      if model.ui.breadcrumbs.len > 0:
+        model.ui.breadcrumbs[^1].label = nextRow.systemName
+        model.ui.breadcrumbs[^1].entityId = nextRow.systemId
+    of ActionKind.intelDetailPrev:
+      # Navigate to previous intel system in detail view
+      if model.ui.intelDetailSystemId <= 0 or
+          model.view.intelRows.len == 0:
+        return
+      # Find current index
+      var currentIdx = -1
+      for i, row in model.view.intelRows:
+        if row.systemId == model.ui.intelDetailSystemId:
+          currentIdx = i
+          break
+      if currentIdx < 0:
+        return
+      # Cycle to previous (wrapping)
+      let prevIdx = if currentIdx <= 0:
+        model.view.intelRows.len - 1
+      else:
+        currentIdx - 1
+      let prevRow = model.view.intelRows[prevIdx]
+      model.ui.intelDetailSystemId = prevRow.systemId
+      # Update breadcrumb
+      if model.ui.breadcrumbs.len > 0:
+        model.ui.breadcrumbs[^1].label = prevRow.systemName
+        model.ui.breadcrumbs[^1].entityId = prevRow.systemId
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"

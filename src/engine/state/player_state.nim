@@ -81,13 +81,18 @@ proc createVisibleColony(
     result.intelTurn = some(report.gatheredTurn)
     result.estimatedPopulation = some(report.population)
     result.estimatedIndustry = some(report.infrastructure)
-    result.estimatedDefenses = some(report.groundBatteryCount)
+    result.estimatedArmies = some(report.armyCount)
+    result.estimatedMarines = some(report.marineCount)
+    result.estimatedBatteries = some(report.groundBatteryCount)
+    result.estimatedShields = some(report.planetaryShieldLevel)
+    result.spaceportCount = some(report.spaceportCount)
   if orbitalIntel.isSome:
     let report = orbitalIntel.get
     result.starbaseLevel = some(report.starbaseCount)
+    result.shipyardCount = some(report.shipyardCount)
+    result.drydockCount = some(report.drydockCount)
     result.reserveFleetCount = some(report.reserveFleetCount)
     result.mothballedFleetCount = some(report.mothballedFleetCount)
-    result.shipyardCount = some(report.shipyardCount)
 
 proc createVisibleFleet(
     state: GameState,

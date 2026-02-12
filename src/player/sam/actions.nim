@@ -1257,6 +1257,14 @@ proc actionIntelNoteCancel*(): Proposal =
   ## Cancel intel note edit
   gameActionProposal(ActionKind.intelNoteCancel, "")
 
+proc actionIntelDetailNext*(): Proposal =
+  ## Navigate to next intel system in detail view
+  gameActionProposal(ActionKind.intelDetailNext, "")
+
+proc actionIntelDetailPrev*(): Proposal =
+  ## Navigate to previous intel system in detail view
+  gameActionProposal(ActionKind.intelDetailPrev, "")
+
 # ============================================================================
 # System Actions
 # ============================================================================
