@@ -56,6 +56,8 @@ type
     switchFleetView
     fleetSortToggle
     fleetDigitJump
+    intelDigitJump
+    colonyDigitJump
     fleetBatchCommand
     fleetBatchROE
     fleetBatchZeroTurn

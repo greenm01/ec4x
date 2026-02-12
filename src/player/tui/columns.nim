@@ -15,8 +15,8 @@ export table
 proc planetsColumns*(): seq[TableColumn] =
   ## Column definitions for planets/colony table
   @[
-    tableColumn("System", 14, table.Alignment.Left),
-    tableColumn("Sec", 4, table.Alignment.Center),
+    tableColumn("System", 6, table.Alignment.Center),
+    tableColumn("Name", 14, table.Alignment.Left),
     tableColumn("Cls", 3, table.Alignment.Left),
     tableColumn("Res", 3, table.Alignment.Left),
     tableColumn("Pop", 4, table.Alignment.Right),
@@ -94,8 +94,8 @@ proc fleetListColumns*(): seq[TableColumn] =
 proc intelDbColumns*(): seq[TableColumn] =
   ## Column definitions for intel database table
   @[
-    tableColumn("System", 14, table.Alignment.Left),
-    tableColumn("Sec", 4, table.Alignment.Center),
+    tableColumn("System", 6, table.Alignment.Center),
+    tableColumn("Name", 14, table.Alignment.Left),
     tableColumn("Owner", 10, table.Alignment.Left),
     tableColumn("Intel", 8, table.Alignment.Left),
     tableColumn("LTU", 4, table.Alignment.Center),

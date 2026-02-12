@@ -2812,6 +2812,49 @@ proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
           localScroll.ensureVisible(foundIdx)
           model.ui.fleetsScroll = localScroll
         model.ui.fleetListState.jumpBuffer = ""
+  of ActionKind.intelDigitJump:
+    if model.ui.mode == ViewMode.IntelDb and
+        proposal.gameActionData.len > 0:
+      let ch = proposal.gameActionData[0]
+      let now = epochTime()
+      let buffer = model.ui.intelJumpBuffer
+      let lastTime = model.ui.intelJumpTime
+      # Build 2-char sector label buffer (e.g. "A" then "0" -> "A0")
+      var nextBuffer = ""
+      if buffer.len > 0 and (now - lastTime) < DigitBufferTimeout:
+        nextBuffer = buffer & $ch
+      else:
+        nextBuffer = $ch
+      model.ui.intelJumpBuffer = nextBuffer
+      model.ui.intelJumpTime = now
+      # Search on every keystroke (match prefix)
+      let upperFilter = nextBuffer.toUpperAscii()
+      for idx, row in model.view.intelRows:
+        if row.sectorLabel.toUpperAscii().startsWith(upperFilter):
+          model.ui.selectedIdx = idx
+          model.syncIntelListScroll()
+          break
+  of ActionKind.colonyDigitJump:
+    if model.ui.mode == ViewMode.Planets and
+        proposal.gameActionData.len > 0:
+      let ch = proposal.gameActionData[0]
+      let now = epochTime()
+      let buffer = model.ui.planetsJumpBuffer
+      let lastTime = model.ui.planetsJumpTime
+      # Build 2-char sector label buffer (e.g. "A" then "0" -> "A0")
+      var nextBuffer = ""
+      if buffer.len > 0 and (now - lastTime) < DigitBufferTimeout:
+        nextBuffer = buffer & $ch
+      else:
+        nextBuffer = $ch
+      model.ui.planetsJumpBuffer = nextBuffer
+      model.ui.planetsJumpTime = now
+      # Search on every keystroke (match prefix)
+      let upperFilter = nextBuffer.toUpperAscii()
+      for idx, row in model.view.planetsRows:
+        if row.sectorLabel.toUpperAscii().startsWith(upperFilter):
+          model.ui.selectedIdx = idx
+          break
   else:
     discard
 

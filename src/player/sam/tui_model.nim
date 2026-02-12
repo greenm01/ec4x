@@ -684,6 +684,14 @@ type
     # Fleet list state (ListView mode)
     fleetListState*: FleetListState
 
+    # Intel DB jump state
+    intelJumpBuffer*: string
+    intelJumpTime*: float
+
+    # Planets/Colony jump state
+    planetsJumpBuffer*: string
+    planetsJumpTime*: float
+
     # Reports UI
     reportFilter*: ReportCategory
     reportFocus*: ReportPaneFocus
@@ -904,6 +912,10 @@ proc initTuiUiState*(): TuiUiState =
       jumpBuffer: "",
       jumpTime: 0.0
     ),
+    intelJumpBuffer: "",
+    intelJumpTime: 0.0,
+    planetsJumpBuffer: "",
+    planetsJumpTime: 0.0,
     reportFilter: ReportCategory.Summary,
     reportFocus: ReportPaneFocus.TurnList,
     reportTurnIdx: 0,

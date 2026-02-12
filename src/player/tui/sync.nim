@@ -1342,7 +1342,7 @@ proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState) =
     else:
       ownedRows.add(row)
 
-  ownedRows.sort(proc(a, b: PlanetRow): int = cmp(a.systemName, b.systemName))
+  ownedRows.sort(proc(a, b: PlanetRow): int = cmp(a.sectorLabel, b.sectorLabel))
 
   if homeRow.isSome:
     model.view.planetsRows.add(homeRow.get)
@@ -1463,7 +1463,7 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
         of VisibilityLevel.Owned: 1
     result = cmp(rankA, rankB)
     if result == 0:
-      result = cmp(a.systemName, b.systemName)
+      result = cmp(a.sectorLabel, b.sectorLabel)
   )
 
 proc applyIntelNotes*(model: var TuiModel, notes: Table[int, string]) =

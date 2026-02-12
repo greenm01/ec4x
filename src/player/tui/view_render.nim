@@ -382,8 +382,8 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   let tableArea = rect(area.x, area.y, area.width, tableHeight)
   let columns = @[
-    tableColumn("System", 14, table.Alignment.Left),
-    tableColumn("Sec", 4, table.Alignment.Center),
+    tableColumn("System", 6, table.Alignment.Center),
+    tableColumn("Name", 14, table.Alignment.Left),
     tableColumn("Cls", 3, table.Alignment.Center),
     tableColumn("Res", 3, table.Alignment.Center),
     tableColumn("Pop", 4, table.Alignment.Center),
@@ -423,8 +423,8 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
       statusLabel = GlyphWarning & " " & statusLabel
 
     let dataRow = @[
-      row.systemName,
       row.sectorLabel,
+      row.systemName,
       row.classLabel,
       row.resourceLabel,
       popLabel,
@@ -491,8 +491,8 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
       statusLabel = GlyphWarning & " " & statusLabel
 
     let dataRow = @[
-      row.systemName,
       row.sectorLabel,
+      row.systemName,
       row.classLabel,
       row.resourceLabel,
       popLabel,
@@ -519,8 +519,8 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
     return
 
   let columns = @[
-    tableColumn("System", 18, table.Alignment.Left),
-    tableColumn("Sector", 5, table.Alignment.Center),
+    tableColumn("System", 6, table.Alignment.Center),
+    tableColumn("Name", 18, table.Alignment.Left),
     tableColumn("Owner", 10, table.Alignment.Left),
     tableColumn("Intel", 6, table.Alignment.Left),
     tableColumn("LTU", 4, table.Alignment.Right),
@@ -551,8 +551,8 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
       .replace("\n", " ↵ ")
       .replace("\t", " ")
     let dataRow = @[
-      row.systemName,
       row.sectorLabel,
+      row.systemName,
       row.ownerName,
       row.intelLabel,
       row.ltuLabel,
@@ -1695,7 +1695,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   
   let footerText =
     "[↑↓] Navigate  [Enter] Details  [B] Build  [Q] Queue  " &
-    "[PgUp/PgDn] Scroll  [/]Help"
+    "[PgUp/PgDn] Scroll  [A-Z0-9]Jump  [/]Help"
   modal.renderWithFooter(modalArea, buf, footerText)
   
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
@@ -1946,8 +1946,8 @@ proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
                          model: var TuiModel) =
   ## Render intel database view as centered floating modal.
   let columns = @[
-    tableColumn("System", 18, table.Alignment.Left),
-    tableColumn("Sector", 5, table.Alignment.Center),
+    tableColumn("System", 6, table.Alignment.Center),
+    tableColumn("Name", 18, table.Alignment.Left),
     tableColumn("Owner", 10, table.Alignment.Left),
     tableColumn("Intel", 6, table.Alignment.Left),
     tableColumn("LTU", 4, table.Alignment.Right),
@@ -1977,7 +1977,7 @@ proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
   let modalArea = modal.calculateArea(canvas, tableWidth,
     tableHeight + 2)
   let footerText =
-    "[↑↓] Navigate  [Enter] Detail  [N] Note  [PgUp/PgDn] Scroll  [/]Help"
+    "[↑↓] Navigate  [Enter] Detail  [N] Note  [PgUp/PgDn] Scroll  [A-Z0-9]Jump  [/]Help"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   renderIntelDbTable(contentArea, buf, model, localScroll)

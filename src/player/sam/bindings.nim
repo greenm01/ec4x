@@ -1880,6 +1880,91 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     if jumpChar != '\0':
       return some(actionFleetDigitJump(jumpChar))
 
+  # IntelDb jump: type 2-char sector label (e.g. A01, B03) to jump
+  # Excludes N (note editing)
+  if model.ui.mode == ViewMode.IntelDb and
+      not model.ui.expertModeActive and
+      modifier == KeyModifier.None:
+    let jumpChar = case key
+      of KeyCode.Key0: '0'
+      of KeyCode.Key1: '1'
+      of KeyCode.Key2: '2'
+      of KeyCode.Key3: '3'
+      of KeyCode.Key4: '4'
+      of KeyCode.Key5: '5'
+      of KeyCode.Key6: '6'
+      of KeyCode.Key7: '7'
+      of KeyCode.Key8: '8'
+      of KeyCode.Key9: '9'
+      of KeyCode.KeyA: 'A'
+      of KeyCode.KeyB: 'B'
+      of KeyCode.KeyC: 'C'
+      of KeyCode.KeyD: 'D'
+      of KeyCode.KeyE: 'E'
+      of KeyCode.KeyF: 'F'
+      of KeyCode.KeyG: 'G'
+      of KeyCode.KeyH: 'H'
+      of KeyCode.KeyI: 'I'
+      of KeyCode.KeyL: 'L'
+      of KeyCode.KeyM: 'M'
+      of KeyCode.KeyO: 'O'
+      of KeyCode.KeyP: 'P'
+      of KeyCode.KeyQ: 'Q'
+      of KeyCode.KeyR: 'R'
+      of KeyCode.KeyS: 'S'
+      of KeyCode.KeyT: 'T'
+      of KeyCode.KeyU: 'U'
+      of KeyCode.KeyV: 'V'
+      of KeyCode.KeyW: 'W'
+      of KeyCode.KeyX: 'X'
+      of KeyCode.KeyY: 'Y'
+      of KeyCode.KeyZ: 'Z'
+      else: '\0'
+    if jumpChar != '\0':
+      return some(actionIntelDigitJump(jumpChar))
+
+  # Planets jump: type 2-char sector label (e.g. A01, B03) to jump
+  # Excludes B (build), Q (queue)
+  if model.ui.mode == ViewMode.Planets and
+      not model.ui.expertModeActive and
+      modifier == KeyModifier.None:
+    let jumpChar = case key
+      of KeyCode.Key0: '0'
+      of KeyCode.Key1: '1'
+      of KeyCode.Key2: '2'
+      of KeyCode.Key3: '3'
+      of KeyCode.Key4: '4'
+      of KeyCode.Key5: '5'
+      of KeyCode.Key6: '6'
+      of KeyCode.Key7: '7'
+      of KeyCode.Key8: '8'
+      of KeyCode.Key9: '9'
+      of KeyCode.KeyA: 'A'
+      of KeyCode.KeyC: 'C'
+      of KeyCode.KeyD: 'D'
+      of KeyCode.KeyE: 'E'
+      of KeyCode.KeyF: 'F'
+      of KeyCode.KeyG: 'G'
+      of KeyCode.KeyH: 'H'
+      of KeyCode.KeyI: 'I'
+      of KeyCode.KeyL: 'L'
+      of KeyCode.KeyM: 'M'
+      of KeyCode.KeyN: 'N'
+      of KeyCode.KeyO: 'O'
+      of KeyCode.KeyP: 'P'
+      of KeyCode.KeyR: 'R'
+      of KeyCode.KeyS: 'S'
+      of KeyCode.KeyT: 'T'
+      of KeyCode.KeyU: 'U'
+      of KeyCode.KeyV: 'V'
+      of KeyCode.KeyW: 'W'
+      of KeyCode.KeyX: 'X'
+      of KeyCode.KeyY: 'Y'
+      of KeyCode.KeyZ: 'Z'
+      else: '\0'
+    if jumpChar != '\0':
+      return some(actionColonyDigitJump(jumpChar))
+
   # Expert mode: use registry
   if model.ui.expertModeActive and modifier == KeyModifier.None:
     if key != KeyCode.KeyEscape:
