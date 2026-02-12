@@ -27,6 +27,38 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   elif hasShift:
     modifier = KeyModifier.Shift
 
+  # Intel note edit mode captures text input directly.
+  if model.ui.intelNoteEditActive:
+    case event.key
+    of Key.Rune:
+      if event.rune.int == 0x0D or event.rune.int == 0x0A:
+        return some(actionIntelNoteInsertNewline())
+      if event.rune.int >= 0x20:
+        return some(actionIntelNoteAppend($event.rune))
+      return none(Proposal)
+    of Key.Enter:
+      return some(actionIntelNoteInsertNewline())
+    of Key.CtrlJ:
+      return some(actionIntelNoteInsertNewline())
+    of Key.CtrlS:
+      return some(actionIntelNoteSave())
+    of Key.Up:
+      return some(actionIntelNoteCursorUp())
+    of Key.Down:
+      return some(actionIntelNoteCursorDown())
+    of Key.Left:
+      return some(actionIntelNoteCursorLeft())
+    of Key.Right:
+      return some(actionIntelNoteCursorRight())
+    of Key.Backspace:
+      return some(actionIntelNoteBackspace())
+    of Key.Escape:
+      return some(actionIntelNoteCancel())
+    of Key.Delete:
+      return some(actionIntelNoteDelete())
+    else:
+      return none(Proposal)
+
   case event.key
   of Key.Rune:
     if event.rune.int == 0x0D or event.rune.int == 0x0A:
@@ -201,6 +233,9 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     modifier = KeyModifier.Ctrl
   of Key.CtrlI:
     keyCode = KeyCode.KeyI
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlS:
+    keyCode = KeyCode.KeyS
     modifier = KeyModifier.Ctrl
   of Key.CtrlK:
     keyCode = KeyCode.KeyK

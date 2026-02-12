@@ -20,6 +20,7 @@ import ../tui/widget/hexmap/symbols
 # Forward declaration for PlayerState sync helpers
 proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState)
 proc syncIntelRows*(model: var TuiModel, ps: PlayerState)
+proc applyIntelNotes*(model: var TuiModel, notes: Table[int, string])
 
 proc fleetNeedsAttention(
     hasCrippled: bool,
@@ -1464,6 +1465,12 @@ proc syncIntelRows*(model: var TuiModel, ps: PlayerState) =
     if result == 0:
       result = cmp(a.systemName, b.systemName)
   )
+
+proc applyIntelNotes*(model: var TuiModel, notes: Table[int, string]) =
+  ## Overlay local note text onto synced intel rows.
+  for idx, row in model.view.intelRows:
+    model.view.intelRows[idx].notes =
+      notes.getOrDefault(row.systemId, "")
 
 proc syncBuildModalData*(
     model: var TuiModel,

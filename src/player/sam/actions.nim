@@ -516,6 +516,22 @@ proc actionLobbyBackspace*(): Proposal =
     gameActionData: ""
   )
 
+proc actionLobbyCursorLeft*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.lobbyCursorLeft,
+    gameActionData: ""
+  )
+
+proc actionLobbyCursorRight*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.lobbyCursorRight,
+    gameActionData: ""
+  )
+
 proc actionLobbyInputAppend*(value: string): Proposal =
   ## Append character to lobby input (pubkey or name)
   Proposal(
@@ -687,6 +703,24 @@ proc actionEntryRelayBackspace*(): Proposal =
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
     actionKind: ActionKind.entryRelayBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryCursorLeft*(): Proposal =
+  ## Move cursor left in entry text input
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryCursorLeft,
+    gameActionData: ""
+  )
+
+proc actionEntryCursorRight*(): Proposal =
+  ## Move cursor right in entry text input
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryCursorRight,
     gameActionData: ""
   )
 
@@ -1166,6 +1200,54 @@ proc actionFleetDetailPageDown*(): Proposal =
 proc actionFleetDetailDigitInput*(digit: char): Proposal =
   ## Handle digit input for quick command selection (00-19)
   gameActionProposal(ActionKind.fleetDetailDigitInput, $digit)
+
+# ============================================================================
+# Intel Actions
+# ============================================================================
+
+proc actionIntelEditNote*(): Proposal =
+  ## Start note edit for selected intel system
+  gameActionProposal(ActionKind.intelEditNote, "")
+
+proc actionIntelNoteAppend*(value: string): Proposal =
+  ## Append text to intel note input
+  gameActionProposal(ActionKind.intelNoteAppend, value)
+
+proc actionIntelNoteBackspace*(): Proposal =
+  ## Backspace in intel note input
+  gameActionProposal(ActionKind.intelNoteBackspace, "")
+
+proc actionIntelNoteCursorLeft*(): Proposal =
+  ## Move intel note cursor left
+  gameActionProposal(ActionKind.intelNoteCursorLeft, "")
+
+proc actionIntelNoteCursorRight*(): Proposal =
+  ## Move intel note cursor right
+  gameActionProposal(ActionKind.intelNoteCursorRight, "")
+
+proc actionIntelNoteCursorUp*(): Proposal =
+  ## Move intel note cursor up
+  gameActionProposal(ActionKind.intelNoteCursorUp, "")
+
+proc actionIntelNoteCursorDown*(): Proposal =
+  ## Move intel note cursor down
+  gameActionProposal(ActionKind.intelNoteCursorDown, "")
+
+proc actionIntelNoteInsertNewline*(): Proposal =
+  ## Insert a newline in intel note input
+  gameActionProposal(ActionKind.intelNoteInsertNewline, "")
+
+proc actionIntelNoteDelete*(): Proposal =
+  ## Delete character at cursor in intel note input
+  gameActionProposal(ActionKind.intelNoteDelete, "")
+
+proc actionIntelNoteSave*(): Proposal =
+  ## Save edited intel note
+  gameActionProposal(ActionKind.intelNoteSave, "")
+
+proc actionIntelNoteCancel*(): Proposal =
+  ## Cancel intel note edit
+  gameActionProposal(ActionKind.intelNoteCancel, "")
 
 # ============================================================================
 # System Actions

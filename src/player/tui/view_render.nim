@@ -70,6 +70,8 @@ proc helpContextFor(model: TuiModel): HelpContext =
     HelpContext.Economy
   of ViewMode.IntelDb:
     HelpContext.IntelDb
+  of ViewMode.IntelDetail:
+    HelpContext.IntelDb
   of ViewMode.Settings:
     HelpContext.Settings
 
@@ -545,13 +547,16 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
 
   for i in startIdx ..< endIdx:
     let row = model.view.intelRows[i]
+    let notePreview = row.notes
+      .replace("\n", " ↵ ")
+      .replace("\t", " ")
     let dataRow = @[
       row.systemName,
       row.sectorLabel,
       row.ownerName,
       row.intelLabel,
       row.ltuLabel,
-      row.notes
+      notePreview
     ]
     intelTable.addRow(dataRow)
 
@@ -1916,6 +1921,260 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
   # Render planet detail inside the modal
   renderPlanetDetailFromPS(contentArea, buf, model, ps)
 
+proc intelConfidence(model: TuiModel, row: IntelRow): string =
+  ## Estimate confidence from visibility class and LTU freshness.
+  var intelTurn = -1
+  if row.ltuLabel.len > 1 and row.ltuLabel[0] == 'T':
+    try:
+      intelTurn = parseInt(row.ltuLabel[1..^1])
+    except ValueError:
+      intelTurn = -1
+  let age = if intelTurn >= 0: max(0, model.view.turn - intelTurn) else: 99
+  if row.intelLabel == "OWN" or row.intelLabel == "OCC":
+    if age <= 1:
+      return "HIGH"
+    if age <= 3:
+      return "MED"
+    return "LOW"
+  if row.intelLabel == "SCT":
+    if age <= 2:
+      return "MED"
+    return "LOW"
+  "LOW"
+
+proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
+                         model: var TuiModel) =
+  ## Render intel database view as centered floating modal.
+  let columns = @[
+    tableColumn("System", 18, table.Alignment.Left),
+    tableColumn("Sector", 5, table.Alignment.Center),
+    tableColumn("Owner", 10, table.Alignment.Left),
+    tableColumn("Intel", 6, table.Alignment.Left),
+    tableColumn("LTU", 4, table.Alignment.Right),
+    tableColumn("Notes", 0, table.Alignment.Left)
+  ]
+  let maxTableWidth = canvas.width - 4
+  let tableWidth = tableWidthFromColumns(columns, maxTableWidth,
+    showBorders = true)
+  let totalRows = model.view.intelRows.len
+  let baseHeight = 4
+  let maxVisibleRows = max(1, canvas.height - baseHeight - 6)
+  let visibleRows = min(totalRows, maxVisibleRows)
+  var localScroll = model.ui.intelScroll
+  localScroll.contentLength = totalRows
+  localScroll.viewportLength = visibleRows
+  localScroll.clampOffsets()
+  model.ui.intelScroll = localScroll
+  let tableHeight = baseHeight + visibleRows
+
+  let modal = newModal()
+    .title("INTEL DATABASE")
+    .maxWidth(tableWidth + 2)
+    .minWidth(min(80, tableWidth + 2))
+    .minHeight(1)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let modalArea = modal.calculateArea(canvas, tableWidth,
+    tableHeight + 2)
+  let footerText =
+    "[↑↓] Navigate  [Enter] Detail  [N] Note  [PgUp/PgDn] Scroll  [/]Help"
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  renderIntelDbTable(contentArea, buf, model, localScroll)
+
+proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
+                             model: TuiModel, ps: ps_types.PlayerState) =
+  ## Render intel detail for selected system.
+  if model.ui.intelDetailSystemId <= 0:
+    return
+
+  var rowOpt: Option[IntelRow] = none(IntelRow)
+  for row in model.view.intelRows:
+    if row.systemId == model.ui.intelDetailSystemId:
+      rowOpt = some(row)
+      break
+  if rowOpt.isNone:
+    return
+
+  let row = rowOpt.get()
+  let title = "INTEL: " & row.systemName.toUpperAscii()
+  let modal = newModal()
+    .title(title)
+    .maxWidth(120)
+    .minWidth(90)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let contentHeight = min(max(16, canvas.height - 6), 28)
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  let footerText = "[Esc] Back  [N] Edit Note  [/]Help"
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+
+  let header = "Sector " & row.sectorLabel &
+    "  Owner " & row.ownerName &
+    "  Intel " & row.intelLabel &
+    "  LTU " & row.ltuLabel &
+    "  Confidence " & intelConfidence(model, row)
+  discard buf.setString(contentArea.x, contentArea.y, header,
+    canvasHeaderStyle())
+
+  var y = contentArea.y + 2
+  discard buf.setString(contentArea.x, y, "Fleets:", canvasBoldStyle())
+  y += 1
+  var fleetCount = 0
+  for fleet in ps.ownFleets:
+    if fleet.location == SystemId(model.ui.intelDetailSystemId):
+      discard buf.setString(contentArea.x, y,
+        "  You: " & fleet.name & " (" & $fleet.ships.len & " ships)",
+        normalStyle())
+      y += 1
+      fleetCount.inc
+      if y >= contentArea.bottom:
+        break
+  if y < contentArea.bottom:
+    for fleet in ps.visibleFleets:
+      if fleet.location == SystemId(model.ui.intelDetailSystemId):
+        let ships = if fleet.estimatedShipCount.isSome:
+            $fleet.estimatedShipCount.get()
+          else:
+            "?"
+        discard buf.setString(contentArea.x, y,
+          "  House " & $fleet.owner & ": " & ships & " ships (est)",
+          normalStyle())
+        y += 1
+        fleetCount.inc
+        if y >= contentArea.bottom:
+          break
+  if fleetCount == 0 and y < contentArea.bottom:
+    discard buf.setString(contentArea.x, y, "  None known", dimStyle())
+    y += 1
+
+  if y + 1 < contentArea.bottom:
+    y += 1
+    discard buf.setString(contentArea.x, y, "Colony / Orbital:",
+      canvasBoldStyle())
+    y += 1
+  var colonyLine = "  No known colony data"
+  for colony in ps.ownColonies:
+    if colony.systemId == SystemId(model.ui.intelDetailSystemId):
+      colonyLine = "  Owned colony: PU " & $colony.populationUnits &
+        " IU " & $colony.industrial.units &
+        " Starbases " & $colony.kastraIds.len
+      break
+  if colonyLine == "  No known colony data":
+    for colony in ps.visibleColonies:
+      if colony.systemId == SystemId(model.ui.intelDetailSystemId):
+        let defenses = if colony.estimatedDefenses.isSome:
+            $colony.estimatedDefenses.get()
+          else:
+            "?"
+        let starbase = if colony.starbaseLevel.isSome:
+            $colony.starbaseLevel.get()
+          else:
+            "?"
+        colonyLine = "  Enemy colony: defenses " & defenses &
+          " starbase " & starbase
+        break
+  if y < contentArea.bottom:
+    discard buf.setString(contentArea.x, y, colonyLine, normalStyle())
+    y += 1
+
+  if y + 1 < contentArea.bottom:
+    y += 1
+    discard buf.setString(contentArea.x, y, "Notes:", canvasBoldStyle())
+    y += 1
+    let noteText =
+      if row.notes.len > 0:
+        row.notes
+      else:
+        "(none)"
+    discard buf.setString(contentArea.x, y, "  " & noteText,
+      if row.notes.len > 0: normalStyle() else: dimStyle())
+
+proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
+                            model: TuiModel) =
+  ## Render overlay for editing intel notes.
+  if not model.ui.intelNoteEditActive:
+    return
+  proc cursorLine(text: string, cursorPos: int): int =
+    let cursor = clamp(cursorPos, 0, text.len)
+    result = 0
+    for i in 0 ..< cursor:
+      if text[i] == '\n':
+        result.inc
+  proc cursorColumn(text: string, cursorPos: int): int =
+    let cursor = clamp(cursorPos, 0, text.len)
+    var start = 0
+    if cursor > 0:
+      for i in countdown(cursor - 1, 0):
+        if text[i] == '\n':
+          start = i + 1
+          break
+    cursor - start
+
+  let modal = newModal()
+    .title("EDIT INTEL NOTE")
+    .maxWidth(100)
+    .minWidth(70)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let modalHeight = min(max(12, canvas.height - 6), canvas.height - 2)
+  let modalArea = modal.calculateArea(canvas, modalHeight)
+  modal.renderWithFooter(modalArea, buf,
+    "[Ctrl+S] Save  [Enter] New Line  [Esc] Cancel")
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  discard buf.setString(contentArea.x, contentArea.y,
+    "Note (multiline):", canvasDimStyle())
+
+  let textArea = rect(
+    contentArea.x,
+    contentArea.y + 1,
+    contentArea.width,
+    max(1, contentArea.height - 1)
+  )
+  if textArea.isEmpty:
+    return
+
+  let lines = model.ui.intelNoteEditInput.splitLines(keepEol = false)
+  let lineCount = max(1, lines.len)
+  let cursorLineIdx = cursorLine(
+    model.ui.intelNoteEditInput,
+    model.ui.intelNoteCursorPos
+  )
+  let cursorCol = cursorColumn(
+    model.ui.intelNoteEditInput,
+    model.ui.intelNoteCursorPos
+  )
+  var scrollLine = model.ui.intelNoteScrollOffset
+  scrollLine = max(0, min(scrollLine, max(0, lineCount - textArea.height)))
+  if cursorLineIdx < scrollLine:
+    scrollLine = cursorLineIdx
+  elif cursorLineIdx >= scrollLine + textArea.height:
+    scrollLine = cursorLineIdx - textArea.height + 1
+
+  for row in 0 ..< textArea.height:
+    let lineIdx = scrollLine + row
+    if lineIdx >= lineCount:
+      break
+    let lineText = if lineIdx < lines.len: lines[lineIdx] else: ""
+    var xPos = textArea.x
+    var charIdx = 0
+    for ch in lineText.runes:
+      if xPos >= textArea.right:
+        break
+      let style = if lineIdx == cursorLineIdx and
+          charIdx == cursorCol:
+        selectedStyle()
+      else:
+        normalStyle()
+      let written = buf.put(xPos, textArea.y + row, ch.toUTF8, style)
+      xPos += written
+      charIdx.inc
+    # If cursor is past end-of-line, draw block there
+    if lineIdx == cursorLineIdx and cursorCol >= charIdx and
+        xPos < textArea.right:
+      discard buf.put(xPos, textArea.y + row, " ", selectedStyle())
+
 proc renderListPanel*(
     area: Rect,
     buf: var CellBuffer,
@@ -1935,6 +2194,7 @@ proc renderListPanel*(
     of ViewMode.Economy: "General Policy"
     of ViewMode.Reports: "Reports Inbox"
     of ViewMode.IntelDb: "Intel Database"
+    of ViewMode.IntelDetail: "Intel System"
     of ViewMode.Settings: "Game Settings"
     of ViewMode.PlanetDetail: "Planet Info"
     of ViewMode.FleetDetail: "Fleet Info"
@@ -1980,6 +2240,9 @@ proc renderListPanel*(
   of ViewMode.IntelDb:
     discard buf.setString(inner.x, inner.y,
       "Intel DB view (deprecated)", dimStyle())
+  of ViewMode.IntelDetail:
+    discard buf.setString(inner.x, inner.y,
+      "Intel detail view", dimStyle())
   of ViewMode.Settings:
     discard buf.setString(inner.x, inner.y,
       "Settings view (TODO)", dimStyle())
@@ -2068,6 +2331,8 @@ proc activeViewKey*(mode: ViewMode): string =
     return "F8"
   of ViewMode.IntelDb:
     return ""
+  of ViewMode.IntelDetail:
+    return ""
 
 proc buildCommandDockData*(model: TuiModel): CommandDockData =
   ## Build command dock data from TUI model
@@ -2106,6 +2371,8 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     )
   of ViewMode.IntelDb:
     result.contextActions = @[]
+  of ViewMode.IntelDetail:
+    result.contextActions = @[]
   of ViewMode.Settings:
     result.contextActions = settingsContextActions()
   of ViewMode.PlanetDetail:
@@ -2119,7 +2386,7 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
 
 proc renderDashboard*(
     buf: var CellBuffer,
-    model: TuiModel,
+    model: var TuiModel,
     playerState: ps_types.PlayerState,
 ) =
   ## Render the complete TUI dashboard using EC-style layout
@@ -2183,7 +2450,7 @@ proc renderDashboard*(
     of ViewMode.Reports:
       renderReportsModal(canvasArea, buf, model, model.ui.reportTurnScroll)
     of ViewMode.IntelDb:
-      discard
+      renderIntelDbModal(canvasArea, buf, model)
     of ViewMode.Settings:
       renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)
     of ViewMode.PlanetDetail:
@@ -2237,6 +2504,8 @@ proc renderDashboard*(
       )
     of ViewMode.ReportDetail:
       renderReportDetail(canvasArea, buf, model)
+    of ViewMode.IntelDetail:
+      renderIntelDetailModal(canvasArea, buf, model, playerState)
 
   # Render build modal if active
   if model.ui.buildModal.active:
@@ -2245,6 +2514,8 @@ proc renderDashboard*(
   if model.ui.queueModal.active:
     let queueModalWidget = newQueueModalWidget()
     queueModalWidget.render(model.ui.queueModal, canvasArea, buf)
+
+  renderIntelNoteEditor(canvasArea, buf, model)
 
   if model.ui.expertModeActive:
     renderExpertPalette(buf, canvasArea, statusBarArea, model)

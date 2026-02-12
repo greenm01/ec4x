@@ -126,6 +126,12 @@ proc runTui*(gameId: string = "") =
       proposalQueue.delete(0)
       sam.present(p)
 
+  proc syncCachedIntelNotes(model: var TuiModel) =
+    if activeGameId.len == 0:
+      return
+    let notes = tuiCache.loadIntelNotes(activeGameId, int(viewingHouse))
+    model.applyIntelNotes(notes)
+
   # Create initial model
   var initialModel = initTuiModel()
   initialModel.ui.termWidth = termWidth
@@ -235,6 +241,7 @@ proc runTui*(gameId: string = "") =
   # Sync player state to model (only after joining a game)
   if initialModel.ui.appPhase == AppPhase.InGame:
     syncPlayerStateToModel(initialModel, playerState)
+    syncCachedIntelNotes(initialModel)
     syncBuildModalData(initialModel, playerState)
     initialModel.resetBreadcrumbs(initialModel.ui.mode)
 
@@ -268,6 +275,7 @@ proc runTui*(gameId: string = "") =
             sam.model.ui.statusMessage = "Delta applied"
             # Sync PlayerState to model after delta
             syncPlayerStateToModel(sam.model, playerState)
+            syncCachedIntelNotes(sam.model)
             # Sync build modal data if active
             syncBuildModalData(sam.model, playerState)
             # Cache the updated state
@@ -319,6 +327,7 @@ proc runTui*(gameId: string = "") =
               sam.model.ui.nostrStatus = "connected"
             # Sync PlayerState to model
             syncPlayerStateToModel(sam.model, playerState)
+            syncCachedIntelNotes(sam.model)
             syncBuildModalData(sam.model, playerState)
             sam.model.resetBreadcrumbs(sam.model.ui.mode)
             if sam.model.view.homeworld.isSome:
@@ -1106,6 +1115,7 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.mode = ViewMode.Overview
           # Sync PlayerState to model (for Nostr games)
           syncPlayerStateToModel(sam.model, playerState)
+          syncCachedIntelNotes(sam.model)
           syncBuildModalData(sam.model, playerState)
           sam.model.resetBreadcrumbs(sam.model.ui.mode)
           if sam.model.view.homeworld.isSome:
@@ -1115,6 +1125,7 @@ proc runTui*(gameId: string = "") =
                          else: gameId
           sam.model.ui.statusMessage = "Loaded game " & gameName
           activeGameId = gameId
+          syncCachedIntelNotes(sam.model)
         else:
           # No cached state - set up for Nostr subscription
           # The game will load when full state arrives via onFullState handler
@@ -1136,6 +1147,23 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.statusMessage = "Map export requires local game (not available in Nostr mode)"
       sam.model.ui.exportMapRequested = false
       sam.model.ui.openMapRequested = false
+      needsRender = true
+
+    # Persist intel note edits (local TUI cache only)
+    if sam.model.ui.intelNoteSaveRequested:
+      if activeGameId.len > 0 and
+          sam.model.ui.intelNoteSaveSystemId > 0:
+        tuiCache.saveIntelNote(
+          activeGameId,
+          int(viewingHouse),
+          sam.model.ui.intelNoteSaveSystemId,
+          sam.model.ui.intelNoteSaveText,
+        )
+        let notes = tuiCache.loadIntelNotes(activeGameId, int(viewingHouse))
+        sam.model.applyIntelNotes(notes)
+      else:
+        sam.model.ui.statusMessage = "Intel note not saved (game not loaded)"
+      sam.model.ui.intelNoteSaveRequested = false
       needsRender = true
 
     # Handle turn submission (expert :submit)

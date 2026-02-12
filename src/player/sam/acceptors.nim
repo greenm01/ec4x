@@ -42,6 +42,8 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.Economy)
   of 7:
     some(ViewMode.Reports)
+  of 8:
+    some(ViewMode.IntelDb)
   of 9:
     some(ViewMode.Settings)
   of 20:
@@ -50,6 +52,8 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.FleetDetail)
   of 70:
     some(ViewMode.ReportDetail)
+  of 80:
+    some(ViewMode.IntelDetail)
   else:
     none(ViewMode)
 
@@ -76,6 +80,66 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.systemPickerSystems = @[]
   model.ui.fleetDetailModal.systemPickerFilter = ""
   model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
+
+proc syncIntelListScroll(model: var TuiModel) =
+  ## Keep Intel DB list scroll state aligned with selection.
+  let viewportRows = max(1, model.ui.intelScroll.viewportLength)
+  model.ui.intelScroll.contentLength = model.view.intelRows.len
+  model.ui.intelScroll.viewportLength = viewportRows
+  model.ui.intelScroll.ensureVisible(model.ui.selectedIdx)
+  model.ui.intelScroll.clampOffsets()
+
+proc intelCursorColumn(text: string, cursorPos: int): int =
+  let cursor = clamp(cursorPos, 0, text.len)
+  var start = 0
+  if cursor > 0:
+    for i in countdown(cursor - 1, 0):
+      if text[i] == '\n':
+        start = i + 1
+        break
+  cursor - start
+
+proc intelCursorLine(text: string, cursorPos: int): int =
+  let cursor = clamp(cursorPos, 0, text.len)
+  result = 0
+  for i in 0 ..< cursor:
+    if text[i] == '\n':
+      result.inc
+
+proc intelLineStart(text: string, lineIdx: int): int =
+  if lineIdx <= 0:
+    return 0
+  var line = 0
+  for i, ch in text:
+    if ch == '\n':
+      line.inc
+      if line == lineIdx:
+        return i + 1
+  text.len
+
+proc intelLineEnd(text: string, lineStart: int): int =
+  for i in lineStart ..< text.len:
+    if text[i] == '\n':
+      return i
+  text.len
+
+proc intelLineCount(text: string): int =
+  result = 1
+  for ch in text:
+    if ch == '\n':
+      result.inc
+
+proc ensureIntelCursorVisible(model: var TuiModel) =
+  let viewportLines = max(1, model.ui.termHeight - 16)
+  let currentLine = intelCursorLine(
+    model.ui.intelNoteEditInput,
+    model.ui.intelNoteCursorPos
+  )
+  if currentLine < model.ui.intelNoteScrollOffset:
+    model.ui.intelNoteScrollOffset = currentLine
+  elif currentLine >= model.ui.intelNoteScrollOffset + viewportLines:
+    model.ui.intelNoteScrollOffset = currentLine - viewportLines + 1
+  model.ui.intelNoteScrollOffset = max(0, model.ui.intelNoteScrollOffset)
 
 proc openSystemPickerForCommand(
     model: var TuiModel,
@@ -343,7 +407,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
        ViewMode.Espionage, ViewMode.Economy, ViewMode.Reports,
        ViewMode.Settings, ViewMode.PlanetDetail,
        ViewMode.FleetDetail, ViewMode.ReportDetail,
-       ViewMode.IntelDb:
+       ViewMode.IntelDb, ViewMode.IntelDetail:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.ui.selectedIdx = proposal.selectIdx
@@ -373,6 +437,22 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.mode = selectedMode
           model.resetBreadcrumbs(selectedMode)
           model.ui.statusMessage = "Jumped to " & report.linkLabel
+      model.clearExpertFeedback()
+    elif model.ui.mode == ViewMode.IntelDb:
+      if model.ui.selectedIdx >= 0 and
+          model.ui.selectedIdx < model.view.intelRows.len:
+        let row = model.view.intelRows[model.ui.selectedIdx]
+        model.ui.previousMode = model.ui.mode
+        model.ui.mode = ViewMode.IntelDetail
+        model.ui.intelDetailSystemId = row.systemId
+        model.pushBreadcrumb(
+          row.systemName,
+          ViewMode.IntelDetail,
+          row.systemId,
+        )
+        model.ui.statusMessage = ""
+      else:
+        model.ui.statusMessage = "No intel system selected"
       model.clearExpertFeedback()
   of ActionKind.toggleFleetSelect:
     if model.ui.mode == ViewMode.Fleets:
@@ -415,6 +495,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.mode = ViewMode.Planets
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
+    elif model.ui.mode == ViewMode.IntelDetail:
+      model.ui.mode = ViewMode.IntelDb
+      model.ui.statusMessage = ""
+      model.clearExpertFeedback()
     else:
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
@@ -452,6 +536,8 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Default list navigation
       if model.ui.selectedIdx > 0:
         model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
+      if model.ui.mode == ViewMode.IntelDb:
+        model.syncIntelListScroll()
   
   of ActionKind.listDown:
     # Fleet console per-pane navigation
@@ -491,13 +577,19 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       let maxIdx = model.currentListLength() - 1
       if model.ui.selectedIdx < maxIdx:
         model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+      if model.ui.mode == ViewMode.IntelDb:
+        model.syncIntelListScroll()
   of ActionKind.listPageUp:
     let pageSize = max(1, model.ui.termHeight - 10)
     model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
+    if model.ui.mode == ViewMode.IntelDb:
+      model.syncIntelListScroll()
   of ActionKind.listPageDown:
     let maxIdx = model.currentListLength() - 1
     let pageSize = max(1, model.ui.termHeight - 10)
     model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
+    if model.ui.mode == ViewMode.IntelDb:
+      model.syncIntelListScroll()
   else:
     discard
 
@@ -614,10 +706,187 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           model.ui.stagedColonyManagement.add(cmd)
         model.ui.turnSubmissionConfirmed = false
+    of ActionKind.intelEditNote:
+      var systemId = model.ui.intelDetailSystemId
+      var existingNote = ""
+      if systemId > 0:
+        for row in model.view.intelRows:
+          if row.systemId == systemId:
+            existingNote = row.notes
+            break
+      elif model.ui.selectedIdx >= 0 and
+          model.ui.selectedIdx < model.view.intelRows.len:
+        let row = model.view.intelRows[model.ui.selectedIdx]
+        systemId = row.systemId
+        existingNote = row.notes
+      if systemId <= 0:
+        model.ui.statusMessage = "No intel system selected"
+        return
+      model.ui.intelDetailSystemId = systemId
+      model.ui.intelNoteEditActive = true
+      model.ui.intelNoteEditInput = existingNote
+      model.ui.intelNoteCursorPos = existingNote.len
+      model.ui.intelNotePreferredColumn = intelCursorColumn(
+        existingNote,
+        existingNote.len
+      )
+      model.ui.intelNoteScrollOffset = 0
+      model.ensureIntelCursorVisible()
+      model.ui.statusMessage = "Editing intel note"
+    of ActionKind.intelNoteAppend:
+      if not model.ui.intelNoteEditActive:
+        return
+      let cursor = clamp(
+        model.ui.intelNoteCursorPos,
+        0,
+        model.ui.intelNoteEditInput.len
+      )
+      model.ui.intelNoteEditInput.insert(proposal.gameActionData, cursor)
+      model.ui.intelNoteCursorPos = cursor + proposal.gameActionData.len
+      model.ui.intelNotePreferredColumn = intelCursorColumn(
+        model.ui.intelNoteEditInput,
+        model.ui.intelNoteCursorPos
+      )
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteBackspace:
+      if not model.ui.intelNoteEditActive:
+        return
+      if model.ui.intelNoteCursorPos > 0 and
+          model.ui.intelNoteEditInput.len > 0:
+        let cursor = clamp(
+          model.ui.intelNoteCursorPos,
+          0,
+          model.ui.intelNoteEditInput.len
+        )
+        model.ui.intelNoteEditInput.delete((cursor - 1) .. (cursor - 1))
+        model.ui.intelNoteCursorPos = cursor - 1
+        model.ui.intelNotePreferredColumn = intelCursorColumn(
+          model.ui.intelNoteEditInput,
+          model.ui.intelNoteCursorPos
+        )
+        model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteCursorLeft:
+      if not model.ui.intelNoteEditActive:
+        return
+      if model.ui.intelNoteCursorPos > 0:
+        model.ui.intelNoteCursorPos.dec
+      model.ui.intelNotePreferredColumn = intelCursorColumn(
+        model.ui.intelNoteEditInput,
+        model.ui.intelNoteCursorPos
+      )
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteCursorRight:
+      if not model.ui.intelNoteEditActive:
+        return
+      if model.ui.intelNoteCursorPos < model.ui.intelNoteEditInput.len:
+        model.ui.intelNoteCursorPos.inc
+      model.ui.intelNotePreferredColumn = intelCursorColumn(
+        model.ui.intelNoteEditInput,
+        model.ui.intelNoteCursorPos
+      )
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteCursorUp:
+      if not model.ui.intelNoteEditActive:
+        return
+      let currentLine = intelCursorLine(
+        model.ui.intelNoteEditInput,
+        model.ui.intelNoteCursorPos
+      )
+      if currentLine > 0:
+        let targetLine = currentLine - 1
+        let targetStart = intelLineStart(
+          model.ui.intelNoteEditInput,
+          targetLine
+        )
+        let targetEnd = intelLineEnd(
+          model.ui.intelNoteEditInput,
+          targetStart
+        )
+        let targetCol = min(
+          model.ui.intelNotePreferredColumn,
+          targetEnd - targetStart
+        )
+        model.ui.intelNoteCursorPos = targetStart + targetCol
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteCursorDown:
+      if not model.ui.intelNoteEditActive:
+        return
+      let currentLine = intelCursorLine(
+        model.ui.intelNoteEditInput,
+        model.ui.intelNoteCursorPos
+      )
+      let totalLines = intelLineCount(model.ui.intelNoteEditInput)
+      if currentLine + 1 < totalLines:
+        let targetLine = currentLine + 1
+        let targetStart = intelLineStart(
+          model.ui.intelNoteEditInput,
+          targetLine
+        )
+        let targetEnd = intelLineEnd(
+          model.ui.intelNoteEditInput,
+          targetStart
+        )
+        let targetCol = min(
+          model.ui.intelNotePreferredColumn,
+          targetEnd - targetStart
+        )
+        model.ui.intelNoteCursorPos = targetStart + targetCol
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteDelete:
+      if not model.ui.intelNoteEditActive:
+        return
+      let cursor = clamp(
+        model.ui.intelNoteCursorPos,
+        0,
+        model.ui.intelNoteEditInput.len
+      )
+      if cursor < model.ui.intelNoteEditInput.len:
+        model.ui.intelNoteEditInput.delete(cursor .. cursor)
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteInsertNewline:
+      if not model.ui.intelNoteEditActive:
+        return
+      let cursor = clamp(
+        model.ui.intelNoteCursorPos,
+        0,
+        model.ui.intelNoteEditInput.len
+      )
+      model.ui.intelNoteEditInput.insert("\n", cursor)
+      model.ui.intelNoteCursorPos = cursor + 1
+      model.ui.intelNotePreferredColumn = 0
+      model.ensureIntelCursorVisible()
+    of ActionKind.intelNoteSave:
+      if not model.ui.intelNoteEditActive:
+        return
+      let systemId = model.ui.intelDetailSystemId
+      if systemId <= 0:
+        model.ui.statusMessage = "No intel system selected"
+        model.ui.intelNoteEditActive = false
+        return
+      model.ui.intelNoteSaveRequested = true
+      model.ui.intelNoteSaveSystemId = systemId
+      model.ui.intelNoteSaveText = model.ui.intelNoteEditInput
+      for idx, row in model.view.intelRows:
+        if row.systemId == systemId:
+          model.view.intelRows[idx].notes =
+            model.ui.intelNoteEditInput
+          break
+      model.ui.intelNoteEditActive = false
+      model.ui.statusMessage = "Intel note saved"
+    of ActionKind.intelNoteCancel:
+      if not model.ui.intelNoteEditActive:
+        return
+      model.ui.intelNoteEditActive = false
+      model.ui.intelNoteEditInput = ""
+      model.ui.intelNoteCursorPos = 0
+      model.ui.intelNotePreferredColumn = 0
+      model.ui.intelNoteScrollOffset = 0
+      model.ui.statusMessage = "Intel note edit canceled"
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"
       model.ui.lobbyProfilePubkey = "session-" & $getTime().toUnix()
+      model.ui.lobbyProfilePubkeyCursor = model.ui.lobbyProfilePubkey.len
       model.ui.statusMessage = "Generated session key (not stored)"
       # Active games populated from Nostr events, not filesystem
     of ActionKind.lobbyJoinRefresh:
@@ -697,32 +966,80 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Active games already in model from TUI cache
     of ActionKind.lobbyEditPubkey:
       model.ui.lobbyInputMode = LobbyInputMode.Pubkey
+      model.ui.lobbyProfilePubkeyCursor = model.ui.lobbyProfilePubkey.len
       model.ui.statusMessage = "Enter Nostr pubkey"
       # Active games already in model from TUI cache
     of ActionKind.lobbyEditName:
       model.ui.lobbyInputMode = LobbyInputMode.Name
+      model.ui.lobbyProfileNameCursor = model.ui.lobbyProfileName.len
       model.ui.statusMessage = "Enter player name"
     of ActionKind.lobbyBackspace:
       case model.ui.lobbyInputMode
       of LobbyInputMode.Pubkey:
-        if model.ui.lobbyProfilePubkey.len > 0:
-          model.ui.lobbyProfilePubkey.setLen(
-            model.ui.lobbyProfilePubkey.len - 1
+        if model.ui.lobbyProfilePubkeyCursor > 0 and
+            model.ui.lobbyProfilePubkey.len > 0:
+          let cursor = clamp(
+            model.ui.lobbyProfilePubkeyCursor,
+            0,
+            model.ui.lobbyProfilePubkey.len
           )
+          model.ui.lobbyProfilePubkey.delete((cursor - 1) .. (cursor - 1))
+          model.ui.lobbyProfilePubkeyCursor = cursor - 1
         # Active games filtered by pubkey from TUI cache
       of LobbyInputMode.Name:
-        if model.ui.lobbyProfileName.len > 0:
-          model.ui.lobbyProfileName.setLen(
-            model.ui.lobbyProfileName.len - 1
+        if model.ui.lobbyProfileNameCursor > 0 and
+            model.ui.lobbyProfileName.len > 0:
+          let cursor = clamp(
+            model.ui.lobbyProfileNameCursor,
+            0,
+            model.ui.lobbyProfileName.len
           )
+          model.ui.lobbyProfileName.delete((cursor - 1) .. (cursor - 1))
+          model.ui.lobbyProfileNameCursor = cursor - 1
+      else:
+        discard
+    of ActionKind.lobbyCursorLeft:
+      case model.ui.lobbyInputMode
+      of LobbyInputMode.Pubkey:
+        if model.ui.lobbyProfilePubkeyCursor > 0:
+          model.ui.lobbyProfilePubkeyCursor.dec
+      of LobbyInputMode.Name:
+        if model.ui.lobbyProfileNameCursor > 0:
+          model.ui.lobbyProfileNameCursor.dec
+      else:
+        discard
+    of ActionKind.lobbyCursorRight:
+      case model.ui.lobbyInputMode
+      of LobbyInputMode.Pubkey:
+        if model.ui.lobbyProfilePubkeyCursor <
+            model.ui.lobbyProfilePubkey.len:
+          model.ui.lobbyProfilePubkeyCursor.inc
+      of LobbyInputMode.Name:
+        if model.ui.lobbyProfileNameCursor <
+            model.ui.lobbyProfileName.len:
+          model.ui.lobbyProfileNameCursor.inc
       else:
         discard
     of ActionKind.lobbyInputAppend:
       case model.ui.lobbyInputMode
       of LobbyInputMode.Pubkey:
-        model.ui.lobbyProfilePubkey.add(proposal.gameActionData)
+        let cursor = clamp(
+          model.ui.lobbyProfilePubkeyCursor,
+          0,
+          model.ui.lobbyProfilePubkey.len
+        )
+        model.ui.lobbyProfilePubkey.insert(proposal.gameActionData, cursor)
+        model.ui.lobbyProfilePubkeyCursor =
+          cursor + proposal.gameActionData.len
       of LobbyInputMode.Name:
-        model.ui.lobbyProfileName.add(proposal.gameActionData)
+        let cursor = clamp(
+          model.ui.lobbyProfileNameCursor,
+          0,
+          model.ui.lobbyProfileName.len
+        )
+        model.ui.lobbyProfileName.insert(proposal.gameActionData, cursor)
+        model.ui.lobbyProfileNameCursor =
+          cursor + proposal.gameActionData.len
       else:
         discard
     # Entry modal actions
@@ -757,6 +1074,38 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           proposal.gameActionData[0])
     of ActionKind.entryImportBackspace:
       model.ui.entryModal.importInput.backspace()
+    of ActionKind.entryCursorLeft:
+      if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+        model.ui.entryModal.importInput.moveCursorLeft()
+      elif model.ui.entryModal.editingRelay:
+        model.ui.entryModal.relayInput.moveCursorLeft()
+      elif model.ui.entryModal.mode == EntryModalMode.CreateGame and
+          model.ui.entryModal.createField == CreateGameField.GameName:
+        model.ui.entryModal.createNameInput.moveCursorLeft()
+      elif model.ui.entryModal.mode == EntryModalMode.Normal:
+        case model.ui.entryModal.focus
+        of EntryModalFocus.InviteCode:
+          model.ui.entryModal.inviteInput.moveCursorLeft()
+        of EntryModalFocus.RelayUrl:
+          model.ui.entryModal.relayInput.moveCursorLeft()
+        else:
+          discard
+    of ActionKind.entryCursorRight:
+      if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+        model.ui.entryModal.importInput.moveCursorRight()
+      elif model.ui.entryModal.editingRelay:
+        model.ui.entryModal.relayInput.moveCursorRight()
+      elif model.ui.entryModal.mode == EntryModalMode.CreateGame and
+          model.ui.entryModal.createField == CreateGameField.GameName:
+        model.ui.entryModal.createNameInput.moveCursorRight()
+      elif model.ui.entryModal.mode == EntryModalMode.Normal:
+        case model.ui.entryModal.focus
+        of EntryModalFocus.InviteCode:
+          model.ui.entryModal.inviteInput.moveCursorRight()
+        of EntryModalFocus.RelayUrl:
+          model.ui.entryModal.relayInput.moveCursorRight()
+        else:
+          discard
     of ActionKind.entryInviteAppend:
       if proposal.gameActionData.len > 0:
         # Validate: allow lowercase letters, hyphen, @, :, ., and digits

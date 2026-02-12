@@ -382,6 +382,7 @@ type
     PlanetDetail = 20 ## Planet detail (Summary/Economy/Construction/etc.)
     FleetDetail = 30  ## Fleet detail view
     ReportDetail = 70 ## Report detail view
+    IntelDetail = 80  ## Intel system detail view
 
 # Legacy aliases for backward compatibility
 const
@@ -633,7 +634,9 @@ type
     lobbyInputMode*: LobbyInputMode
     lobbySelectedIdx*: int
     lobbyProfilePubkey*: string
+    lobbyProfilePubkeyCursor*: int
     lobbyProfileName*: string
+    lobbyProfileNameCursor*: int
     lobbySessionKeyActive*: bool
     lobbyWarning*: string
     lobbyJoinSelectedIdx*: int
@@ -655,6 +658,15 @@ type
     selectedColonyId*: int
     selectedFleetId*: int
     selectedReportId*: int
+    intelDetailSystemId*: int
+    intelNoteEditActive*: bool
+    intelNoteEditInput*: string
+    intelNoteCursorPos*: int
+    intelNotePreferredColumn*: int
+    intelNoteScrollOffset*: int
+    intelNoteSaveRequested*: bool
+    intelNoteSaveSystemId*: int
+    intelNoteSaveText*: string
 
     # Fleet console state (SystemView mode)
     fleetConsoleFocus*: FleetConsoleFocus
@@ -735,6 +747,7 @@ type
     researchScroll*: ScrollState
     espionageScroll*: ScrollState
     economyScroll*: ScrollState
+    intelScroll*: ScrollState
     messagesScroll*: ScrollState
     settingsScroll*: ScrollState
 
@@ -848,7 +861,9 @@ proc initTuiUiState*(): TuiUiState =
     lobbyInputMode: LobbyInputMode.None,
     lobbySelectedIdx: 0,
     lobbyProfilePubkey: "",
+    lobbyProfilePubkeyCursor: 0,
     lobbyProfileName: "",
+    lobbyProfileNameCursor: 0,
     lobbySessionKeyActive: false,
     lobbyWarning: "",
     lobbyJoinSelectedIdx: 0,
@@ -864,6 +879,15 @@ proc initTuiUiState*(): TuiUiState =
     selectedColonyId: 0,
     selectedFleetId: 0,
     selectedReportId: 0,
+    intelDetailSystemId: 0,
+    intelNoteEditActive: false,
+    intelNoteEditInput: "",
+    intelNoteCursorPos: 0,
+    intelNotePreferredColumn: 0,
+    intelNoteScrollOffset: 0,
+    intelNoteSaveRequested: false,
+    intelNoteSaveSystemId: 0,
+    intelNoteSaveText: "",
     fleetConsoleFocus: FleetConsoleFocus.SystemsPane,
     fleetConsoleSystemIdx: 0,
     fleetConsoleFleetIdx: 0,
@@ -928,6 +952,7 @@ proc initTuiUiState*(): TuiUiState =
     researchScroll: initScrollState(),
     espionageScroll: initScrollState(),
     economyScroll: initScrollState(),
+    intelScroll: initScrollState(),
     messagesScroll: initScrollState(),
     settingsScroll: initScrollState(),
     entryModal: newEntryModalState(),
@@ -1237,11 +1262,12 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.Reports: model.filteredReports().len
-  of ViewMode.IntelDb: 0
+  of ViewMode.IntelDb: model.view.intelRows.len
   of ViewMode.Settings: 0  # TODO: settings list
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
   of ViewMode.ReportDetail: 0
+  of ViewMode.IntelDetail: 0
 
 proc idleFleetsCount*(model: TuiModel): int =
   ## Count fleets with Hold command (awaiting orders)
@@ -1378,16 +1404,18 @@ proc viewModeLabel*(mode: ViewMode): string =
   of ViewMode.PlanetDetail: "Colony"
   of ViewMode.FleetDetail: "Fleet"
   of ViewMode.ReportDetail: "Report"
+  of ViewMode.IntelDetail: "Intel"
 
 proc isPrimaryView*(mode: ViewMode): bool =
   ## Check if mode is a primary view (F-keys)
   mode in {ViewMode.Overview, ViewMode.Planets, ViewMode.Fleets,
            ViewMode.Research, ViewMode.Espionage, ViewMode.Economy,
-           ViewMode.Reports, ViewMode.Settings}
+           ViewMode.Reports, ViewMode.IntelDb, ViewMode.Settings}
 
 proc isDetailView*(mode: ViewMode): bool =
   ## Check if mode is a detail/drill-down view
-  mode in {ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail}
+  mode in {ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail,
+           ViewMode.IntelDetail}
 
 # =============================================================================
 # Breadcrumb Helpers

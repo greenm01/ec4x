@@ -11,9 +11,10 @@
 ##   - games: Game metadata from Nostr events
 ##   - player_slots: Player's house assignments per game
 ##   - player_states: PlayerState snapshots per game/turn (msgpack encoded)
+##   - intel_notes: Per-system player notes (local-only annotations)
 ##   - received_events: Nostr event deduplication
 
-import std/[os, options, times, strutils, base64]
+import std/[os, options, times, strutils, base64, tables]
 import db_connector/db_sqlite
 import kdl
 import msgpack4nim
@@ -85,6 +86,7 @@ proc checkAndMigrateSchema(db: DbConn): bool =
   if needsReset:
     # Drop old tables before recreating
     db.exec(sql"DROP TABLE IF EXISTS player_states")
+    db.exec(sql"DROP TABLE IF EXISTS intel_notes")
     db.exec(sql"DROP TABLE IF EXISTS received_events")
     db.exec(sql"DROP TABLE IF EXISTS player_slots")
     db.exec(sql"DROP TABLE IF EXISTS games")
@@ -139,6 +141,18 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
       PRIMARY KEY (game_id, house_id, turn)
     )
   """)
+
+  # Intel notes table (local player annotations)
+  db.exec(sql"""
+    CREATE TABLE IF NOT EXISTS intel_notes (
+      game_id TEXT NOT NULL,
+      house_id INTEGER NOT NULL,
+      system_id INTEGER NOT NULL,
+      note_text TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (game_id, house_id, system_id)
+    )
+  """)
   
   # Received events table (deduplication)
   db.exec(sql"""
@@ -159,6 +173,11 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
   db.exec(sql"""
     CREATE INDEX IF NOT EXISTS idx_player_states_game_house
     ON player_states(game_id, house_id)
+  """)
+
+  db.exec(sql"""
+    CREATE INDEX IF NOT EXISTS idx_intel_notes_game_house
+    ON intel_notes(game_id, house_id)
   """)
   
   db.exec(sql"""
@@ -215,6 +234,7 @@ proc clearCacheGames*(): bool =
   let cache = openTuiCache()
   defer: cache.close()
   cache.db.exec(sql"DELETE FROM player_states")
+  cache.db.exec(sql"DELETE FROM intel_notes")
   cache.db.exec(sql"DELETE FROM player_slots")
   cache.db.exec(sql"DELETE FROM games")
   cache.db.exec(sql"DELETE FROM received_events")
@@ -227,6 +247,7 @@ proc clearCacheGame*(gameId: string): bool =
   let cache = openTuiCache()
   defer: cache.close()
   cache.db.exec(sql"DELETE FROM player_states WHERE game_id = ?", gameId)
+  cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
   cache.db.exec(sql"DELETE FROM received_events WHERE game_id = ?", gameId)
@@ -326,6 +347,7 @@ proc listGames*(cache: TuiCache): seq[CachedGame] =
 
 proc deleteGame*(cache: TuiCache, id: string) =
   ## Delete a game from cache
+  cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", id)
   cache.db.exec(sql"DELETE FROM games WHERE id = ?", id)
 
 # =============================================================================
@@ -462,6 +484,46 @@ proc pruneOldPlayerStates*(cache: TuiCache, gameId: string, houseId: int,
   """, gameId, $houseId, gameId, $houseId, $keepTurns)
 
 # =============================================================================
+# Intel Note Operations
+# =============================================================================
+
+proc saveIntelNote*(cache: TuiCache, gameId: string, houseId: int,
+                    systemId: int, noteText: string) =
+  ## Save or update a local intel note for a specific system.
+  let now = epochTime().int64
+  cache.db.exec(sql"""
+    INSERT INTO intel_notes (game_id, house_id, system_id, note_text,
+                             updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(game_id, house_id, system_id) DO UPDATE SET
+      note_text = excluded.note_text,
+      updated_at = excluded.updated_at
+  """, gameId, $houseId, $systemId, noteText, $now)
+
+proc loadIntelNote*(cache: TuiCache, gameId: string, houseId: int,
+                    systemId: int): Option[string] =
+  ## Load a specific intel note.
+  let row = cache.db.getRow(
+    sql"""SELECT note_text FROM intel_notes
+          WHERE game_id = ? AND house_id = ? AND system_id = ?""",
+    gameId, $houseId, $systemId
+  )
+  if row[0] == "":
+    return none(string)
+  some(row[0])
+
+proc loadIntelNotes*(cache: TuiCache, gameId: string,
+                     houseId: int): Table[int, string] =
+  ## Load all intel notes for a game/house keyed by system ID.
+  result = initTable[int, string]()
+  for row in cache.db.fastRows(
+      sql"""SELECT system_id, note_text FROM intel_notes
+            WHERE game_id = ? AND house_id = ?""",
+      gameId, $houseId
+  ):
+    result[parseInt(row[0])] = row[1]
+
+# =============================================================================
 # Event Deduplication
 # =============================================================================
 
@@ -523,6 +585,7 @@ proc pruneStaleGames*(
     return
 
   for gameId in staleGameIds:
+    cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
 

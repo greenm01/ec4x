@@ -80,6 +80,8 @@ type
     lobbyJoinSubmit
     lobbyJoinPoll
     lobbyBackspace
+    lobbyCursorLeft
+    lobbyCursorRight
     lobbyReturn
     lobbyInputAppend
     startOrderMove
@@ -104,6 +106,8 @@ type
     entryRelayEdit
     entryRelayAppend
     entryRelayBackspace
+    entryCursorLeft
+    entryCursorRight
     entryRelayConfirm
     createGameUp
     createGameDown
@@ -161,6 +165,17 @@ type
     fleetDetailDigitInput
     fleetDetailOpenZTC
     fleetDetailSelectZTC
+    intelEditNote
+    intelNoteAppend
+    intelNoteBackspace
+    intelNoteCursorLeft
+    intelNoteCursorRight
+    intelNoteCursorUp
+    intelNoteCursorDown
+    intelNoteInsertNewline
+    intelNoteDelete
+    intelNoteSave
+    intelNoteCancel
 
   # ============================================================================
   # Core SAM Types

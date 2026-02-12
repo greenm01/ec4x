@@ -44,6 +44,8 @@ type
     Espionage     ## Espionage view
     Economy       ## Economy view
     Reports       ## Reports list
+    IntelDb       ## Intel database list
+    IntelDetail   ## Intel system detail
     ReportDetail  ## Report detail view
     Settings      ## Settings view
     Lobby         ## Entry screen / lobby
@@ -239,11 +241,12 @@ proc viewModeToContext*(mode: ViewMode): BindingContext =
   of ViewMode.Espionage: BindingContext.Espionage
   of ViewMode.Economy: BindingContext.Economy
   of ViewMode.Reports: BindingContext.Reports
+  of ViewMode.IntelDb: BindingContext.IntelDb
+  of ViewMode.IntelDetail: BindingContext.IntelDetail
   of ViewMode.Settings: BindingContext.Settings
   of ViewMode.PlanetDetail: BindingContext.PlanetDetail
   of ViewMode.FleetDetail: BindingContext.FleetDetail
   of ViewMode.ReportDetail: BindingContext.ReportDetail
-  of ViewMode.IntelDb: BindingContext.Settings
 
 proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   ## Map a binding context to ViewMode (if applicable)
@@ -255,6 +258,8 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.Espionage: some(ViewMode.Espionage)
   of BindingContext.Economy: some(ViewMode.Economy)
   of BindingContext.Reports: some(ViewMode.Reports)
+  of BindingContext.IntelDb: some(ViewMode.IntelDb)
+  of BindingContext.IntelDetail: some(ViewMode.IntelDetail)
   of BindingContext.Settings: some(ViewMode.Settings)
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
@@ -1068,6 +1073,74 @@ proc initBindings*() =
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
+  # Intel DB Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.IntelDb,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.IntelDb,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.IntelDb,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.IntelDb,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.IntelDb,
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.IntelDb,
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.select,
+    context: BindingContext.IntelDb,
+    longLabel: "DETAIL", shortLabel: "Dtl", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyN, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelEditNote,
+    context: BindingContext.IntelDb,
+    longLabel: "NOTE", shortLabel: "Note", priority: 20))
+
+  # =========================================================================
+  # Intel Detail Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyN, modifier: KeyModifier.None,
+    actionKind: ActionKind.intelEditNote,
+    context: BindingContext.IntelDetail,
+    longLabel: "NOTE", shortLabel: "Note", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.breadcrumbBack,
+    context: BindingContext.IntelDetail,
+    longLabel: "BACK", shortLabel: "Back", priority: 90))
+
+  # =========================================================================
   # Settings Context
   # =========================================================================
 
@@ -1439,6 +1512,36 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionReportFocusLeft())
   of ActionKind.reportFocusRight:
     return some(actionReportFocusRight())
+  of ActionKind.intelEditNote:
+    return some(actionIntelEditNote())
+  of ActionKind.intelNoteAppend:
+    return some(actionIntelNoteAppend(""))
+  of ActionKind.intelNoteBackspace:
+    return some(actionIntelNoteBackspace())
+  of ActionKind.intelNoteCursorLeft:
+    return some(actionIntelNoteCursorLeft())
+  of ActionKind.intelNoteCursorRight:
+    return some(actionIntelNoteCursorRight())
+  of ActionKind.intelNoteCursorUp:
+    return some(actionIntelNoteCursorUp())
+  of ActionKind.intelNoteCursorDown:
+    return some(actionIntelNoteCursorDown())
+  of ActionKind.intelNoteInsertNewline:
+    return some(actionIntelNoteInsertNewline())
+  of ActionKind.intelNoteDelete:
+    return some(actionIntelNoteDelete())
+  of ActionKind.intelNoteSave:
+    return some(actionIntelNoteSave())
+  of ActionKind.intelNoteCancel:
+    return some(actionIntelNoteCancel())
+  of ActionKind.entryCursorLeft:
+    return some(actionEntryCursorLeft())
+  of ActionKind.entryCursorRight:
+    return some(actionEntryCursorRight())
+  of ActionKind.lobbyCursorLeft:
+    return some(actionLobbyCursorLeft())
+  of ActionKind.lobbyCursorRight:
+    return some(actionLobbyCursorRight())
 
   # Lobby actions (handled separately in mapKeyToAction)
   of ActionKind.lobbyReturn:
@@ -1570,6 +1673,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
   ## Return the layered back action for current state
   if model.ui.quitConfirmationActive:
     return some(actionQuitCancel())
+  if model.ui.intelNoteEditActive:
+    return some(actionIntelNoteCancel())
   if model.ui.queueModal.active:
     return some(actionCloseQueueModal())
   if model.ui.buildModal.active:
@@ -1589,8 +1694,10 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
       return some(actionCreateGameCancel())
     if model.ui.entryModal.mode == EntryModalMode.ManageGames:
       return some(actionManageGamesCancel())
-  if model.ui.mode == ViewMode.PlanetDetail or
-      model.ui.mode == ViewMode.ReportDetail:
+  if model.ui.mode in {
+      ViewMode.PlanetDetail,
+      ViewMode.ReportDetail,
+      ViewMode.IntelDetail}:
     return some(actionBreadcrumbBack())
   none(Proposal)
 
@@ -1785,6 +1892,20 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Lobby phase: special handling for text input modes
   if model.ui.appPhase == AppPhase.Lobby:
+    if model.ui.lobbyInputMode != LobbyInputMode.None:
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionLobbyJoinSubmit())
+      of KeyCode.KeyBackspace:
+        return some(actionLobbyBackspace())
+      of KeyCode.KeyLeft:
+        return some(actionLobbyCursorLeft())
+      of KeyCode.KeyRight:
+        return some(actionLobbyCursorRight())
+      else:
+        if modifier != ViewModifier:
+          return none(Proposal)
+
     if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
       case key
       of KeyCode.KeyEnter:
@@ -1793,6 +1914,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryImportCancel())
       of KeyCode.KeyBackspace:
         return some(actionEntryImportBackspace())
+      of KeyCode.KeyLeft:
+        return some(actionEntryCursorLeft())
+      of KeyCode.KeyRight:
+        return some(actionEntryCursorRight())
       else:
         if modifier != ViewModifier:
           return none(Proposal)
@@ -1803,6 +1928,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryRelayConfirm())
       of KeyCode.KeyBackspace:
         return some(actionEntryRelayBackspace())
+      of KeyCode.KeyLeft:
+        return some(actionEntryCursorLeft())
+      of KeyCode.KeyRight:
+        return some(actionEntryCursorRight())
       else:
         if modifier != ViewModifier:
           return none(Proposal)
@@ -1816,8 +1945,12 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyDown:
         return some(actionCreateGameDown())
       of KeyCode.KeyLeft:
+        if model.ui.entryModal.createField == CreateGameField.GameName:
+          return some(actionEntryCursorLeft())
         return some(actionCreateGameLeft())
       of KeyCode.KeyRight:
+        if model.ui.entryModal.createField == CreateGameField.GameName:
+          return some(actionEntryCursorRight())
         return some(actionCreateGameRight())
       of KeyCode.KeyEnter:
         return some(actionCreateGameConfirm())
@@ -1859,6 +1992,16 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           return some(actionEntryRelayBackspace())
         else:
           return none(Proposal)
+      of KeyCode.KeyLeft:
+        if model.ui.entryModal.focus in {
+            EntryModalFocus.InviteCode,
+            EntryModalFocus.RelayUrl}:
+          return some(actionEntryCursorLeft())
+      of KeyCode.KeyRight:
+        if model.ui.entryModal.focus in {
+            EntryModalFocus.InviteCode,
+            EntryModalFocus.RelayUrl}:
+          return some(actionEntryCursorRight())
       of KeyCode.KeyI:
         return some(actionEntryImport())
       of KeyCode.KeyF12:
@@ -1915,7 +2058,8 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         of KeyCode.KeyE: model.ui.mode == ViewMode.Espionage
         of KeyCode.KeyG: model.ui.mode == ViewMode.Economy
         of KeyCode.KeyP: model.ui.mode == ViewMode.Reports
-        of KeyCode.KeyI: model.ui.mode == ViewMode.IntelDb
+        of KeyCode.KeyI:
+          model.ui.mode in {ViewMode.IntelDb, ViewMode.IntelDetail}
         of KeyCode.KeyK: model.ui.mode == ViewMode.Settings
         else: false
 

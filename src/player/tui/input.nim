@@ -6,6 +6,7 @@
 
 import std/unicode
 import std/tables
+import std/strutils
 import events
 import tty
 
@@ -98,6 +99,98 @@ proc reset(p: var InputParser) =
   p.buf.setLen(0)
   p.utf8buf.setLen(0)
 
+proc parseCsiMods(param: int): ModMask =
+  ## Decode CSI-u modifier parameter.
+  ## xterm/kitty report 1-based modifiers:
+  ## 1 none, 2 shift, 3 alt, 4 shift+alt,
+  ## 5 ctrl, 6 shift+ctrl, 7 alt+ctrl, 8 shift+alt+ctrl
+  result = ModNone
+  let m = param - 1
+  if m <= 0:
+    return
+  if (m and 0b001) != 0:
+    result = result or ModShift
+  if (m and 0b010) != 0:
+    result = result or ModAlt
+  if (m and 0b100) != 0:
+    result = result or ModCtrl
+
+proc ctrlKeyFromRune(r: Rune): Key =
+  ## Map rune to dedicated Ctrl+letter key enum when available.
+  case r.int
+  of 65, 97: Key.CtrlA
+  of 66, 98: Key.CtrlB
+  of 67, 99: Key.CtrlC
+  of 68, 100: Key.CtrlD
+  of 69, 101: Key.CtrlE
+  of 70, 102: Key.CtrlF
+  of 71, 103: Key.CtrlG
+  of 72, 104: Key.CtrlH
+  of 73, 105: Key.CtrlI
+  of 74, 106: Key.CtrlJ
+  of 75, 107: Key.CtrlK
+  of 76, 108: Key.CtrlL
+  of 77, 109: Key.CtrlM
+  of 78, 110: Key.CtrlN
+  of 79, 111: Key.CtrlO
+  of 80, 112: Key.CtrlP
+  of 81, 113: Key.CtrlQ
+  of 82, 114: Key.CtrlR
+  of 83, 115: Key.CtrlS
+  of 84, 116: Key.CtrlT
+  of 85, 117: Key.CtrlU
+  of 86, 118: Key.CtrlV
+  of 87, 119: Key.CtrlW
+  of 88, 120: Key.CtrlX
+  of 89, 121: Key.CtrlY
+  of 90, 122: Key.CtrlZ
+  else: Key.None
+
+proc parseCSIu(p: var InputParser): Event =
+  ## Parse CSI-u key reporting (e.g. CSI 105;5u for Ctrl-I).
+  if p.buf.len < 2:
+    p.reset()
+    return newKeyEvent(Key.Escape)
+
+  let payload = p.buf[0 ..< p.buf.len - 1]
+  var raw = newStringOfCap(payload.len)
+  for b in payload:
+    raw.add(char(b))
+  if raw.len == 0:
+    p.reset()
+    return newKeyEvent(Key.Escape)
+
+  var codepoint = 0
+  var modParam = 1
+  try:
+    if raw.contains(';'):
+      let parts = raw.split(';')
+      if parts.len < 2:
+        p.reset()
+        return newKeyEvent(Key.Escape)
+      codepoint = parseInt(parts[0])
+      modParam = parseInt(parts[1])
+    else:
+      codepoint = parseInt(raw)
+  except ValueError:
+    p.reset()
+    return newKeyEvent(Key.Escape)
+
+  let mods = parseCsiMods(modParam)
+  let r = Rune(codepoint)
+  if (mods and ModCtrl) != ModNone:
+    let ctrlKey = ctrlKeyFromRune(r)
+    if ctrlKey != Key.None:
+      p.reset()
+      return newKeyEvent(ctrlKey)
+
+  if codepoint == 9:
+    p.reset()
+    return newKeyEvent(Key.Tab, Rune(0), mods)
+
+  p.reset()
+  return newKeyEvent(Key.Rune, r, mods)
+
 proc parseCSI(p: var InputParser): Event =
   ## Parse accumulated csi sequence (esc [ ...).
   ## Returns a key event or error event.
@@ -107,6 +200,8 @@ proc parseCSI(p: var InputParser): Event =
     return newKeyEvent(Key.Escape)
   
   let final = char(p.buf[^1])
+  if final == 'u':
+    return p.parseCSIu()
   
   # Extract parameter (if present)
   var param = 0
