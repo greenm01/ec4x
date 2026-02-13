@@ -1456,7 +1456,7 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     return
 
   let columns = horizontal()
-    .constraints(length(16), length(34), fill())
+    .constraints(length(20), length(34), fill())
     .split(bodyArea)
 
   let turnArea = columns[0]
@@ -1494,61 +1494,53 @@ proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let bodyInner = bodyFrame.inner(bodyPaneArea)
 
   let buckets = reportsByTurnCached(model)
-  var y = turnInner.y
-  let turnCount = buckets.len
   var turnScroll = model.ui.reportTurnScroll
-  turnScroll.contentLength = turnCount
+  turnScroll.contentLength = buckets.len
   turnScroll.viewportLength = turnInner.height
   turnScroll.clampOffsets()
-  let turnStart = turnScroll.verticalOffset
-  let turnEnd = min(turnCount, turnStart + turnInner.height)
-  for idx in turnStart ..< turnEnd:
-    if y >= turnInner.bottom:
-      break
-    let bucket = buckets[idx]
-    let isSelected = idx == model.ui.reportTurnIdx
-    let rowStyle = if isSelected: selectedStyle() else: normalStyle
-    let prefix = if isSelected: ">" else: " "
 
+  var turnTable = table([
+    tableColumn("Turn", width = 0, minWidth = 4)
+  ]).showBorders(false)
+    .showHeader(false)
+    .showSeparator(false)
+    .cellPadding(0)
+    .selectedIdx(model.ui.reportTurnIdx)
+    .scrollOffset(turnScroll.verticalOffset)
+  for idx, bucket in buckets:
     let unreadLabel = if bucket.unreadCount > 0:
-                        "(" & $bucket.unreadCount & ")"
+                        " (" & $bucket.unreadCount & ")"
                       else:
                         ""
-    let rowText = prefix & " T" & $bucket.turn & " " & unreadLabel
-    let clipped = rowText[0 ..< min(rowText.len, turnInner.width)]
-    if y >= turnInner.y:
-      discard buf.setString(turnInner.x, y, clipped, rowStyle)
-    y += 1
+    let cellText = " T" & $bucket.turn & unreadLabel
+    turnTable.addRow(@[cellText])
+  turnTable.render(turnInner, buf)
 
-  var subjectY = subjectInner.y
   let reports = currentTurnReportsFromBuckets(model, buckets)
   var subjectScroll = model.ui.reportSubjectScroll
   subjectScroll.contentLength = reports.len
   subjectScroll.viewportLength = subjectInner.height
   subjectScroll.clampOffsets()
-  let subjectStart = subjectScroll.verticalOffset
-  let subjectEnd = min(reports.len, subjectStart + subjectInner.height)
-  for idx in subjectStart ..< subjectEnd:
-    if subjectY >= subjectInner.bottom:
-      break
-    let report = reports[idx]
-    let isSelected = idx == model.ui.reportSubjectIdx
-    let rowStyle = if isSelected: selectedStyle() else: normalStyle
-    let marker = if isSelected: ">" else: " "
+
+  var subjectTable = table([
+    tableColumn("G", width = 1, minWidth = 1),
+    tableColumn("U", width = 1, minWidth = 1),
+    tableColumn("Title", width = 0, minWidth = 4)
+  ]).showBorders(false)
+    .showHeader(false)
+    .showSeparator(false)
+    .cellPadding(0)
+    .selectedIdx(model.ui.reportSubjectIdx)
+    .scrollOffset(subjectScroll.verticalOffset)
+  for report in reports:
     let unread = if report.isUnread: GlyphUnread else: " "
     let glyph = reportCategoryGlyph(report.category)
     let glyphStyle = reportCategoryStyle(report.category)
-    discard buf.setString(subjectInner.x, subjectY, marker & " ", rowStyle)
-    discard buf.setString(subjectInner.x + 2, subjectY, glyph & " ", glyphStyle)
-    discard buf.setString(subjectInner.x + 4, subjectY, unread & " ", rowStyle)
-
-    let titleMax = subjectInner.width - 8
-    let title = if report.title.len > titleMax:
-                  report.title[0 ..< max(0, titleMax - 3)] & "..."
-                else:
-                  report.title
-    discard buf.setString(subjectInner.x + 6, subjectY, title, rowStyle)
-    subjectY += 1
+    subjectTable.addRow(
+      @[glyph, unread, " " & report.title],
+      glyphStyle, 0
+    )
+  subjectTable.render(subjectInner, buf)
 
   let reportOpt = model.currentReport()
   if reportOpt.isSome:

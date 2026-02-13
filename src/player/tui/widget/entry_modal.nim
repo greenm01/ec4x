@@ -14,6 +14,7 @@ import ./modal
 import ./text/text_pkg
 import ./text_input
 import ./scrollbar
+import ./table
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
@@ -416,13 +417,6 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
                     hasFocus: bool) =
   ## Render the list of active games
   let headerStyle = modalBgStyle()
-  let cursorStyle = CellStyle(
-    fg: color(Ansi256Color(110)),
-    bg: color(TrueBlackColor),
-    attrs: {}
-  )
-  let nameStyle = modalBgStyle()
-  let infoStyle = modalDimStyle()
   let emptyStyle = modalDimStyle()
   
   # Section header
@@ -471,35 +465,37 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
       if startIdx > maxStart:
         startIdx = maxStart
 
-    let endIdx = min(activeGames.len, startIdx + listHeight)
-    for i in startIdx..<endIdx:
-      let row = area.y + 1 + (i - startIdx)
-      let game = activeGames[i]
-      let isSelected = hasFocus and i == selectedIdx
-
-      # Cursor
-      let cursor = if isSelected: "►" else: " "
-      discard buf.setString(area.x, row, cursor, cursorStyle)
-
-      # Game name (truncate if needed)
-      let maxNameLen = 24
+    let selIdx = if hasFocus: boundedSelected else: -1
+    var gameTable = table([
+      tableColumn("Name", width = 24),
+      tableColumn("Turn", width = 6),
+      tableColumn("House", width = 0, minWidth = 4)
+    ]).showBorders(false)
+      .showHeader(false)
+      .showSeparator(false)
+      .cellPadding(1)
+      .rowStyle(modalBgStyle())
+      .selectedStyle(selectedStyle())
+      .selectedIdx(selIdx)
+      .scrollOffset(startIdx)
+    for game in activeGames:
       var name = game.name
-      if name.len > maxNameLen:
-        name = name[0..<maxNameLen-1] & "…"
-      discard buf.setString(area.x + 2, row, name, nameStyle)
-
-      # Turn info
+      if name.len > 24:
+        name = name[0..<23] & "\xe2\x80\xa6"
       let turnStr = "T" & $game.turn
-      discard buf.setString(area.x + 28, row, turnStr, infoStyle)
+      gameTable.addRow(@[name, turnStr, game.houseName])
 
-      # House name
-      discard buf.setString(area.x + 34, row, game.houseName, infoStyle)
+    let tableArea = rect(area.x, y,
+                         area.width, listHeight)
+    gameTable.render(tableArea, buf)
 
+    let endIdx = min(activeGames.len, startIdx + listHeight)
     renderedActive = endIdx - startIdx
     y = area.y + 1 + renderedActive
 
     if activeGames.len > listHeight and listHeight > 1:
-      let listArea = rect(area.x, area.y + 1, area.width, listHeight)
+      let listArea = rect(area.x, area.y + 1,
+                          area.width, listHeight)
       let scrollbarState = ScrollbarState(
         contentLength: activeGames.len,
         position: startIdx,
@@ -514,14 +510,26 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
     let archivedLine = archivedHeader & repeat("─", archivedRule)
     discard buf.setString(area.x, y, archivedLine, headerStyle)
     y += 1
-  for game in archivedGames:
-    if y >= area.bottom:
-      break
-    discard buf.setString(area.x + 2, y, game.name, emptyStyle)
-    let turnStr = "T" & $game.turn
-    discard buf.setString(area.x + 28, y, turnStr, emptyStyle)
-    discard buf.setString(area.x + 34, y, game.houseName, emptyStyle)
-    y += 1
+
+    let archHeight = min(archivedGames.len, area.bottom - y)
+    if archHeight > 0:
+      var archTable = table([
+        tableColumn("Name", width = 24),
+        tableColumn("Turn", width = 6),
+        tableColumn("House", width = 0, minWidth = 4)
+      ]).showBorders(false)
+        .showHeader(false)
+        .showSeparator(false)
+        .cellPadding(1)
+        .rowStyle(modalDimStyle())
+      for game in archivedGames:
+        archTable.addRow(@[game.name,
+                           "T" & $game.turn,
+                           game.houseName])
+      let archArea = rect(area.x, y,
+                          area.width, archHeight)
+      archTable.render(archArea, buf)
+      y += archHeight
 
 proc renderInviteCodeSection(buf: var CellBuffer, area: Rect,
                               inviteInput: TextInputState,
