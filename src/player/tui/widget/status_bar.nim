@@ -2,7 +2,7 @@
 ##
 ## A single-line status bar that displays keybinding hints with:
 ## - Powerline arrow separators
-## - Angle brackets around keys: <1> OVERVIEW
+## - Bracketed keys embedded in labels: re[P]orts
 ## - Adaptive width (full labels → short labels → keys only)
 ## - Visual highlighting for selected/current item
 ## - Context-aware: shows view tabs in Overview, context actions elsewhere
@@ -104,9 +104,12 @@ proc initStatusBarData*(): StatusBarData =
 
 proc calcItemWidth(item: BarItem, useArrows: bool): int =
   ## Calculate the display width of a single bar item
-  ## Format: " <key> LABEL " + separator
-  # " <" + key + "> " + label + " " + separator
-  result = 2 + item.keyDisplay.len + 2 + item.label.len + 1
+  ## Format: " before[key]after " + separator
+  let labelWidth = if item.labelHasPipe:
+                     item.labelBefore.len + item.labelAfter.len
+                   else:
+                     item.label.len
+  result = 1 + labelWidth + 2 + item.keyDisplay.len + 1
   if useArrows:
     result += 1  # Arrow separator
 
@@ -202,22 +205,6 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
 
     return
 
-  # Render modifier prefix if showing global view tabs
-  # Check if first item is a view switcher (has ViewModifier)
-  if data.items.len > 0 and 
-     data.items[0].binding.context == BindingContext.Global and
-     data.items[0].binding.actionKind == ActionKind.switchView:
-    let prefix = getViewModifierPrefix()
-    for ch in prefix:
-      if x >= area.x + area.width:
-        break
-      discard buf.put(x, y, $ch, barTextStyle())
-      x += 1
-    # Add a space after prefix
-    if x < area.x + area.width:
-      discard buf.put(x, y, " ", barTextStyle())
-      x += 1
-
   # Render each item
   var isFirst = true
   for item in data.items:
@@ -245,27 +232,33 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
       discard buf.put(x, y, " ", barBgStyle())
       x += 1
 
-    # Draw " ["
+    # Draw leading space
     discard buf.put(x, y, " ", textStyle)
     x += 1
+
+    # Draw label before key
+    let labelBefore = if item.labelHasPipe: item.labelBefore else: ""
+    let labelAfter = if item.labelHasPipe: item.labelAfter else: item.label
+
+    for ch in labelBefore:
+      if x >= area.x + area.width:
+        break
+      discard buf.put(x, y, $ch, textStyle)
+      x += 1
+
+    # Draw [key]
     discard buf.put(x, y, "[", textStyle)
     x += 1
-
-    # Draw key
     for ch in item.keyDisplay:
       if x >= area.x + area.width:
         break
       discard buf.put(x, y, $ch, keyStyle)
       x += 1
-
-    # Draw "] "
     discard buf.put(x, y, "]", textStyle)
     x += 1
-    discard buf.put(x, y, " ", textStyle)
-    x += 1
 
-    # Draw label
-    for ch in item.label:
+    # Draw label after key
+    for ch in labelAfter:
       if x >= area.x + area.width:
         break
       discard buf.put(x, y, $ch, textStyle)

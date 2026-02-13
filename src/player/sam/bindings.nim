@@ -75,6 +75,9 @@ type
     label*: string            ## Current label (adapts to width)
     longLabel*: string        ## Full label for width calculation
     shortLabel*: string       ## Short label for narrow terminals
+    labelBefore*: string      ## Label text before key bracket
+    labelAfter*: string       ## Label text after key bracket
+    labelHasPipe*: bool       ## Label uses pipe split for key placement
     mode*: BarItemMode
     binding*: Binding         ## Source binding
 
@@ -226,7 +229,7 @@ proc formatKeyAngle*(key: actions.KeyCode, modifier: KeyModifier): string =
 
 proc getViewModifierPrefix*(): string =
   ## Get the modifier prefix for status bar display
-  "Ctrl+"
+  ""
 
 # =============================================================================
 # Context Mapping
@@ -366,79 +369,79 @@ proc initBindings*() =
     key: KeyCode.KeyO, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "OVERVIEW", shortLabel: "OVR", priority: 1))
+    longLabel: "|verview", shortLabel: "|vr", priority: 1))
 
   registerBinding(Binding(
     key: KeyCode.KeyP, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "REPORTS", shortLabel: "RPT", priority: 2))
+    longLabel: "re|orts", shortLabel: "re|", priority: 2))
 
   registerBinding(Binding(
-    key: KeyCode.KeyM, modifier: ViewModifier,
+    key: KeyCode.KeyN, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "MESSAGES", shortLabel: "MSG", priority: 3))
+    longLabel: "i|box", shortLabel: "i|b", priority: 3))
 
   registerBinding(Binding(
     key: KeyCode.KeyG, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "GENERAL", shortLabel: "GEN", priority: 4))
+    longLabel: "|eneral", shortLabel: "|en", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyY, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "COLONY", shortLabel: "CLN", priority: 5))
+    longLabel: "colon|", shortLabel: "cl|", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyF, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "FLEET", shortLabel: "FLT", priority: 6))
+    longLabel: "|leet", shortLabel: "|lt", priority: 6))
 
   registerBinding(Binding(
     key: KeyCode.KeyT, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "TECH", shortLabel: "TECH", priority: 7))
+    longLabel: "|ech", shortLabel: "|ch", priority: 7))
 
   registerBinding(Binding(
     key: KeyCode.KeyE, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "ESPIONAGE", shortLabel: "ESP", priority: 8))
+    longLabel: "|spionage", shortLabel: "|sp", priority: 8))
 
   registerBinding(Binding(
     key: KeyCode.KeyI, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "INTEL", shortLabel: "INT", priority: 9))
+    longLabel: "|ntel", shortLabel: "|nt", priority: 9))
 
   registerBinding(Binding(
     key: KeyCode.KeyK, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "SETTINGS", shortLabel: "SET", priority: 10))
+    longLabel: "twea|s", shortLabel: "tw|", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyX, modifier: ViewModifier,
     actionKind: ActionKind.quit,
     context: BindingContext.Global,
-    longLabel: "QUIT", shortLabel: "QUIT", priority: 11))
+    longLabel: "e|it", shortLabel: "e|", priority: 11))
 
   registerBinding(Binding(
     key: KeyCode.KeySlash, modifier: KeyModifier.Ctrl,
     actionKind: ActionKind.toggleHelpOverlay,
     context: BindingContext.Global,
-    longLabel: "HELP", shortLabel: "Help", priority: 12))
+    longLabel: "help", shortLabel: "", priority: 12))
 
   registerBinding(Binding(
     key: KeyCode.KeyColon, modifier: KeyModifier.None,
     actionKind: ActionKind.enterExpertMode,
     context: BindingContext.Global,
-    longLabel: "EXPERT", shortLabel: "Exp", priority: 100))
+    longLabel: "expert", shortLabel: "", priority: 100))
 
 
 
@@ -1538,6 +1541,7 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       of KeyCode.KeyP: 7   # Reports
       of KeyCode.KeyI: 8   # Intel db
       of KeyCode.KeyK: 9   # Settings
+      of KeyCode.KeyN: 10  # Messages
       else: 0
     if viewNum > 0:
       return some(actionSwitchView(viewNum))
@@ -2279,7 +2283,12 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
     let globalBindings = getGlobalBindings()
     var idx = 0
     for b in globalBindings:
-      let label = if useShortLabels: b.shortLabel else: b.longLabel
+      let labelRaw = if useShortLabels: b.shortLabel else: b.longLabel
+      let labelParts = labelRaw.split("|", maxsplit = 1)
+      let hasPipe = labelParts.len > 1
+      let labelBefore = if hasPipe: labelParts[0] else: ""
+      let labelAfter = if hasPipe: labelParts[1] else: labelRaw
+      let label = if hasPipe: labelBefore & labelAfter else: labelRaw
       let isSelected = case b.key
         of KeyCode.KeyO: model.ui.mode == ViewMode.Overview
         of KeyCode.KeyY: model.ui.mode == ViewMode.Planets
@@ -2290,6 +2299,7 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         of KeyCode.KeyP: model.ui.mode == ViewMode.Reports
         of KeyCode.KeyI:
           model.ui.mode in {ViewMode.IntelDb, ViewMode.IntelDetail}
+        of KeyCode.KeyN: model.ui.mode == ViewMode.Messages
         of KeyCode.KeyK: model.ui.mode == ViewMode.Settings
         else: false
 
@@ -2305,6 +2315,9 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         label: label,
         longLabel: b.longLabel,
         shortLabel: b.shortLabel,
+        labelBefore: labelBefore,
+        labelAfter: labelAfter,
+        labelHasPipe: hasPipe,
         mode: mode,
         binding: b
       ))
@@ -2332,7 +2345,12 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         seenNavLeft = true
 
       let enabled = isBindingEnabled(b, model)
-      let label = if useShortLabels: b.shortLabel else: b.longLabel
+      let labelRaw = if useShortLabels: b.shortLabel else: b.longLabel
+      let labelParts = labelRaw.split("|", maxsplit = 1)
+      let hasPipe = labelParts.len > 1
+      let labelBefore = if hasPipe: labelParts[0] else: ""
+      let labelAfter = if hasPipe: labelParts[1] else: labelRaw
+      let label = if hasPipe: labelBefore & labelAfter else: labelRaw
 
       # Format key display - combine arrows if nav
       let keyDisp = if b.key == KeyCode.KeyUp: "↑↓"
@@ -2348,6 +2366,9 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         label: label,
         longLabel: b.longLabel,
         shortLabel: b.shortLabel,
+        labelBefore: labelBefore,
+        labelAfter: labelAfter,
+        labelHasPipe: hasPipe,
         mode: mode,
         binding: b
       ))
