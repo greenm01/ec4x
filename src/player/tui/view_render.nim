@@ -1984,7 +1984,7 @@ proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
   renderIntelDbTable(contentArea, buf, model, localScroll)
 
 proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
-                             model: TuiModel, ps: ps_types.PlayerState) =
+                             model: var TuiModel, ps: ps_types.PlayerState) =
   ## Render intel detail for selected system with structured layout
   if model.ui.intelDetailSystemId <= 0:
     return
@@ -2092,6 +2092,8 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       ])
       fleetRows.inc
       fleetMeta.add((false, int(fleet.fleetId)))
+
+  model.ui.intelDetailFleetCount = fleetRows
 
   # Calculate required content width
   var contentWidth = max(header1.len, header2.len)
@@ -2315,8 +2317,9 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     if fleetRows > 0 and fleetsInner.height > 0:
       let visibleFleetRows = max(1, fleetsInner.height - 4)
       let maxFleetOffset = max(0, fleetRows - visibleFleetRows)
-      var selectedFleet = max(0, model.ui.intelDetailFleetSelectedIdx)
-      selectedFleet = min(selectedFleet, fleetRows - 1)
+      var selectedFleet = clamp(
+        model.ui.intelDetailFleetSelectedIdx, 0, fleetRows - 1)
+      model.ui.intelDetailFleetSelectedIdx = selectedFleet
       var fleetOffset = 0
       if selectedFleet >= visibleFleetRows:
         fleetOffset = selectedFleet - visibleFleetRows + 1
@@ -2356,10 +2359,9 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let notesInner = notesFrame.inner(notesArea)
     if notesInner.height > 0:
       let maxNoteOffset = max(0, noteLines.len - notesInner.height)
-      let noteOffset = max(
-        0,
-        min(model.ui.intelDetailNoteScrollOffset, maxNoteOffset)
-      )
+      let noteOffset = clamp(
+        model.ui.intelDetailNoteScrollOffset, 0, maxNoteOffset)
+      model.ui.intelDetailNoteScrollOffset = noteOffset
       for i in 0 ..< notesInner.height:
         let lineIdx = noteOffset + i
         if lineIdx >= noteLines.len:

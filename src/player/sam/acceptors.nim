@@ -592,7 +592,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
-      model.ui.intelDetailFleetSelectedIdx += 1
+      model.ui.intelDetailFleetSelectedIdx = min(
+        model.ui.intelDetailFleetSelectedIdx + 1,
+        max(0, model.ui.intelDetailFleetCount - 1)
+      )
     else:
       # Default list navigation
       let maxIdx = model.currentListLength() - 1

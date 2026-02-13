@@ -662,6 +662,7 @@ type
     intelDetailFleetPopupActive*: bool
     intelDetailFleetSelectedIdx*: int
     intelDetailFleetScrollOffset*: int
+    intelDetailFleetCount*: int
     intelDetailNoteScrollOffset*: int
     intelNoteEditActive*: bool
     intelNoteEditInput*: string
@@ -895,6 +896,7 @@ proc initTuiUiState*(): TuiUiState =
     intelDetailFleetPopupActive: false,
     intelDetailFleetSelectedIdx: 0,
     intelDetailFleetScrollOffset: 0,
+    intelDetailFleetCount: 0,
     intelDetailNoteScrollOffset: 0,
     intelNoteEditActive: false,
     intelNoteEditInput: "",
