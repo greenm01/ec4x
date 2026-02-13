@@ -23,6 +23,7 @@ import ../transport/nostr/types
 import ../parser/msgpack_commands
 import ./msgpack_state
 import ./player_state_snapshot
+import ../../common/message_types
 
 # ============================================================================
 # Core State Writers
@@ -203,6 +204,26 @@ proc cleanupProcessedEvents*(dbPath: string, gameId: string, currentTurn: int32,
       $EventKindGameState,
       $stateCutoff
     )
+
+proc saveMessage*(dbPath: string, gameId: string, msg: GameMessage,
+                  eventId: string) =
+  ## Persist a player-to-player message
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  db.exec(
+    sql"""
+    INSERT INTO messages (
+      game_id, from_house, to_house, text, timestamp, event_id
+    ) VALUES (?, ?, ?, ?, ?, ?)
+    """,
+    gameId,
+    $msg.fromHouse,
+    $msg.toHouse,
+    msg.text,
+    $msg.timestamp,
+    eventId
+  )
 
 proc saveFullState*(state: GameState) =
   ## Persist complete GameState to database as msgpack blob

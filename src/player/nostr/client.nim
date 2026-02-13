@@ -3,6 +3,7 @@
 import std/[asyncdispatch, options]
 import ../../daemon/transport/nostr/[client, types, events, wire, crypto]
 import ../../common/logger
+import ../../common/message_types
 
 export types
 export crypto
@@ -11,6 +12,7 @@ type
   PlayerNostrHandlers* = object
     onDelta*: proc(event: NostrEvent, payload: string) {.closure.}
     onFullState*: proc(event: NostrEvent, payload: string) {.closure.}
+    onMessage*: proc(event: NostrEvent, msg: GameMessage) {.closure.}
     onEvent*: proc(subId: string, event: NostrEvent) {.closure.}
     onJoinError*: proc(message: string) {.closure.}
     onError*: proc(message: string) {.closure.}
@@ -42,7 +44,8 @@ proc handleEvent*(pc: PlayerNostrClient, subId: string, event: NostrEvent) =
     "eventId=", event.id[0..min(15, event.id.len-1)])
   if event.kind == EventKindTurnResults or
       event.kind == EventKindGameState or
-      event.kind == EventKindJoinError:
+      event.kind == EventKindJoinError or
+      event.kind == EventKindPlayerMessage:
     let privOpt = hexToBytes32Safe(pc.playerPrivHex)
     let pubOpt = hexToBytes32Safe(event.pubkey)
     if privOpt.isNone or pubOpt.isNone:
@@ -56,6 +59,10 @@ proc handleEvent*(pc: PlayerNostrClient, subId: string, event: NostrEvent) =
       elif event.kind == EventKindGameState:
         if pc.handlers.onFullState != nil:
           pc.handlers.onFullState(event, payload)
+      elif event.kind == EventKindPlayerMessage:
+        if pc.handlers.onMessage != nil:
+          let msg = deserializeMessage(payload)
+          pc.handlers.onMessage(event, msg)
       else:
         if pc.handlers.onJoinError != nil:
           pc.handlers.onJoinError(payload)
@@ -142,6 +149,37 @@ proc submitCommands*(
     encryptedPayload = encrypted,
     daemonPubkey = pc.daemonPubkey,
     playerPubkey = pc.playerPubHex
+  )
+  signEvent(event, privOpt.get())
+  await pc.client.publish(event)
+
+proc sendMessage*(
+  pc: PlayerNostrClient,
+  msg: GameMessage
+): Future[bool] {.async.} =
+  ## Send player message to daemon
+  if pc.daemonPubkey.len == 0:
+    pc.handleError("Missing daemon pubkey")
+    return false
+  if pc.gameId.len == 0:
+    pc.handleError("Missing game id")
+    return false
+
+  let privOpt = hexToBytes32Safe(pc.playerPrivHex)
+  let daemonOpt = hexToBytes32Safe(pc.daemonPubkey)
+  if privOpt.isNone or daemonOpt.isNone:
+    pc.handleError("Invalid key material")
+    return false
+
+  let msgpackData = serializeMessage(msg)
+  let encrypted = encodePayload(msgpackData, privOpt.get(), daemonOpt.get())
+  var event = createPlayerMessage(
+    gameId = pc.gameId,
+    encryptedPayload = encrypted,
+    recipientPubkey = pc.daemonPubkey,
+    senderPubkey = pc.playerPubHex,
+    fromHouse = msg.fromHouse,
+    toHouse = msg.toHouse
   )
   signEvent(event, privOpt.get())
   await pc.client.publish(event)

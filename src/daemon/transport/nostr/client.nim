@@ -285,6 +285,11 @@ proc subscribeGame*(client: NostrClient, gameId: string,
     newFilter()
       .withKinds(@[EventKindGameState])
       .withTag(TagD, @[gameId])
+      .withTag(TagP, @[playerPubkey]),
+    # Player messages for this player
+    newFilter()
+      .withKinds(@[EventKindPlayerMessage])
+      .withTag(TagD, @[gameId])
       .withTag(TagP, @[playerPubkey])
   ]
   
@@ -303,6 +308,12 @@ proc subscribeDaemon*(client: NostrClient, gameId: string,
     newFilter()
       .withKinds(@[EventKindPlayerSlotClaim])
       .withTag(TagD, @[gameId])
+    ,
+    # Player messages for this game
+    newFilter()
+      .withKinds(@[EventKindPlayerMessage])
+      .withTag(TagD, @[gameId])
+      .withTag(TagP, @[daemonPubkey])
   ]
   
   await client.subscribe("daemon:" & gameId, filters)

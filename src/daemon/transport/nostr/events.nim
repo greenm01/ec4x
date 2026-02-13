@@ -226,6 +226,35 @@ proc createGameState*(
   result.id = computeEventId(result)
 
 # =============================================================================
+# Player Messages Events (30406)
+# =============================================================================
+
+proc createPlayerMessage*(
+  gameId: string,
+  encryptedPayload: string,
+  recipientPubkey: string,
+  senderPubkey: string,
+  fromHouse: int32,
+  toHouse: int32
+): NostrEvent =
+  ## Create player message event (encrypted to recipient)
+  ## Content is: msgpack -> zstd -> NIP-44 encrypt -> base64
+  let tags = @[
+    @[TagD, gameId],
+    @[TagP, recipientPubkey],
+    @[TagFromHouse, $fromHouse],
+    @[TagToHouse, $toHouse]
+  ]
+
+  result = newEvent(
+    kind = EventKindPlayerMessage,
+    content = encryptedPayload,
+    tags = tags,
+    pubkey = senderPubkey
+  )
+  result.id = computeEventId(result)
+
+# =============================================================================
 # Event Parsing Helpers
 # =============================================================================
 

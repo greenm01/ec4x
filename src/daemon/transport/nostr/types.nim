@@ -72,6 +72,7 @@ const
   EventKindTurnResults* = 30403      # Server: Delta from turn resolution
   EventKindJoinError* = 30404        # Server: Join errors
   EventKindGameState* = 30405        # Server: Full current state
+  EventKindPlayerMessage* = 30406    # Player: Direct message
 
 # =============================================================================
 # Standard Nostr Tag Names
@@ -87,6 +88,8 @@ const
   TagSlot* = "slot"       # Player slot
   TagCode* = "code"       # Invite code
   TagError* = "error"     # Error message
+  TagFromHouse* = "from_house"  # Sender house id
+  TagToHouse* = "to_house"      # Recipient house id
 
 # =============================================================================
 # Game Status Values

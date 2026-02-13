@@ -58,3 +58,16 @@ proc ensureVisible*(state: var ScrollState, index: int) =
     state.verticalOffset,
     state.maxVerticalOffset()
   )
+
+proc scrollBy*(state: var ScrollState, delta: int) =
+  ## Adjust vertical offset by delta.
+  if delta == 0:
+    return
+  state.verticalOffset = clampOffset(
+    state.verticalOffset + delta,
+    state.maxVerticalOffset()
+  )
+
+proc isAtBottom*(state: ScrollState): bool =
+  ## Return true if vertical offset is at bottom.
+  state.verticalOffset >= state.maxVerticalOffset()

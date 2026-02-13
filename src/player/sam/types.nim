@@ -181,6 +181,18 @@ type
     intelDetailNext
     intelDetailPrev
     intelFleetPopupClose
+    messageFocusNext
+    messageFocusPrev
+    messageSelectHouse
+    messageScrollUp
+    messageScrollDown
+    messageComposeToggle
+    messageComposeAppend
+    messageComposeBackspace
+    messageComposeCursorLeft
+    messageComposeCursorRight
+    messageSend
+    messageMarkRead
 
   # ============================================================================
   # Core SAM Types

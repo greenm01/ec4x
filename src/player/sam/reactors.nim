@@ -125,6 +125,9 @@ proc statusMessageReactor*(model: var TuiModel) =
     of ViewMode.IntelDetail:
       model.ui.statusMessage = "Intel System Detail"
 
+    of ViewMode.Messages:
+      model.ui.statusMessage = "Messages"
+
 
     of ViewMode.Settings:
       model.ui.statusMessage = "Game Settings"

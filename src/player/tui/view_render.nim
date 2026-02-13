@@ -13,6 +13,7 @@ import ../sam/command_parser
 import ../tui/buffer
 import ../tui/layout/layout_pkg
 import ../tui/widget/[widget_pkg, frame, paragraph]
+import ../tui/widget/text_input
 import ../tui/widget/overview
 import ../tui/widget/hud
 import ../tui/widget/breadcrumb
@@ -32,6 +33,7 @@ import ../tui/columns
 import ../tui/hex_labels
 import ../tui/help_registry
 import ./sync
+import ../../common/message_types
 
 const
   ExpertPaletteMaxRows = 8
@@ -75,6 +77,8 @@ proc helpContextFor(model: TuiModel): HelpContext =
     HelpContext.IntelDb
   of ViewMode.Settings:
     HelpContext.Settings
+  of ViewMode.Messages:
+    HelpContext.Messages
 
 proc renderHelpOverlay(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if not model.ui.showHelpOverlay:
@@ -1878,6 +1882,112 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
   discard buf.setString(contentArea.x, contentArea.y,
     "Settings view (TODO)", dimStyle())
 
+proc messageGroupId(msg: GameMessage, viewingHouse: int): int32 =
+  ## Determine thread group for a message (house id, 0 for broadcast)
+  if msg.toHouse == 0:
+    return 0
+  if msg.fromHouse == int32(viewingHouse):
+    return msg.toHouse
+  msg.fromHouse
+
+proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
+                          model: var TuiModel) =
+  ## Render messages view as centered floating modal
+  let modal = newModal()
+    .title("MESSAGES")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let contentHeight = max(16, min(canvas.height - 6, 24)) + 2
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  let footerText =
+    "[↑↓] Navigate  [Tab] Focus  [C] Compose  [Enter] Send  [/]Help"
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+
+  let columns = horizontal()
+    .constraints(length(22), fill())
+    .split(contentArea)
+
+  let housesArea = columns[0]
+  let convoArea = columns[1]
+
+  let housesFrame = bordered()
+    .title("HOUSES")
+    .borderType(BorderType.Rounded)
+  let convoFrame = bordered()
+    .title("CONVERSATION")
+    .borderType(BorderType.Rounded)
+
+  housesFrame.render(housesArea, buf)
+  convoFrame.render(convoArea, buf)
+
+  let housesInner = housesFrame.inner(housesArea)
+  let convoInner = convoFrame.inner(convoArea)
+
+  var houseTable = table([
+    tableColumn("House", width = 0, minWidth = 6),
+  ]).showBorders(false)
+    .showHeader(false)
+    .showSeparator(false)
+    .cellPadding(0)
+    .selectedIdx(model.ui.messageHouseIdx)
+
+  for entry in model.view.messageHouses:
+    let label = if entry.unread > 0:
+                  entry.name & " (" & $entry.unread & ")"
+                else:
+                  entry.name
+    houseTable.addRow(@[label])
+  houseTable.render(housesInner, buf)
+
+  var selectedHouseId = int32(0)
+  if model.view.messageHouses.len > 0:
+    let idx = clamp(model.ui.messageHouseIdx, 0,
+      model.view.messageHouses.len - 1)
+    selectedHouseId = model.view.messageHouses[idx].id
+
+  let messages = model.view.messageThreads.getOrDefault(
+    selectedHouseId, @[])
+
+  let convoContent = rect(convoInner.x, convoInner.y,
+    convoInner.width, convoInner.height - 2)
+  let composeArea = rect(convoInner.x,
+    convoInner.bottom - 1, convoInner.width, 1)
+
+  var lines: seq[Line] = @[]
+  for msg in messages:
+    let sender = if msg.fromHouse == int32(model.view.viewingHouse):
+                   "You"
+                 elif msg.fromHouse == 0:
+                   "System"
+                 else:
+                   "House " & $msg.fromHouse
+    lines.add(line(sender & ": " & msg.text))
+  if lines.len == 0:
+    lines.add(line("No messages"))
+
+  let convoText = text(lines)
+  var convoScroll = model.ui.messagesScroll
+  convoScroll.contentLength = convoText.lines.len
+  convoScroll.viewportLength = max(1, convoContent.height)
+  convoScroll.clampOffsets()
+  model.ui.messagesScroll = convoScroll
+
+  let convoParagraph = paragraph(convoText)
+    .wrap(Wrap(trim: true))
+    .scrollState(convoScroll)
+  convoParagraph.render(convoContent, buf)
+
+  let inputWidget = newTextInput()
+    .placeholder("Type a message...")
+    .style(modalBgStyle())
+    .placeholderStyle(modalDimStyle())
+    .cursorStyle(selectedStyle())
+  inputWidget.render(model.ui.messageComposeInput, composeArea,
+    buf, model.ui.messageComposeActive)
+
 proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
                                model: TuiModel, ps: PlayerState) =
   ## Render planet detail view as centered floating modal
@@ -2605,6 +2715,7 @@ proc renderListPanel*(
     of ViewMode.IntelDb: "Intel Database"
     of ViewMode.IntelDetail: "Intel System"
     of ViewMode.Settings: "Game Settings"
+    of ViewMode.Messages: "Messages"
     of ViewMode.PlanetDetail: "Planet Info"
     of ViewMode.FleetDetail: "Fleet Info"
     of ViewMode.ReportDetail: "Report"
@@ -2663,6 +2774,9 @@ proc renderListPanel*(
       "Fleet detail modal (press Enter on fleet)", dimStyle())
   of ViewMode.ReportDetail:
     renderReportDetail(inner, buf, model)
+  of ViewMode.Messages:
+    discard buf.setString(inner.x, inner.y,
+      "Messages view uses modal", dimStyle())
 
 proc buildHudData*(model: TuiModel): HudData =
   ## Build HUD data from TUI model
@@ -2738,6 +2852,8 @@ proc activeViewKey*(mode: ViewMode): string =
     return "F7"
   of ViewMode.Settings:
     return "F8"
+  of ViewMode.Messages:
+    return "F9"
   of ViewMode.IntelDb:
     return ""
   of ViewMode.IntelDetail:
@@ -2792,6 +2908,8 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.contextActions = reportsContextActions(
       model.currentListLength() > 0
     )
+  of ViewMode.Messages:
+    result.contextActions = @[]
 
 proc renderDashboard*(
     buf: var CellBuffer,
@@ -2858,6 +2976,8 @@ proc renderDashboard*(
       renderEconomyModal(canvasArea, buf, model, model.ui.economyScroll)
     of ViewMode.Reports:
       renderReportsModal(canvasArea, buf, model, model.ui.reportTurnScroll)
+    of ViewMode.Messages:
+      renderMessagesModal(canvasArea, buf, model)
     of ViewMode.IntelDb:
       renderIntelDbModal(canvasArea, buf, model)
     of ViewMode.Settings:

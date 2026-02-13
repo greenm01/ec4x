@@ -42,6 +42,7 @@ type
     Economy
     IntelDb
     Settings
+    Messages
 
 const HelpItems* = {
   HelpCode.GlyphWarning: HelpItem(
@@ -151,3 +152,9 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     if HelpItems.hasKey(code):
       let item = HelpItems[code]
       result.add(item.label & " = " & item.desc)
+  if ctx == HelpContext.Messages:
+    result.add("Tab = switch focus")
+    result.add("C = compose")
+    result.add("Enter = send")
+    result.add("Up/Down = select house or scroll")
+    result.add("R = mark read")

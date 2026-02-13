@@ -60,6 +60,7 @@ communication via WebSocket connections to relays.
 | 30403 | TurnResults      | Daemon → Player  | NIP-44     |
 | 30404 | JoinError        | Daemon → Player  | None       |
 | 30405 | GameState        | Daemon → Player  | NIP-44     |
+| 30406 | PlayerMessage    | Player ↔ Daemon  | NIP-44     |
 
 **Defined in:** `src/daemon/transport/nostr/types.nim:67-74`
 

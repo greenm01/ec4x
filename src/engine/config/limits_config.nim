@@ -55,6 +55,15 @@ proc parseEspionageLimits(
     maxOpsPerTargetPerTurn: node.requireInt32("maxOpsPerTargetPerTurn", ctx)
   )
 
+proc parseMessagingLimits(
+  node: KdlNode,
+  ctx: var KdlConfigContext
+): MessagingLimitsConfig =
+  result = MessagingLimitsConfig(
+    maxMessageLength: node.requireInt32("maxMessageLength", ctx),
+    maxMessagesPerMinute: node.requireInt32("maxMessagesPerMinute", ctx)
+  )
+
 proc parsePlanetCapacity(
   node: KdlNode,
   ctx: var KdlConfigContext
@@ -107,6 +116,10 @@ proc loadLimitsConfig*(configPath: string): LimitsConfig =
   ctx.withNode("espionageLimits"):
     let node = doc.requireNode("espionageLimits", ctx)
     result.espionageLimits = parseEspionageLimits(node, ctx)
+
+  ctx.withNode("messagingLimits"):
+    let node = doc.requireNode("messagingLimits", ctx)
+    result.messagingLimits = parseMessagingLimits(node, ctx)
 
   ctx.withNode("capacities"):
     let node = doc.requireNode("capacities", ctx)

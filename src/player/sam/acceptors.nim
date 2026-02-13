@@ -46,6 +46,8 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.IntelDb)
   of 9:
     some(ViewMode.Settings)
+  of 10:
+    some(ViewMode.Messages)
   of 20:
     some(ViewMode.PlanetDetail)
   of 30:
@@ -270,6 +272,12 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.reportTurnScroll = initScrollState()
         model.ui.reportSubjectScroll = initScrollState()
         model.ui.reportBodyScroll = initScrollState()
+      elif selectedMode == ViewMode.Messages:
+        model.ui.messageFocus = MessagePaneFocus.Houses
+        model.ui.messageHouseIdx = 0
+        model.ui.messagesScroll = initScrollState()
+        model.ui.messageComposeActive = false
+        model.ui.messageComposeInput.clear()
   of ActionKind.breadcrumbBack:
     if model.popBreadcrumb():
       let current = model.currentBreadcrumb()
@@ -405,7 +413,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = proposal.selectIdx
     of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research,
        ViewMode.Espionage, ViewMode.Economy, ViewMode.Reports,
-       ViewMode.Settings, ViewMode.PlanetDetail,
+       ViewMode.Settings, ViewMode.Messages, ViewMode.PlanetDetail,
        ViewMode.FleetDetail, ViewMode.ReportDetail,
        ViewMode.IntelDb, ViewMode.IntelDetail:
       # Select current list item (idx is already set)
@@ -549,6 +557,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         0,
         model.ui.intelDetailFleetSelectedIdx - 1
       )
+    elif model.ui.mode == ViewMode.Messages:
+      if model.ui.messageFocus == MessagePaneFocus.Houses:
+        if model.ui.messageHouseIdx > 0:
+          model.ui.messageHouseIdx = max(0, model.ui.messageHouseIdx - 1)
+          model.ui.messagesScroll.reset()
     else:
       # Default list navigation
       if model.ui.selectedIdx > 0:
@@ -596,6 +609,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.intelDetailFleetSelectedIdx + 1,
         max(0, model.ui.intelDetailFleetCount - 1)
       )
+    elif model.ui.mode == ViewMode.Messages:
+      if model.ui.messageFocus == MessagePaneFocus.Houses:
+        let maxIdx = max(0, model.view.messageHouses.len - 1)
+        if model.ui.messageHouseIdx < maxIdx:
+          model.ui.messageHouseIdx = min(maxIdx, model.ui.messageHouseIdx + 1)
+          model.ui.messagesScroll.reset()
     else:
       # Default list navigation
       let maxIdx = model.currentListLength() - 1
@@ -979,6 +998,67 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.breadcrumbs[^1].entityId = prevRow.systemId
     of ActionKind.intelFleetPopupClose:
       model.ui.intelDetailFleetPopupActive = false
+    of ActionKind.messageFocusNext:
+      if model.ui.mode == ViewMode.Messages:
+        case model.ui.messageFocus
+        of MessagePaneFocus.Houses:
+          model.ui.messageFocus = MessagePaneFocus.Conversation
+        of MessagePaneFocus.Conversation:
+          model.ui.messageFocus = MessagePaneFocus.Compose
+        of MessagePaneFocus.Compose:
+          model.ui.messageFocus = MessagePaneFocus.Houses
+    of ActionKind.messageFocusPrev:
+      if model.ui.mode == ViewMode.Messages:
+        case model.ui.messageFocus
+        of MessagePaneFocus.Houses:
+          model.ui.messageFocus = MessagePaneFocus.Compose
+        of MessagePaneFocus.Conversation:
+          model.ui.messageFocus = MessagePaneFocus.Houses
+        of MessagePaneFocus.Compose:
+          model.ui.messageFocus = MessagePaneFocus.Conversation
+    of ActionKind.messageSelectHouse:
+      if model.ui.mode == ViewMode.Messages:
+        let maxIdx = max(0, model.view.messageHouses.len - 1)
+        let idx = clamp(model.ui.messageHouseIdx, 0, maxIdx)
+        model.ui.messageHouseIdx = idx
+        model.ui.messagesScroll.reset()
+    of ActionKind.messageScrollUp:
+      if model.ui.mode == ViewMode.Messages:
+        model.ui.messagesScroll.scrollBy(-1)
+    of ActionKind.messageScrollDown:
+      if model.ui.mode == ViewMode.Messages:
+        model.ui.messagesScroll.scrollBy(1)
+    of ActionKind.messageMarkRead:
+      if model.ui.mode == ViewMode.Messages:
+        model.ui.statusMessage = "Marking thread read..."
+    of ActionKind.messageComposeToggle:
+      if model.ui.mode == ViewMode.Messages:
+        model.ui.messageComposeActive = not model.ui.messageComposeActive
+        if model.ui.messageComposeActive:
+          model.ui.messageFocus = MessagePaneFocus.Compose
+        else:
+          model.ui.messageFocus = MessagePaneFocus.Conversation
+    of ActionKind.messageComposeAppend:
+      if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+        if proposal.gameActionData.len > 0:
+          discard model.ui.messageComposeInput.appendChar(
+            proposal.gameActionData[0]
+          )
+    of ActionKind.messageComposeBackspace:
+      if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+        model.ui.messageComposeInput.backspace()
+    of ActionKind.messageComposeCursorLeft:
+      if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+        model.ui.messageComposeInput.moveCursorLeft()
+    of ActionKind.messageComposeCursorRight:
+      if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+        model.ui.messageComposeInput.moveCursorRight()
+    of ActionKind.messageSend:
+      if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+        if not model.ui.messageComposeInput.isEmpty():
+          model.ui.statusMessage = "Sending message..."
+        else:
+          model.ui.statusMessage = "Message is empty"
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"

@@ -9,6 +9,7 @@ type
     client*: NostrClient
     onCommand*: proc(event: NostrEvent) {.closure.}
     onSlotClaim*: proc(event: NostrEvent) {.closure.}
+    onMessage*: proc(event: NostrEvent) {.closure.}
 
 proc newSubscriber*(client: NostrClient): Subscriber =
   ## Create new subscriber wrapper for a Nostr client
@@ -30,6 +31,9 @@ proc attachHandlers*(sub: Subscriber) =
     elif event.kind == EventKindTurnCommands:
       if sub.onCommand != nil:
         sub.onCommand(event)
+    elif event.kind == EventKindPlayerMessage:
+      if sub.onMessage != nil:
+        sub.onMessage(event)
 
 proc subscribeDaemon*(sub: Subscriber, gameId: string,
   daemonPubkey: string) {.async.} =
@@ -42,4 +46,3 @@ proc subscribeInviteClaims*(sub: Subscriber) {.async.} =
     .withKinds(@[EventKindPlayerSlotClaim])
     .withTag(TagD, @["invite"])
   await sub.client.subscribe("daemon:invite", @[filter])
-

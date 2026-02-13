@@ -6,7 +6,7 @@
 ## - Intel data included in GameState.intel
 ## - Faster deserialization and type safety
 
-import std/[tables, options, strutils, os, base64]
+import std/[tables, options, strutils, os, base64, times]
 import db_connector/db_sqlite
 import ../../common/logger
 import ../../engine/types/[game_state, core, command]
@@ -150,6 +150,33 @@ proc hasProcessedEvent*(dbPath: string, gameId: string, kind: int,
   )
 
   return row[0] != ""
+
+proc allowMessageSend*(dbPath: string, gameId: string, fromHouse: int32,
+                       maxPerMinute: int32): bool =
+  ## Enforce per-house message rate limit
+  if maxPerMinute <= 0:
+    return true
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  let nowUnix = epochTime().int64
+  let windowStart = nowUnix - 60
+  let row = db.getRow(
+    sql"""
+    SELECT COUNT(*)
+    FROM messages
+    WHERE game_id = ? AND from_house = ? AND timestamp >= ?
+    """,
+    gameId,
+    $fromHouse,
+    $windowStart
+  )
+  if row[0] == "":
+    return true
+  try:
+    return parseInt(row[0]) < int(maxPerMinute)
+  except CatchableError:
+    return true
 
 # Entity loading functions removed - entities now loaded from msgpack blob
 

@@ -15,6 +15,7 @@ import ./publisher
 import ../daemon/persistence/reader
 import ../daemon/persistence/writer
 import ../common/wordlist
+import ../common/message_types
 
 # Replay protection
 
@@ -642,6 +643,145 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
   except CatchableError as e:
     logError("Nostr", "Failed to process slot claim: ", e.msg)
 
+proc resolveHouseId(state: GameState, pubkey: string): Option[HouseId] =
+  ## Resolve house id for a player pubkey
+  for house in state.houses.entities.data:
+    if house.nostrPubkey == pubkey:
+      return some(house.id)
+  none(HouseId)
+
+proc validateMessageText(text: string, maxLen: int32): bool =
+  text.len > 0 and text.len <= int(maxLen)
+
+proc processIncomingMessage(event: NostrEvent) {.async.} =
+  ## Process a player message event (30406) from a player
+  try:
+    let gameIdOpt = event.getGameId()
+    if gameIdOpt.isNone:
+      logError("Nostr", "Message event missing game ID")
+      return
+
+    let gameId = gameIdOpt.get()
+
+    if not verifyEvent(event):
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logWarn("Nostr", "Invalid message signature for game=", gameId,
+        " event=", eventId)
+      return
+
+    if not daemonLoop.model.games.hasKey(gameId):
+      logWarn("Nostr", "Message for unknown game: ", gameId)
+      return
+
+    let gameInfo = daemonLoop.model.games[gameId]
+    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+        event.kind, event.id, reader.ReplayDirection.Inbound):
+      logWarn("Nostr", "Duplicate message event ignored: ", event.id[0..7])
+      return
+
+    let daemonPriv = crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    let senderPub = crypto.hexToBytes32(event.pubkey)
+    let msgpackData = decodePayload(event.content, daemonPriv, senderPub)
+    let msg = deserializeMessage(msgpackData)
+
+    let state = loadFullState(gameInfo.dbPath)
+    let senderHouseOpt = resolveHouseId(state, event.pubkey)
+    if senderHouseOpt.isNone:
+      logWarn("Nostr", "Message sender not in game=", gameId)
+      return
+
+    let senderHouse = senderHouseOpt.get()
+    if int32(senderHouse) != msg.fromHouse:
+      logWarn("Nostr", "Message sender mismatch for game=", gameId)
+      return
+
+    if state.houses.entities.index.hasKey(senderHouse):
+      let idx = state.houses.entities.index[senderHouse]
+      if state.houses.entities.data[idx].isEliminated:
+        logWarn("Nostr", "Message from eliminated house ignored: ",
+          $senderHouse)
+        return
+
+    if gameConfig.limits.messagingLimits.maxMessageLength <= 0:
+      logError("Nostr", "Messaging limits not loaded; rejecting message")
+      return
+    let maxLen = gameConfig.limits.messagingLimits.maxMessageLength
+    if not validateMessageText(msg.text, maxLen):
+      logWarn("Nostr", "Message length invalid for game=", gameId)
+      return
+
+    let rateLimit = gameConfig.limits.messagingLimits.maxMessagesPerMinute
+    if rateLimit > 0:
+      if not reader.allowMessageSend(gameInfo.dbPath, gameId,
+          msg.fromHouse, rateLimit):
+        logWarn("Nostr", "Message rate limit exceeded for house=",
+          $senderHouse)
+        return
+
+    writer.saveMessage(gameInfo.dbPath, gameId, msg, event.id)
+    writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+      state.turn.int32, event.kind, event.id, reader.ReplayDirection.Inbound)
+
+    if daemonLoop.model.nostrPublisher == nil:
+      logWarn("Nostr", "No publisher available for message forwarding")
+      return
+
+    var recipientHouses: seq[HouseId] = @[]
+    if msg.toHouse == 0:
+      for house in state.houses.entities.data:
+        if house.isEliminated:
+          continue
+        if house.id == senderHouse:
+          continue
+        recipientHouses.add(house.id)
+    else:
+      let target = HouseId(msg.toHouse)
+      if state.houses.entities.index.hasKey(target):
+        let idx = state.houses.entities.index[target]
+        if state.houses.entities.data[idx].isEliminated:
+          logWarn("Nostr", "Message to eliminated house ignored: ", $target)
+          return
+        recipientHouses.add(target)
+      else:
+        logWarn("Nostr", "Message to unknown house ignored: ", $target)
+        return
+
+    # Echo back to sender as confirmation
+    recipientHouses.add(senderHouse)
+
+    let senderPubkey = event.pubkey
+    for houseId in recipientHouses:
+      let pubkeyOpt = reader.getHousePubkey(gameInfo.dbPath, gameId, houseId)
+      if pubkeyOpt.isNone:
+        logWarn("Nostr", "No pubkey for house ", $houseId,
+          " - skipping message forward")
+        continue
+
+      let playerPubkey = pubkeyOpt.get()
+      let playerPub = crypto.hexToBytes32(playerPubkey)
+      let encryptedPayload = encodePayload(msgpackData, daemonPriv, playerPub)
+
+      var forwardEvent = createPlayerMessage(
+        gameId = gameId,
+        encryptedPayload = encryptedPayload,
+        recipientPubkey = playerPubkey,
+        senderPubkey = senderPubkey,
+        fromHouse = msg.fromHouse,
+        toHouse = msg.toHouse
+      )
+      signEvent(forwardEvent, daemonPriv)
+
+      let published = await daemonLoop.model.nostrClient.publish(forwardEvent)
+      if published:
+        writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+          state.turn.int32, forwardEvent.kind, forwardEvent.id,
+          reader.ReplayDirection.Outbound)
+      else:
+        logError("Nostr", "Failed to publish message to house ", $houseId)
+
+  except CatchableError as e:
+    logError("Nostr", "Failed to process message: ", e.msg)
+
 # =============================================================================
 # Main Event Loop
 # =============================================================================
@@ -794,6 +934,23 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
     except CatchableError as e:
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
       logError("Nostr", "Event handler failed: kind=", $event.kind,
+        " id=", eventId, " error=", e.msg)
+  daemonLoop.model.nostrSubscriber.onMessage = proc(event: NostrEvent) =
+    try:
+      let gameIdOpt = event.getGameId()
+      if gameIdOpt.isNone:
+        logError("Nostr", "Message event missing game ID")
+        return
+
+      let gameId = gameIdOpt.get()
+      if not daemonLoop.model.games.hasKey(gameId):
+        logWarn("Nostr", "Received message for unknown game: ", gameId)
+        return
+
+      asyncCheck processIncomingMessage(event)
+    except CatchableError as e:
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logError("Nostr", "Message handler failed: kind=", $event.kind,
         " id=", eventId, " error=", e.msg)
   daemonLoop.model.nostrSubscriber.attachHandlers()
 

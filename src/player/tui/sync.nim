@@ -59,7 +59,7 @@ proc syncGameStateToModel*(
   model.view.prestige = house.prestige.int
   model.view.alertCount = 0
   model.view.unreadReports = 0
-  model.view.unreadMessages = 0
+  # unreadMessages managed via local cache
 
   # Production (from last income report if available)
   if house.latestIncomeReport.isSome:
@@ -866,6 +866,9 @@ proc syncPlayerStateToModel*(
   model.view.viewingHouse = int(ps.viewingHouse)
   model.view.houseName =
     ps.houseNames.getOrDefault(ps.viewingHouse, "Unknown")
+  model.view.houseNames = initTable[int, string]()
+  for houseId, name in ps.houseNames.pairs:
+    model.view.houseNames[int(houseId)] = name
   if ps.treasuryBalance.isSome:
     model.view.treasury = ps.treasuryBalance.get().int
   else:
@@ -874,7 +877,7 @@ proc syncPlayerStateToModel*(
     ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
   model.view.alertCount = 0
   model.view.unreadReports = 0
-  model.view.unreadMessages = 0
+  # unreadMessages managed via local cache
   if ps.netIncome.isSome:
     model.view.production = ps.netIncome.get().int
   else:

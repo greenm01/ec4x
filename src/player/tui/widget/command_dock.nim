@@ -93,6 +93,7 @@ proc standardViews*(): seq[ViewTab] =
     ViewTab(key: "F6", label: "General", isActive: false),
     ViewTab(key: "F7", label: "Reports", isActive: false),
     ViewTab(key: "F8", label: "Settings", isActive: false),
+    ViewTab(key: "F9", label: "Messages", isActive: false),
   ]
 
 proc overviewContextActions*(joinActive: bool): seq[ContextAction] =

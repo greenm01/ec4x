@@ -21,9 +21,10 @@ import msgpack4nim
 
 import ../../common/logger
 import ../../engine/types/player_state
+import ../../common/message_types
 
 const
-  SchemaVersion* = 2  # Bumped for msgpack migration
+  SchemaVersion* = 3  # Bumped for message storage
   DefaultCacheDir* = ".local/share/ec4x"
   CacheFileName* = "cache.db"
 
@@ -88,6 +89,7 @@ proc checkAndMigrateSchema(db: DbConn): bool =
     db.exec(sql"DROP TABLE IF EXISTS player_states")
     db.exec(sql"DROP TABLE IF EXISTS intel_notes")
     db.exec(sql"DROP TABLE IF EXISTS received_events")
+    db.exec(sql"DROP TABLE IF EXISTS messages")
     db.exec(sql"DROP TABLE IF EXISTS player_slots")
     db.exec(sql"DROP TABLE IF EXISTS games")
     db.exec(sql"DROP TABLE IF EXISTS settings")
@@ -163,6 +165,19 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
       created_at INTEGER NOT NULL
     )
   """)
+
+  # Messages table (player-to-player)
+  db.exec(sql"""
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id TEXT NOT NULL,
+      from_house INTEGER NOT NULL,
+      to_house INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      timestamp INTEGER NOT NULL,
+      is_read INTEGER NOT NULL DEFAULT 0
+    )
+  """)
   
   # Indexes
   db.exec(sql"""
@@ -183,6 +198,16 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
   db.exec(sql"""
     CREATE INDEX IF NOT EXISTS idx_received_events_game
     ON received_events(game_id)
+  """)
+
+  db.exec(sql"""
+    CREATE INDEX IF NOT EXISTS idx_messages_game_time
+    ON messages(game_id, timestamp)
+  """)
+
+  db.exec(sql"""
+    CREATE INDEX IF NOT EXISTS idx_messages_unread
+    ON messages(game_id, to_house, is_read)
   """)
   
   # Insert default settings if not exists
@@ -522,6 +547,137 @@ proc loadIntelNotes*(cache: TuiCache, gameId: string,
       gameId, $houseId
   ):
     result[parseInt(row[0])] = row[1]
+
+# =============================================================================
+# Messages
+# =============================================================================
+
+proc saveMessage*(cache: TuiCache, gameId: string, msg: GameMessage,
+                  isRead: bool = false) =
+  ## Save a player-to-player message
+  let isReadValue = if isRead: 1 else: 0
+  cache.db.exec(
+    sql"""
+    INSERT INTO messages (game_id, from_house, to_house, text, timestamp, is_read)
+    VALUES (?, ?, ?, ?, ?, ?)
+    """,
+    gameId,
+    $msg.fromHouse,
+    $msg.toHouse,
+    msg.text,
+    $msg.timestamp,
+    $isReadValue
+  )
+
+proc loadMessages*(cache: TuiCache, gameId: string,
+                   houseId: int): seq[GameMessage] =
+  ## Load all messages relevant to the given house
+  result = @[]
+  for row in cache.db.fastRows(
+      sql"""
+      SELECT from_house, to_house, text, timestamp
+      FROM messages
+      WHERE game_id = ? AND (to_house = ? OR from_house = ? OR to_house = 0)
+      ORDER BY timestamp ASC
+      """,
+      gameId,
+      $houseId,
+      $houseId
+  ):
+    result.add(GameMessage(
+      fromHouse: parseInt(row[0]).int32,
+      toHouse: parseInt(row[1]).int32,
+      text: row[2],
+      timestamp: parseInt(row[3]).int64,
+      gameId: gameId
+    ))
+
+proc markMessagesRead*(cache: TuiCache, gameId: string, houseId: int,
+                       threadHouseId: int) =
+  ## Mark messages read for a specific thread
+  if threadHouseId == 0:
+    cache.db.exec(
+      sql"""
+      UPDATE messages
+      SET is_read = 1
+      WHERE game_id = ? AND to_house = ? AND is_read = 0 AND
+        (from_house = 0 OR to_house = 0)
+      """,
+      gameId,
+      $houseId
+    )
+  else:
+    cache.db.exec(
+      sql"""
+      UPDATE messages
+      SET is_read = 1
+      WHERE game_id = ? AND to_house = ? AND is_read = 0 AND
+        ((from_house = ? AND to_house = ?) OR
+         (from_house = ? AND to_house = ?))
+      """,
+      gameId,
+      $houseId,
+      $threadHouseId,
+      $houseId,
+      $houseId,
+      $threadHouseId
+    )
+
+proc unreadMessageCount*(cache: TuiCache, gameId: string,
+                         houseId: int): int =
+  ## Count unread messages for this house
+  let row = cache.db.getRow(
+    sql"""
+    SELECT COUNT(*)
+    FROM messages
+    WHERE game_id = ? AND to_house = ? AND is_read = 0
+    """,
+    gameId,
+    $houseId
+  )
+  if row[0] == "":
+    return 0
+  try:
+    parseInt(row[0])
+  except CatchableError:
+    0
+
+proc unreadThreadMessageCount*(cache: TuiCache, gameId: string,
+                               houseId: int, threadHouseId: int): int =
+  ## Count unread messages for a specific thread
+  let row = if threadHouseId == 0:
+              cache.db.getRow(
+                sql"""
+                SELECT COUNT(*)
+                FROM messages
+                WHERE game_id = ? AND to_house = ? AND is_read = 0 AND
+                  (from_house = 0 OR to_house = 0)
+                """,
+                gameId,
+                $houseId
+              )
+            else:
+              cache.db.getRow(
+                sql"""
+                SELECT COUNT(*)
+                FROM messages
+                WHERE game_id = ? AND to_house = ? AND is_read = 0 AND
+                  ((from_house = ? AND to_house = ?) OR
+                   (from_house = ? AND to_house = ?))
+                """,
+                gameId,
+                $houseId,
+                $threadHouseId,
+                $houseId,
+                $houseId,
+                $threadHouseId
+              )
+  if row[0] == "":
+    return 0
+  try:
+    parseInt(row[0])
+  except CatchableError:
+    0
 
 # =============================================================================
 # Event Deduplication

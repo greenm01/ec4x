@@ -15,7 +15,7 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 10  # Incremented for msgpack commands
+const SchemaVersion* = 11  # Incremented for message storage
 
 ## ============================================================================
 ## Core Game State Tables
@@ -118,6 +118,24 @@ CREATE INDEX IF NOT EXISTS idx_player_state_house
   ON player_state_snapshots(game_id, house_id);
 """
 
+const CreateMessagesTable* = """
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  game_id TEXT NOT NULL,
+  from_house INTEGER NOT NULL,
+  to_house INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  event_id TEXT NOT NULL,
+  FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_game_time
+  ON messages(game_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_messages_recipient
+  ON messages(game_id, to_house, timestamp);
+"""
+
 const CreateNostrEventLogTable* = """
 CREATE TABLE IF NOT EXISTS nostr_event_log (
   game_id TEXT NOT NULL,
@@ -155,6 +173,9 @@ proc createAllTables*(db: DbConn) =
 
   # Player state snapshots (with msgpack blob)
   db.exec(sql CreatePlayerStateSnapshotsTable)
+
+  # Player-to-player messages
+  db.exec(sql CreateMessagesTable)
 
   # Replay protection
   db.exec(sql CreateNostrEventLogTable)

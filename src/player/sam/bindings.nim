@@ -48,6 +48,7 @@ type
     IntelDetail   ## Intel system detail
     ReportDetail  ## Report detail view
     Settings      ## Settings view
+    Messages      ## Messages view
     Lobby         ## Entry screen / lobby
     ExpertMode    ## Expert command mode
     BuildModal    ## Build command modal
@@ -244,6 +245,7 @@ proc viewModeToContext*(mode: ViewMode): BindingContext =
   of ViewMode.IntelDb: BindingContext.IntelDb
   of ViewMode.IntelDetail: BindingContext.IntelDetail
   of ViewMode.Settings: BindingContext.Settings
+  of ViewMode.Messages: BindingContext.Messages
   of ViewMode.PlanetDetail: BindingContext.PlanetDetail
   of ViewMode.FleetDetail: BindingContext.FleetDetail
   of ViewMode.ReportDetail: BindingContext.ReportDetail
@@ -261,6 +263,7 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.IntelDb: some(ViewMode.IntelDb)
   of BindingContext.IntelDetail: some(ViewMode.IntelDetail)
   of BindingContext.Settings: some(ViewMode.Settings)
+  of BindingContext.Messages: some(ViewMode.Messages)
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
   of BindingContext.ReportDetail: some(ViewMode.ReportDetail)
@@ -372,58 +375,64 @@ proc initBindings*() =
     longLabel: "REPORTS", shortLabel: "RPT", priority: 2))
 
   registerBinding(Binding(
+    key: KeyCode.KeyM, modifier: ViewModifier,
+    actionKind: ActionKind.switchView,
+    context: BindingContext.Global,
+    longLabel: "MESSAGES", shortLabel: "MSG", priority: 3))
+
+  registerBinding(Binding(
     key: KeyCode.KeyG, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "GENERAL", shortLabel: "GEN", priority: 3))
+    longLabel: "GENERAL", shortLabel: "GEN", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyY, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "COLONY", shortLabel: "CLN", priority: 4))
+    longLabel: "COLONY", shortLabel: "CLN", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyF, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "FLEET", shortLabel: "FLT", priority: 5))
+    longLabel: "FLEET", shortLabel: "FLT", priority: 6))
 
   registerBinding(Binding(
     key: KeyCode.KeyT, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "TECH", shortLabel: "TECH", priority: 6))
+    longLabel: "TECH", shortLabel: "TECH", priority: 7))
 
   registerBinding(Binding(
     key: KeyCode.KeyE, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "ESPIONAGE", shortLabel: "ESP", priority: 7))
+    longLabel: "ESPIONAGE", shortLabel: "ESP", priority: 8))
 
   registerBinding(Binding(
     key: KeyCode.KeyI, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "INTEL", shortLabel: "INT", priority: 8))
+    longLabel: "INTEL", shortLabel: "INT", priority: 9))
 
   registerBinding(Binding(
     key: KeyCode.KeyK, modifier: ViewModifier,
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
-    longLabel: "SETTINGS", shortLabel: "SET", priority: 9))
+    longLabel: "SETTINGS", shortLabel: "SET", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyX, modifier: ViewModifier,
     actionKind: ActionKind.quit,
     context: BindingContext.Global,
-    longLabel: "QUIT", shortLabel: "QUIT", priority: 10))
+    longLabel: "QUIT", shortLabel: "QUIT", priority: 11))
 
   registerBinding(Binding(
     key: KeyCode.KeySlash, modifier: KeyModifier.Ctrl,
     actionKind: ActionKind.toggleHelpOverlay,
     context: BindingContext.Global,
-    longLabel: "HELP", shortLabel: "Help", priority: 11))
+    longLabel: "HELP", shortLabel: "Help", priority: 12))
 
   registerBinding(Binding(
     key: KeyCode.KeyColon, modifier: KeyModifier.None,
@@ -1233,6 +1242,88 @@ proc initBindings*() =
     actionKind: ActionKind.select,
     context: BindingContext.Settings,
     longLabel: "RESET", shortLabel: "Rst", priority: 20))
+
+  # =========================================================================
+  # Messages Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Messages,
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Messages,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Messages,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Messages,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageFocusNext,
+    context: BindingContext.Messages,
+    longLabel: "FOCUS", shortLabel: "Fcs", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyShiftTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageFocusPrev,
+    context: BindingContext.Messages,
+    longLabel: "FOCUS", shortLabel: "Fcs", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyC, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageComposeToggle,
+    context: BindingContext.Messages,
+    longLabel: "COMPOSE", shortLabel: "New", priority: 5))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageSend,
+    context: BindingContext.Messages,
+    longLabel: "SEND", shortLabel: "Send", priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.Ctrl,
+    actionKind: ActionKind.messageScrollUp,
+    context: BindingContext.Messages,
+    longLabel: "SCROLL", shortLabel: "Up", priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.Ctrl,
+    actionKind: ActionKind.messageScrollDown,
+    context: BindingContext.Messages,
+    longLabel: "SCROLL", shortLabel: "Dn", priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageScrollUp,
+    context: BindingContext.Messages,
+    longLabel: "SCROLL", shortLabel: "PgUp", priority: 7))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageScrollDown,
+    context: BindingContext.Messages,
+    longLabel: "SCROLL", shortLabel: "PgDn", priority: 8))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageMarkRead,
+    context: BindingContext.Messages,
+    longLabel: "READ", shortLabel: "Read", priority: 9))
 
   # =========================================================================
   # Build Modal Context

@@ -23,6 +23,11 @@ type
     ## Target cooldown: prevents espionage spam against single house
     maxOpsPerTargetPerTurn*: int32     # Max ops vs any single rival house per turn
 
+  MessagingLimitsConfig* = object
+    ## Player-to-player message limits
+    maxMessageLength*: int32           # Max characters per message
+    maxMessagesPerMinute*: int32       # Rate limit per sender
+
   PlanetCapacityConfig* = object
     planetClass*: string
     puMax*: int32
@@ -42,5 +47,6 @@ type
     fighterCapacity*: FighterCapacityConfig
     populationLimits*: PopulationLimitsConfig
     espionageLimits*: EspionageLimitsConfig
+    messagingLimits*: MessagingLimitsConfig
     capacities*: CapacitiesConfig
     scScaling*: ScScalingConfig

@@ -18,7 +18,7 @@ import ../tui/input
 import ../tui/tty
 import ../tui/signals
 import ../tui/widget/overview
-import ../tui/widget/[hud, breadcrumb, command_dock]
+import ../tui/widget/[hud, breadcrumb, command_dock, scroll_state]
 import ../sam/sam_pkg
 import ../sam/client_limits
 import ../sam/bindings
@@ -28,6 +28,7 @@ import ../state/msgpack_serializer
 import ../state/msgpack_state
 import ../state/tui_cache
 import ../state/tui_config
+import ../../common/message_types
 import ../svg/svg_pkg
 import ./sync
 import ./input_map
@@ -131,6 +132,97 @@ proc runTui*(gameId: string = "") =
       return
     let notes = tuiCache.loadIntelNotes(activeGameId, int(viewingHouse))
     model.applyIntelNotes(notes)
+
+  proc syncCachedMessages(model: var TuiModel) =
+    if activeGameId.len == 0:
+      return
+    if int(viewingHouse) <= 0:
+      return
+    let msgs = tuiCache.loadMessages(activeGameId, int(viewingHouse))
+    let previousThreadCounts = model.view.messageThreads
+    model.view.messageThreads.clear()
+    model.view.messageHouses = @[(0'i32, "Broadcast", 0)]
+    for id, name in model.view.houseNames:
+      if id == int(viewingHouse):
+        continue
+      model.view.messageHouses.add((int32(id), name, 0))
+    for msg in msgs:
+      let threadId =
+        if msg.toHouse == 0:
+          0'i32
+        elif msg.fromHouse == int32(viewingHouse):
+          msg.toHouse
+        else:
+          msg.fromHouse
+      if not model.view.messageThreads.hasKey(threadId):
+        model.view.messageThreads[threadId] = @[]
+      model.view.messageThreads[threadId].add(msg)
+    for i in 0 ..< model.view.messageHouses.len:
+      let threadId = model.view.messageHouses[i].id
+      let unread = tuiCache.unreadThreadMessageCount(
+        activeGameId,
+        int(viewingHouse),
+        int(threadId)
+      )
+      model.view.messageHouses[i].unread = unread
+    var shouldAutoScroll = false
+    var wasAtBottom = false
+    if model.ui.mode == ViewMode.Messages:
+      wasAtBottom = model.ui.messagesScroll.isAtBottom()
+      let idx = clamp(model.ui.messageHouseIdx, 0,
+        max(0, model.view.messageHouses.len - 1))
+      let targetId = if model.view.messageHouses.len > 0:
+        model.view.messageHouses[idx].id
+      else:
+        0'i32
+      if model.view.messageThreads.hasKey(targetId):
+        let items = model.view.messageThreads[targetId]
+        let previousCount =
+          if previousThreadCounts.hasKey(targetId):
+            previousThreadCounts[targetId].len
+          else:
+            0
+        if items.len > previousCount and
+            (model.ui.messageFocus == MessagePaneFocus.Conversation or
+             model.ui.messageFocus == MessagePaneFocus.Compose) and
+            wasAtBottom:
+          shouldAutoScroll = true
+    if shouldAutoScroll:
+      model.ui.messagesScroll.verticalOffset = 1_000_000_000
+    if model.ui.mode == ViewMode.Messages and
+        model.ui.messageFocus == MessagePaneFocus.Conversation and
+        model.view.messageThreads.len > 0:
+      let idx = clamp(model.ui.messageHouseIdx, 0,
+        max(0, model.view.messageHouses.len - 1))
+      let targetId = if model.view.messageHouses.len > 0:
+        model.view.messageHouses[idx].id
+      else:
+        0'i32
+      var anyUnread = false
+      if model.view.messageThreads.hasKey(targetId):
+        for msg in model.view.messageThreads[targetId]:
+          if msg.fromHouse != int32(viewingHouse):
+            anyUnread = true
+            break
+      if anyUnread:
+        tuiCache.markMessagesRead(activeGameId, int(viewingHouse),
+          int(targetId))
+    model.view.unreadMessages =
+      tuiCache.unreadMessageCount(activeGameId, int(viewingHouse))
+
+  proc handleIncomingMessage(event: NostrEvent, msg: GameMessage) =
+    if activeGameId.len == 0:
+      return
+    if event.id.len > 0 and tuiCache.hasReceivedEvent(event.id):
+      return
+    if event.id.len > 0:
+      tuiCache.markEventReceived(event.id, event.kind, activeGameId)
+    let isLocalSender = msg.fromHouse == int32(viewingHouse)
+    tuiCache.saveMessage(activeGameId, msg, isRead = isLocalSender)
+    syncCachedMessages(sam.model)
+    if msg.fromHouse != int32(viewingHouse):
+      sam.model.ui.statusMessage = "New message received"
+    enqueueProposal(emptyProposal())
 
   # Create initial model
   var initialModel = initTuiModel()
@@ -242,6 +334,7 @@ proc runTui*(gameId: string = "") =
   if initialModel.ui.appPhase == AppPhase.InGame:
     syncPlayerStateToModel(initialModel, playerState)
     syncCachedIntelNotes(initialModel)
+    syncCachedMessages(initialModel)
     syncBuildModalData(initialModel, playerState)
     initialModel.resetBreadcrumbs(initialModel.ui.mode)
 
@@ -276,6 +369,7 @@ proc runTui*(gameId: string = "") =
             # Sync PlayerState to model after delta
             syncPlayerStateToModel(sam.model, playerState)
             syncCachedIntelNotes(sam.model)
+            syncCachedMessages(sam.model)
             # Sync build modal data if active
             syncBuildModalData(sam.model, playerState)
             # Cache the updated state
@@ -328,6 +422,7 @@ proc runTui*(gameId: string = "") =
             # Sync PlayerState to model
             syncPlayerStateToModel(sam.model, playerState)
             syncCachedIntelNotes(sam.model)
+            syncCachedMessages(sam.model)
             syncBuildModalData(sam.model, playerState)
             sam.model.resetBreadcrumbs(sam.model.ui.mode)
             if sam.model.view.homeworld.isSome:
@@ -349,6 +444,9 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.nostrStatus = "error"
           sam.model.ui.nostrEnabled = false
           enqueueProposal(emptyProposal())
+
+      nostrHandlers.onMessage = proc(event: NostrEvent, msg: GameMessage) =
+        handleIncomingMessage(event, msg)
 
       nostrHandlers.onEvent = proc(subId: string, event: NostrEvent) =
         logInfo("EVENT", "Received event: subId=", subId, " kind=", event.kind,
@@ -1116,6 +1214,7 @@ proc runTui*(gameId: string = "") =
           # Sync PlayerState to model (for Nostr games)
           syncPlayerStateToModel(sam.model, playerState)
           syncCachedIntelNotes(sam.model)
+          syncCachedMessages(sam.model)
           syncBuildModalData(sam.model, playerState)
           sam.model.resetBreadcrumbs(sam.model.ui.mode)
           if sam.model.view.homeworld.isSome:
@@ -1126,6 +1225,7 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.statusMessage = "Loaded game " & gameName
           activeGameId = gameId
           syncCachedIntelNotes(sam.model)
+          syncCachedMessages(sam.model)
         else:
           # No cached state - set up for Nostr subscription
           # The game will load when full state arrives via onFullState handler
@@ -1201,6 +1301,53 @@ proc runTui*(gameId: string = "") =
 
       sam.model.ui.turnSubmissionPending = false
       needsRender = true
+
+    # Handle message send requests
+    if sam.model.ui.mode == ViewMode.Messages:
+      if sam.model.ui.messageComposeActive:
+        if sam.model.ui.statusMessage == "Sending message..." and
+            activeGameId.len > 0:
+          if nostrClient != nil and nostrClient.isConnected():
+            let idx = clamp(sam.model.ui.messageHouseIdx, 0,
+              max(0, sam.model.view.messageHouses.len - 1))
+            let targetId = if sam.model.view.messageHouses.len > 0:
+              sam.model.view.messageHouses[idx].id
+            else:
+              0'i32
+            let msgText = sam.model.ui.messageComposeInput.value().strip()
+            if msgText.len == 0:
+              sam.model.ui.statusMessage = "Message is empty"
+              sam.model.ui.messageComposeActive = false
+              needsRender = true
+            else:
+              let msg = GameMessage(
+                fromHouse: int32(viewingHouse),
+                toHouse: targetId,
+                text: msgText,
+                timestamp: getTime().toUnix(),
+                gameId: activeGameId
+              )
+              asyncCheck nostrClient.sendMessage(msg)
+              sam.model.ui.messageComposeInput.clear()
+              sam.model.ui.messageComposeActive = false
+              sam.model.ui.statusMessage = "Message sent"
+              needsRender = true
+          else:
+            sam.model.ui.statusMessage = "Cannot send: not connected"
+            needsRender = true
+      if sam.model.ui.statusMessage == "Marking thread read..." and
+          activeGameId.len > 0:
+        let idx = clamp(sam.model.ui.messageHouseIdx, 0,
+          max(0, sam.model.view.messageHouses.len - 1))
+        let targetId = if sam.model.view.messageHouses.len > 0:
+          sam.model.view.messageHouses[idx].id
+        else:
+          0'i32
+        tuiCache.markMessagesRead(activeGameId, int(viewingHouse),
+          int(targetId))
+        syncCachedMessages(sam.model)
+        sam.model.ui.statusMessage = "Thread marked read"
+        needsRender = true
 
     # -------------------------------------------------------------------------
     # Phase 7: Game list maintenance

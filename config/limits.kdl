@@ -72,6 +72,13 @@ espionageLimits {
     maxOpsPerTargetPerTurn 3       // Max espionage operations against same target house per turn
 }
 
+// --- Messaging Limits ---
+messagingLimits {
+    // Player-to-player messaging rate limits
+    maxMessageLength 500           // Max characters per message
+    maxMessagesPerMinute 10        // Rate limit per sender
+}
+
 // --- Unit Cargo & Planet Capacity ---
 capacities {
     (docs)"docs/specs/02-assets.md#section-2-2"

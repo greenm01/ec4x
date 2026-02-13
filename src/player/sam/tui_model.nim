@@ -15,12 +15,15 @@
 ##   F6 General    - Diplomacy, tax, empire policy
 ##   F7 Reports    - Turn summaries, combat/intel reports
 ##   F8 Settings   - Display options, automation defaults
+##   F9 Messages   - Player messaging
 
 import std/[options, tables, algorithm, strutils, sequtils, sets, heapqueue]
 import ../tui/widget/scroll_state
 import ../tui/widget/entry_modal
 import ../tui/hex_labels
 import ../state/identity
+import ../tui/widget/text_input
+import ../../common/message_types
 import ../../engine/types/[core, fleet, production, command, tech, ship,
   facilities, ground_unit, zero_turn]
 
@@ -365,6 +368,11 @@ type
     jumpBuffer*: string
     jumpTime*: float
 
+  MessagePaneFocus* {.pure.} = enum
+    Houses
+    Conversation
+    Compose
+
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to primary view number)
     ##
@@ -378,6 +386,7 @@ type
     Reports = 7       ## Turn reports
     IntelDb = 8       ## Intel database (Starmap)
     Settings = 9      ## Game settings
+    Messages = 10     ## Player messages
     # Sub-views (not directly accessible via primary hotkeys)
     PlanetDetail = 20 ## Planet detail (Summary/Economy/Construction/etc.)
     FleetDetail = 30  ## Fleet detail view
@@ -763,6 +772,10 @@ type
     intelScroll*: ScrollState
     messagesScroll*: ScrollState
     settingsScroll*: ScrollState
+    messageHouseIdx*: int
+    messageFocus*: MessagePaneFocus
+    messageComposeActive*: bool
+    messageComposeInput*: TextInputState
 
     # Entry modal state (replaces legacy lobby UI)
     entryModal*: EntryModalState
@@ -802,6 +815,7 @@ type
     researchPoints*: Option[ResearchPoints]
 
     # Collections for display
+    houseNames*: Table[int, string]
     systems*: Table[HexCoord, SystemInfo]
     colonies*: seq[ColonyInfo]
     planetsRows*: seq[PlanetRow]
@@ -809,6 +823,8 @@ type
     fleets*: seq[FleetInfo]
     commands*: seq[CommandInfo]
     reports*: seq[ReportEntry]
+    messageThreads*: Table[int32, seq[GameMessage]]
+    messageHouses*: seq[tuple[id: int32, name: string, unread: int]]
 
     maxRing*: int
     homeworld*: Option[HexCoord]
@@ -977,6 +993,10 @@ proc initTuiUiState*(): TuiUiState =
     intelScroll: initScrollState(),
     messagesScroll: initScrollState(),
     settingsScroll: initScrollState(),
+    messageHouseIdx: 0,
+    messageFocus: MessagePaneFocus.Houses,
+    messageComposeActive: false,
+    messageComposeInput: initTextInputState(maxLength = 0, maxDisplayWidth = 0),
     entryModal: newEntryModalState(),
     buildModal: BuildModalState(
       active: false,
@@ -1046,6 +1066,7 @@ proc initTuiViewState*(): TuiViewState =
     unreadMessages: 0,
     techLevels: none(TechLevel),
     researchPoints: none(ResearchPoints),
+    houseNames: initTable[int, string](),
     systems: initTable[HexCoord, SystemInfo](),
     colonies: @[],
     planetsRows: @[],
@@ -1129,6 +1150,8 @@ proc initTuiViewState*(): TuiViewState =
         linkLabel: "Overview"
       )
     ],
+    messageThreads: initTable[int32, seq[GameMessage]](),
+    messageHouses: @[],
     maxRing: 3,
     homeworld: none(HexCoord),
     lobbyActiveGames: @[],
@@ -1286,6 +1309,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Reports: model.filteredReports().len
   of ViewMode.IntelDb: model.view.intelRows.len
   of ViewMode.Settings: 0  # TODO: settings list
+  of ViewMode.Messages: model.view.messageHouses.len
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
   of ViewMode.ReportDetail: 0
@@ -1423,6 +1447,7 @@ proc viewModeLabel*(mode: ViewMode): string =
   of ViewMode.Reports: "Reports"
   of ViewMode.IntelDb: "Intel"
   of ViewMode.Settings: "Settings"
+  of ViewMode.Messages: "Messages"
   of ViewMode.PlanetDetail: "Colony"
   of ViewMode.FleetDetail: "Fleet"
   of ViewMode.ReportDetail: "Report"
@@ -1432,7 +1457,8 @@ proc isPrimaryView*(mode: ViewMode): bool =
   ## Check if mode is a primary view (F-keys)
   mode in {ViewMode.Overview, ViewMode.Planets, ViewMode.Fleets,
            ViewMode.Research, ViewMode.Espionage, ViewMode.Economy,
-           ViewMode.Reports, ViewMode.IntelDb, ViewMode.Settings}
+           ViewMode.Reports, ViewMode.IntelDb, ViewMode.Settings,
+           ViewMode.Messages}
 
 proc isDetailView*(mode: ViewMode): bool =
   ## Check if mode is a detail/drill-down view

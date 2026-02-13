@@ -107,6 +107,23 @@ identity {
 }
 ```
 
+### Player Message (30406)
+
+```kdl
+message game="550e8400-e29b-41d4-a716-446655440000" {
+  from-house 1
+  to-house 2        # 0 = broadcast
+  text "Meet at Tau Ceti."
+  timestamp 1705500300
+}
+```
+
+**Tags:**
+- `d`: game id
+- `p`: recipient pubkey (daemon on send, player on forward)
+- `from_house`: sender house id
+- `to_house`: recipient house id (0 for broadcast)
+
 ### Identity Types
 
 | Type | Description |
@@ -257,6 +274,7 @@ Note: server pubkey is authoritative for 30400/30403/30405 events.
 | 30402 | Turn Orders | Player | Player's orders for a turn |
 | 30403 | Turn Results | Server | Delta from turn resolution |
 | 30405 | Game State | Server | Full current state |
+| 30406 | Player Message | Player/Server | Encrypted player-to-player message |
 
 ### 30400: Game Definition
 
@@ -501,6 +519,30 @@ Player                              Server
    │  (subscribe to future deltas)     │
    │◄─────────────────────────────────►│
 ```
+
+### Player Messages
+
+```
+Player A                              Server                           Player B
+   │                                   │                                 │
+   │  EVENT 30406 (message)            │                                 │
+   │  encrypted to daemon              │                                 │
+   ├──────────────────────────────────►│ Validate sender/recipient        │
+   │                                   │ Persist message                 │
+   │                                   │                                 │
+   │                                   │  EVENT 30406 (forward)           │
+   │                                   │  encrypted to player             │
+   │                                   ├────────────────────────────────►│
+   │                                   │                                 │
+   │                                   │  EVENT 30406 (echo)              │
+   │                                   │  encrypted to sender             │
+   │◄──────────────────────────────────┤                                 │
+```
+
+30406 events are encrypted with NIP-44 and routed through the daemon. The daemon
+validates that both houses are in the game, applies rate limits, stores the
+message, and forwards it to the recipient. The sender receives an echoed copy
+as delivery confirmation.
 
 ---
 

@@ -39,6 +39,42 @@ proc actionQuitToggle*(): Proposal =
   ## Toggle quit confirmation selection
   gameActionProposal(ActionKind.quitToggle, "")
 
+proc actionMessageComposeAppend*(ch: string): Proposal =
+  ## Append a character to the message compose input
+  gameActionProposal(ActionKind.messageComposeAppend, ch)
+
+proc actionMessageComposeBackspace*(): Proposal =
+  ## Backspace in message compose input
+  gameActionProposal(ActionKind.messageComposeBackspace, "")
+
+proc actionMessageComposeCursorLeft*(): Proposal =
+  ## Move compose cursor left
+  gameActionProposal(ActionKind.messageComposeCursorLeft, "")
+
+proc actionMessageComposeCursorRight*(): Proposal =
+  ## Move compose cursor right
+  gameActionProposal(ActionKind.messageComposeCursorRight, "")
+
+proc actionMessageComposeToggle*(): Proposal =
+  ## Toggle message compose mode
+  gameActionProposal(ActionKind.messageComposeToggle, "")
+
+proc actionMessageSend*(): Proposal =
+  ## Send composed message
+  gameActionProposal(ActionKind.messageSend, "")
+
+proc actionMessageFocusNext*(): Proposal =
+  ## Cycle message focus forward
+  gameActionProposal(ActionKind.messageFocusNext, "")
+
+proc actionMessageFocusPrev*(): Proposal =
+  ## Cycle message focus backward
+  gameActionProposal(ActionKind.messageFocusPrev, "")
+
+proc actionMessageMarkRead*(): Proposal =
+  ## Mark current thread as read
+  gameActionProposal(ActionKind.messageMarkRead, "")
+
 proc actionSwitchMode*(mode: ViewMode): Proposal =
   ## Switch to a different view mode (legacy)
   Proposal(

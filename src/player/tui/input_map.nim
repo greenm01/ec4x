@@ -59,6 +59,28 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     else:
       return none(Proposal)
 
+  # Message compose mode captures text input directly.
+  if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+    case event.key
+    of Key.Rune:
+      if event.rune.int >= 0x20:
+        return some(actionMessageComposeAppend($event.rune))
+      return none(Proposal)
+    of Key.Backspace:
+      return some(actionMessageComposeBackspace())
+    of Key.Left:
+      return some(actionMessageComposeCursorLeft())
+    of Key.Right:
+      return some(actionMessageComposeCursorRight())
+    of Key.Enter:
+      return some(actionMessageSend())
+    of Key.CtrlJ:
+      return some(actionMessageSend())
+    of Key.Escape:
+      return some(actionMessageComposeToggle())
+    else:
+      return none(Proposal)
+
   case event.key
   of Key.Rune:
     if event.rune.int == 0x0D or event.rune.int == 0x0A:
