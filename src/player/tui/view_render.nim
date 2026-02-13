@@ -27,7 +27,6 @@ import ../tui/widget/queue_modal
 import ../tui/widget/fleet_detail_modal
 import ../tui/widget/hexmap/symbols
 import ../sam/bindings
-import ../tui/styles/ec_palette
 import ../tui/adapters
 import ../tui/columns
 import ../tui/hex_labels
@@ -2001,21 +2000,8 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
   let row = rowOpt.get()
   let systemId = SystemId(model.ui.intelDetailSystemId)
   let title = "INTEL: " & row.systemName.toUpperAscii()
-  
-  let modal = newModal()
-    .title(title)
-    .maxWidth(120)
-    .minWidth(90)
-    .borderStyle(primaryBorderStyle())
-    .bgStyle(modalBgStyle())
-  let contentHeight = min(max(20, canvas.height - 6), 32)
-  let modalArea = modal.calculateArea(canvas, contentHeight)
-  let footerText =
-    "[↑↓/J/K]Fleet  [Enter]Details  [PgUp/PgDn]Notes  [N]Edit Note  [Esc]Back"
-  modal.renderWithFooter(modalArea, buf, footerText)
-  let contentArea = modal.contentArea(modalArea, hasFooter = true)
 
-  # Get system properties from visibleSystems
+  # Get system properties from visibleSystems (needed for width calc)
   var planetClass = "Unknown"
   var resourceRating = "Unknown"
   var jumpLaneLabels: seq[string] = @[]
@@ -2027,7 +2013,6 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let resIdx = int(visSys.resourceRating)
     if resIdx >= 0 and resIdx < ResourceRatingNames.len:
       resourceRating = ResourceRatingNames[resIdx]
-    # Resolve jump lanes to sector labels
     for laneId in visSys.jumpLaneIds:
       if ps.visibleSystems.hasKey(laneId):
         let laneSys = ps.visibleSystems[laneId]
@@ -2037,18 +2022,118 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
           let name = if laneSys.name.len > 0: laneSys.name else: "System " & $laneId.uint32
           jumpLaneLabels.add(label & " (" & name & ")")
 
-  var y = contentArea.y
-  # Header line 1: Sector, Class, Resources
+  # Header lines for width calculation
   let header1 = "Sector: " & row.sectorLabel &
     "  Class: " & planetClass &
     "  Resources: " & resourceRating
-  discard buf.setString(contentArea.x, y, header1, normalStyle())
-  y += 1
-  # Header line 2: Owner, Intel, LTU, Confidence
   let header2 = "Owner: " & row.ownerName &
     "  Intel: " & row.intelLabel &
     "  LTU: " & row.ltuLabel &
     "  Confidence: " & intelConfidence(model, row)
+
+  # Build fleet table for width calculation
+  var fleetTable = table(@[
+      tableColumn("Owner", 0, table.Alignment.Left, minWidth = 14),
+      tableColumn("Fleet", 8, table.Alignment.Left),
+      tableColumn("Ships", 6, table.Alignment.Right),
+      tableColumn("AS", 4, table.Alignment.Right),
+      tableColumn("DS", 4, table.Alignment.Right),
+      tableColumn("CMD", 8, table.Alignment.Left),
+      tableColumn("LTU", 5, table.Alignment.Right)
+    ])
+  var fleetRows = 0
+  var fleetMeta: seq[tuple[isOwn: bool, fleetId: int]] = @[]
+  for fleet in ps.ownFleets:
+    if fleet.location == systemId:
+      var attackStr, defenseStr = 0
+      for shipId in fleet.ships:
+        for ship in ps.ownShips:
+          if ship.id == shipId:
+            attackStr += ship.stats.attackStrength
+            defenseStr += ship.stats.defenseStrength
+            break
+      let cmdLabel = case fleet.command.commandType
+        of FleetCommandType.Hold: "Hold"
+        of FleetCommandType.Move: "Move"
+        of FleetCommandType.Patrol: "Patrol"
+        of FleetCommandType.GuardColony: "Guard"
+        of FleetCommandType.Blockade: "Blockade"
+        else: "---"
+      fleetTable.addRow(@[
+        "You",
+        fleet.name,
+        $fleet.ships.len,
+        $attackStr,
+        $defenseStr,
+        cmdLabel,
+        "T" & $model.view.turn
+      ])
+      fleetRows.inc
+      fleetMeta.add((true, int(fleet.id)))
+  for fleet in ps.visibleFleets:
+    if fleet.location == systemId:
+      let ships = if fleet.estimatedShipCount.isSome:
+        "~" & $fleet.estimatedShipCount.get()
+      else:
+        "?"
+      let intelAge = if fleet.intelTurn.isSome:
+        "T" & $fleet.intelTurn.get()
+      else:
+        "---"
+      let houseName = ps.houseNames.getOrDefault(fleet.owner, "Unknown")
+      fleetTable.addRow(@[
+        houseName,
+        "---",
+        ships,
+        "?",
+        "?",
+        "?",
+        intelAge
+      ])
+      fleetRows.inc
+      fleetMeta.add((false, int(fleet.fleetId)))
+
+  # Calculate required content width
+  var contentWidth = max(header1.len, header2.len)
+  if jumpLaneLabels.len > 0:
+    contentWidth = max(contentWidth, jumpLaneLabels.join(", ").len)
+  let noteLines =
+    if row.notes.len > 0: row.notes.splitLines(keepEol = false)
+    else: @["(none)"]
+  for noteLine in noteLines:
+    contentWidth = max(contentWidth, noteLine.len)
+  # Ensure minimum width for side-by-side panels (surface assets + facilities)
+  let panelMinWidth = 80  # ~38 chars per panel * 2 + gap + borders
+  contentWidth = max(contentWidth, panelMinWidth)
+  contentWidth = min(max(32, canvas.width - 8), contentWidth)
+
+  # Calculate dynamic content height
+  let panelsHeight = 5  # panelHeight (no gap after panels)
+  let fleetContentRows = fleetRows + 6  # table + header/border overhead + frame borders
+  let fleetBoxHeightCalc = min(26, max(7, fleetContentRows))
+  let jumpLanesHeightCalc = if jumpLaneLabels.len > 0: 3 else: 0
+  let notesContentRows = noteLines.len + 2  # content + border overhead
+  let notesBoxHeightCalc = min(7, max(3, notesContentRows))
+  let headerHeight = 3  # header1 + header2 + blank
+  let footerHeight = 2  # separator + footer text
+  let neededHeight = headerHeight + panelsHeight + fleetBoxHeightCalc + jumpLanesHeightCalc + notesBoxHeightCalc + footerHeight
+  let contentHeight = min(max(neededHeight, 15), canvas.height - 6)
+
+  let modal = newModal()
+    .title(title)
+    .maxWidth(contentWidth + 2)
+    .minWidth(max(40, contentWidth + 2))
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
+  let footerText =
+    "[↑↓/J/K]Fleet  [Enter]Details  [PgUp/PgDn]Notes  [N]Edit Note  [Esc]Back"
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+
+  var y = contentArea.y
+  discard buf.setString(contentArea.x, y, header1, normalStyle())
+  y += 1
   discard buf.setString(contentArea.x, y, header2, normalStyle())
   y += 2
 
@@ -2066,7 +2151,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
         break
 
   # Render COLONY / ORBITAL panels side-by-side
-  let useColumns = contentArea.width >= 80
+  let useColumns = contentArea.width >= 50
   let panelHeight = 5
   if useColumns and y + panelHeight < contentArea.bottom:
     let columns = horizontal()
@@ -2195,93 +2280,23 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     else:
       discard buf.setString(orbitalInner.x, oy, "No orbital assets", dimStyle())
     
-    y += panelHeight + 1
-  
-  # Build fleet table rows
-  var fleetTable = table(@[
-      tableColumn("Owner", 14, table.Alignment.Left),
-      tableColumn("Fleet", 8, table.Alignment.Left),
-      tableColumn("Ships", 6, table.Alignment.Right),
-      tableColumn("AS", 4, table.Alignment.Right),
-      tableColumn("DS", 4, table.Alignment.Right),
-      tableColumn("CMD", 8, table.Alignment.Left),
-      tableColumn("Intel", 8, table.Alignment.Right)
-    ])
-  var fleetRows = 0
-  var fleetMeta: seq[tuple[isOwn: bool, fleetId: int]] = @[]
-  for fleet in ps.ownFleets:
-    if fleet.location == systemId:
-      var attackStr, defenseStr = 0
-      for shipId in fleet.ships:
-        for ship in ps.ownShips:
-          if ship.id == shipId:
-            attackStr += ship.stats.attackStrength
-            defenseStr += ship.stats.defenseStrength
-            break
-      let cmdLabel = case fleet.command.commandType
-        of FleetCommandType.Hold: "Hold"
-        of FleetCommandType.Move: "Move"
-        of FleetCommandType.Patrol: "Patrol"
-        of FleetCommandType.GuardColony: "Guard"
-        of FleetCommandType.Blockade: "Blockade"
-        else: "---"
-      fleetTable.addRow(@[
-        "You",
-        fleet.name,
-        $fleet.ships.len,
-        $attackStr,
-        $defenseStr,
-        cmdLabel,
-        "---"
-      ])
-      fleetRows.inc
-      fleetMeta.add((true, int(fleet.id)))
-  for fleet in ps.visibleFleets:
-    if fleet.location == systemId:
-      let ships = if fleet.estimatedShipCount.isSome:
-        "~" & $fleet.estimatedShipCount.get()
-      else:
-        "?"
-      let intelAge = if fleet.intelTurn.isSome:
-        "T" & $fleet.intelTurn.get()
-      else:
-        "---"
-      let houseName = ps.houseNames.getOrDefault(fleet.owner, "Unknown")
-      fleetTable.addRow(@[
-        houseName,
-        "---",
-        ships,
-        "?",
-        "?",
-        "?",
-        intelAge
-      ])
-      fleetRows.inc
-      fleetMeta.add((false, int(fleet.fleetId)))
+    y += panelHeight
 
-  let noteLines =
-    if row.notes.len > 0: row.notes.splitLines(keepEol = false)
-    else: @["(none)"]
   let hasJumpLanes = jumpLaneLabels.len > 0
 
   let notesBoxMin = 3
   let notesBoxMax = 7
   var notesBoxHeight = min(notesBoxMax, max(notesBoxMin, noteLines.len + 2))
   let jumpBoxHeight = if hasJumpLanes: 3 else: 0
-  var jumpNotesGap = if hasJumpLanes: 1 else: 0
-  let fleetBoxMin = 5
+  let fleetBoxMin = 7
   let remainingRows = max(0, contentArea.bottom - y)
   var fleetBoxHeight =
-    remainingRows - jumpBoxHeight - jumpNotesGap - notesBoxHeight
+    remainingRows - jumpBoxHeight - notesBoxHeight
   if fleetBoxHeight < fleetBoxMin:
     let deficit = fleetBoxMin - fleetBoxHeight
     notesBoxHeight = max(notesBoxMin, notesBoxHeight - deficit)
     fleetBoxHeight =
-      remainingRows - jumpBoxHeight - jumpNotesGap - notesBoxHeight
-  if fleetBoxHeight < fleetBoxMin and jumpNotesGap > 0:
-    jumpNotesGap = 0
-    fleetBoxHeight =
-      remainingRows - jumpBoxHeight - jumpNotesGap - notesBoxHeight
+      remainingRows - jumpBoxHeight - notesBoxHeight
   fleetBoxHeight = max(3, fleetBoxHeight)
 
   if y < contentArea.bottom:
@@ -2302,17 +2317,12 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       let maxFleetOffset = max(0, fleetRows - visibleFleetRows)
       var selectedFleet = max(0, model.ui.intelDetailFleetSelectedIdx)
       selectedFleet = min(selectedFleet, fleetRows - 1)
-      var fleetOffset = max(
-        0,
-        min(model.ui.intelDetailFleetScrollOffset, maxFleetOffset)
-      )
-      if selectedFleet < fleetOffset:
-        fleetOffset = selectedFleet
-      elif selectedFleet >= fleetOffset + visibleFleetRows:
+      var fleetOffset = 0
+      if selectedFleet >= visibleFleetRows:
         fleetOffset = selectedFleet - visibleFleetRows + 1
-      fleetOffset = max(0, min(fleetOffset, maxFleetOffset))
+      fleetOffset = min(fleetOffset, maxFleetOffset)
       fleetTable = fleetTable.scrollOffset(fleetOffset)
-      fleetTable = fleetTable.selectedIdx(selectedFleet - fleetOffset)
+      fleetTable = fleetTable.selectedIdx(selectedFleet)
       fleetTable.render(fleetsInner, buf)
     elif fleetsInner.height > 0:
       discard buf.setString(fleetsInner.x, fleetsInner.y, "None known",
@@ -2324,7 +2334,8 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       .title("JUMP LANES")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
-    let jumpArea = rect(contentArea.x, y, contentArea.width,
+    let jumpArea = rect(contentArea.x, y,
+      contentArea.width,
       min(jumpBoxHeight, contentArea.bottom - y))
     jumpFrame.render(jumpArea, buf)
     let jumpInner = jumpFrame.inner(jumpArea)
@@ -2332,15 +2343,14 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       discard buf.setString(jumpInner.x, jumpInner.y,
         jumpLaneLabels.join(", "), normalStyle())
     y = jumpArea.bottom
-    if jumpNotesGap > 0 and y < contentArea.bottom:
-      y += 1
 
   if y < contentArea.bottom:
     let notesFrame = bordered()
       .title("NOTES")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
-    let notesArea = rect(contentArea.x, y, contentArea.width,
+    let notesArea = rect(contentArea.x, y,
+      contentArea.width,
       min(notesBoxHeight, contentArea.bottom - y))
     notesFrame.render(notesArea, buf)
     let notesInner = notesFrame.inner(notesArea)
