@@ -659,6 +659,10 @@ type
     selectedFleetId*: int
     selectedReportId*: int
     intelDetailSystemId*: int
+    intelDetailFleetPopupActive*: bool
+    intelDetailFleetSelectedIdx*: int
+    intelDetailFleetScrollOffset*: int
+    intelDetailNoteScrollOffset*: int
     intelNoteEditActive*: bool
     intelNoteEditInput*: string
     intelNoteCursorPos*: int
@@ -888,6 +892,10 @@ proc initTuiUiState*(): TuiUiState =
     selectedFleetId: 0,
     selectedReportId: 0,
     intelDetailSystemId: 0,
+    intelDetailFleetPopupActive: false,
+    intelDetailFleetSelectedIdx: 0,
+    intelDetailFleetScrollOffset: 0,
+    intelDetailNoteScrollOffset: 0,
     intelNoteEditActive: false,
     intelNoteEditInput: "",
     intelNoteCursorPos: 0,

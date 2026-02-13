@@ -1265,6 +1265,10 @@ proc actionIntelDetailPrev*(): Proposal =
   ## Navigate to previous intel system in detail view
   gameActionProposal(ActionKind.intelDetailPrev, "")
 
+proc actionIntelFleetPopupClose*(): Proposal =
+  ## Close intel fleet popup in intel detail view
+  gameActionProposal(ActionKind.intelFleetPopupClose, "")
+
 # ============================================================================
 # System Actions
 # ============================================================================

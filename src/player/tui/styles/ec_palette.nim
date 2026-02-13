@@ -25,6 +25,7 @@ const
   CanvasDimColor* = RgbColor(r: 86, g: 95, b: 137)  ## #565f89
   CanvasFogColor* = RgbColor(r: 65, g: 72, b: 104)  ## #414868
   TrueBlackColor* = RgbColor(r: 22, g: 22, b: 30)   ## #16161e
+  ModalDimBgColor* = RgbColor(r: 10, g: 10, b: 14)   ## #0a0a0e
 
 # Status Colors
 const
@@ -146,6 +147,14 @@ proc modalBorderStyle*(): CellStyle =
   CellStyle(
     fg: color(HudBorderColor),
     bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+proc modalDimOverlayStyle*(): CellStyle =
+  ## Dim overlay for behind modals
+  CellStyle(
+    fg: color(ModalDimBgColor),
+    bg: color(ModalDimBgColor),
     attrs: {}
   )
 

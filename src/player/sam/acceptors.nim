@@ -445,6 +445,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.previousMode = model.ui.mode
         model.ui.mode = ViewMode.IntelDetail
         model.ui.intelDetailSystemId = row.systemId
+        model.ui.intelDetailFleetPopupActive = false
+        model.ui.intelDetailFleetSelectedIdx = 0
+        model.ui.intelDetailFleetScrollOffset = 0
+        model.ui.intelDetailNoteScrollOffset = 0
         model.pushBreadcrumb(
           row.systemName,
           ViewMode.IntelDetail,
@@ -453,6 +457,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.statusMessage = ""
       else:
         model.ui.statusMessage = "No intel system selected"
+      model.clearExpertFeedback()
+    elif model.ui.mode == ViewMode.IntelDetail:
+      model.ui.intelDetailFleetPopupActive = true
       model.clearExpertFeedback()
   of ActionKind.toggleFleetSelect:
     if model.ui.mode == ViewMode.Fleets:
@@ -496,7 +503,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
     elif model.ui.mode == ViewMode.IntelDetail:
-      model.ui.mode = ViewMode.IntelDb
+      if model.ui.intelDetailFleetPopupActive:
+        model.ui.intelDetailFleetPopupActive = false
+      else:
+        model.ui.mode = ViewMode.IntelDb
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
     else:
@@ -532,6 +542,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       of FleetConsoleFocus.ShipsPane:
         if model.ui.fleetConsoleShipIdx > 0:
           model.ui.fleetConsoleShipIdx -= 1
+    elif model.ui.mode == ViewMode.IntelDetail:
+      if model.ui.intelDetailFleetPopupActive:
+        return
+      model.ui.intelDetailFleetSelectedIdx = max(
+        0,
+        model.ui.intelDetailFleetSelectedIdx - 1
+      )
     else:
       # Default list navigation
       if model.ui.selectedIdx > 0:
@@ -572,6 +589,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
       of FleetConsoleFocus.ShipsPane:
         model.ui.fleetConsoleShipIdx += 1  # Ships bounds checked at render
+    elif model.ui.mode == ViewMode.IntelDetail:
+      if model.ui.intelDetailFleetPopupActive:
+        return
+      model.ui.intelDetailFleetSelectedIdx += 1
     else:
       # Default list navigation
       let maxIdx = model.currentListLength() - 1
@@ -580,16 +601,31 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.mode == ViewMode.IntelDb:
         model.syncIntelListScroll()
   of ActionKind.listPageUp:
-    let pageSize = max(1, model.ui.termHeight - 10)
-    model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
-    if model.ui.mode == ViewMode.IntelDb:
-      model.syncIntelListScroll()
+    if model.ui.mode == ViewMode.IntelDetail:
+      if model.ui.intelDetailFleetPopupActive:
+        return
+      let pageSize = max(1, model.ui.termHeight - 12)
+      model.ui.intelDetailNoteScrollOffset = max(
+        0,
+        model.ui.intelDetailNoteScrollOffset - pageSize
+      )
+    else:
+      let pageSize = max(1, model.ui.termHeight - 10)
+      model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
+      if model.ui.mode == ViewMode.IntelDb:
+        model.syncIntelListScroll()
   of ActionKind.listPageDown:
-    let maxIdx = model.currentListLength() - 1
-    let pageSize = max(1, model.ui.termHeight - 10)
-    model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
-    if model.ui.mode == ViewMode.IntelDb:
-      model.syncIntelListScroll()
+    if model.ui.mode == ViewMode.IntelDetail:
+      if model.ui.intelDetailFleetPopupActive:
+        return
+      let pageSize = max(1, model.ui.termHeight - 12)
+      model.ui.intelDetailNoteScrollOffset += pageSize
+    else:
+      let maxIdx = model.currentListLength() - 1
+      let pageSize = max(1, model.ui.termHeight - 10)
+      model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
+      if model.ui.mode == ViewMode.IntelDb:
+        model.syncIntelListScroll()
   else:
     discard
 
@@ -902,6 +938,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         currentIdx + 1
       let nextRow = model.view.intelRows[nextIdx]
       model.ui.intelDetailSystemId = nextRow.systemId
+      model.ui.intelDetailFleetPopupActive = false
+      model.ui.intelDetailFleetSelectedIdx = 0
+      model.ui.intelDetailFleetScrollOffset = 0
+      model.ui.intelDetailNoteScrollOffset = 0
       # Update breadcrumb
       if model.ui.breadcrumbs.len > 0:
         model.ui.breadcrumbs[^1].label = nextRow.systemName
@@ -926,10 +966,16 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         currentIdx - 1
       let prevRow = model.view.intelRows[prevIdx]
       model.ui.intelDetailSystemId = prevRow.systemId
+      model.ui.intelDetailFleetPopupActive = false
+      model.ui.intelDetailFleetSelectedIdx = 0
+      model.ui.intelDetailFleetScrollOffset = 0
+      model.ui.intelDetailNoteScrollOffset = 0
       # Update breadcrumb
       if model.ui.breadcrumbs.len > 0:
         model.ui.breadcrumbs[^1].label = prevRow.systemName
         model.ui.breadcrumbs[^1].entityId = prevRow.systemId
+    of ActionKind.intelFleetPopupClose:
+      model.ui.intelDetailFleetPopupActive = false
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"

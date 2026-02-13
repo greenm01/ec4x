@@ -18,6 +18,7 @@ import ../tui/widget/hud
 import ../tui/widget/breadcrumb
 import ../tui/widget/command_dock
 import ../tui/widget/status_bar
+import ../tui/styles/ec_palette
 import ../tui/widget/scrollbar
 import ../tui/widget/modal
 import ../tui/widget/table
@@ -2009,7 +2010,8 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     .bgStyle(modalBgStyle())
   let contentHeight = min(max(20, canvas.height - 6), 32)
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  let footerText = "[Tab/→/L]Next  [←/H]Prev  [N]Edit Note  [Esc]Back"
+  let footerText =
+    "[↑↓/J/K]Fleet  [Enter]Details  [PgUp/PgDn]Notes  [N]Edit Note  [Esc]Back"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
 
@@ -2065,7 +2067,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
 
   # Render COLONY / ORBITAL panels side-by-side
   let useColumns = contentArea.width >= 80
-  let panelHeight = 7
+  let panelHeight = 5
   if useColumns and y + panelHeight < contentArea.bottom:
     let columns = horizontal()
       .constraints(percentage(50), fill())
@@ -2073,9 +2075,9 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let leftPanel = columns[0]
     let rightPanel = columns[1]
 
-    # COLONY panel (left)
+    # Surface assets panel (left)
     let colonyFrame = bordered()
-      .title("COLONY")
+      .title("SURFACE ASSETS")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
     colonyFrame.render(leftPanel, buf)
@@ -2083,27 +2085,33 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     var cy = colonyInner.y
     if ownColony.isSome:
       let col = ownColony.get()
-      discard buf.setString(colonyInner.x, cy, "Population: " & $col.populationUnits & " PU", normalStyle())
-      cy += 1
-      discard buf.setString(colonyInner.x, cy, "Industry:   " & $col.industrial.units & " IU", normalStyle())
+      let popLine =
+        "Population: " & $col.populationUnits & " PU" &
+        "  Industry: " & $col.industrial.units & " IU"
+      discard buf.setString(colonyInner.x, cy, popLine, normalStyle())
       cy += 1
       # Count ground assets from ps.ownGroundUnits
       var armies, marines, batteries, shields = 0
       for unit in ps.ownGroundUnits:
-        if unit.garrison.locationType == GroundUnitLocation.OnColony and unit.garrison.colonyId == col.id:
+        if unit.garrison.locationType == GroundUnitLocation.OnColony and
+            unit.garrison.colonyId == col.id:
           case unit.stats.unitType
           of GroundClass.Army: armies.inc
           of GroundClass.Marine: marines.inc
           of GroundClass.GroundBattery: batteries.inc
           of GroundClass.PlanetaryShield: shields.inc
-      discard buf.setString(colonyInner.x, cy, "Armies:     " & $armies, normalStyle())
-      cy += 1
-      discard buf.setString(colonyInner.x, cy, "Marines:    " & $marines, normalStyle())
-      cy += 1
-      discard buf.setString(colonyInner.x, cy, "Batteries:  " & $batteries, normalStyle())
+      let fighterCount = col.fighterIds.len
+      let garrisonLine =
+        "Armies: " & $armies &
+        "  Marines: " & $marines &
+        "  Fighters: " & $fighterCount
+      discard buf.setString(colonyInner.x, cy, garrisonLine, normalStyle())
       cy += 1
       let shieldLabel = if shields > 0: "Present" else: "None"
-      discard buf.setString(colonyInner.x, cy, "Shields:    " & shieldLabel, normalStyle())
+      let defenseLine =
+        "Batteries: " & $batteries &
+        "  Shields: " & shieldLabel
+      discard buf.setString(colonyInner.x, cy, defenseLine, normalStyle())
     elif enemyColony.isSome:
       let col = enemyColony.get()
       let pop = if col.estimatedPopulation.isSome: "~" & $col.estimatedPopulation.get() & " PU" else: "?"
@@ -2111,24 +2119,29 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       let arm = if col.estimatedArmies.isSome: "~" & $col.estimatedArmies.get() else: "?"
       let mar = if col.estimatedMarines.isSome: "~" & $col.estimatedMarines.get() else: "?"
       let bat = if col.estimatedBatteries.isSome: "~" & $col.estimatedBatteries.get() else: "?"
-      let shd = if col.estimatedShields.isSome and col.estimatedShields.get() > 0: "Present" else: "None"
-      discard buf.setString(colonyInner.x, cy, "Population: " & pop, normalStyle())
+      let shd = if col.estimatedShields.isSome:
+        (if col.estimatedShields.get() > 0: "Present" else: "None")
+      else:
+        "?"
+      let popLine = "Population: " & pop & "  Industry: " & ind
+      discard buf.setString(colonyInner.x, cy, popLine, normalStyle())
       cy += 1
-      discard buf.setString(colonyInner.x, cy, "Industry:   " & ind, normalStyle())
+      let garrisonLine =
+        "Armies: " & arm &
+        "  Marines: " & mar &
+        "  Fighters: ?"
+      discard buf.setString(colonyInner.x, cy, garrisonLine, normalStyle())
       cy += 1
-      discard buf.setString(colonyInner.x, cy, "Armies:     " & arm, normalStyle())
-      cy += 1
-      discard buf.setString(colonyInner.x, cy, "Marines:    " & mar, normalStyle())
-      cy += 1
-      discard buf.setString(colonyInner.x, cy, "Batteries:  " & bat, normalStyle())
-      cy += 1
-      discard buf.setString(colonyInner.x, cy, "Shields:    " & shd, normalStyle())
+      let defenseLine =
+        "Batteries: " & bat &
+        "  Shields: " & shd
+      discard buf.setString(colonyInner.x, cy, defenseLine, normalStyle())
     else:
       discard buf.setString(colonyInner.x, cy, "No colony detected", dimStyle())
 
-    # ORBITAL panel (right)
+    # Facilities panel (right)
     let orbitalFrame = bordered()
-      .title("ORBITAL")
+      .title("FACILITIES")
       .borderType(BorderType.Rounded)
       .borderStyle(primaryBorderStyle())
     orbitalFrame.render(rightPanel, buf)
@@ -2147,121 +2160,341 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
             of NeoriaClass.Shipyard: shipyards.inc
             of NeoriaClass.Drydock: drydocks.inc
             break
-      discard buf.setString(orbitalInner.x, oy, "Starbases:  " & $starbases, normalStyle())
+      let facilitiesLine =
+        "Spaceports: " & $spaceports &
+        "  Shipyards: " & $shipyards
+      discard buf.setString(orbitalInner.x, oy, facilitiesLine, normalStyle())
       oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Spaceports: " & $spaceports, normalStyle())
+      let orbitalLine =
+        "Drydocks: " & $drydocks &
+        "  Starbases: " & $starbases
+      discard buf.setString(orbitalInner.x, oy, orbitalLine, normalStyle())
       oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Shipyards:  " & $shipyards, normalStyle())
-      oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Drydocks:   " & $drydocks, normalStyle())
+      let dockLine =
+        "Docks: CD " & $col.constructionDocks &
+        "  RD " & $col.repairDocks
+      discard buf.setString(orbitalInner.x, oy, dockLine, normalStyle())
     elif enemyColony.isSome:
       let col = enemyColony.get()
       let sb = if col.starbaseLevel.isSome: $col.starbaseLevel.get() else: "?"
       let sp = if col.spaceportCount.isSome: $col.spaceportCount.get() else: "?"
       let sy = if col.shipyardCount.isSome: $col.shipyardCount.get() else: "?"
       let dd = if col.drydockCount.isSome: $col.drydockCount.get() else: "?"
-      let res = if col.reserveFleetCount.isSome: $col.reserveFleetCount.get() else: "?"
-      let moth = if col.mothballedFleetCount.isSome: $col.mothballedFleetCount.get() else: "?"
-      discard buf.setString(orbitalInner.x, oy, "Starbases:  " & sb, normalStyle())
+      let facilitiesLine =
+        "Spaceports: " & sp &
+        "  Shipyards: " & sy
+      discard buf.setString(orbitalInner.x, oy, facilitiesLine, normalStyle())
       oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Spaceports: " & sp, normalStyle())
+      let orbitalLine =
+        "Drydocks: " & dd &
+        "  Starbases: " & sb
+      discard buf.setString(orbitalInner.x, oy, orbitalLine, normalStyle())
       oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Shipyards:  " & sy, normalStyle())
-      oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Drydocks:   " & dd, normalStyle())
-      oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Reserve:    " & res, normalStyle())
-      oy += 1
-      discard buf.setString(orbitalInner.x, oy, "Mothballed: " & moth, normalStyle())
+      discard buf.setString(orbitalInner.x, oy, "Docks: CD ?  RD ?",
+        normalStyle())
     else:
       discard buf.setString(orbitalInner.x, oy, "No orbital assets", dimStyle())
     
     y += panelHeight + 1
   
-  # Render FLEETS table
-  if y < contentArea.bottom:
-    discard buf.setString(contentArea.x, y, "Fleets:", canvasBoldStyle())
-    y += 1
-    
-    # Build fleet table
-    var fleetTable = table(@[
-        tableColumn("Owner", 14, table.Alignment.Left),
-        tableColumn("Fleet", 8, table.Alignment.Left),
-        tableColumn("Ships", 6, table.Alignment.Right),
-        tableColumn("AS", 4, table.Alignment.Right),
-        tableColumn("DS", 4, table.Alignment.Right),
-        tableColumn("CMD", 8, table.Alignment.Left),
-        tableColumn("Intel", 8, table.Alignment.Right)
+  # Build fleet table rows
+  var fleetTable = table(@[
+      tableColumn("Owner", 14, table.Alignment.Left),
+      tableColumn("Fleet", 8, table.Alignment.Left),
+      tableColumn("Ships", 6, table.Alignment.Right),
+      tableColumn("AS", 4, table.Alignment.Right),
+      tableColumn("DS", 4, table.Alignment.Right),
+      tableColumn("CMD", 8, table.Alignment.Left),
+      tableColumn("Intel", 8, table.Alignment.Right)
+    ])
+  var fleetRows = 0
+  var fleetMeta: seq[tuple[isOwn: bool, fleetId: int]] = @[]
+  for fleet in ps.ownFleets:
+    if fleet.location == systemId:
+      var attackStr, defenseStr = 0
+      for shipId in fleet.ships:
+        for ship in ps.ownShips:
+          if ship.id == shipId:
+            attackStr += ship.stats.attackStrength
+            defenseStr += ship.stats.defenseStrength
+            break
+      let cmdLabel = case fleet.command.commandType
+        of FleetCommandType.Hold: "Hold"
+        of FleetCommandType.Move: "Move"
+        of FleetCommandType.Patrol: "Patrol"
+        of FleetCommandType.GuardColony: "Guard"
+        of FleetCommandType.Blockade: "Blockade"
+        else: "---"
+      fleetTable.addRow(@[
+        "You",
+        fleet.name,
+        $fleet.ships.len,
+        $attackStr,
+        $defenseStr,
+        cmdLabel,
+        "---"
       ])
-    
-    var hasFleets = false
-    # Add own fleets
-    for fleet in ps.ownFleets:
-      if fleet.location == systemId:
-        hasFleets = true
-        # Calculate AS/DS (same as fleet list view)
-        var attackStr, defenseStr = 0
-        for shipId in fleet.ships:
-          for ship in ps.ownShips:
-            if ship.id == shipId:
-              attackStr += ship.stats.attackStrength
-              defenseStr += ship.stats.defenseStrength
-              break
-        let cmdLabel = case fleet.command.commandType
-          of FleetCommandType.Hold: "Hold"
-          of FleetCommandType.Move: "Move"
-          of FleetCommandType.Patrol: "Patrol"
-          of FleetCommandType.GuardColony: "Guard"
-          of FleetCommandType.Blockade: "Blockade"
-          else: "---"
-        fleetTable.addRow(@[
-          "You",
-          fleet.name,
-          $fleet.ships.len,
-          $attackStr,
-          $defenseStr,
-          cmdLabel,
-          "---"
-        ])
-    
-    # Add visible enemy fleets
-    for fleet in ps.visibleFleets:
-      if fleet.location == systemId:
-        hasFleets = true
-        let ships = if fleet.estimatedShipCount.isSome: "~" & $fleet.estimatedShipCount.get() else: "?"
-        let intelAge = if fleet.intelTurn.isSome: "T" & $fleet.intelTurn.get() else: "---"
-        let houseName = ps.houseNames.getOrDefault(fleet.owner, "Unknown")
-        fleetTable.addRow(@[
-          houseName,
-          "---",
-          ships,
-          "?",
-          "?",
-          "?",
-          intelAge
-        ])
-    
-    if hasFleets:
-      let tableHeight = min(fleetTable.renderHeight(10), contentArea.bottom - y)
-      let tableArea = rect(contentArea.x, y, contentArea.width, tableHeight)
-      fleetTable.render(tableArea, buf)
-      y += tableHeight + 1
-    else:
-      discard buf.setString(contentArea.x, y, "  None known", dimStyle())
-      y += 2
+      fleetRows.inc
+      fleetMeta.add((true, int(fleet.id)))
+  for fleet in ps.visibleFleets:
+    if fleet.location == systemId:
+      let ships = if fleet.estimatedShipCount.isSome:
+        "~" & $fleet.estimatedShipCount.get()
+      else:
+        "?"
+      let intelAge = if fleet.intelTurn.isSome:
+        "T" & $fleet.intelTurn.get()
+      else:
+        "---"
+      let houseName = ps.houseNames.getOrDefault(fleet.owner, "Unknown")
+      fleetTable.addRow(@[
+        houseName,
+        "---",
+        ships,
+        "?",
+        "?",
+        "?",
+        intelAge
+      ])
+      fleetRows.inc
+      fleetMeta.add((false, int(fleet.fleetId)))
 
-  # Jump Lanes
-  if y < contentArea.bottom and jumpLaneLabels.len > 0:
-    discard buf.setString(contentArea.x, y, "Jump Lanes: " & jumpLaneLabels.join(", "), normalStyle())
-    y += 2
+  let noteLines =
+    if row.notes.len > 0: row.notes.splitLines(keepEol = false)
+    else: @["(none)"]
+  let hasJumpLanes = jumpLaneLabels.len > 0
 
-  # Notes
+  let notesBoxMin = 3
+  let notesBoxMax = 7
+  var notesBoxHeight = min(notesBoxMax, max(notesBoxMin, noteLines.len + 2))
+  let jumpBoxHeight = if hasJumpLanes: 3 else: 0
+  var jumpNotesGap = if hasJumpLanes: 1 else: 0
+  let fleetBoxMin = 5
+  let remainingRows = max(0, contentArea.bottom - y)
+  var fleetBoxHeight =
+    remainingRows - jumpBoxHeight - jumpNotesGap - notesBoxHeight
+  if fleetBoxHeight < fleetBoxMin:
+    let deficit = fleetBoxMin - fleetBoxHeight
+    notesBoxHeight = max(notesBoxMin, notesBoxHeight - deficit)
+    fleetBoxHeight =
+      remainingRows - jumpBoxHeight - jumpNotesGap - notesBoxHeight
+  if fleetBoxHeight < fleetBoxMin and jumpNotesGap > 0:
+    jumpNotesGap = 0
+    fleetBoxHeight =
+      remainingRows - jumpBoxHeight - jumpNotesGap - notesBoxHeight
+  fleetBoxHeight = max(3, fleetBoxHeight)
+
   if y < contentArea.bottom:
-    discard buf.setString(contentArea.x, y, "Notes:", canvasBoldStyle())
-    y += 1
-    let noteText = if row.notes.len > 0: row.notes else: "(none)"
-    discard buf.setString(contentArea.x, y, "  " & noteText,
-      if row.notes.len > 0: normalStyle() else: dimStyle())
+    let fleetsFrame = bordered()
+      .title("FLEETS")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    let fleetsArea = rect(
+      contentArea.x,
+      y,
+      contentArea.width,
+      min(fleetBoxHeight, contentArea.bottom - y)
+    )
+    fleetsFrame.render(fleetsArea, buf)
+    let fleetsInner = fleetsFrame.inner(fleetsArea)
+    if fleetRows > 0 and fleetsInner.height > 0:
+      let visibleFleetRows = max(1, fleetsInner.height - 4)
+      let maxFleetOffset = max(0, fleetRows - visibleFleetRows)
+      var selectedFleet = max(0, model.ui.intelDetailFleetSelectedIdx)
+      selectedFleet = min(selectedFleet, fleetRows - 1)
+      var fleetOffset = max(
+        0,
+        min(model.ui.intelDetailFleetScrollOffset, maxFleetOffset)
+      )
+      if selectedFleet < fleetOffset:
+        fleetOffset = selectedFleet
+      elif selectedFleet >= fleetOffset + visibleFleetRows:
+        fleetOffset = selectedFleet - visibleFleetRows + 1
+      fleetOffset = max(0, min(fleetOffset, maxFleetOffset))
+      fleetTable = fleetTable.scrollOffset(fleetOffset)
+      fleetTable = fleetTable.selectedIdx(selectedFleet - fleetOffset)
+      fleetTable.render(fleetsInner, buf)
+    elif fleetsInner.height > 0:
+      discard buf.setString(fleetsInner.x, fleetsInner.y, "None known",
+        dimStyle())
+    y = fleetsArea.bottom
+
+  if hasJumpLanes and y < contentArea.bottom:
+    let jumpFrame = bordered()
+      .title("JUMP LANES")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    let jumpArea = rect(contentArea.x, y, contentArea.width,
+      min(jumpBoxHeight, contentArea.bottom - y))
+    jumpFrame.render(jumpArea, buf)
+    let jumpInner = jumpFrame.inner(jumpArea)
+    if jumpInner.height > 0:
+      discard buf.setString(jumpInner.x, jumpInner.y,
+        jumpLaneLabels.join(", "), normalStyle())
+    y = jumpArea.bottom
+    if jumpNotesGap > 0 and y < contentArea.bottom:
+      y += 1
+
+  if y < contentArea.bottom:
+    let notesFrame = bordered()
+      .title("NOTES")
+      .borderType(BorderType.Rounded)
+      .borderStyle(primaryBorderStyle())
+    let notesArea = rect(contentArea.x, y, contentArea.width,
+      min(notesBoxHeight, contentArea.bottom - y))
+    notesFrame.render(notesArea, buf)
+    let notesInner = notesFrame.inner(notesArea)
+    if notesInner.height > 0:
+      let maxNoteOffset = max(0, noteLines.len - notesInner.height)
+      let noteOffset = max(
+        0,
+        min(model.ui.intelDetailNoteScrollOffset, maxNoteOffset)
+      )
+      for i in 0 ..< notesInner.height:
+        let lineIdx = noteOffset + i
+        if lineIdx >= noteLines.len:
+          break
+        let lineText = noteLines[lineIdx]
+        let lineStyle =
+          if row.notes.len > 0: normalStyle() else: dimStyle()
+        discard buf.setString(notesInner.x, notesInner.y + i, lineText,
+          lineStyle)
+
+  proc shipClassCode(cls: ShipClass): string =
+    case cls
+    of ShipClass.Corvette: "CT"
+    of ShipClass.Frigate: "FG"
+    of ShipClass.Destroyer: "DD"
+    of ShipClass.LightCruiser: "CL"
+    of ShipClass.Cruiser: "CA"
+    of ShipClass.Battlecruiser: "BC"
+    of ShipClass.Battleship: "BB"
+    of ShipClass.Dreadnought: "DN"
+    of ShipClass.SuperDreadnought: "SD"
+    of ShipClass.Carrier: "CV"
+    of ShipClass.SuperCarrier: "CX"
+    of ShipClass.Raider: "RR"
+    of ShipClass.Scout: "SC"
+    of ShipClass.ETAC: "ET"
+    of ShipClass.TroopTransport: "TT"
+    of ShipClass.Fighter: "F"
+    of ShipClass.PlanetBreaker: "PB"
+
+  proc shipClassName(cls: ShipClass): string =
+    case cls
+    of ShipClass.Corvette: "Corvette"
+    of ShipClass.Frigate: "Frigate"
+    of ShipClass.Destroyer: "Destroyer"
+    of ShipClass.LightCruiser: "Light Cruiser"
+    of ShipClass.Cruiser: "Cruiser"
+    of ShipClass.Battlecruiser: "Battle Cruiser"
+    of ShipClass.Battleship: "Battleship"
+    of ShipClass.Dreadnought: "Dreadnought"
+    of ShipClass.SuperDreadnought: "Super Dreadnought"
+    of ShipClass.Carrier: "Carrier"
+    of ShipClass.SuperCarrier: "Super Carrier"
+    of ShipClass.Raider: "Raider"
+    of ShipClass.Scout: "Scout"
+    of ShipClass.ETAC: "ETAC"
+    of ShipClass.TroopTransport: "Troop Transport"
+    of ShipClass.Fighter: "Fighter"
+    of ShipClass.PlanetBreaker: "Planet Breaker"
+
+  if model.ui.intelDetailFleetPopupActive and fleetRows > 0:
+    let selectedFleet = max(0,
+      min(model.ui.intelDetailFleetSelectedIdx, fleetRows - 1))
+    let meta = fleetMeta[selectedFleet]
+    var headerLines: seq[string] = @[]
+    var totalLine = "Total Ships: ?"
+    var shipTable = table(@[
+        tableColumn("Class", 6, table.Alignment.Left),
+        tableColumn("Name", 24, table.Alignment.Left),
+        tableColumn("Count", 8, table.Alignment.Right)
+      ])
+
+    if meta.isOwn:
+      for fleet in ps.ownFleets:
+        if int(fleet.id) == meta.fleetId:
+          var classCounts = stdtables.initTable[ShipClass, int]()
+          var totalShips = 0
+          for shipId in fleet.ships:
+            for ship in ps.ownShips:
+              if ship.id == shipId:
+                let cls = ship.shipClass
+                classCounts[cls] = classCounts.getOrDefault(cls, 0) + 1
+                totalShips.inc
+                break
+          headerLines.add("Owner: You  Fleet: " & fleet.name)
+          for cls in ShipClass:
+            if classCounts.hasKey(cls):
+              shipTable.addRow(@[
+                shipClassCode(cls),
+                shipClassName(cls),
+                $classCounts[cls]
+              ])
+          if shipTable.rows.len == 0:
+            shipTable.addRow(@["--", "(none)", "0"])
+          totalLine = "Total Ships: " & $totalShips
+          break
+    else:
+      for fleet in ps.visibleFleets:
+        if int(fleet.fleetId) == meta.fleetId:
+          let ownerName = ps.houseNames.getOrDefault(fleet.owner, "Unknown")
+          let estShips = if fleet.estimatedShipCount.isSome:
+            "~" & $fleet.estimatedShipCount.get()
+          else:
+            "?"
+          let intelTurn = if fleet.intelTurn.isSome:
+            "T" & $fleet.intelTurn.get()
+          else:
+            "---"
+          headerLines.add("Owner: " & ownerName & "  Fleet: ---")
+          headerLines.add("Intel: " & intelTurn & "  Command/ROE: ?/?")
+          shipTable.addRow(@["??", "Unknown", "?"])
+          totalLine = "Total Ships: " & estShips
+          break
+
+    let maxTableWidth = max(32, canvas.width - 8)
+    let tableWidth = shipTable.renderWidth(maxTableWidth)
+    var contentWidth = tableWidth
+    for ln in headerLines:
+      contentWidth = max(contentWidth, ln.len)
+    contentWidth = max(contentWidth, totalLine.len)
+    contentWidth = min(maxTableWidth, contentWidth)
+
+    let maxContentHeight = max(10, canvas.height - 8)
+    var visibleRows = shipTable.rows.len
+    var tableHeight = shipTable.renderHeight(visibleRows)
+    var bodyHeight = headerLines.len + tableHeight + 1
+    while bodyHeight + 2 > maxContentHeight and visibleRows > 1:
+      visibleRows.dec
+      tableHeight = shipTable.renderHeight(visibleRows)
+      bodyHeight = headerLines.len + tableHeight + 1
+
+    let detailModal = newModal()
+      .title("FLEET INTEL")
+      .maxWidth(contentWidth + 2)
+      .minWidth(max(32, contentWidth + 2))
+      .borderStyle(primaryBorderStyle())
+      .bgStyle(modalBgStyle())
+    let detailArea = detailModal.calculateArea(canvas, contentWidth,
+      bodyHeight + 2)
+    let dimArea = rect(detailArea.x - 1, detailArea.y - 1, detailArea.width + 2, detailArea.height + 2)
+    buf.fillArea(dimArea, " ", modalDimOverlayStyle())
+    detailModal.renderWithFooter(detailArea, buf, "[Esc]Close")
+    let detailInner = detailModal.contentArea(detailArea, hasFooter = true)
+    var dy = detailInner.y
+    for ln in headerLines:
+      if dy >= detailInner.bottom:
+        break
+      discard buf.setString(detailInner.x, dy, ln, normalStyle())
+      dy += 1
+    if dy < detailInner.bottom:
+      shipTable.render(rect(detailInner.x, dy, detailInner.width, tableHeight),
+        buf)
+      dy += tableHeight
+    if dy < detailInner.bottom:
+      discard buf.setString(detailInner.x, dy, totalLine, canvasBoldStyle())
 
 proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
                             model: TuiModel) =

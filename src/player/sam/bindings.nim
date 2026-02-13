@@ -1135,40 +1135,46 @@ proc initBindings*() =
     longLabel: "NOTE", shortLabel: "Note", priority: 20))
 
   registerBinding(Binding(
-    key: KeyCode.KeyTab, modifier: KeyModifier.None,
-    actionKind: ActionKind.intelDetailNext,
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.select,
     context: BindingContext.IntelDetail,
-    longLabel: "NEXT", shortLabel: "Next", priority: 10))
+    longLabel: "DETAIL", shortLabel: "Dtl", priority: 21))
 
   registerBinding(Binding(
-    key: KeyCode.KeyTab, modifier: KeyModifier.Shift,
-    actionKind: ActionKind.intelDetailPrev,
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
     context: BindingContext.IntelDetail,
-    longLabel: "PREV", shortLabel: "Prev", priority: 10))
+    longLabel: "FLEET UP", shortLabel: "↑", priority: 10))
 
   registerBinding(Binding(
-    key: KeyCode.KeyRight, modifier: KeyModifier.None,
-    actionKind: ActionKind.intelDetailNext,
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
     context: BindingContext.IntelDetail,
-    longLabel: "NEXT", shortLabel: "→", priority: 10))
+    longLabel: "FLEET UP", shortLabel: "K", priority: 10))
 
   registerBinding(Binding(
-    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
-    actionKind: ActionKind.intelDetailPrev,
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
     context: BindingContext.IntelDetail,
-    longLabel: "PREV", shortLabel: "←", priority: 10))
+    longLabel: "FLEET DOWN", shortLabel: "↓", priority: 10))
 
   registerBinding(Binding(
-    key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionKind: ActionKind.intelDetailNext,
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
     context: BindingContext.IntelDetail,
-    longLabel: "NEXT", shortLabel: "L", priority: 10))
+    longLabel: "FLEET DOWN", shortLabel: "J", priority: 10))
 
   registerBinding(Binding(
-    key: KeyCode.KeyH, modifier: KeyModifier.None,
-    actionKind: ActionKind.intelDetailPrev,
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
     context: BindingContext.IntelDetail,
-    longLabel: "PREV", shortLabel: "H", priority: 10))
+    longLabel: "NOTES UP", shortLabel: "PgUp", priority: 11))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.IntelDetail,
+    longLabel: "NOTES DOWN", shortLabel: "PgDn", priority: 11))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -1574,6 +1580,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionIntelNoteSave())
   of ActionKind.intelNoteCancel:
     return some(actionIntelNoteCancel())
+  of ActionKind.intelFleetPopupClose:
+    return some(actionIntelFleetPopupClose())
   of ActionKind.entryCursorLeft:
     return some(actionEntryCursorLeft())
   of ActionKind.entryCursorRight:
@@ -1715,6 +1723,9 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     return some(actionQuitCancel())
   if model.ui.intelNoteEditActive:
     return some(actionIntelNoteCancel())
+  if model.ui.mode == ViewMode.IntelDetail and
+      model.ui.intelDetailFleetPopupActive:
+    return some(actionIntelFleetPopupClose())
   if model.ui.queueModal.active:
     return some(actionCloseQueueModal())
   if model.ui.buildModal.active:
@@ -1758,6 +1769,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     let backAction = backActionForState(model)
     if backAction.isSome:
       return backAction
+  if model.ui.mode == ViewMode.IntelDetail and
+      model.ui.intelDetailFleetPopupActive:
+    return none(Proposal)
 
   # F12 always quits (global)
   if key == KeyCode.KeyF12:

@@ -180,6 +180,7 @@ type
     intelNoteCancel
     intelDetailNext
     intelDetailPrev
+    intelFleetPopupClose
 
   # ============================================================================
   # Core SAM Types
