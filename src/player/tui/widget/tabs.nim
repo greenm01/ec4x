@@ -236,13 +236,3 @@ proc fleetDetailTabs*(activeIdx: int = 0): Tabs =
     tabItem("Orders"),
     tabItem("Status")
   ], activeIdx)
-
-proc reportCategoryTabs*(activeIdx: int = 0): Tabs =
-  ## Create tabs for report category filtering.
-  tabs([
-    tabItem("All"),
-    tabItem("Combat"),
-    tabItem("Intel"),
-    tabItem("Economy"),
-    tabItem("Diplomacy")
-  ], activeIdx)

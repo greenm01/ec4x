@@ -58,7 +58,6 @@ proc syncGameStateToModel*(
   model.view.treasury = house.treasury.int
   model.view.prestige = house.prestige.int
   model.view.alertCount = 0
-  model.view.unreadReports = 0
   # unreadMessages managed via local cache
 
   # Production (from last income report if available)
@@ -876,7 +875,6 @@ proc syncPlayerStateToModel*(
   model.view.prestige =
     ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
   model.view.alertCount = 0
-  model.view.unreadReports = 0
   # unreadMessages managed via local cache
   if ps.netIncome.isSome:
     model.view.production = ps.netIncome.get().int

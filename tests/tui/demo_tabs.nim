@@ -145,9 +145,6 @@ suite "Tabs Preset Constructors":
     check t.tabCount() == 3
     check t.activeLabel() == "Ships"
   
-  test "report category tabs":
-    let t = reportCategoryTabs(1)
-    check t.activeLabel() == "Combat"
 
 # Visual demo
 when isMainModule:
@@ -162,9 +159,7 @@ when isMainModule:
   echo "\nFleet Detail Tabs:"
   echo "  ", fleetDetailTabs(0).renderToString()
   
-  echo "\nReport Category Tabs:"
-  echo "  ", reportCategoryTabs(0).renderToString()
-  
+
   echo "\nCustom tabs without brackets:"
   echo "  ", tabs(["Alpha", "Beta", "Gamma"], 1).showBrackets(false).renderToString()
   

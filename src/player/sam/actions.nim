@@ -63,6 +63,14 @@ proc actionMessageSend*(): Proposal =
   ## Send composed message
   gameActionProposal(ActionKind.messageSend, "")
 
+proc actionMessageScrollUp*(): Proposal =
+  ## Scroll message conversation up
+  gameActionProposal(ActionKind.messageScrollUp, "")
+
+proc actionMessageScrollDown*(): Proposal =
+  ## Scroll message conversation down
+  gameActionProposal(ActionKind.messageScrollDown, "")
+
 proc actionMessageFocusNext*(): Proposal =
   ## Cycle message focus forward
   gameActionProposal(ActionKind.messageFocusNext, "")
@@ -74,6 +82,30 @@ proc actionMessageFocusPrev*(): Proposal =
 proc actionMessageMarkRead*(): Proposal =
   ## Mark current thread as read
   gameActionProposal(ActionKind.messageMarkRead, "")
+
+proc actionInboxJumpMessages*(): Proposal =
+  ## Jump cursor to Messages section
+  gameActionProposal(ActionKind.inboxJumpMessages, "")
+
+proc actionInboxJumpReports*(): Proposal =
+  ## Jump cursor to Reports section
+  gameActionProposal(ActionKind.inboxJumpReports, "")
+
+proc actionInboxExpandTurn*(): Proposal =
+  ## Expand selected turn bucket to show reports
+  gameActionProposal(ActionKind.inboxExpandTurn, "")
+
+proc actionInboxCollapseTurn*(): Proposal =
+  ## Collapse expanded turn bucket
+  gameActionProposal(ActionKind.inboxCollapseTurn, "")
+
+proc actionInboxReportUp*(): Proposal =
+  ## Move up within expanded report list
+  gameActionProposal(ActionKind.inboxReportUp, "")
+
+proc actionInboxReportDown*(): Proposal =
+  ## Move down within expanded report list
+  gameActionProposal(ActionKind.inboxReportDown, "")
 
 proc actionSwitchMode*(mode: ViewMode): Proposal =
   ## Switch to a different view mode (legacy)
@@ -371,55 +403,6 @@ proc actionSwitchFleetView*(): Proposal =
     navCursor: (0, 0)
   )
 
-proc actionCycleReportFilter*(): Proposal =
-  ## Cycle the Reports view filter
-  Proposal(
-    kind: ProposalKind.pkNavigation,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.cycleReportFilter,
-    navMode: 0,
-    navCursor: (0, 0)
-  )
-
-proc actionReportFocusNext*(): Proposal =
-  ## Cycle report focus forward
-  Proposal(
-    kind: ProposalKind.pkNavigation,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.reportFocusNext,
-    navMode: 0,
-    navCursor: (0, 0)
-  )
-
-proc actionReportFocusPrev*(): Proposal =
-  ## Cycle report focus backward
-  Proposal(
-    kind: ProposalKind.pkNavigation,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.reportFocusPrev,
-    navMode: 0,
-    navCursor: (0, 0)
-  )
-
-proc actionReportFocusLeft*(): Proposal =
-  ## Move report focus left
-  Proposal(
-    kind: ProposalKind.pkNavigation,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.reportFocusLeft,
-    navMode: 0,
-    navCursor: (0, 0)
-  )
-
-proc actionReportFocusRight*(): Proposal =
-  ## Move report focus right
-  Proposal(
-    kind: ProposalKind.pkNavigation,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.reportFocusRight,
-    navMode: 0,
-    navCursor: (0, 0)
-  )
 
 # ============================================================================
 # Join Actions

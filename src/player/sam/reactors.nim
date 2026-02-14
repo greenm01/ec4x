@@ -117,16 +117,13 @@ proc statusMessageReactor*(model: var TuiModel) =
     of ViewMode.Economy:
       model.ui.statusMessage = "Empire Economy"
     
-    of ViewMode.Reports:
-      model.ui.statusMessage = "Reports Inbox"
-    
     of ViewMode.IntelDb:
       model.ui.statusMessage = "Intel Database"
     of ViewMode.IntelDetail:
       model.ui.statusMessage = "Intel System Detail"
 
     of ViewMode.Messages:
-      model.ui.statusMessage = "Messages"
+      model.ui.statusMessage = "Inbox"
 
 
     of ViewMode.Settings:
@@ -137,9 +134,6 @@ proc statusMessageReactor*(model: var TuiModel) =
     
     of ViewMode.FleetDetail:
       model.ui.statusMessage = "Fleet Details"
-    
-    of ViewMode.ReportDetail:
-      model.ui.statusMessage = "Report Details"
 
 # ============================================================================
 # Clear Transient State Reactor
@@ -183,6 +177,13 @@ proc turnSubmissionReactor*(model: var TuiModel) =
       model.ui.turnSubmissionConfirmed = true
       model.ui.turnSubmissionRequested = false
 
+proc inboxDataReactor*(model: var TuiModel) =
+  ## Rebuild inbox derived data (turn buckets, flat list)
+  model.view.turnBuckets = buildTurnBuckets(
+    model.view.reports)
+  model.view.inboxItems = buildInboxItems(
+    model.view.messageHouses, model.view.turnBuckets)
+
 # ============================================================================
 # Create All Reactors
 # ============================================================================
@@ -194,6 +195,7 @@ proc createReactors*(): seq[ReactorProc[TuiModel]] =
     selectionBoundsReactor,
     statusMessageReactor,
     turnSubmissionReactor,
+    inboxDataReactor,
     # clearTransientReactor,  # Run last if needed
     # contextDataReactor,
   ]

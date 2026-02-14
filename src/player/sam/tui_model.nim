@@ -13,9 +13,9 @@
 ##   F4 Tech       - Tech levels, ERP/SRP/TRP allocation
 ##   F5 Espionage  - EBP/CIP budget, intel operations
 ##   F6 General    - Diplomacy, tax, empire policy
-##   F7 Reports    - Turn summaries, combat/intel reports
+##   F7 (unused)   - Reserved
 ##   F8 Settings   - Display options, automation defaults
-##   F9 Messages   - Player messaging
+##   Ctrl+N Inbox  - Player messages + turn reports
 
 import std/[options, tables, algorithm, strutils, sequtils, sets, heapqueue]
 import ../tui/widget/scroll_state
@@ -368,10 +368,16 @@ type
     jumpBuffer*: string
     jumpTime*: float
 
-  MessagePaneFocus* {.pure.} = enum
-    Houses
-    Conversation
-    Compose
+  InboxSection* {.pure.} = enum
+    ## Which section the inbox cursor is in
+    Messages
+    Reports
+
+  InboxPaneFocus* {.pure.} = enum
+    ## Which pane has focus in the inbox
+    List          ## Left panel (houses + turn buckets)
+    Detail        ## Right panel (conversation or report)
+    Compose       ## Compose input (messages only)
 
   ViewMode* {.pure.} = enum
     ## Current UI view (maps to primary view number)
@@ -383,14 +389,12 @@ type
     Research = 4      ## Tech & research
     Espionage = 5     ## Intel operations
     Economy = 6       ## General (tax/diplomacy)
-    Reports = 7       ## Turn reports
     IntelDb = 8       ## Intel database (Starmap)
     Settings = 9      ## Game settings
     Messages = 10     ## Player messages
     # Sub-views (not directly accessible via primary hotkeys)
     PlanetDetail = 20 ## Planet detail (Summary/Economy/Construction/etc.)
     FleetDetail = 30  ## Fleet detail view
-    ReportDetail = 70 ## Report detail view
     IntelDetail = 80  ## Intel system detail view
 
 # Legacy aliases for backward compatibility
@@ -621,11 +625,19 @@ type
     unreadCount*: int
     reports*: seq[ReportEntry]
 
-  ReportPaneFocus* {.pure.} = enum
-    ## Focused pane in reports view
-    TurnList
-    SubjectList
-    BodyPane
+  InboxItemKind* {.pure.} = enum
+    ## Kind tag for flat inbox list items
+    SectionHeader   ## Non-selectable section label
+    MessageHouse    ## A house in the Messages section
+    TurnBucket      ## A turn bucket in the Reports section
+
+  InboxItem* = object
+    ## One row in the flat inbox list
+    kind*: InboxItemKind
+    label*: string
+    houseIdx*: int      ## Index into messageHouses (if MessageHouse)
+    turnIdx*: int       ## Index into turnBuckets (if TurnBucket)
+    unread*: int        ## Unread count badge
 
   # ============================================================================
   # UI State (interaction + transient)
@@ -666,7 +678,6 @@ type
     selectedFleetIds*: seq[int]
     selectedColonyId*: int
     selectedFleetId*: int
-    selectedReportId*: int
     intelDetailSystemId*: int
     intelDetailFleetPopupActive*: bool
     intelDetailFleetSelectedIdx*: int
@@ -705,15 +716,6 @@ type
     # Planets/Colony jump state
     planetsJumpBuffer*: string
     planetsJumpTime*: float
-
-    # Reports UI
-    reportFilter*: ReportCategory
-    reportFocus*: ReportPaneFocus
-    reportTurnIdx*: int
-    reportSubjectIdx*: int
-    reportTurnScroll*: ScrollState
-    reportSubjectScroll*: ScrollState
-    reportBodyScroll*: ScrollState
 
     # Expert mode state
     expertModeActive*: bool
@@ -772,10 +774,18 @@ type
     intelScroll*: ScrollState
     messagesScroll*: ScrollState
     settingsScroll*: ScrollState
-    messageHouseIdx*: int
-    messageFocus*: MessagePaneFocus
+
+    # Inbox state (unified messages + reports)
+    inboxFocus*: InboxPaneFocus
+    inboxSection*: InboxSection
+    inboxListIdx*: int            ## Flat index in unified list
+    messageHouseIdx*: int         ## Selected house within Messages
+    inboxTurnIdx*: int            ## Selected turn bucket in Reports
+    inboxReportIdx*: int          ## Selected report within turn
+    inboxTurnExpanded*: bool      ## Whether turn bucket is expanded
     messageComposeActive*: bool
     messageComposeInput*: TextInputState
+    inboxDetailScroll*: ScrollState
 
     # Entry modal state (replaces legacy lobby UI)
     entryModal*: EntryModalState
@@ -809,7 +819,6 @@ type
     commandMax*: int
     planetBreakersInFleets*: int
     alertCount*: int
-    unreadReports*: int
     unreadMessages*: int
     techLevels*: Option[TechLevel]
     researchPoints*: Option[ResearchPoints]
@@ -823,6 +832,8 @@ type
     fleets*: seq[FleetInfo]
     commands*: seq[CommandInfo]
     reports*: seq[ReportEntry]
+    turnBuckets*: seq[TurnBucket]
+    inboxItems*: seq[InboxItem]
     messageThreads*: Table[int32, seq[GameMessage]]
     messageHouses*: seq[tuple[id: int32, name: string, unread: int]]
 
@@ -866,6 +877,75 @@ proc initMapState*(cursor: HexCoord = (0, 0)): MapState =
     viewportOrigin: (0, 0)
   )
 
+proc buildTurnBuckets*(
+    reports: seq[ReportEntry]): seq[TurnBucket] =
+  ## Group reports by turn, sorted newest-first
+  var bucketMap: Table[int, seq[ReportEntry]]
+  for r in reports:
+    if r.turn notin bucketMap:
+      bucketMap[r.turn] = @[]
+    bucketMap[r.turn].add(r)
+  var turns: seq[int] = @[]
+  for t in bucketMap.keys:
+    turns.add(t)
+  turns.sort(SortOrder.Descending)
+  result = @[]
+  for t in turns:
+    var unread = 0
+    for r in bucketMap[t]:
+      if r.isUnread: inc unread
+    result.add(TurnBucket(
+      turn: t,
+      unreadCount: unread,
+      reports: bucketMap[t]
+    ))
+
+proc buildInboxItems*(
+    houses: seq[tuple[id: int32, name: string, unread: int]],
+    buckets: seq[TurnBucket]): seq[InboxItem] =
+  ## Build the flat inbox list from messages + reports
+  result = @[]
+  # Messages section
+  result.add(InboxItem(
+    kind: InboxItemKind.SectionHeader,
+    label: "MESSAGES",
+    houseIdx: -1, turnIdx: -1, unread: 0))
+  for i, h in houses:
+    result.add(InboxItem(
+      kind: InboxItemKind.MessageHouse,
+      label: h.name,
+      houseIdx: i, turnIdx: -1, unread: h.unread))
+  # Reports section
+  result.add(InboxItem(
+    kind: InboxItemKind.SectionHeader,
+    label: "REPORTS",
+    houseIdx: -1, turnIdx: -1, unread: 0))
+  for i, b in buckets:
+    let lbl = "Turn " & $b.turn
+    result.add(InboxItem(
+      kind: InboxItemKind.TurnBucket,
+      label: lbl,
+      houseIdx: -1, turnIdx: i, unread: b.unreadCount))
+
+proc firstSelectableIdx*(
+    items: seq[InboxItem]): int =
+  ## Return index of first selectable item, or 0
+  for i, item in items:
+    if item.kind != InboxItemKind.SectionHeader:
+      return i
+  0
+
+proc nextSelectableIdx*(
+    items: seq[InboxItem], current: int,
+    delta: int): int =
+  ## Move to next/prev selectable item, skipping headers
+  var idx = current + delta
+  while idx >= 0 and idx < items.len:
+    if items[idx].kind != InboxItemKind.SectionHeader:
+      return idx
+    idx += delta
+  current  # Stay put if nothing selectable found
+
 proc initBreadcrumb*(label: string, mode: ViewMode,
                      entityId: int = 0): BreadcrumbItem =
   ## Create a breadcrumb item
@@ -907,7 +987,6 @@ proc initTuiUiState*(): TuiUiState =
     selectedFleetIds: @[],
     selectedColonyId: 0,
     selectedFleetId: 0,
-    selectedReportId: 0,
     intelDetailSystemId: 0,
     intelDetailFleetPopupActive: false,
     intelDetailFleetSelectedIdx: 0,
@@ -942,13 +1021,6 @@ proc initTuiUiState*(): TuiUiState =
     intelJumpTime: 0.0,
     planetsJumpBuffer: "",
     planetsJumpTime: 0.0,
-    reportFilter: ReportCategory.Summary,
-    reportFocus: ReportPaneFocus.TurnList,
-    reportTurnIdx: 0,
-    reportSubjectIdx: 0,
-    reportTurnScroll: initScrollState(),
-    reportSubjectScroll: initScrollState(),
-    reportBodyScroll: initScrollState(),
     expertModeActive: false,
     expertModeInput: "",
     expertModeHistory: @[],
@@ -993,10 +1065,17 @@ proc initTuiUiState*(): TuiUiState =
     intelScroll: initScrollState(),
     messagesScroll: initScrollState(),
     settingsScroll: initScrollState(),
+    inboxFocus: InboxPaneFocus.List,
+    inboxSection: InboxSection.Messages,
+    inboxListIdx: 0,
     messageHouseIdx: 0,
-    messageFocus: MessagePaneFocus.Houses,
+    inboxTurnIdx: 0,
+    inboxReportIdx: 0,
+    inboxTurnExpanded: false,
     messageComposeActive: false,
-    messageComposeInput: initTextInputState(maxLength = 0, maxDisplayWidth = 0),
+    messageComposeInput: initTextInputState(
+      maxLength = 0, maxDisplayWidth = 0),
+    inboxDetailScroll: initScrollState(),
     entryModal: newEntryModalState(),
     buildModal: BuildModalState(
       active: false,
@@ -1047,7 +1126,7 @@ proc initTuiUiState*(): TuiUiState =
 
 proc initTuiViewState*(): TuiViewState =
   ## Create initial view state with defaults
-  TuiViewState(
+  result = TuiViewState(
     playerStateLoaded: false,
     turn: 1,
     viewingHouse: 1,
@@ -1062,7 +1141,6 @@ proc initTuiViewState*(): TuiViewState =
     commandMax: 0,
     planetBreakersInFleets: 0,
     alertCount: 0,
-    unreadReports: 0,
     unreadMessages: 0,
     techLevels: none(TechLevel),
     researchPoints: none(ResearchPoints),
@@ -1150,6 +1228,7 @@ proc initTuiViewState*(): TuiViewState =
         linkLabel: "Overview"
       )
     ],
+    turnBuckets: @[],  # Built from reports below
     messageThreads: initTable[int32, seq[GameMessage]](),
     messageHouses: @[],
     maxRing: 3,
@@ -1163,6 +1242,9 @@ proc initTuiViewState*(): TuiViewState =
     systemCoords: initTable[int, HexCoord](),
     colonyLimits: initTable[int, ColonyLimitSnapshot](),
   )
+  result.turnBuckets = buildTurnBuckets(result.reports)
+  result.inboxItems = buildInboxItems(
+    result.messageHouses, result.turnBuckets)
 
 proc initTuiModel*(): TuiModel =
   ## Create initial TUI model with defaults
@@ -1190,99 +1272,6 @@ proc neighbor*(coord: HexCoord, dir: HexDirection): HexCoord =
 # Model Queries
 # =============================================================================
 
-proc reportCategoryLabel*(category: ReportCategory): string =
-  ## Label for report category
-  case category
-  of ReportCategory.Summary: "Summary"
-  of ReportCategory.Combat: "Combat"
-  of ReportCategory.Intelligence: "Intel"
-  of ReportCategory.Economy: "Economy"
-  of ReportCategory.Diplomacy: "Diplomacy"
-  of ReportCategory.Operations: "Ops"
-  of ReportCategory.Other: "Other"
-
-proc reportPaneLabel*(focus: ReportPaneFocus): string =
-  ## Label for focused report pane
-  case focus
-  of ReportPaneFocus.TurnList: "Turns"
-  of ReportPaneFocus.SubjectList: "Subjects"
-  of ReportPaneFocus.BodyPane: "Body"
-
-proc filteredReports*(model: TuiModel): seq[ReportEntry] =
-  ## Filter reports by active category
-  result = @[]
-  for report in model.view.reports:
-    if report.category == model.ui.reportFilter:
-      result.add(report)
-
-proc reportsByTurn*(model: TuiModel): seq[TurnBucket] =
-  ## Group reports by turn (newest first).
-  var buckets = initTable[int, TurnBucket]()
-  for report in model.filteredReports():
-    if not buckets.hasKey(report.turn):
-      buckets[report.turn] = TurnBucket(
-        turn: report.turn,
-        unreadCount: 0,
-        reports: @[]
-      )
-    var bucket = buckets[report.turn]
-    bucket.reports.add(report)
-    if report.isUnread:
-      bucket.unreadCount += 1
-    buckets[report.turn] = bucket
-
-  result = @[]
-  for turn, bucket in buckets.pairs:
-    result.add(bucket)
-  result.sort(proc(a, b: TurnBucket): int =
-    if a.turn == b.turn:
-      0
-    elif a.turn > b.turn:
-      -1
-    else:
-      1
-  )
-
-proc currentTurnReports*(model: TuiModel): seq[ReportEntry] =
-  ## Reports for the selected turn.
-  let buckets = model.reportsByTurn()
-  if buckets.len == 0:
-    return @[]
-  let turnIdx = max(0, min(model.ui.reportTurnIdx, buckets.len - 1))
-  result = buckets[turnIdx].reports
-
-proc currentReport*(model: TuiModel): Option[ReportEntry] =
-  ## Current report based on subject selection.
-  let reports = model.currentTurnReports()
-  if reports.len == 0:
-    return none(ReportEntry)
-  let subjectIdx = max(0, min(model.ui.reportSubjectIdx, reports.len - 1))
-  some(reports[subjectIdx])
-
-proc reportCategoryKey*(category: ReportCategory): char =
-  ## Short key hint for report category
-  case category
-  of ReportCategory.Summary: 'S'
-  of ReportCategory.Combat: 'C'
-  of ReportCategory.Intelligence: 'I'
-  of ReportCategory.Economy: 'E'
-  of ReportCategory.Diplomacy: 'D'
-  of ReportCategory.Operations: 'O'
-  of ReportCategory.Other: 'X'
-
-proc selectedReport*(model: TuiModel): Option[ReportEntry] =
-  ## Get selected report by index
-  let reports = model.filteredReports()
-  if reports.len == 0:
-    return none(ReportEntry)
-  if model.ui.selectedReportId != 0:
-    for report in reports:
-      if report.id == model.ui.selectedReportId:
-        return some(report)
-  if model.ui.selectedIdx < reports.len:
-    return some(reports[model.ui.selectedIdx])
-  none(ReportEntry)
-
 proc filteredFleets*(model: TuiModel): seq[FleetInfo]
 
 proc currentListLength*(model: TuiModel): int =
@@ -1306,13 +1295,11 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Research: 0  # Research has no list
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
-  of ViewMode.Reports: model.filteredReports().len
   of ViewMode.IntelDb: model.view.intelRows.len
   of ViewMode.Settings: 0  # TODO: settings list
-  of ViewMode.Messages: model.view.messageHouses.len
+  of ViewMode.Messages: model.view.inboxItems.len
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
-  of ViewMode.ReportDetail: 0
   of ViewMode.IntelDetail: 0
 
 proc idleFleetsCount*(model: TuiModel): int =
@@ -1444,25 +1431,23 @@ proc viewModeLabel*(mode: ViewMode): string =
   of ViewMode.Research: "Tech"
   of ViewMode.Espionage: "Espionage"
   of ViewMode.Economy: "General"
-  of ViewMode.Reports: "Reports"
   of ViewMode.IntelDb: "Intel"
   of ViewMode.Settings: "Settings"
-  of ViewMode.Messages: "Messages"
+  of ViewMode.Messages: "Inbox"
   of ViewMode.PlanetDetail: "Colony"
   of ViewMode.FleetDetail: "Fleet"
-  of ViewMode.ReportDetail: "Report"
   of ViewMode.IntelDetail: "Intel"
 
 proc isPrimaryView*(mode: ViewMode): bool =
   ## Check if mode is a primary view (F-keys)
   mode in {ViewMode.Overview, ViewMode.Planets, ViewMode.Fleets,
            ViewMode.Research, ViewMode.Espionage, ViewMode.Economy,
-           ViewMode.Reports, ViewMode.IntelDb, ViewMode.Settings,
+           ViewMode.IntelDb, ViewMode.Settings,
            ViewMode.Messages}
 
 proc isDetailView*(mode: ViewMode): bool =
   ## Check if mode is a detail/drill-down view
-  mode in {ViewMode.PlanetDetail, ViewMode.FleetDetail, ViewMode.ReportDetail,
+  mode in {ViewMode.PlanetDetail, ViewMode.FleetDetail,
            ViewMode.IntelDetail}
 
 # =============================================================================

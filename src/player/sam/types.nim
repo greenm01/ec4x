@@ -61,11 +61,6 @@ type
     fleetBatchCommand
     fleetBatchROE
     fleetBatchZeroTurn
-    cycleReportFilter
-    reportFocusNext
-    reportFocusPrev
-    reportFocusLeft
-    reportFocusRight
     joinRefresh
     joinSelect
     joinEditPubkey
@@ -193,6 +188,12 @@ type
     messageComposeCursorRight
     messageSend
     messageMarkRead
+    inboxJumpMessages
+    inboxJumpReports
+    inboxExpandTurn
+    inboxCollapseTurn
+    inboxReportUp
+    inboxReportDown
 
   # ============================================================================
   # Core SAM Types

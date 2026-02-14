@@ -43,10 +43,6 @@ const
 var
   cachedExpertInput = ""
   cachedExpertMatches: seq[ExpertCommandMatch] = @[]
-  cachedReportFilter = ReportCategory.Summary
-  cachedReportSignature = 0'u64
-  cachedReportCount = 0
-  cachedReportBuckets: seq[TurnBucket] = @[]
 
 proc helpContextFor(model: TuiModel): HelpContext =
   case model.ui.mode
@@ -61,10 +57,6 @@ proc helpContextFor(model: TuiModel): HelpContext =
       HelpContext.FleetConsole
   of ViewMode.FleetDetail:
     HelpContext.FleetDetail
-  of ViewMode.Reports:
-    HelpContext.Reports
-  of ViewMode.ReportDetail:
-    HelpContext.ReportDetail
   of ViewMode.Research:
     HelpContext.Research
   of ViewMode.Espionage:
@@ -123,42 +115,11 @@ proc renderHelpOverlay(area: Rect, buf: var CellBuffer, model: TuiModel) =
       line = line[0 ..< contentArea.width]
     discard buf.setString(contentArea.x, rowY, line, canvasStyle())
 
-proc reportSignature(reports: seq[ReportEntry]): uint64 =
-  var sig = 1469598103934665603'u64
-  for report in reports:
-    sig = sig xor uint64(report.id)
-    sig = sig * 1099511628211'u64
-    sig = sig xor uint64(report.turn)
-    sig = sig * 1099511628211'u64
-    sig = sig xor uint64(ord(report.category))
-    sig = sig * 1099511628211'u64
-    sig = sig xor (if report.isUnread: 1'u64 else: 0'u64)
-    sig = sig * 1099511628211'u64
-  sig
-
 proc expertMatchesCached(input: string): seq[ExpertCommandMatch] =
   if input != cachedExpertInput:
     cachedExpertInput = input
     cachedExpertMatches = matchExpertCommands(input)
   cachedExpertMatches
-
-proc reportsByTurnCached(model: TuiModel): seq[TurnBucket] =
-  let sig = reportSignature(model.view.reports)
-  if sig != cachedReportSignature or
-      cachedReportFilter != model.ui.reportFilter or
-      cachedReportCount != model.view.reports.len:
-    cachedReportSignature = sig
-    cachedReportFilter = model.ui.reportFilter
-    cachedReportCount = model.view.reports.len
-    cachedReportBuckets = model.reportsByTurn()
-  cachedReportBuckets
-
-proc currentTurnReportsFromBuckets(model: TuiModel,
-    buckets: seq[TurnBucket]): seq[ReportEntry] =
-  if buckets.len == 0:
-    return @[]
-  let turnIdx = max(0, min(model.ui.reportTurnIdx, buckets.len - 1))
-  buckets[turnIdx].reports
 
 proc dimStyle*(): CellStyle =
   canvasDimStyle()
@@ -1391,264 +1352,6 @@ proc renderPlanetDetailFromPS*(
 
 # renderFleetDetailFromPS removed - see deprecated section above
 
-proc reportCategoryGlyph*(category: ReportCategory): string =
-  ## Glyph for report category
-  case category
-  of ReportCategory.Combat: "X"
-  of ReportCategory.Intelligence: "I"
-  of ReportCategory.Economy: "$"
-  of ReportCategory.Diplomacy: "="
-  of ReportCategory.Operations: "+"
-  of ReportCategory.Summary: "*"
-  of ReportCategory.Other: "."
-
-proc reportCategoryStyle*(category: ReportCategory): CellStyle =
-  ## Style for report category glyph
-  case category
-  of ReportCategory.Combat:
-    CellStyle(
-      fg: color(EnemyStatusColor),
-      attrs: {StyleAttr.Bold}
-    )
-  of ReportCategory.Intelligence:
-    CellStyle(
-      fg: color(PrestigeColor),
-      attrs: {StyleAttr.Bold}
-    )
-  of ReportCategory.Economy:
-    CellStyle(
-      fg: color(ProductionColor),
-      attrs: {StyleAttr.Bold}
-    )
-  of ReportCategory.Diplomacy:
-    CellStyle(
-      fg: color(NeutralStatusColor),
-      attrs: {StyleAttr.Bold}
-    )
-  of ReportCategory.Operations:
-    CellStyle(
-      fg: color(HostileStatusColor),
-      attrs: {StyleAttr.Bold}
-    )
-  of ReportCategory.Summary:
-    CellStyle(
-      fg: color(PrestigeColor),
-      attrs: {StyleAttr.Bold}
-    )
-  of ReportCategory.Other:
-    CellStyle(
-      fg: color(CanvasDimColor),
-      attrs: {}
-    )
-
-proc renderReportsList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  ## Render the reports inbox list
-  if area.height < 5 or area.width < 40:
-    return
-
-  let dimStyle = canvasDimStyle()
-  let normalStyle = canvasStyle()
-  let focusLabel = reportPaneLabel(model.ui.reportFocus)
-
-  let filterLabel = reportCategoryLabel(model.ui.reportFilter)
-  let filterKey = reportCategoryKey(model.ui.reportFilter)
-  let filterLine = "Filter [Tab]: " & filterLabel & " [" & $filterKey & "]"
-  discard buf.setString(area.x, area.y, filterLine, canvasHeaderStyle())
-
-  let bodyArea = rect(area.x, area.y + 1, area.width, area.height - 1)
-  if bodyArea.isEmpty:
-    return
-
-  let columns = horizontal()
-    .constraints(length(20), length(34), fill())
-    .split(bodyArea)
-
-  let turnArea = columns[0]
-  let subjectArea = columns[1]
-  let bodyPaneArea = columns[2]
-
-  let turnTitle = if model.ui.reportFocus == ReportPaneFocus.TurnList:
-                    "TURNS *"
-                  else:
-                    "TURNS"
-  let subjectTitle = if model.ui.reportFocus == ReportPaneFocus.SubjectList:
-                       "SUBJECTS *"
-                     else:
-                       "SUBJECTS"
-  let bodyTitle = if model.ui.reportFocus == ReportPaneFocus.BodyPane:
-                    "REPORT *"
-                  else:
-                    "REPORT"
-  let turnFrame = bordered()
-    .title(turnTitle)
-    .borderType(BorderType.Rounded)
-  let subjectFrame = bordered()
-    .title(subjectTitle)
-    .borderType(BorderType.Rounded)
-  let bodyFrame = bordered()
-    .title(bodyTitle)
-    .borderType(BorderType.Rounded)
-
-  turnFrame.render(turnArea, buf)
-  subjectFrame.render(subjectArea, buf)
-  bodyFrame.render(bodyPaneArea, buf)
-
-  let turnInner = turnFrame.inner(turnArea)
-  let subjectInner = subjectFrame.inner(subjectArea)
-  let bodyInner = bodyFrame.inner(bodyPaneArea)
-
-  let buckets = reportsByTurnCached(model)
-  var turnScroll = model.ui.reportTurnScroll
-  turnScroll.contentLength = buckets.len
-  turnScroll.viewportLength = turnInner.height
-  turnScroll.clampOffsets()
-
-  var turnTable = table([
-    tableColumn("Turn", width = 0, minWidth = 4)
-  ]).showBorders(false)
-    .showHeader(false)
-    .showSeparator(false)
-    .cellPadding(0)
-    .selectedIdx(model.ui.reportTurnIdx)
-    .scrollOffset(turnScroll.verticalOffset)
-  for idx, bucket in buckets:
-    let unreadLabel = if bucket.unreadCount > 0:
-                        " (" & $bucket.unreadCount & ")"
-                      else:
-                        ""
-    let cellText = " T" & $bucket.turn & unreadLabel
-    turnTable.addRow(@[cellText])
-  turnTable.render(turnInner, buf)
-
-  let reports = currentTurnReportsFromBuckets(model, buckets)
-  var subjectScroll = model.ui.reportSubjectScroll
-  subjectScroll.contentLength = reports.len
-  subjectScroll.viewportLength = subjectInner.height
-  subjectScroll.clampOffsets()
-
-  var subjectTable = table([
-    tableColumn("G", width = 1, minWidth = 1),
-    tableColumn("U", width = 1, minWidth = 1),
-    tableColumn("Title", width = 0, minWidth = 4)
-  ]).showBorders(false)
-    .showHeader(false)
-    .showSeparator(false)
-    .cellPadding(0)
-    .selectedIdx(model.ui.reportSubjectIdx)
-    .scrollOffset(subjectScroll.verticalOffset)
-  for report in reports:
-    let unread = if report.isUnread: GlyphUnread else: " "
-    let glyph = reportCategoryGlyph(report.category)
-    let glyphStyle = reportCategoryStyle(report.category)
-    subjectTable.addRow(
-      @[glyph, unread, " " & report.title],
-      glyphStyle, 0
-    )
-  subjectTable.render(subjectInner, buf)
-
-  let reportOpt = model.currentReport()
-  if reportOpt.isSome:
-    let report = reportOpt.get()
-    let lines = @[
-      line("T" & $report.turn & " " & report.title),
-      line(report.summary),
-      line(""),
-    ]
-    var detailLines: seq[Line] = @[]
-    for entry in report.detail:
-      detailLines.add(line("- " & entry))
-    let bodyText = text(lines & detailLines)
-    let bodyContent = bodyInner
-    var bodyScroll = model.ui.reportBodyScroll
-    bodyScroll.contentLength = bodyText.lines.len
-    bodyScroll.viewportLength = bodyContent.height
-    bodyScroll.clampOffsets()
-
-    let bodyParagraph = paragraph(bodyText)
-      .wrap(Wrap(trim: true))
-      .scrollState(bodyScroll)
-    bodyParagraph.render(bodyContent, buf)
-  else:
-    let emptyText = text("No report selected")
-    let emptyParagraph = paragraph(emptyText)
-      .wrap(Wrap(trim: true))
-    emptyParagraph.render(bodyInner, buf)
-
-  let turnScrollbar = ScrollbarState(
-    contentLength: turnScroll.contentLength,
-    position: turnScroll.verticalOffset,
-    viewportLength: turnScroll.viewportLength
-  )
-  renderScrollbar(turnInner, buf, turnScrollbar,
-    ScrollbarOrientation.VerticalRight)
-
-  let subjectScrollbar = ScrollbarState(
-    contentLength: subjectScroll.contentLength,
-    position: subjectScroll.verticalOffset,
-    viewportLength: subjectScroll.viewportLength
-  )
-  renderScrollbar(subjectInner, buf, subjectScrollbar,
-    ScrollbarOrientation.VerticalRight)
-
-  let bodyScrollbar = ScrollbarState(
-    contentLength: model.ui.reportBodyScroll.contentLength,
-    position: model.ui.reportBodyScroll.verticalOffset,
-    viewportLength: model.ui.reportBodyScroll.viewportLength
-  )
-  renderScrollbar(bodyInner, buf, bodyScrollbar,
-    ScrollbarOrientation.VerticalRight)
-
-  discard buf.setString(area.x + 1, area.y, focusLabel, dimStyle)
-
-proc renderReportDetail*(area: Rect, buf: var CellBuffer, model: TuiModel) =
-  ## Render full-screen report detail view
-  if area.height < 6 or area.width < 30:
-    return
-
-  let reportOpt = model.selectedReport()
-  if reportOpt.isNone:
-    discard buf.setString(area.x, area.y, "No report selected", dimStyle())
-    return
-
-  let report = reportOpt.get()
-  let dimStyle = canvasDimStyle()
-
-  let detailFrame = bordered()
-    .title("REPORT DETAIL")
-    .borderType(BorderType.Rounded)
-  detailFrame.render(area, buf)
-  let detailInner = detailFrame.inner(area)
-
-  var detailLines: seq[Line] = @[]
-  detailLines.add(line("T" & $report.turn & " " & report.title))
-  detailLines.add(line(report.summary))
-  detailLines.add(line(""))
-  for entry in report.detail:
-    detailLines.add(line("- " & entry))
-
-  let detailText = text(detailLines)
-  var detailScroll = model.ui.reportBodyScroll
-  detailScroll.contentLength = detailText.lines.len
-  detailScroll.viewportLength = detailInner.height
-  detailScroll.clampOffsets()
-
-  let detailParagraph = paragraph(detailText)
-    .wrap(Wrap(trim: true))
-    .scrollState(detailScroll)
-  detailParagraph.render(detailInner, buf)
-
-  let detailScrollbar = ScrollbarState(
-    contentLength: detailScroll.contentLength,
-    position: detailScroll.verticalOffset,
-    viewportLength: detailScroll.viewportLength
-  )
-  renderScrollbar(detailInner, buf, detailScrollbar,
-    ScrollbarOrientation.VerticalRight)
-
-  let hintLine = "Enter: Jump  Esc: Inbox"
-  discard buf.setString(detailInner.x, detailInner.bottom - 1,
-    hintLine, dimStyle)
-
 # =============================================================================
 # Modal Wrappers for Primary Views
 # =============================================================================
@@ -1846,24 +1549,6 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   discard buf.setString(contentArea.x, contentArea.y,
     "General view (TODO)", dimStyle())
 
-proc renderReportsModal*(canvas: Rect, buf: var CellBuffer,
-                         model: TuiModel, scroll: ScrollState) =
-  ## Render reports view as centered floating modal
-  let modal = newModal()
-    .title("REPORTS INBOX")
-    .maxWidth(120)
-    .minWidth(80)
-    .borderStyle(primaryBorderStyle())
-    .bgStyle(modalBgStyle())
-  # Reports view height is dynamic based on content
-  # +2 for footer (1 separator + 1 text line)
-  let contentHeight = max(15, 20) + 2  # Use scrolling for long lists
-  let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf,
-    "[↑↓] Navigate  [Enter] Details  [PgUp/PgDn] Scroll  [/]Help")
-  let contentArea = modal.contentArea(modalArea, hasFooter = true)
-  renderReportsList(contentArea, buf, model)
-
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render settings view as centered floating modal
@@ -1882,66 +1567,118 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
   discard buf.setString(contentArea.x, contentArea.y,
     "Settings view (TODO)", dimStyle())
 
-proc messageGroupId(msg: GameMessage, viewingHouse: int): int32 =
-  ## Determine thread group for a message (house id, 0 for broadcast)
+proc messageGroupId(msg: GameMessage,
+    viewingHouse: int): int32 =
+  ## Determine thread group for a message
   if msg.toHouse == 0:
     return 0
   if msg.fromHouse == int32(viewingHouse):
     return msg.toHouse
   msg.fromHouse
 
-proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
+proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
                           model: var TuiModel) =
-  ## Render messages view as centered floating modal
-  let modal = newModal()
-    .title("MESSAGES")
-    .maxWidth(120)
-    .minWidth(80)
-    .borderStyle(primaryBorderStyle())
-    .bgStyle(modalBgStyle())
-  let contentHeight = max(16, min(canvas.height - 6, 24)) + 2
-  let modalArea = modal.calculateArea(canvas, contentHeight)
-  let footerText =
-    "[↑↓] Navigate  [Tab] Focus  [C] Compose  [Enter] Send  [/]Help"
-  modal.renderWithFooter(modalArea, buf, footerText)
-  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  ## Render the left panel: flat list of houses + turn buckets
+  let items = model.view.inboxItems
+  let listIdx = model.ui.inboxListIdx
+  let isFocused = model.ui.inboxFocus ==
+    InboxPaneFocus.List
+  let maxWidth = max(1, area.width)
 
-  let columns = horizontal()
-    .constraints(length(22), fill())
-    .split(contentArea)
+  proc truncateLabel(label: string): string =
+    ## Truncate label to fit within panel width
+    if label.len <= maxWidth:
+      return label
+    if maxWidth <= 3:
+      return label[0 ..< maxWidth]
+    return label[0 ..< (maxWidth - 3)] & "..."
 
-  let housesArea = columns[0]
-  let convoArea = columns[1]
+  var y = area.y
+  for i, item in items:
+    if y >= area.bottom:
+      break
+    let isSelected = (i == listIdx)
+    case item.kind
+    of InboxItemKind.SectionHeader:
+      # Section header: bold, non-selectable
+      let style = canvasHeaderStyle()
+      let label = truncateLabel(item.label)
+      discard buf.setString(area.x, y, label,
+        style)
+    of InboxItemKind.MessageHouse:
+      let prefix = "  "
+      var label = prefix & item.label
+      if item.unread > 0:
+        label &= " (" & $item.unread & ")"
+      let style = if isSelected and isFocused:
+        selectedStyle()
+      elif isSelected:
+        modalDimStyle()
+      else:
+        modalBgStyle()
+      label = truncateLabel(label)
+      discard buf.setString(area.x, y, label, style)
+    of InboxItemKind.TurnBucket:
+      let prefix = "  "
+      var label = prefix & item.label
+      if item.unread > 0:
+        label &= " (" & $item.unread & ")"
+      # Show expand indicator
+      let turnIdx = item.turnIdx
+      let isExpanded = model.ui.inboxSection ==
+          InboxSection.Reports and
+          model.ui.inboxTurnIdx == turnIdx and
+          model.ui.inboxTurnExpanded
+      if isExpanded:
+        label &= " [-]"
+      else:
+        label &= " [+]"
+      # Dim the parent when expanded (child report gets the highlight)
+      let style = if isSelected and isFocused and not isExpanded:
+        selectedStyle()
+      elif isSelected and isFocused and isExpanded:
+        canvasHeaderStyle()
+      elif isSelected and not isExpanded:
+        modalDimStyle()
+      elif isSelected and isExpanded:
+        canvasHeaderStyle()
+      else:
+        modalBgStyle()
+      label = truncateLabel(label)
+      discard buf.setString(area.x, y, label, style)
+      # Render expanded reports below this bucket
+      if model.ui.inboxSection ==
+          InboxSection.Reports and
+          model.ui.inboxTurnIdx == turnIdx and
+          model.ui.inboxTurnExpanded and
+          isSelected:
+        if turnIdx < model.view.turnBuckets.len:
+          let bucket = model.view.turnBuckets[turnIdx]
+          for ri, rpt in bucket.reports:
+            y += 1
+            if y >= area.bottom:
+              break
+            let rptSel = (ri ==
+              model.ui.inboxReportIdx)
+            let rPrefix = "  "
+            var rLabel = rPrefix & rpt.title
+            if rpt.isUnread:
+              rLabel &= " *"
+            let rStyle = if rptSel and isFocused:
+              selectedStyle()
+            elif rptSel:
+              modalDimStyle()
+            else:
+              modalDimStyle()
+            rLabel = truncateLabel(rLabel)
+            discard buf.setString(
+              area.x, y, rLabel, rStyle)
+    y += 1
 
-  let housesFrame = bordered()
-    .title("HOUSES")
-    .borderType(BorderType.Rounded)
-  let convoFrame = bordered()
-    .title("CONVERSATION")
-    .borderType(BorderType.Rounded)
-
-  housesFrame.render(housesArea, buf)
-  convoFrame.render(convoArea, buf)
-
-  let housesInner = housesFrame.inner(housesArea)
-  let convoInner = convoFrame.inner(convoArea)
-
-  var houseTable = table([
-    tableColumn("House", width = 0, minWidth = 6),
-  ]).showBorders(false)
-    .showHeader(false)
-    .showSeparator(false)
-    .cellPadding(0)
-    .selectedIdx(model.ui.messageHouseIdx)
-
-  for entry in model.view.messageHouses:
-    let label = if entry.unread > 0:
-                  entry.name & " (" & $entry.unread & ")"
-                else:
-                  entry.name
-    houseTable.addRow(@[label])
-  houseTable.render(housesInner, buf)
-
+proc renderInboxDetailMessages(
+    area: Rect, buf: var CellBuffer,
+    model: var TuiModel) =
+  ## Render message conversation in the detail pane
   var selectedHouseId = int32(0)
   if model.view.messageHouses.len > 0:
     let idx = clamp(model.ui.messageHouseIdx, 0,
@@ -1951,19 +1688,26 @@ proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
   let messages = model.view.messageThreads.getOrDefault(
     selectedHouseId, @[])
 
-  let convoContent = rect(convoInner.x, convoInner.y,
-    convoInner.width, convoInner.height - 2)
-  let composeArea = rect(convoInner.x,
-    convoInner.bottom - 1, convoInner.width, 1)
+  # Reserve space for compose input
+  let convoHeight = max(1, area.height - 2)
+  let convoArea = rect(area.x, area.y,
+    area.width, convoHeight)
+  let composeArea = rect(area.x,
+    area.y + convoHeight + 1, area.width, 1)
 
   var lines: seq[Line] = @[]
   for msg in messages:
-    let sender = if msg.fromHouse == int32(model.view.viewingHouse):
-                   "You"
-                 elif msg.fromHouse == 0:
-                   "System"
-                 else:
-                   "House " & $msg.fromHouse
+    let sender =
+      if msg.fromHouse ==
+          int32(model.view.viewingHouse):
+        "You"
+      elif msg.fromHouse == 0:
+        "System"
+      else:
+        let hname = model.view.houseNames.getOrDefault(
+          int(msg.fromHouse), "House " &
+            $msg.fromHouse)
+        hname
     lines.add(line(sender & ": " & msg.text))
   if lines.len == 0:
     lines.add(line("No messages"))
@@ -1971,22 +1715,174 @@ proc renderMessagesModal*(canvas: Rect, buf: var CellBuffer,
   let convoText = text(lines)
   var convoScroll = model.ui.messagesScroll
   convoScroll.contentLength = convoText.lines.len
-  convoScroll.viewportLength = max(1, convoContent.height)
+  convoScroll.viewportLength = max(1, convoArea.height)
   convoScroll.clampOffsets()
   model.ui.messagesScroll = convoScroll
 
   let convoParagraph = paragraph(convoText)
     .wrap(Wrap(trim: true))
     .scrollState(convoScroll)
-  convoParagraph.render(convoContent, buf)
+  convoParagraph.render(convoArea, buf)
+
+  let isComposeFocused = model.ui.inboxFocus ==
+    InboxPaneFocus.Compose
+  if isComposeFocused:
+    let sepY = area.y + convoHeight
+    if sepY < area.bottom:
+      discard buf.setString(area.x, sepY,
+        "─".repeat(area.width),
+        selectedStyle())
 
   let inputWidget = newTextInput()
     .placeholder("Type a message...")
     .style(modalBgStyle())
     .placeholderStyle(modalDimStyle())
     .cursorStyle(selectedStyle())
-  inputWidget.render(model.ui.messageComposeInput, composeArea,
-    buf, model.ui.messageComposeActive)
+  inputWidget.render(model.ui.messageComposeInput,
+    composeArea, buf, model.ui.messageComposeActive)
+
+proc renderInboxDetailReports(
+    area: Rect, buf: var CellBuffer,
+    model: var TuiModel) =
+  ## Render report detail in the detail pane
+  let turnIdx = model.ui.inboxTurnIdx
+  if turnIdx >= model.view.turnBuckets.len:
+    discard buf.setString(area.x, area.y,
+      "No reports", modalDimStyle())
+    return
+
+  let bucket = model.view.turnBuckets[turnIdx]
+  if not model.ui.inboxTurnExpanded:
+    # Show turn summary: list of report titles
+    discard buf.setString(area.x, area.y,
+      "Turn " & $bucket.turn & " - " &
+        $bucket.reports.len & " reports",
+      canvasHeaderStyle())
+    var y = area.y + 2
+    for rpt in bucket.reports:
+      if y >= area.bottom:
+        break
+      var label = rpt.title
+      if rpt.isUnread:
+        label &= " *"
+      discard buf.setString(area.x, y, label,
+        modalBgStyle())
+      y += 1
+      discard buf.setString(area.x + 2, y,
+        rpt.summary, modalDimStyle())
+      y += 2
+  else:
+    # Show specific report detail
+    let rptIdx = model.ui.inboxReportIdx
+    if rptIdx >= bucket.reports.len:
+      discard buf.setString(area.x, area.y,
+        "No report selected", modalDimStyle())
+      return
+    let rpt = bucket.reports[rptIdx]
+    # Title
+    discard buf.setString(area.x, area.y,
+      rpt.title, canvasHeaderStyle())
+    # Category + turn
+    discard buf.setString(area.x, area.y + 1,
+      $rpt.category & " - Turn " & $rpt.turn,
+      modalDimStyle())
+    # Summary
+    discard buf.setString(area.x, area.y + 3,
+      rpt.summary, canvasBoldStyle())
+    # Detail lines
+    var y = area.y + 5
+    var detailScroll = model.ui.inboxDetailScroll
+    detailScroll.contentLength = rpt.detail.len
+    detailScroll.viewportLength = max(1,
+      area.bottom - y)
+    detailScroll.clampOffsets()
+    model.ui.inboxDetailScroll = detailScroll
+    let startLine = detailScroll.verticalOffset
+    for i in startLine ..< rpt.detail.len:
+      if y >= area.bottom:
+        break
+      discard buf.setString(area.x, y,
+        rpt.detail[i], modalBgStyle())
+      y += 1
+    # Link label at bottom
+    if rpt.linkLabel.len > 0 and y < area.bottom:
+      y += 1
+      if y < area.bottom:
+        discard buf.setString(area.x, y,
+          "[Enter] Go to " & rpt.linkLabel,
+          canvasBoldStyle())
+
+proc renderInboxModal*(canvas: Rect,
+    buf: var CellBuffer, model: var TuiModel) =
+  ## Render unified inbox as centered floating modal
+  let modal = newModal()
+    .title("INBOX")
+    .maxWidth(120)
+    .minWidth(80)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let contentHeight = max(16,
+    min(canvas.height - 6, 28)) + 2
+  let modalArea = modal.calculateArea(
+    canvas, contentHeight)
+  let footerText =
+    "[↑↓]Nav [Tab]Focus [C]Compose" &
+    " [M]Messages [R]Reports [Esc]Back"
+  modal.renderWithFooter(modalArea, buf, footerText)
+  let contentArea = modal.contentArea(
+    modalArea, hasFooter = true)
+
+  # Split: left panel (26 chars) | right detail panel
+  let columns = horizontal()
+    .constraints(length(32), fill())
+    .split(contentArea)
+
+  let listArea = columns[0]
+  let detailArea = columns[1]
+
+  # Left panel frame - highlight when focused
+  let listBorder =
+    if model.ui.inboxFocus == InboxPaneFocus.List:
+      primaryBorderStyle()
+    else:
+      modalBorderStyle()
+  let listFrame = bordered()
+    .title("INBOX")
+    .borderType(BorderType.Rounded)
+    .borderStyle(listBorder)
+  listFrame.render(listArea, buf)
+  let listInner = listFrame.inner(listArea)
+
+  # Right panel frame - highlight when focused
+  let detailTitle =
+    if model.ui.inboxSection ==
+        InboxSection.Messages:
+      "CONVERSATION"
+    else:
+      "REPORT"
+  let detailFocused =
+    model.ui.inboxFocus == InboxPaneFocus.Detail or
+    model.ui.inboxFocus == InboxPaneFocus.Compose
+  let detailBorder =
+    if detailFocused: primaryBorderStyle()
+    else: modalBorderStyle()
+  let detailFrame = bordered()
+    .title(detailTitle)
+    .borderType(BorderType.Rounded)
+    .borderStyle(detailBorder)
+  detailFrame.render(detailArea, buf)
+  let detailInner = detailFrame.inner(detailArea)
+
+  # Render left panel
+  renderInboxLeftPanel(listInner, buf, model)
+
+  # Render right panel based on section
+  if model.ui.inboxSection == InboxSection.Messages:
+    renderInboxDetailMessages(
+      detailInner, buf, model)
+  else:
+    renderInboxDetailReports(
+      detailInner, buf, model)
 
 proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
                                model: TuiModel, ps: PlayerState) =
@@ -2711,14 +2607,12 @@ proc renderListPanel*(
     of ViewMode.Research: "Tech Progress"
     of ViewMode.Espionage: "Intel Operations"
     of ViewMode.Economy: "General Policy"
-    of ViewMode.Reports: "Reports Inbox"
     of ViewMode.IntelDb: "Intel Database"
     of ViewMode.IntelDetail: "Intel System"
     of ViewMode.Settings: "Game Settings"
-    of ViewMode.Messages: "Messages"
+    of ViewMode.Messages: "Inbox"
     of ViewMode.PlanetDetail: "Planet Info"
     of ViewMode.FleetDetail: "Fleet Info"
-    of ViewMode.ReportDetail: "Report"
 
   let frame = bordered().title(title).borderType(BorderType.Rounded)
   frame.render(area, buf)
@@ -2755,8 +2649,6 @@ proc renderListPanel*(
   of ViewMode.Economy:
     discard buf.setString(inner.x, inner.y,
       "General view (TODO)", dimStyle())
-  of ViewMode.Reports:
-    renderReportsList(inner, buf, model)
   of ViewMode.IntelDb:
     discard buf.setString(inner.x, inner.y,
       "Intel DB view (deprecated)", dimStyle())
@@ -2772,11 +2664,9 @@ proc renderListPanel*(
     # FleetDetail view mode deprecated - now uses popup modal from Fleets view
     discard buf.setString(inner.x, inner.y,
       "Fleet detail modal (press Enter on fleet)", dimStyle())
-  of ViewMode.ReportDetail:
-    renderReportDetail(inner, buf, model)
   of ViewMode.Messages:
     discard buf.setString(inner.x, inner.y,
-      "Messages view uses modal", dimStyle())
+      "Inbox view uses modal", dimStyle())
 
 proc buildHudData*(model: TuiModel): HudData =
   ## Build HUD data from TUI model
@@ -2834,8 +2724,6 @@ proc activeViewKey*(mode: ViewMode): string =
     return "F2"
   of ViewMode.FleetDetail:
     return "F3"
-  of ViewMode.ReportDetail:
-    return "F7"
   of ViewMode.Overview:
     return "F1"
   of ViewMode.Planets:
@@ -2848,12 +2736,10 @@ proc activeViewKey*(mode: ViewMode): string =
     return "F5"
   of ViewMode.Economy:
     return "F6"
-  of ViewMode.Reports:
-    return "F7"
   of ViewMode.Settings:
     return "F8"
   of ViewMode.Messages:
-    return "F9"
+    return "^N"
   of ViewMode.IntelDb:
     return ""
   of ViewMode.IntelDetail:
@@ -2890,10 +2776,6 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.contextActions = espionageContextActions(true)
   of ViewMode.Economy:
     result.contextActions = economyContextActions()
-  of ViewMode.Reports:
-    result.contextActions = reportsContextActions(
-      model.currentListLength() > 0
-    )
   of ViewMode.IntelDb:
     result.contextActions = @[]
   of ViewMode.IntelDetail:
@@ -2904,12 +2786,21 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.contextActions = planetDetailContextActions()
   of ViewMode.FleetDetail:
     result.contextActions = fleetDetailContextActions()
-  of ViewMode.ReportDetail:
-    result.contextActions = reportsContextActions(
-      model.currentListLength() > 0
-    )
   of ViewMode.Messages:
-    result.contextActions = @[]
+    result.contextActions = @[
+      ContextAction(
+        key: "Tab", label: "Cycle focus",
+        enabled: true),
+      ContextAction(
+        key: "M", label: "Messages",
+        enabled: true),
+      ContextAction(
+        key: "R", label: "Reports",
+        enabled: true),
+      ContextAction(
+        key: "C", label: "Compose",
+        enabled: true),
+    ]
 
 proc renderDashboard*(
     buf: var CellBuffer,
@@ -2974,10 +2865,8 @@ proc renderDashboard*(
       renderEspionageModal(canvasArea, buf, model, model.ui.espionageScroll)
     of ViewMode.Economy:
       renderEconomyModal(canvasArea, buf, model, model.ui.economyScroll)
-    of ViewMode.Reports:
-      renderReportsModal(canvasArea, buf, model, model.ui.reportTurnScroll)
     of ViewMode.Messages:
-      renderMessagesModal(canvasArea, buf, model)
+      renderInboxModal(canvasArea, buf, model)
     of ViewMode.IntelDb:
       renderIntelDbModal(canvasArea, buf, model)
     of ViewMode.Settings:
@@ -3031,8 +2920,6 @@ proc renderDashboard*(
         model.ui.fleetDetailModal,
         fleetData, canvasArea, buf
       )
-    of ViewMode.ReportDetail:
-      renderReportDetail(canvasArea, buf, model)
     of ViewMode.IntelDetail:
       renderIntelDetailModal(canvasArea, buf, model, playerState)
 

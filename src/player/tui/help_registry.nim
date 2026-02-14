@@ -35,8 +35,6 @@ type
     FleetList
     FleetConsole
     FleetDetail
-    Reports
-    ReportDetail
     Research
     Espionage
     Economy
@@ -153,8 +151,10 @@ proc helpLines*(ctx: HelpContext): seq[string] =
       let item = HelpItems[code]
       result.add(item.label & " = " & item.desc)
   if ctx == HelpContext.Messages:
-    result.add("Tab = switch focus")
-    result.add("C = compose")
-    result.add("Enter = send")
-    result.add("Up/Down = select house or scroll")
-    result.add("R = mark read")
+    result.add("Tab = cycle focus")
+    result.add("M = jump to Messages")
+    result.add("R = jump to Reports")
+    result.add("C = compose message")
+    result.add("Enter = select / send")
+    result.add("Esc = back / collapse")
+    result.add("Up/Down = navigate")

@@ -91,9 +91,8 @@ proc standardViews*(): seq[ViewTab] =
     ViewTab(key: "F4", label: "Tech", isActive: false),
     ViewTab(key: "F5", label: "Espionage", isActive: false),
     ViewTab(key: "F6", label: "General", isActive: false),
-    ViewTab(key: "F7", label: "Reports", isActive: false),
     ViewTab(key: "F8", label: "Settings", isActive: false),
-    ViewTab(key: "F9", label: "Messages", isActive: false),
+    ViewTab(key: "^N", label: "Inbox", isActive: false),
   ]
 
 proc overviewContextActions*(joinActive: bool): seq[ContextAction] =
@@ -198,21 +197,6 @@ proc economyContextActions*(): seq[ContextAction] =
     ContextAction(key: "Enter", label: "Confirm", enabled: true),
     ContextAction(key: "I", label: "Industrial investment", enabled: true),
     ContextAction(key: "G", label: "Guild transfer", enabled: true),
-  ]
-
-proc reportsContextActions*(hasSelection: bool): seq[ContextAction] =
-  ## Context actions for Reports (View 7)
-  @[
-    ContextAction(
-      key: "Enter",
-      label: "Open detail",
-      enabled: hasSelection
-    ),
-    ContextAction(key: "Tab", label: "Focus pane", enabled: true),
-    ContextAction(key: "←→", label: "Switch pane", enabled: true),
-    ContextAction(key: "D", label: "Delete", enabled: hasSelection),
-    ContextAction(key: "A", label: "Archive", enabled: hasSelection),
-    ContextAction(key: "M", label: "Mark read/unread", enabled: hasSelection),
   ]
 
 proc settingsContextActions*(): seq[ContextAction] =

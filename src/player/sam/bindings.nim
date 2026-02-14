@@ -43,10 +43,8 @@ type
     Research      ## Research view
     Espionage     ## Espionage view
     Economy       ## Economy view
-    Reports       ## Reports list
     IntelDb       ## Intel database list
     IntelDetail   ## Intel system detail
-    ReportDetail  ## Report detail view
     Settings      ## Settings view
     Messages      ## Messages view
     Lobby         ## Entry screen / lobby
@@ -244,14 +242,12 @@ proc viewModeToContext*(mode: ViewMode): BindingContext =
   of ViewMode.Research: BindingContext.Research
   of ViewMode.Espionage: BindingContext.Espionage
   of ViewMode.Economy: BindingContext.Economy
-  of ViewMode.Reports: BindingContext.Reports
   of ViewMode.IntelDb: BindingContext.IntelDb
   of ViewMode.IntelDetail: BindingContext.IntelDetail
   of ViewMode.Settings: BindingContext.Settings
   of ViewMode.Messages: BindingContext.Messages
   of ViewMode.PlanetDetail: BindingContext.PlanetDetail
   of ViewMode.FleetDetail: BindingContext.FleetDetail
-  of ViewMode.ReportDetail: BindingContext.ReportDetail
 
 proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   ## Map a binding context to ViewMode (if applicable)
@@ -262,14 +258,12 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.Research: some(ViewMode.Research)
   of BindingContext.Espionage: some(ViewMode.Espionage)
   of BindingContext.Economy: some(ViewMode.Economy)
-  of BindingContext.Reports: some(ViewMode.Reports)
   of BindingContext.IntelDb: some(ViewMode.IntelDb)
   of BindingContext.IntelDetail: some(ViewMode.IntelDetail)
   of BindingContext.Settings: some(ViewMode.Settings)
   of BindingContext.Messages: some(ViewMode.Messages)
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
-  of BindingContext.ReportDetail: some(ViewMode.ReportDetail)
   of BindingContext.QueueModal: none(ViewMode)
   else: none(ViewMode)
 
@@ -370,12 +364,6 @@ proc initBindings*() =
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "|verview", shortLabel: "|vr", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyP, modifier: ViewModifier,
-    actionKind: ActionKind.switchView,
-    context: BindingContext.Global,
-    longLabel: "re|orts", shortLabel: "re|", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyN, modifier: ViewModifier,
@@ -1011,80 +999,6 @@ proc initBindings*() =
     longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
 
   # =========================================================================
-  # Reports Context
-  # =========================================================================
-
-  registerBinding(Binding(
-    key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.listUp,
-    context: BindingContext.Reports,
-    longLabel: "NAV", shortLabel: "Nav", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyK, modifier: KeyModifier.None,
-    actionKind: ActionKind.listUp,
-    context: BindingContext.Reports,
-    longLabel: "NAV", shortLabel: "K", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.listDown,
-    context: BindingContext.Reports,
-    longLabel: "NAV", shortLabel: "Nav", priority: 2))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyJ, modifier: KeyModifier.None,
-    actionKind: ActionKind.listDown,
-    context: BindingContext.Reports,
-    longLabel: "NAV", shortLabel: "J", priority: 2))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.listPageUp,
-    context: BindingContext.Reports,
-    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.listPageDown,
-    context: BindingContext.Reports,
-    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
-    context: BindingContext.Reports,
-    longLabel: "VIEW", shortLabel: "View", priority: 10))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyTab, modifier: KeyModifier.None,
-    actionKind: ActionKind.reportFocusNext,
-    context: BindingContext.Reports,
-    longLabel: "FOCUS", shortLabel: "Foc", priority: 20))
-
-  # =========================================================================
-  # Report Detail Context
-  # =========================================================================
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
-    context: BindingContext.ReportDetail,
-    longLabel: "JUMP", shortLabel: "Jump", priority: 10))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyN, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
-    context: BindingContext.ReportDetail,
-    longLabel: "NEXT", shortLabel: "Next", priority: 20))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
-    actionKind: ActionKind.breadcrumbBack,
-    context: BindingContext.ReportDetail,
-    longLabel: "BACK", shortLabel: "Back", priority: 90))
-
-  # =========================================================================
   # Intel DB Context
   # =========================================================================
 
@@ -1247,7 +1161,7 @@ proc initBindings*() =
     longLabel: "RESET", shortLabel: "Rst", priority: 20))
 
   # =========================================================================
-  # Messages Context
+  # Messages Context (Unified Inbox)
   # =========================================================================
 
   registerBinding(Binding(
@@ -1284,49 +1198,71 @@ proc initBindings*() =
     key: KeyCode.KeyShiftTab, modifier: KeyModifier.None,
     actionKind: ActionKind.messageFocusPrev,
     context: BindingContext.Messages,
-    longLabel: "FOCUS", shortLabel: "Fcs", priority: 4))
+    longLabel: "FOCUS", shortLabel: "Fcs",
+    priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
     actionKind: ActionKind.messageComposeToggle,
     context: BindingContext.Messages,
-    longLabel: "COMPOSE", shortLabel: "New", priority: 5))
+    longLabel: "COMPOSE", shortLabel: "New",
+    priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.messageSend,
+    actionKind: ActionKind.select,
     context: BindingContext.Messages,
-    longLabel: "SEND", shortLabel: "Send", priority: 6))
+    longLabel: "SELECT", shortLabel: "Sel",
+    priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.deselect,
+    context: BindingContext.Messages,
+    longLabel: "BACK", shortLabel: "Back",
+    priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyM, modifier: KeyModifier.None,
+    actionKind: ActionKind.inboxJumpMessages,
+    context: BindingContext.Messages,
+    longLabel: "MESSAGES", shortLabel: "Msg",
+    priority: 7))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionKind: ActionKind.inboxJumpReports,
+    context: BindingContext.Messages,
+    longLabel: "REPORTS", shortLabel: "Rpt",
+    priority: 8))
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.Ctrl,
     actionKind: ActionKind.messageScrollUp,
     context: BindingContext.Messages,
-    longLabel: "SCROLL", shortLabel: "Up", priority: 6))
+    longLabel: "SCROLL", shortLabel: "Up",
+    priority: 9))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.Ctrl,
     actionKind: ActionKind.messageScrollDown,
     context: BindingContext.Messages,
-    longLabel: "SCROLL", shortLabel: "Dn", priority: 6))
+    longLabel: "SCROLL", shortLabel: "Dn",
+    priority: 9))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
     actionKind: ActionKind.messageScrollUp,
     context: BindingContext.Messages,
-    longLabel: "SCROLL", shortLabel: "PgUp", priority: 7))
+    longLabel: "SCROLL", shortLabel: "PgUp",
+    priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
     actionKind: ActionKind.messageScrollDown,
     context: BindingContext.Messages,
-    longLabel: "SCROLL", shortLabel: "PgDn", priority: 8))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyR, modifier: KeyModifier.None,
-    actionKind: ActionKind.messageMarkRead,
-    context: BindingContext.Messages,
-    longLabel: "READ", shortLabel: "Read", priority: 9))
+    longLabel: "SCROLL", shortLabel: "PgDn",
+    priority: 11))
 
   # =========================================================================
   # Build Modal Context
@@ -1538,7 +1474,6 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       of KeyCode.KeyT: 4   # Tech (Research)
       of KeyCode.KeyE: 5   # Espionage
       of KeyCode.KeyG: 6   # General (Economy)
-      of KeyCode.KeyP: 7   # Reports
       of KeyCode.KeyI: 8   # Intel db
       of KeyCode.KeyK: 9   # Settings
       of KeyCode.KeyN: 10  # Messages
@@ -1639,16 +1574,6 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.cycleColony:
     let reverse = key in {KeyCode.KeyLeft, KeyCode.KeyH}
     return some(actionCycleColony(reverse))
-  of ActionKind.cycleReportFilter:
-    return some(actionCycleReportFilter())
-  of ActionKind.reportFocusNext:
-    return some(actionReportFocusNext())
-  of ActionKind.reportFocusPrev:
-    return some(actionReportFocusPrev())
-  of ActionKind.reportFocusLeft:
-    return some(actionReportFocusLeft())
-  of ActionKind.reportFocusRight:
-    return some(actionReportFocusRight())
   of ActionKind.intelEditNote:
     return some(actionIntelEditNote())
   of ActionKind.intelDetailNext:
@@ -1792,6 +1717,30 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.fleetDetailSelectZTC:
     return some(actionFleetDetailSelectZTC())
 
+  # Inbox / Messages actions
+  of ActionKind.messageFocusNext:
+    return some(actionMessageFocusNext())
+  of ActionKind.messageFocusPrev:
+    return some(actionMessageFocusPrev())
+  of ActionKind.messageComposeToggle:
+    return some(actionMessageComposeToggle())
+  of ActionKind.messageScrollUp:
+    return some(actionMessageScrollUp())
+  of ActionKind.messageScrollDown:
+    return some(actionMessageScrollDown())
+  of ActionKind.inboxJumpMessages:
+    return some(actionInboxJumpMessages())
+  of ActionKind.inboxJumpReports:
+    return some(actionInboxJumpReports())
+  of ActionKind.inboxExpandTurn:
+    return some(actionInboxExpandTurn())
+  of ActionKind.inboxCollapseTurn:
+    return some(actionInboxCollapseTurn())
+  of ActionKind.inboxReportUp:
+    return some(actionInboxReportUp())
+  of ActionKind.inboxReportDown:
+    return some(actionInboxReportDown())
+
   else:
     discard
 
@@ -1842,7 +1791,6 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
       return some(actionManageGamesCancel())
   if model.ui.mode in {
       ViewMode.PlanetDetail,
-      ViewMode.ReportDetail,
       ViewMode.IntelDetail}:
     return some(actionBreadcrumbBack())
   none(Proposal)
@@ -2296,7 +2244,6 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         of KeyCode.KeyT: model.ui.mode == ViewMode.Research
         of KeyCode.KeyE: model.ui.mode == ViewMode.Espionage
         of KeyCode.KeyG: model.ui.mode == ViewMode.Economy
-        of KeyCode.KeyP: model.ui.mode == ViewMode.Reports
         of KeyCode.KeyI:
           model.ui.mode in {ViewMode.IntelDb, ViewMode.IntelDetail}
         of KeyCode.KeyN: model.ui.mode == ViewMode.Messages

@@ -183,14 +183,14 @@ proc runTui*(gameId: string = "") =
           else:
             0
         if items.len > previousCount and
-            (model.ui.messageFocus == MessagePaneFocus.Conversation or
-             model.ui.messageFocus == MessagePaneFocus.Compose) and
+            (model.ui.inboxFocus == InboxPaneFocus.Detail or
+             model.ui.inboxFocus == InboxPaneFocus.Compose) and
             wasAtBottom:
           shouldAutoScroll = true
     if shouldAutoScroll:
       model.ui.messagesScroll.verticalOffset = 1_000_000_000
     if model.ui.mode == ViewMode.Messages and
-        model.ui.messageFocus == MessagePaneFocus.Conversation and
+        model.ui.inboxFocus == InboxPaneFocus.Detail and
         model.view.messageThreads.len > 0:
       let idx = clamp(model.ui.messageHouseIdx, 0,
         max(0, model.view.messageHouses.len - 1))
@@ -218,8 +218,9 @@ proc runTui*(gameId: string = "") =
     if event.id.len > 0:
       tuiCache.markEventReceived(event.id, event.kind, activeGameId)
     let isLocalSender = msg.fromHouse == int32(viewingHouse)
-    tuiCache.saveMessage(activeGameId, msg, isRead = isLocalSender)
-    syncCachedMessages(sam.model)
+    if not isLocalSender:
+      tuiCache.saveMessage(activeGameId, msg, isRead = false)
+      syncCachedMessages(sam.model)
     if msg.fromHouse != int32(viewingHouse):
       sam.model.ui.statusMessage = "New message received"
     enqueueProposal(emptyProposal())
@@ -1328,6 +1329,8 @@ proc runTui*(gameId: string = "") =
                 gameId: activeGameId
               )
               asyncCheck nostrClient.sendMessage(msg)
+              tuiCache.saveMessage(activeGameId, msg, isRead = true)
+              syncCachedMessages(sam.model)
               sam.model.ui.messageComposeInput.clear()
               sam.model.ui.messageComposeActive = false
               sam.model.ui.statusMessage = "Message sent"

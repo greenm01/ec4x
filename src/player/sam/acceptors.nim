@@ -40,8 +40,6 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.Espionage)
   of 6:
     some(ViewMode.Economy)
-  of 7:
-    some(ViewMode.Reports)
   of 8:
     some(ViewMode.IntelDb)
   of 9:
@@ -52,8 +50,6 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.PlanetDetail)
   of 30:
     some(ViewMode.FleetDetail)
-  of 70:
-    some(ViewMode.ReportDetail)
   of 80:
     some(ViewMode.IntelDetail)
   else:
@@ -265,17 +261,17 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.resetBreadcrumbs(selectedMode)
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
-      if selectedMode == ViewMode.Reports:
-        model.ui.reportFocus = ReportPaneFocus.TurnList
-        model.ui.reportTurnIdx = 0
-        model.ui.reportSubjectIdx = 0
-        model.ui.reportTurnScroll = initScrollState()
-        model.ui.reportSubjectScroll = initScrollState()
-        model.ui.reportBodyScroll = initScrollState()
-      elif selectedMode == ViewMode.Messages:
-        model.ui.messageFocus = MessagePaneFocus.Houses
+      if selectedMode == ViewMode.Messages:
+        model.ui.inboxFocus = InboxPaneFocus.List
+        model.ui.inboxSection = InboxSection.Messages
+        model.ui.inboxListIdx = firstSelectableIdx(
+          model.view.inboxItems)
         model.ui.messageHouseIdx = 0
+        model.ui.inboxTurnIdx = 0
+        model.ui.inboxReportIdx = 0
+        model.ui.inboxTurnExpanded = false
         model.ui.messagesScroll = initScrollState()
+        model.ui.inboxDetailScroll = initScrollState()
         model.ui.messageComposeActive = false
         model.ui.messageComposeInput.clear()
   of ActionKind.breadcrumbBack:
@@ -344,50 +340,6 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       of FleetConsoleFocus.ShipsPane:
         model.ui.fleetConsoleFocus = FleetConsoleFocus.FleetsPane
   
-  of ActionKind.cycleReportFilter:
-    let nextFilter = (ord(model.ui.reportFilter) + 1) mod
-      (ord(ReportCategory.Other) + 1)
-    model.ui.reportFilter = ReportCategory(nextFilter)
-    model.ui.selectedIdx = 0
-    model.ui.selectedReportId = 0
-    model.ui.reportTurnIdx = 0
-    model.ui.reportSubjectIdx = 0
-    model.ui.reportTurnScroll = initScrollState()
-    model.ui.reportSubjectScroll = initScrollState()
-    model.ui.reportBodyScroll = initScrollState()
-    model.ui.statusMessage = ""
-  of ActionKind.reportFocusNext:
-    case model.ui.reportFocus
-    of ReportPaneFocus.TurnList:
-      model.ui.reportFocus = ReportPaneFocus.SubjectList
-    of ReportPaneFocus.SubjectList:
-      model.ui.reportFocus = ReportPaneFocus.BodyPane
-    of ReportPaneFocus.BodyPane:
-      model.ui.reportFocus = ReportPaneFocus.TurnList
-  of ActionKind.reportFocusPrev:
-    case model.ui.reportFocus
-    of ReportPaneFocus.TurnList:
-      model.ui.reportFocus = ReportPaneFocus.BodyPane
-    of ReportPaneFocus.SubjectList:
-      model.ui.reportFocus = ReportPaneFocus.TurnList
-    of ReportPaneFocus.BodyPane:
-      model.ui.reportFocus = ReportPaneFocus.SubjectList
-  of ActionKind.reportFocusLeft:
-    case model.ui.reportFocus
-    of ReportPaneFocus.TurnList:
-      discard
-    of ReportPaneFocus.SubjectList:
-      model.ui.reportFocus = ReportPaneFocus.TurnList
-    of ReportPaneFocus.BodyPane:
-      model.ui.reportFocus = ReportPaneFocus.SubjectList
-  of ActionKind.reportFocusRight:
-    case model.ui.reportFocus
-    of ReportPaneFocus.TurnList:
-      model.ui.reportFocus = ReportPaneFocus.SubjectList
-    of ReportPaneFocus.SubjectList:
-      model.ui.reportFocus = ReportPaneFocus.BodyPane
-    of ReportPaneFocus.BodyPane:
-      discard
   of ActionKind.lobbySwitchPane:
     if proposal.navMode >= 0 and proposal.navMode <= 2:
       model.ui.lobbyPane = LobbyPane(proposal.navMode)
@@ -412,41 +364,17 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if proposal.selectIdx >= 0:
         model.ui.selectedIdx = proposal.selectIdx
     of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research,
-       ViewMode.Espionage, ViewMode.Economy, ViewMode.Reports,
-       ViewMode.Settings, ViewMode.Messages, ViewMode.PlanetDetail,
-       ViewMode.FleetDetail, ViewMode.ReportDetail,
+       ViewMode.Espionage, ViewMode.Economy,
+       ViewMode.Settings, ViewMode.PlanetDetail,
+       ViewMode.FleetDetail,
        ViewMode.IntelDb, ViewMode.IntelDetail:
       # Select current list item (idx is already set)
       if proposal.selectIdx >= 0:
         model.ui.selectedIdx = proposal.selectIdx
+    of ViewMode.Messages:
+      discard  # Handled below with inbox logic
 
-    if model.ui.mode == ViewMode.Reports:
-      let reports = model.currentTurnReports()
-      if model.ui.reportSubjectIdx < reports.len:
-        model.ui.selectedReportId = reports[model.ui.reportSubjectIdx].id
-        model.ui.mode = ViewMode.ReportDetail
-        model.pushBreadcrumb(
-          "Report " & $(model.ui.reportSubjectIdx + 1),
-          ViewMode.ReportDetail,
-          model.ui.selectedReportId,
-        )
-        model.ui.statusMessage = ""
-        model.clearExpertFeedback()
-      else:
-        model.ui.statusMessage = "No reports in this turn"
-    elif model.ui.mode == ViewMode.ReportDetail:
-      let reportOpt = model.selectedReport()
-      if reportOpt.isSome:
-        let report = reportOpt.get()
-        let target = report.linkView
-        let nextMode = viewModeFromInt(target)
-        if nextMode.isSome:
-          let selectedMode = nextMode.get()
-          model.ui.mode = selectedMode
-          model.resetBreadcrumbs(selectedMode)
-          model.ui.statusMessage = "Jumped to " & report.linkLabel
-      model.clearExpertFeedback()
-    elif model.ui.mode == ViewMode.IntelDb:
+    if model.ui.mode == ViewMode.IntelDb:
       if model.ui.selectedIdx >= 0 and
           model.ui.selectedIdx < model.view.intelRows.len:
         let row = model.view.intelRows[model.ui.selectedIdx]
@@ -469,6 +397,27 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.IntelDetail:
       model.ui.intelDetailFleetPopupActive = true
       model.clearExpertFeedback()
+    elif model.ui.mode == ViewMode.Messages:
+      # Inbox select: context-dependent on focus + section
+      if model.ui.inboxFocus == InboxPaneFocus.List:
+        if model.ui.inboxSection == InboxSection.Messages:
+          # Focus detail pane for message conversation
+          model.ui.inboxFocus = InboxPaneFocus.Detail
+          model.ui.messageComposeActive = false
+        elif model.ui.inboxSection == InboxSection.Reports:
+          # Toggle expand on turn bucket
+          if model.ui.inboxTurnExpanded:
+            model.ui.inboxTurnExpanded = false
+          else:
+            model.ui.inboxTurnExpanded = true
+            model.ui.inboxReportIdx = 0
+            model.ui.inboxDetailScroll.reset()
+      elif model.ui.inboxFocus == InboxPaneFocus.Compose:
+        # Send message
+        if not model.ui.messageComposeInput.isEmpty():
+          model.ui.statusMessage = "Sending message..."
+        else:
+          model.ui.statusMessage = "Message is empty"
   of ActionKind.toggleFleetSelect:
     if model.ui.mode == ViewMode.Fleets:
       if model.ui.fleetViewMode == FleetViewMode.ListView:
@@ -490,16 +439,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
                 model.toggleFleetSelection(fleetId)
   of ActionKind.deselect:
     model.ui.mapState.selected = none(HexCoord)
-    if model.ui.mode == ViewMode.ReportDetail:
-      if model.popBreadcrumb():
-        let current = model.currentBreadcrumb()
-        model.ui.mode = current.viewMode
-        model.ui.statusMessage = ""
-        model.clearExpertFeedback()
-      else:
-        model.ui.statusMessage = ""
-        model.clearExpertFeedback()
-    elif model.ui.mode == ViewMode.FleetDetail:
+    if model.ui.mode == ViewMode.FleetDetail:
       # Return to fleet list
       model.ui.mode = ViewMode.Fleets
       model.clearFleetSelection()
@@ -517,6 +457,16 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.mode = ViewMode.IntelDb
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
+    elif model.ui.mode == ViewMode.Messages:
+      # Esc in inbox: collapse expanded turn, or
+      # return focus to list
+      if model.ui.inboxTurnExpanded:
+        model.ui.inboxTurnExpanded = false
+        model.ui.inboxReportIdx = 0
+        model.ui.inboxDetailScroll.reset()
+      elif model.ui.inboxFocus != InboxPaneFocus.List:
+        model.ui.inboxFocus = InboxPaneFocus.List
+        model.ui.messageComposeActive = false
     else:
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
@@ -558,10 +508,38 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.intelDetailFleetSelectedIdx - 1
       )
     elif model.ui.mode == ViewMode.Messages:
-      if model.ui.messageFocus == MessagePaneFocus.Houses:
-        if model.ui.messageHouseIdx > 0:
-          model.ui.messageHouseIdx = max(0, model.ui.messageHouseIdx - 1)
-          model.ui.messagesScroll.reset()
+      if model.ui.inboxFocus == InboxPaneFocus.List:
+        if model.ui.inboxTurnExpanded and
+            model.ui.inboxSection ==
+              InboxSection.Reports:
+          # Navigate within expanded reports
+          if model.ui.inboxReportIdx > 0:
+            model.ui.inboxReportIdx -= 1
+            model.ui.inboxDetailScroll.reset()
+          else:
+            # At first report, exit expanded state
+            model.ui.inboxTurnExpanded = false
+            model.ui.inboxReportIdx = 0
+            model.ui.inboxDetailScroll.reset()
+        else:
+          let items = model.view.inboxItems
+          let newIdx = nextSelectableIdx(
+            items, model.ui.inboxListIdx, -1)
+          if newIdx != model.ui.inboxListIdx:
+            model.ui.inboxListIdx = newIdx
+            let item = items[newIdx]
+            if item.kind == InboxItemKind.MessageHouse:
+              model.ui.inboxSection =
+                InboxSection.Messages
+              model.ui.messageHouseIdx = item.houseIdx
+              model.ui.messagesScroll.reset()
+            elif item.kind == InboxItemKind.TurnBucket:
+              model.ui.inboxSection =
+                InboxSection.Reports
+              model.ui.inboxTurnIdx = item.turnIdx
+              model.ui.inboxTurnExpanded = false
+              model.ui.inboxReportIdx = 0
+              model.ui.inboxDetailScroll.reset()
     else:
       # Default list navigation
       if model.ui.selectedIdx > 0:
@@ -610,11 +588,61 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         max(0, model.ui.intelDetailFleetCount - 1)
       )
     elif model.ui.mode == ViewMode.Messages:
-      if model.ui.messageFocus == MessagePaneFocus.Houses:
-        let maxIdx = max(0, model.view.messageHouses.len - 1)
-        if model.ui.messageHouseIdx < maxIdx:
-          model.ui.messageHouseIdx = min(maxIdx, model.ui.messageHouseIdx + 1)
-          model.ui.messagesScroll.reset()
+      if model.ui.inboxFocus == InboxPaneFocus.List:
+        if model.ui.inboxTurnExpanded and
+            model.ui.inboxSection ==
+              InboxSection.Reports:
+          # Navigate within expanded reports
+          let turnIdx = model.ui.inboxTurnIdx
+          if turnIdx < model.view.turnBuckets.len:
+            let maxRpt = max(0,
+              model.view.turnBuckets[
+                turnIdx].reports.len - 1)
+            if model.ui.inboxReportIdx < maxRpt:
+              model.ui.inboxReportIdx += 1
+              model.ui.inboxDetailScroll.reset()
+            else:
+              # At last report, exit expanded and advance
+              model.ui.inboxTurnExpanded = false
+              model.ui.inboxReportIdx = 0
+              model.ui.inboxDetailScroll.reset()
+              let items = model.view.inboxItems
+              let newIdx = nextSelectableIdx(
+                items, model.ui.inboxListIdx, 1)
+              if newIdx != model.ui.inboxListIdx:
+                model.ui.inboxListIdx = newIdx
+                let item = items[newIdx]
+                if item.kind == InboxItemKind.MessageHouse:
+                  model.ui.inboxSection =
+                    InboxSection.Messages
+                  model.ui.messageHouseIdx = item.houseIdx
+                  model.ui.messagesScroll.reset()
+                elif item.kind == InboxItemKind.TurnBucket:
+                  model.ui.inboxSection =
+                    InboxSection.Reports
+                  model.ui.inboxTurnIdx = item.turnIdx
+                  model.ui.inboxTurnExpanded = false
+                  model.ui.inboxReportIdx = 0
+                  model.ui.inboxDetailScroll.reset()
+        else:
+          let items = model.view.inboxItems
+          let newIdx = nextSelectableIdx(
+            items, model.ui.inboxListIdx, 1)
+          if newIdx != model.ui.inboxListIdx:
+            model.ui.inboxListIdx = newIdx
+            let item = items[newIdx]
+            if item.kind == InboxItemKind.MessageHouse:
+              model.ui.inboxSection =
+                InboxSection.Messages
+              model.ui.messageHouseIdx = item.houseIdx
+              model.ui.messagesScroll.reset()
+            elif item.kind == InboxItemKind.TurnBucket:
+              model.ui.inboxSection =
+                InboxSection.Reports
+              model.ui.inboxTurnIdx = item.turnIdx
+              model.ui.inboxTurnExpanded = false
+              model.ui.inboxReportIdx = 0
+              model.ui.inboxDetailScroll.reset()
     else:
       # Default list navigation
       let maxIdx = model.currentListLength() - 1
@@ -1000,44 +1028,71 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.intelDetailFleetPopupActive = false
     of ActionKind.messageFocusNext:
       if model.ui.mode == ViewMode.Messages:
-        case model.ui.messageFocus
-        of MessagePaneFocus.Houses:
-          model.ui.messageFocus = MessagePaneFocus.Conversation
-        of MessagePaneFocus.Conversation:
-          model.ui.messageFocus = MessagePaneFocus.Compose
-        of MessagePaneFocus.Compose:
-          model.ui.messageFocus = MessagePaneFocus.Houses
+        case model.ui.inboxFocus
+        of InboxPaneFocus.List:
+          model.ui.inboxFocus = InboxPaneFocus.Detail
+          model.ui.messageComposeActive = false
+        of InboxPaneFocus.Detail:
+          if model.ui.inboxSection == InboxSection.Messages:
+            model.ui.inboxFocus = InboxPaneFocus.Compose
+            model.ui.messageComposeActive = true
+          else:
+            model.ui.inboxFocus = InboxPaneFocus.List
+            model.ui.messageComposeActive = false
+        of InboxPaneFocus.Compose:
+          model.ui.inboxFocus = InboxPaneFocus.List
+          model.ui.messageComposeActive = false
     of ActionKind.messageFocusPrev:
       if model.ui.mode == ViewMode.Messages:
-        case model.ui.messageFocus
-        of MessagePaneFocus.Houses:
-          model.ui.messageFocus = MessagePaneFocus.Compose
-        of MessagePaneFocus.Conversation:
-          model.ui.messageFocus = MessagePaneFocus.Houses
-        of MessagePaneFocus.Compose:
-          model.ui.messageFocus = MessagePaneFocus.Conversation
+        case model.ui.inboxFocus
+        of InboxPaneFocus.List:
+          if model.ui.inboxSection == InboxSection.Messages:
+            model.ui.inboxFocus = InboxPaneFocus.Compose
+            model.ui.messageComposeActive = true
+          else:
+            model.ui.inboxFocus = InboxPaneFocus.Detail
+            model.ui.messageComposeActive = false
+        of InboxPaneFocus.Detail:
+          model.ui.inboxFocus = InboxPaneFocus.List
+          model.ui.messageComposeActive = false
+        of InboxPaneFocus.Compose:
+          model.ui.inboxFocus = InboxPaneFocus.Detail
+          model.ui.messageComposeActive = false
     of ActionKind.messageSelectHouse:
       if model.ui.mode == ViewMode.Messages:
-        let maxIdx = max(0, model.view.messageHouses.len - 1)
-        let idx = clamp(model.ui.messageHouseIdx, 0, maxIdx)
+        let maxIdx = max(0,
+          model.view.messageHouses.len - 1)
+        let idx = clamp(
+          model.ui.messageHouseIdx, 0, maxIdx)
         model.ui.messageHouseIdx = idx
         model.ui.messagesScroll.reset()
     of ActionKind.messageScrollUp:
       if model.ui.mode == ViewMode.Messages:
-        model.ui.messagesScroll.scrollBy(-1)
+        if model.ui.inboxSection == InboxSection.Messages:
+          model.ui.messagesScroll.scrollBy(-1)
+        else:
+          model.ui.inboxDetailScroll.scrollBy(-1)
     of ActionKind.messageScrollDown:
       if model.ui.mode == ViewMode.Messages:
-        model.ui.messagesScroll.scrollBy(1)
+        if model.ui.inboxSection == InboxSection.Messages:
+          model.ui.messagesScroll.scrollBy(1)
+        else:
+          model.ui.inboxDetailScroll.scrollBy(1)
     of ActionKind.messageMarkRead:
       if model.ui.mode == ViewMode.Messages:
         model.ui.statusMessage = "Marking thread read..."
     of ActionKind.messageComposeToggle:
       if model.ui.mode == ViewMode.Messages:
-        model.ui.messageComposeActive = not model.ui.messageComposeActive
-        if model.ui.messageComposeActive:
-          model.ui.messageFocus = MessagePaneFocus.Compose
-        else:
-          model.ui.messageFocus = MessagePaneFocus.Conversation
+        if model.ui.inboxSection ==
+            InboxSection.Messages:
+          model.ui.messageComposeActive =
+            not model.ui.messageComposeActive
+          if model.ui.messageComposeActive:
+            model.ui.inboxFocus =
+              InboxPaneFocus.Compose
+          else:
+            model.ui.inboxFocus =
+              InboxPaneFocus.Detail
     of ActionKind.messageComposeAppend:
       if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
         if proposal.gameActionData.len > 0:
@@ -1059,6 +1114,64 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "Sending message..."
         else:
           model.ui.statusMessage = "Message is empty"
+    of ActionKind.inboxJumpMessages:
+      if model.ui.mode == ViewMode.Messages:
+        # Jump to first message house item
+        let items = model.view.inboxItems
+        for i, item in items:
+          if item.kind == InboxItemKind.MessageHouse:
+            model.ui.inboxListIdx = i
+            model.ui.inboxSection = InboxSection.Messages
+            model.ui.messageHouseIdx = item.houseIdx
+            model.ui.messagesScroll.reset()
+            model.ui.inboxFocus = InboxPaneFocus.List
+            break
+    of ActionKind.inboxJumpReports:
+      if model.ui.mode == ViewMode.Messages:
+        # Jump to first turn bucket item
+        let items = model.view.inboxItems
+        for i, item in items:
+          if item.kind == InboxItemKind.TurnBucket:
+            model.ui.inboxListIdx = i
+            model.ui.inboxSection = InboxSection.Reports
+            model.ui.inboxTurnIdx = item.turnIdx
+            model.ui.inboxTurnExpanded = false
+            model.ui.inboxReportIdx = 0
+            model.ui.inboxDetailScroll.reset()
+            model.ui.inboxFocus = InboxPaneFocus.List
+            break
+    of ActionKind.inboxExpandTurn:
+      if model.ui.mode == ViewMode.Messages and
+          model.ui.inboxSection == InboxSection.Reports:
+        if not model.ui.inboxTurnExpanded:
+          model.ui.inboxTurnExpanded = true
+          model.ui.inboxReportIdx = 0
+          model.ui.inboxDetailScroll.reset()
+    of ActionKind.inboxCollapseTurn:
+      if model.ui.mode == ViewMode.Messages and
+          model.ui.inboxSection == InboxSection.Reports:
+        if model.ui.inboxTurnExpanded:
+          model.ui.inboxTurnExpanded = false
+          model.ui.inboxReportIdx = 0
+          model.ui.inboxDetailScroll.reset()
+    of ActionKind.inboxReportUp:
+      if model.ui.mode == ViewMode.Messages and
+          model.ui.inboxSection == InboxSection.Reports and
+          model.ui.inboxTurnExpanded:
+        if model.ui.inboxReportIdx > 0:
+          model.ui.inboxReportIdx -= 1
+          model.ui.inboxDetailScroll.reset()
+    of ActionKind.inboxReportDown:
+      if model.ui.mode == ViewMode.Messages and
+          model.ui.inboxSection == InboxSection.Reports and
+          model.ui.inboxTurnExpanded:
+        let turnIdx = model.ui.inboxTurnIdx
+        if turnIdx < model.view.turnBuckets.len:
+          let maxRpt = max(0,
+            model.view.turnBuckets[turnIdx].reports.len - 1)
+          if model.ui.inboxReportIdx < maxRpt:
+            model.ui.inboxReportIdx += 1
+            model.ui.inboxDetailScroll.reset()
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"
@@ -1658,11 +1771,6 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.loadHouseId = game.houseId
         model.ui.statusMessage = "Loading game..."
         model.ui.lobbyInputMode = LobbyInputMode.None
-    elif model.ui.mode == ViewMode.Reports and proposal.selectIdx == -1:
-      model.ui.mode = ViewMode.ReportDetail
-      let report = model.currentReport()
-      if report.isSome:
-        model.ui.selectedReportId = report.get().id
     elif model.ui.mode == ViewMode.Planets and proposal.selectIdx == -1:
       if model.ui.selectedIdx < 0 or
           model.ui.selectedIdx >= model.view.planetsRows.len:
@@ -1680,14 +1788,6 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "No colony selected"
     # NOTE: Fleet selection now handled by openFleetDetailModal action (Enter key)
     # Old ViewMode.FleetDetail inline view removed in favor of popup modal
-    elif model.ui.mode == ViewMode.ReportDetail and proposal.selectIdx == -1:
-      let report = model.currentReport()
-      if report.isSome:
-        let nextMode = viewModeFromInt(report.get().linkView)
-        if nextMode.isSome:
-          model.ui.previousMode = model.ui.mode
-          model.ui.mode = nextMode.get()
-          model.resetBreadcrumbs(model.ui.mode)
     else:
       discard
   else:
