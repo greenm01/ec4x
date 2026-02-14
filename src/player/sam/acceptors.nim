@@ -408,9 +408,10 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           # Toggle expand on turn bucket
           if model.ui.inboxTurnExpanded:
             model.ui.inboxTurnExpanded = false
+            model.ui.inboxReportIdx = -1
           else:
             model.ui.inboxTurnExpanded = true
-            model.ui.inboxReportIdx = 0
+            model.ui.inboxReportIdx = 0  # focus first report
             model.ui.inboxDetailScroll.reset()
       elif model.ui.inboxFocus == InboxPaneFocus.Compose:
         # Send message
@@ -514,13 +515,28 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               InboxSection.Reports:
           # Navigate within expanded reports
           if model.ui.inboxReportIdx > 0:
+            # Inside reports, go up one
             model.ui.inboxReportIdx -= 1
             model.ui.inboxDetailScroll.reset()
-          else:
-            # At first report, exit expanded state
-            model.ui.inboxTurnExpanded = false
-            model.ui.inboxReportIdx = 0
-            model.ui.inboxDetailScroll.reset()
+          elif model.ui.inboxReportIdx == 0:
+            # At first report, do normal flat list Up
+            let items = model.view.inboxItems
+            let newIdx = nextSelectableIdx(
+              items, model.ui.inboxListIdx, -1)
+            if newIdx != model.ui.inboxListIdx:
+              model.ui.inboxListIdx = newIdx
+              let item = items[newIdx]
+              if item.kind == InboxItemKind.MessageHouse:
+                model.ui.inboxSection =
+                  InboxSection.Messages
+                model.ui.messageHouseIdx = item.houseIdx
+                model.ui.messagesScroll.reset()
+              elif item.kind == InboxItemKind.TurnBucket:
+                model.ui.inboxSection =
+                  InboxSection.Reports
+                model.ui.inboxTurnIdx = item.turnIdx
+                model.ui.inboxReportIdx = 0
+                model.ui.inboxDetailScroll.reset()
         else:
           let items = model.view.inboxItems
           let newIdx = nextSelectableIdx(
@@ -537,7 +553,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxSection =
                 InboxSection.Reports
               model.ui.inboxTurnIdx = item.turnIdx
-              model.ui.inboxTurnExpanded = false
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
     else:
@@ -596,16 +611,14 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           let turnIdx = model.ui.inboxTurnIdx
           if turnIdx < model.view.turnBuckets.len:
             let maxRpt = max(0,
-              model.view.turnBuckets[
-                turnIdx].reports.len - 1)
+                model.view.turnBuckets[
+                  turnIdx].reports.len - 1)
             if model.ui.inboxReportIdx < maxRpt:
+              # Advance within reports
               model.ui.inboxReportIdx += 1
               model.ui.inboxDetailScroll.reset()
             else:
-              # At last report, exit expanded and advance
-              model.ui.inboxTurnExpanded = false
-              model.ui.inboxReportIdx = 0
-              model.ui.inboxDetailScroll.reset()
+              # At last report, advance to next flat item
               let items = model.view.inboxItems
               let newIdx = nextSelectableIdx(
                 items, model.ui.inboxListIdx, 1)
@@ -621,9 +634,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
                   model.ui.inboxSection =
                     InboxSection.Reports
                   model.ui.inboxTurnIdx = item.turnIdx
-                  model.ui.inboxTurnExpanded = false
                   model.ui.inboxReportIdx = 0
                   model.ui.inboxDetailScroll.reset()
+              # else: at bottom, stay put
         else:
           let items = model.view.inboxItems
           let newIdx = nextSelectableIdx(
@@ -640,7 +653,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxSection =
                 InboxSection.Reports
               model.ui.inboxTurnIdx = item.turnIdx
-              model.ui.inboxTurnExpanded = false
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
     else:
@@ -1152,7 +1164,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.inboxSection == InboxSection.Reports:
         if model.ui.inboxTurnExpanded:
           model.ui.inboxTurnExpanded = false
-          model.ui.inboxReportIdx = 0
+          model.ui.inboxReportIdx = -1
           model.ui.inboxDetailScroll.reset()
     of ActionKind.inboxReportUp:
       if model.ui.mode == ViewMode.Messages and
@@ -1169,7 +1181,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if turnIdx < model.view.turnBuckets.len:
           let maxRpt = max(0,
             model.view.turnBuckets[turnIdx].reports.len - 1)
-          if model.ui.inboxReportIdx < maxRpt:
+          if model.ui.inboxReportIdx == -1:
+            model.ui.inboxReportIdx = 0
+            model.ui.inboxDetailScroll.reset()
+          elif model.ui.inboxReportIdx < maxRpt:
             model.ui.inboxReportIdx += 1
             model.ui.inboxDetailScroll.reset()
     of ActionKind.lobbyGenerateKey:

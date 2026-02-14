@@ -1619,20 +1619,21 @@ proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
       label = truncateLabel(label)
       discard buf.setString(area.x, y, label, style)
     of InboxItemKind.TurnBucket:
-      let prefix = "  "
-      var label = prefix & item.label
-      if item.unread > 0:
-        label &= " (" & $item.unread & ")"
-      # Show expand indicator
+      let prefix = "  "  # 2-char indent for turn buckets
+      var label = prefix
+      # Show expand indicator on left
       let turnIdx = item.turnIdx
       let isExpanded = model.ui.inboxSection ==
           InboxSection.Reports and
           model.ui.inboxTurnIdx == turnIdx and
           model.ui.inboxTurnExpanded
       if isExpanded:
-        label &= " [-]"
+        label &= "[-]"
       else:
-        label &= " [+]"
+        label &= "[+]"
+      label &= " " & item.label
+      if item.unread > 0:
+        label &= " (" & $item.unread & ")"
       # Dim the parent when expanded (child report gets the highlight)
       let style = if isSelected and isFocused and not isExpanded:
         selectedStyle()
@@ -1650,8 +1651,7 @@ proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
       if model.ui.inboxSection ==
           InboxSection.Reports and
           model.ui.inboxTurnIdx == turnIdx and
-          model.ui.inboxTurnExpanded and
-          isSelected:
+          model.ui.inboxTurnExpanded:
         if turnIdx < model.view.turnBuckets.len:
           let bucket = model.view.turnBuckets[turnIdx]
           for ri, rpt in bucket.reports:
@@ -1659,8 +1659,10 @@ proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
             if y >= area.bottom:
               break
             let rptSel = (ri ==
-              model.ui.inboxReportIdx)
-            let rPrefix = "  "
+              model.ui.inboxReportIdx) and
+              model.ui.inboxTurnExpanded and
+              isFocused
+            let rPrefix = "    "
             var rLabel = rPrefix & rpt.title
             if rpt.isUnread:
               rLabel &= " *"
@@ -1774,7 +1776,7 @@ proc renderInboxDetailReports(
   else:
     # Show specific report detail
     let rptIdx = model.ui.inboxReportIdx
-    if rptIdx >= bucket.reports.len:
+    if rptIdx < 0 or rptIdx >= bucket.reports.len:
       discard buf.setString(area.x, area.y,
         "No report selected", modalDimStyle())
       return
