@@ -311,7 +311,11 @@ proc renderBuildTable(
         dashIf(row.carry),
         $qty
       ]
-      tableView.addRow(TableRow(cells: cells, cellStyles: cellStyles))
+      tableView.addRow(TableRow(
+        cells: cells,
+        cellStyles: cellStyles,
+        kind: TableRowKind.Normal
+      ))
   of BuildCategory.Ground:
     for idx, row in GroundSpecRows:
       let key = buildRowKey(state.category, idx)
@@ -337,7 +341,11 @@ proc renderBuildTable(
         $row.defense,
         $qty
       ]
-      tableView.addRow(TableRow(cells: cells, cellStyles: cellStyles))
+      tableView.addRow(TableRow(
+        cells: cells,
+        cellStyles: cellStyles,
+        kind: TableRowKind.Normal
+      ))
   of BuildCategory.Facilities:
     for idx, row in FacilitySpecRows:
       let key = buildRowKey(state.category, idx)
@@ -365,7 +373,11 @@ proc renderBuildTable(
         $row.time,
         $qty
       ]
-      tableView.addRow(TableRow(cells: cells, cellStyles: cellStyles))
+      tableView.addRow(TableRow(
+        cells: cells,
+        cellStyles: cellStyles,
+        kind: TableRowKind.Normal
+      ))
 
   tableView.render(area, buf)
 

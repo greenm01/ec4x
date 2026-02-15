@@ -168,9 +168,11 @@ proc fleetDetailContextActions*(): seq[ContextAction] =
 proc researchContextActions*(): seq[ContextAction] =
   ## Context actions for Research (View 4)
   @[
-    ContextAction(key: "E/S/T", label: "Adjust pools", enabled: true),
-    ContextAction(key: "Enter", label: "Confirm allocation", enabled: true),
-    ContextAction(key: "?", label: "Tech tree details", enabled: true),
+    ContextAction(key: "↑↓", label: "Select tech", enabled: true),
+    ContextAction(key: "+/-", label: "Adjust PP", enabled: true),
+    ContextAction(key: "0", label: "Clear", enabled: true),
+    ContextAction(key: "Enter", label: "Confirm", enabled: true),
+    ContextAction(key: "?", label: "Help", enabled: true),
   ]
 
 proc espionageContextActions*(hasSelection: bool): seq[ContextAction] =

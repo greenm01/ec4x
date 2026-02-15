@@ -335,6 +335,34 @@ proc actionToggleHelpOverlay*(): Proposal =
   ## Toggle help overlay
   gameActionProposal(ActionKind.toggleHelpOverlay, "")
 
+# =============================================================================
+# Research Actions
+# =============================================================================
+
+proc actionResearchAdjustInc*(): Proposal =
+  ## Increase research allocation
+  gameActionProposal(ActionKind.researchAdjustInc, "")
+
+proc actionResearchAdjustDec*(): Proposal =
+  ## Decrease research allocation
+  gameActionProposal(ActionKind.researchAdjustDec, "")
+
+proc actionResearchAdjustFineInc*(): Proposal =
+  ## Increase research allocation (fine step)
+  gameActionProposal(ActionKind.researchAdjustFineInc, "")
+
+proc actionResearchAdjustFineDec*(): Proposal =
+  ## Decrease research allocation (fine step)
+  gameActionProposal(ActionKind.researchAdjustFineDec, "")
+
+proc actionResearchClearAllocation*(): Proposal =
+  ## Clear research allocation for selected item
+  gameActionProposal(ActionKind.researchClearAllocation, "")
+
+proc actionResearchDigitInput*(digit: char): Proposal =
+  ## Append digit input for research allocation
+  gameActionProposal(ActionKind.researchDigitInput, $digit)
+
 # ============================================================================
 # Fleet List Actions
 # ============================================================================

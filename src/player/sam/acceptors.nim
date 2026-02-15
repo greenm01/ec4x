@@ -6,7 +6,7 @@
 ##
 ## Acceptor signature: proc(model: var M, proposal: Proposal)
 
-import std/[options, times, strutils, tables]
+import std/[options, times, strutils, tables, math]
 import ./types
 import ./tui_model
 import ./actions
@@ -19,12 +19,16 @@ import ../state/lobby_profile
 import ../../common/invite_code
 import ../../common/logger
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
-  fleet, command]
+  fleet, command, tech]
 import ../../engine/systems/capacity/construction_docks
 
 export types, tui_model, actions
 
 const DigitBufferTimeout = 1.0  ## Seconds to wait for a second keystroke in multi-char input
+
+const ResearchAdjustStep = 5
+const ResearchAdjustFineStep = 1
+const ResearchDigitBufferTimeout = 1.5
 
 proc viewModeFromInt(value: int): Option[ViewMode] =
   case value
@@ -54,6 +58,96 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.IntelDetail)
   else:
     none(ViewMode)
+
+proc researchAllocatedTotal(allocation: ResearchAllocation): int =
+  var total = allocation.economic + allocation.science
+  for pp in allocation.technology.values:
+    total += pp
+  total.int
+
+proc researchItemAllocation(
+    allocation: ResearchAllocation,
+    item: ResearchItem
+): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    allocation.economic.int
+  of ResearchItemKind.ScienceLevel:
+    allocation.science.int
+  of ResearchItemKind.Technology:
+    if allocation.technology.hasKey(item.field):
+      allocation.technology[item.field].int
+    else:
+      0
+
+proc setResearchItemAllocation(
+    allocation: var ResearchAllocation,
+    item: ResearchItem,
+    value: int
+) =
+  let clamped = max(0, value)
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    allocation.economic = int32(clamped)
+  of ResearchItemKind.ScienceLevel:
+    allocation.science = int32(clamped)
+  of ResearchItemKind.Technology:
+    allocation.technology[item.field] = int32(clamped)
+
+proc adjustResearchAllocation(
+    model: var TuiModel,
+    delta: int
+) =
+  if model.ui.mode != ViewMode.Research:
+    return
+  let items = researchItems()
+  if items.len == 0:
+    return
+  let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
+  let item = items[idx]
+  let current = researchItemAllocation(model.ui.researchAllocation, item)
+  var nextValue = current + delta
+  if nextValue < 0:
+    nextValue = 0
+  var total = researchAllocatedTotal(model.ui.researchAllocation)
+  let diff = nextValue - current
+  if diff > 0:
+    let remaining = max(0, model.view.treasury - total)
+    if diff > remaining:
+      nextValue = current + remaining
+  setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
+
+proc applyResearchDigitInput(
+    model: var TuiModel,
+    digit: char
+) =
+  if model.ui.mode != ViewMode.Research:
+    return
+  let now = epochTime()
+  let buffer = model.ui.researchDigitBuffer
+  let lastTime = model.ui.researchDigitTime
+  var nextBuffer = ""
+  if buffer.len > 0 and (now - lastTime) < ResearchDigitBufferTimeout:
+    nextBuffer = buffer & $digit
+  else:
+    nextBuffer = $digit
+  model.ui.researchDigitBuffer = nextBuffer
+  model.ui.researchDigitTime = now
+  let parsed = try:
+    parseInt(nextBuffer)
+  except:
+    0
+  let items = researchItems()
+  if items.len == 0:
+    return
+  let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
+  let item = items[idx]
+  let current = researchItemAllocation(model.ui.researchAllocation, item)
+  let total = researchAllocatedTotal(model.ui.researchAllocation)
+  let remaining = max(0, model.view.treasury - (total - current))
+  let nextValue = min(parsed, remaining)
+  setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
+
 
 proc updateFleetDetailScroll(model: var TuiModel): tuple[
     pageSize, maxOffset: int] =
@@ -251,6 +345,10 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.resetBreadcrumbs(selectedMode)
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
+      if selectedMode == ViewMode.Research:
+        model.ui.selectedIdx = 0
+        model.ui.researchDigitBuffer = ""
+        model.ui.researchDigitTime = 0.0
   of ActionKind.switchView:
     # Primary view switch
     let newMode = viewModeFromInt(proposal.navMode)
@@ -261,6 +359,10 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.resetBreadcrumbs(selectedMode)
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
+      if selectedMode == ViewMode.Research:
+        model.ui.selectedIdx = 0
+        model.ui.researchDigitBuffer = ""
+        model.ui.researchDigitTime = 0.0
       if selectedMode == ViewMode.Messages:
         model.ui.inboxFocus = InboxPaneFocus.List
         model.ui.inboxSection = InboxSection.Messages
@@ -471,6 +573,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     else:
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
+    if model.ui.mode == ViewMode.Research:
+      model.ui.researchDigitBuffer = ""
+      model.ui.researchDigitTime = 0.0
   of ActionKind.listUp:
     # Fleet console per-pane navigation
     if model.ui.mode == ViewMode.Fleets and
@@ -555,6 +660,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxTurnIdx = item.turnIdx
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
+    elif model.ui.mode == ViewMode.Research:
+      if model.ui.selectedIdx > 0:
+        model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
+      model.ui.researchDigitBuffer = ""
+      model.ui.researchDigitTime = 0.0
     else:
       # Default list navigation
       if model.ui.selectedIdx > 0:
@@ -655,6 +765,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxTurnIdx = item.turnIdx
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
+    elif model.ui.mode == ViewMode.Research:
+      let maxIdx = model.currentListLength() - 1
+      if model.ui.selectedIdx < maxIdx:
+        model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+      model.ui.researchDigitBuffer = ""
+      model.ui.researchDigitTime = 0.0
     else:
       # Default list navigation
       let maxIdx = model.currentListLength() - 1
@@ -671,6 +787,11 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         0,
         model.ui.intelDetailNoteScrollOffset - pageSize
       )
+    elif model.ui.mode == ViewMode.Research:
+      let pageSize = max(1, model.ui.termHeight - 10)
+      model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
+      model.ui.researchDigitBuffer = ""
+      model.ui.researchDigitTime = 0.0
     else:
       let pageSize = max(1, model.ui.termHeight - 10)
       model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
@@ -682,6 +803,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         return
       let pageSize = max(1, model.ui.termHeight - 12)
       model.ui.intelDetailNoteScrollOffset += pageSize
+    elif model.ui.mode == ViewMode.Research:
+      let maxIdx = model.currentListLength() - 1
+      let pageSize = max(1, model.ui.termHeight - 10)
+      model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
+      model.ui.researchDigitBuffer = ""
+      model.ui.researchDigitTime = 0.0
     else:
       let maxIdx = model.currentListLength() - 1
       let pageSize = max(1, model.ui.termHeight - 10)
@@ -744,6 +871,24 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     case proposal.actionKind
     of ActionKind.toggleHelpOverlay:
       model.ui.showHelpOverlay = not model.ui.showHelpOverlay
+    of ActionKind.researchAdjustInc:
+      adjustResearchAllocation(model, ResearchAdjustStep)
+    of ActionKind.researchAdjustDec:
+      adjustResearchAllocation(model, -ResearchAdjustStep)
+    of ActionKind.researchAdjustFineInc:
+      adjustResearchAllocation(model, ResearchAdjustFineStep)
+    of ActionKind.researchAdjustFineDec:
+      adjustResearchAllocation(model, -ResearchAdjustFineStep)
+    of ActionKind.researchClearAllocation:
+      if model.ui.mode == ViewMode.Research:
+        let items = researchItems()
+        if items.len > 0:
+          let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
+          let item = items[idx]
+          setResearchItemAllocation(model.ui.researchAllocation, item, 0)
+    of ActionKind.researchDigitInput:
+      if proposal.gameActionData.len > 0:
+        applyResearchDigitInput(model, proposal.gameActionData[0])
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
        ActionKind.toggleAutoLoadFighters:

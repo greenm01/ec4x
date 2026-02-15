@@ -889,22 +889,70 @@ proc initBindings*() =
   # =========================================================================
 
   registerBinding(Binding(
-    key: KeyCode.KeyE, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
     context: BindingContext.Research,
-    longLabel: "ERP", shortLabel: "ERP", priority: 10))
+    longLabel: "NAV", shortLabel: "Nav", priority: 1))
 
   registerBinding(Binding(
-    key: KeyCode.KeyS, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
     context: BindingContext.Research,
-    longLabel: "SRP", shortLabel: "SRP", priority: 20))
+    longLabel: "NAV", shortLabel: "K", priority: 1))
 
   registerBinding(Binding(
-    key: KeyCode.KeyT, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
     context: BindingContext.Research,
-    longLabel: "TRP", shortLabel: "TRP", priority: 30))
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Research,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageUp,
+    context: BindingContext.Research,
+    longLabel: "PGUP", shortLabel: "PgU", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listPageDown,
+    context: BindingContext.Research,
+    longLabel: "PGDN", shortLabel: "PgD", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchAdjustInc,
+    context: BindingContext.Research,
+    longLabel: "+", shortLabel: "+", priority: 40))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchAdjustDec,
+    context: BindingContext.Research,
+    longLabel: "-", shortLabel: "-", priority: 41))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.Shift,
+    actionKind: ActionKind.researchAdjustFineInc,
+    context: BindingContext.Research,
+    longLabel: "+1", shortLabel: "+1", priority: 42))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.Shift,
+    actionKind: ActionKind.researchAdjustFineDec,
+    context: BindingContext.Research,
+    longLabel: "-1", shortLabel: "-1", priority: 43))
+
+  registerBinding(Binding(
+    key: KeyCode.Key0, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchClearAllocation,
+    context: BindingContext.Research,
+    longLabel: "CLEAR", shortLabel: "0", priority: 44))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
@@ -1741,6 +1789,21 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.inboxReportDown:
     return some(actionInboxReportDown())
 
+  # Research actions
+  of ActionKind.researchAdjustInc:
+    return some(actionResearchAdjustInc())
+  of ActionKind.researchAdjustDec:
+    return some(actionResearchAdjustDec())
+  of ActionKind.researchAdjustFineInc:
+    return some(actionResearchAdjustFineInc())
+  of ActionKind.researchAdjustFineDec:
+    return some(actionResearchAdjustFineDec())
+  of ActionKind.researchClearAllocation:
+    return some(actionResearchClearAllocation())
+  of ActionKind.researchDigitInput:
+    # This is handled specially - digit passed via gameActionData
+    return none(Proposal)
+
   else:
     discard
 
@@ -1938,6 +2001,25 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       # Allow global bindings to pass through, block other keys
       if modifier != ViewModifier:
         return none(Proposal)
+
+  # Research view digit input
+  if model.ui.mode == ViewMode.Research and
+      not model.ui.expertModeActive and
+      modifier == KeyModifier.None:
+    let digitChar = case key
+      of KeyCode.Key0: '0'
+      of KeyCode.Key1: '1'
+      of KeyCode.Key2: '2'
+      of KeyCode.Key3: '3'
+      of KeyCode.Key4: '4'
+      of KeyCode.Key5: '5'
+      of KeyCode.Key6: '6'
+      of KeyCode.Key7: '7'
+      of KeyCode.Key8: '8'
+      of KeyCode.Key9: '9'
+      else: '\0'
+    if digitChar != '\0':
+      return some(actionResearchDigitInput(digitChar))
 
   if model.ui.mode == ViewMode.Fleets and
       model.ui.fleetViewMode == FleetViewMode.ListView and

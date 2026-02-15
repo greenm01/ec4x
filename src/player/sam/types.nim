@@ -194,6 +194,12 @@ type
     inboxCollapseTurn
     inboxReportUp
     inboxReportDown
+    researchAdjustInc
+    researchAdjustDec
+    researchAdjustFineInc
+    researchAdjustFineDec
+    researchClearAllocation
+    researchDigitInput
 
   # ============================================================================
   # Core SAM Types

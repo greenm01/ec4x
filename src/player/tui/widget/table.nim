@@ -19,6 +19,10 @@ import ../layout/rect
 import ../styles/ec_palette
 
 type
+  TableRowKind* {.pure.} = enum
+    Normal
+    Separator
+
   Alignment* {.pure.} = enum
     ## Column alignment.
     Left
@@ -36,6 +40,7 @@ type
     ## A single row of cell values.
     cells*: seq[string]
     cellStyles*: seq[Option[CellStyle]]
+    kind*: TableRowKind
 
   Table* = object
     ## Table widget configuration.
@@ -108,11 +113,19 @@ proc rows*(t: Table, rows: openArray[TableRow]): Table =
 
 proc addRow*(t: var Table, row: TableRow) =
   ## Add a row to the table.
-  t.rows.add(row)
+  var normalized = row
+  if normalized.kind == TableRowKind.Separator:
+    normalized.cells = @[]
+    normalized.cellStyles = @[]
+  t.rows.add(normalized)
 
 proc addRow*(t: var Table, cells: openArray[string]) =
   ## Add a row from cell values.
-  t.rows.add(TableRow(cells: @cells, cellStyles: @[]))
+  t.rows.add(TableRow(
+    cells: @cells,
+    cellStyles: @[],
+    kind: TableRowKind.Normal
+  ))
 
 proc addRow*(t: var Table, cells: openArray[string],
              style: CellStyle, styleColumn: int) =
@@ -121,7 +134,19 @@ proc addRow*(t: var Table, cells: openArray[string],
   cellStyles.setLen(cells.len)
   if styleColumn >= 0 and styleColumn < cellStyles.len:
     cellStyles[styleColumn] = some(style)
-  t.rows.add(TableRow(cells: @cells, cellStyles: cellStyles))
+  t.rows.add(TableRow(
+    cells: @cells,
+    cellStyles: cellStyles,
+    kind: TableRowKind.Normal
+  ))
+
+proc addSeparatorRow*(t: var Table) =
+  ## Add a full-width separator row with column joints.
+  t.rows.add(TableRow(
+    cells: @[],
+    cellStyles: @[],
+    kind: TableRowKind.Separator
+  ))
 
 proc selectedIdx*(t: Table, idx: int): Table =
   ## Set selected row index (-1 for no selection).
@@ -411,6 +436,17 @@ proc renderToStrings*(t: Table, width: int = 60): seq[string] =
 
   let pad = " ".repeat(t.cellPadding)
   for row in t.rows:
+    if row.kind == TableRowKind.Separator:
+      if t.showBorders:
+        result.add(borderLine("\u251c", "\u253c", "\u2524"))
+      else:
+        var sep = ""
+        for i, w in colWidths:
+          if i > 0:
+            sep.add(" ")
+          sep.add(" ".repeat(w + t.cellPadding * 2))
+        result.add(sep)
+      continue
     var rowLine = if t.showBorders: "\u2502" else: ""
     for colIdx, col in t.columns:
       let cell = if colIdx < row.cells.len: row.cells[colIdx] else: ""
@@ -528,6 +564,22 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     if y >= area.bottom:
       break
     
+    if row.kind == TableRowKind.Separator:
+      if t.showBorders:
+        drawBorderLine("\u251c", "\u253c", "\u2524")
+      else:
+        if y < area.bottom:
+          var sx = area.x
+          for i, w in colWidths:
+            for _ in 0 ..< w + (t.cellPadding * 2):
+              putSegment(sx, " ", t.separatorStyle)
+            if i < colWidths.len - 1:
+              putSegment(sx, " ", t.separatorStyle)
+          y.inc
+      if y >= area.bottom:
+        break
+      continue
+
     let isSelected = rowIdx == t.selectedIdx
     let isAlternate = t.zebraStripe and rowIdx mod 2 == 1
     let style = if isSelected:

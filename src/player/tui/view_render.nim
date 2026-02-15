@@ -2,22 +2,27 @@
 ##
 ## Rendering functions for the SAM-based TUI views.
 
-import std/[options, unicode, strutils]
+import std/[options, unicode, strutils, tables]
 import std/tables as stdtables
 
-import ../../engine/types/[core, player_state as ps_types, fleet, colony, ground_unit, facilities, ship]
+import ../../engine/types/[core, player_state as ps_types, fleet, colony,
+  ground_unit, facilities, ship, tech]
 import ../../engine/state/engine
+import ../../engine/systems/tech/[advancement, costs]
 import ../sam/sam_pkg
 import ../sam/client_limits
 import ../sam/command_parser
 import ../tui/buffer
 import ../tui/layout/layout_pkg
 import ../tui/widget/[widget_pkg, frame, paragraph]
+import ../tui/data/tech_info
 import ../tui/widget/text_input
 import ../tui/widget/overview
-import ../tui/widget/hud
 import ../tui/widget/breadcrumb
 import ../tui/widget/command_dock
+import ../tui/widget/progress_bar
+import ../tui/widget/hud
+import ../../engine/globals
 import ../tui/widget/status_bar
 import ../tui/styles/ec_palette
 import ../tui/widget/scrollbar
@@ -43,6 +48,8 @@ const
 var
   cachedExpertInput = ""
   cachedExpertMatches: seq[ExpertCommandMatch] = @[]
+
+proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel)
 
 proc helpContextFor(model: TuiModel): HelpContext =
   case model.ui.mode
@@ -1499,19 +1506,453 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render research view as centered floating modal
   let modal = newModal()
-    .title("TECH PROGRESS")
-    .maxWidth(120)
-    .minWidth(80)
+    .title("RESEARCH & DEVELOPMENT")
+    .maxWidth(128)
+    .minWidth(90)
     .borderStyle(primaryBorderStyle())
     .bgStyle(modalBgStyle())
   # +2 for footer (1 separator + 1 text line)
-  let contentHeight = 15 + 2
+  let maxLevelCap = max(@[
+    maxEconomicLevel,
+    maxScienceLevel,
+    maxConstructionTech,
+    maxWeaponsTech,
+    maxTerraformingTech,
+    maxElectronicIntelligence,
+    maxCloakingTech,
+    maxShieldTech,
+    maxCounterIntelligence,
+    maxStrategicLiftTech,
+    maxFlagshipCommandTech,
+    maxStrategicCommandTech,
+    maxFighterDoctrine,
+    maxAdvancedCarrierOps
+  ])
+  let desiredContentHeight = max(26, maxLevelCap + 13)
+  let maxContentHeight = max(12, canvas.height - 4)
+  let contentHeight = min(desiredContentHeight, maxContentHeight) + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf,
-    "[↑↓] Navigate  [Enter] Select  [/]Help")
+  let footerLine =
+    "[Up/Down/J/K]Navigate  [+/-]+/-5  [Shift+/-]+/-1  [0]Clear  " &
+    "[Enter]OK  [/]Help"
+  modal.renderWithFooter(modalArea, buf, footerLine)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
-  discard buf.setString(contentArea.x, contentArea.y,
-    "Tech view (TODO)", dimStyle())
+  renderResearchPanel(contentArea, buf, model)
+
+proc researchItemAllocation(
+    allocation: ResearchAllocation,
+    item: ResearchItem
+): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    allocation.economic.int
+  of ResearchItemKind.ScienceLevel:
+    allocation.science.int
+  of ResearchItemKind.Technology:
+    if allocation.technology.hasKey(item.field):
+      allocation.technology[item.field].int
+    else:
+      0
+
+proc researchAllocatedTotal(allocation: ResearchAllocation): int =
+  var total = allocation.economic + allocation.science
+  for pp in allocation.technology.values:
+    total += pp
+  total.int
+
+proc techLevelFor(item: ResearchItem, levels: TechLevel): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    levels.el.int
+  of ResearchItemKind.ScienceLevel:
+    levels.sl.int
+  of ResearchItemKind.Technology:
+    case item.field
+    of TechField.ConstructionTech:
+      levels.cst.int
+    of TechField.WeaponsTech:
+      levels.wep.int
+    of TechField.TerraformingTech:
+      levels.ter.int
+    of TechField.ElectronicIntelligence:
+      levels.eli.int
+    of TechField.CloakingTech:
+      levels.clk.int
+    of TechField.ShieldTech:
+      levels.sld.int
+    of TechField.CounterIntelligence:
+      levels.cic.int
+    of TechField.StrategicLiftTech:
+      levels.stl.int
+    of TechField.FlagshipCommandTech:
+      levels.fc.int
+    of TechField.StrategicCommandTech:
+      levels.sc.int
+    of TechField.FighterDoctrine:
+      levels.fd.int
+    of TechField.AdvancedCarrierOps:
+      levels.aco.int
+
+proc techMaxLevel(item: ResearchItem): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    maxEconomicLevel.int
+  of ResearchItemKind.ScienceLevel:
+    maxScienceLevel.int
+  of ResearchItemKind.Technology:
+    case item.field
+    of TechField.ConstructionTech:
+      maxConstructionTech.int
+    of TechField.WeaponsTech:
+      maxWeaponsTech.int
+    of TechField.TerraformingTech:
+      maxTerraformingTech.int
+    of TechField.ElectronicIntelligence:
+      maxElectronicIntelligence.int
+    of TechField.CloakingTech:
+      maxCloakingTech.int
+    of TechField.ShieldTech:
+      maxShieldTech.int
+    of TechField.CounterIntelligence:
+      maxCounterIntelligence.int
+    of TechField.StrategicLiftTech:
+      maxStrategicLiftTech.int
+    of TechField.FlagshipCommandTech:
+      maxFlagshipCommandTech.int
+    of TechField.StrategicCommandTech:
+      maxStrategicCommandTech.int
+    of TechField.FighterDoctrine:
+      maxFighterDoctrine.int
+    of TechField.AdvancedCarrierOps:
+      maxAdvancedCarrierOps.int
+
+proc techProgressCost(item: ResearchItem, currentLevel: int): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    elUpgradeCost(int32(currentLevel)).int
+  of ResearchItemKind.ScienceLevel:
+    slUpgradeCost(int32(currentLevel)).int
+  of ResearchItemKind.Technology:
+    techUpgradeCost(item.field, int32(currentLevel)).int
+
+proc techProgressPoints(item: ResearchItem, points: ResearchPoints): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    points.economic.int
+  of ResearchItemKind.ScienceLevel:
+    points.science.int
+  of ResearchItemKind.Technology:
+    if points.technology.hasKey(item.field):
+      points.technology[item.field].int
+    else:
+      0
+
+proc slRequiredForNext(item: ResearchItem, currentLevel: int): int =
+  let nextLevel = int32(currentLevel + 1)
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    if gameConfig.tech.el.levels.hasKey(nextLevel):
+      gameConfig.tech.el.levels[nextLevel].slRequired.int
+    else:
+      0
+  of ResearchItemKind.ScienceLevel:
+    0
+  of ResearchItemKind.Technology:
+    case item.field
+    of TechField.ConstructionTech:
+      if gameConfig.tech.cst.levels.hasKey(nextLevel):
+        gameConfig.tech.cst.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.WeaponsTech:
+      if gameConfig.tech.wep.levels.hasKey(nextLevel):
+        gameConfig.tech.wep.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.TerraformingTech:
+      if gameConfig.tech.ter.levels.hasKey(nextLevel):
+        gameConfig.tech.ter.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.ElectronicIntelligence:
+      if gameConfig.tech.eli.levels.hasKey(nextLevel):
+        gameConfig.tech.eli.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.CloakingTech:
+      if gameConfig.tech.clk.levels.hasKey(nextLevel):
+        gameConfig.tech.clk.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.ShieldTech:
+      if gameConfig.tech.sld.levels.hasKey(nextLevel):
+        gameConfig.tech.sld.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.CounterIntelligence:
+      if gameConfig.tech.cic.levels.hasKey(nextLevel):
+        gameConfig.tech.cic.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.StrategicLiftTech:
+      if gameConfig.tech.stl.levels.hasKey(nextLevel):
+        gameConfig.tech.stl.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.FlagshipCommandTech:
+      if gameConfig.tech.fc.levels.hasKey(nextLevel):
+        gameConfig.tech.fc.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.StrategicCommandTech:
+      if gameConfig.tech.sc.levels.hasKey(nextLevel):
+        gameConfig.tech.sc.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.FighterDoctrine:
+      if gameConfig.tech.fd.levels.hasKey(nextLevel):
+        gameConfig.tech.fd.levels[nextLevel].slRequired.int
+      else:
+        0
+    of TechField.AdvancedCarrierOps:
+      if gameConfig.tech.aco.levels.hasKey(nextLevel):
+        gameConfig.tech.aco.levels[nextLevel].slRequired.int
+      else:
+        0
+
+proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
+  if area.isEmpty or area.height < 10:
+    return
+
+  proc renderLine(
+      area: Rect,
+      buf: var CellBuffer,
+      x, y: int,
+      text: string,
+      style: CellStyle
+    ) =
+    if y >= area.bottom:
+      return
+    let maxWidth = max(0, area.right - x)
+    if maxWidth <= 0:
+      return
+    let clipped = if text.len > maxWidth: text[0 ..< maxWidth] else: text
+    discard buf.setString(x, y, clipped, style)
+
+  let items = researchItems()
+  let selection = clamp(model.ui.selectedIdx, 0, max(0, items.len - 1))
+  let levels = if model.view.techLevels.isSome:
+    model.view.techLevels.get()
+  else:
+    TechLevel(
+      el: 1, sl: 1, cst: 1, wep: 1, ter: 1, eli: 1, clk: 1,
+      sld: 1, cic: 1, stl: 1, fc: 1, sc: 1, fd: 1, aco: 1
+    )
+  let points = if model.view.researchPoints.isSome:
+    model.view.researchPoints.get()
+  else:
+    ResearchPoints(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int32]()
+    )
+
+  let totalAllocated = researchAllocatedTotal(model.ui.researchAllocation)
+  let remaining = max(0, model.view.treasury - totalAllocated)
+
+  let headerLine = "Treasury: " & formatNumber(model.view.treasury) &
+    " PP   Allocated: " & formatNumber(totalAllocated) &
+    " PP   Remaining: " & formatNumber(remaining) & " PP"
+
+  let rows = vertical()
+    .constraints(length(3), fill())
+    .split(area)
+
+  let treasuryArea = rows[0]
+  let treasuryFrame = bordered()
+    .borderType(BorderType.Plain)
+    .borderStyle(primaryBorderStyle())
+    .padding(padding(1, 0))
+  treasuryFrame.render(treasuryArea, buf)
+  let treasuryInner = treasuryFrame.inner(treasuryArea)
+  renderLine(
+    treasuryInner,
+    buf,
+    treasuryInner.x,
+    treasuryInner.y,
+    headerLine,
+    modalDimStyle()
+  )
+
+  let contentArea = rows[1]
+
+  let columns = horizontal()
+    .constraints(percentage(55), fill())
+    .split(contentArea)
+  let listArea = columns[0]
+  let detailArea = columns[1]
+
+  let listFrame = bordered()
+    .title("RESEARCH PROJECTS")
+    .borderType(BorderType.Rounded)
+    .borderStyle(primaryBorderStyle())
+    .padding(1)
+  listFrame.render(listArea, buf)
+  let listInner = listFrame.inner(listArea)
+
+  let listColumns = @[
+    tableColumn("Category", 12, table.Alignment.Left),
+    tableColumn("Tech", 4, table.Alignment.Left),
+    tableColumn("Name", 0, table.Alignment.Left, 6),
+    tableColumn("Lvl", 3, table.Alignment.Center),
+    tableColumn("Alloc (PP)", 10, table.Alignment.Right)
+  ]
+
+  var listTable = table(listColumns)
+    .showBorders(true)
+    .rowStyle(modalDimStyle())
+    .selectedStyle(selectedStyle())
+
+  var lastCategory = ""
+  var rowIdx = 0
+  var selectedRowIdx = -1
+  for idx, item in items:
+    if lastCategory.len > 0 and item.category != lastCategory:
+      listTable.addSeparatorRow()
+      rowIdx.inc
+    let level = techLevelFor(item, levels)
+    let allocated = researchItemAllocation(model.ui.researchAllocation, item)
+    listTable.addRow(@[
+      item.category,
+      item.code,
+      item.name,
+      $level,
+      $allocated
+    ])
+    if idx == selection:
+      selectedRowIdx = rowIdx
+    rowIdx.inc
+    lastCategory = item.category
+
+  if items.len > 0 and selectedRowIdx >= 0:
+    listTable = listTable.selectedIdx(selectedRowIdx)
+  listTable.render(listInner, buf)
+
+  if detailArea.isEmpty:
+    return
+
+  let detailTitle =
+    if items.len > 0:
+      "DETAIL: " & items[selection].code & " " & items[selection].name
+    else:
+      "DETAIL"
+  let detailFrame = bordered()
+    .title(detailTitle)
+    .borderType(BorderType.Rounded)
+    .borderStyle(primaryBorderStyle())
+    .padding(1)
+  detailFrame.render(detailArea, buf)
+  let detailInner = detailFrame.inner(detailArea)
+
+  if items.len > 0:
+    let item = items[selection]
+    var dy = detailInner.y
+    let level = techLevelFor(item, levels)
+    let maxLevel = progressionMaxLevel(item)
+    if dy < detailInner.bottom:
+      let levelHeader = "Level: " & $level & " / " & $maxLevel
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        levelHeader,
+        modalDimStyle()
+      )
+      dy += 1
+    let pointsCurrent = techProgressPoints(item, points)
+    let cost = techProgressCost(item, level)
+    let barWidth = max(8, detailInner.width - 18)
+    let pb = progressBar(pointsCurrent, cost, barWidth)
+      .showPercent(false)
+      .showRemaining(false)
+    if dy < detailInner.bottom:
+      let lineArea = rect(detailInner.x, dy, detailInner.width, 1)
+      pb.render(lineArea, buf)
+      dy += 1
+    if dy < detailInner.bottom:
+      let progressLine =
+        "Progress: " & $pointsCurrent & "/" & $cost
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        progressLine,
+        modalDimStyle()
+      )
+      dy += 1
+    let slReq = techSlRequiredForLevel(item, level + 1)
+    if slReq > 0 and dy < detailInner.bottom:
+      let slLine = "SL Required: " & $slReq
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        slLine,
+        modalDimStyle()
+      )
+      dy += 1
+
+    if dy < detailInner.bottom:
+      let desc = paragraph(techDescription(item))
+        .wrap(Wrap(trim: true))
+        .style(modalDimStyle())
+      let descHeight = min(2, max(1, detailInner.bottom - dy))
+      let descArea = rect(detailInner.x, dy, detailInner.width, descHeight)
+      desc.render(descArea, buf)
+      dy += descHeight
+
+    if dy < detailInner.bottom:
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        "PROGRESSION",
+        canvasHeaderStyle()
+      )
+      dy += 1
+
+    let progColumns = @[
+      tableColumn("Lvl", 3, table.Alignment.Center),
+      tableColumn("Cost", 6, table.Alignment.Right),
+      tableColumn("SL", 4, table.Alignment.Right),
+      tableColumn("Effect", 0, table.Alignment.Left, 16)
+    ]
+
+    var progTable = table(progColumns)
+      .showBorders(true)
+      .rowStyle(modalDimStyle())
+      .selectedStyle(selectedStyle())
+
+    let maxLevelInt = max(1, maxLevel)
+    for lvl in 1 .. maxLevelInt:
+      let costFor = techCostForLevel(item, lvl)
+      let slFor = techSlRequiredForLevel(item, lvl)
+      let effect = techEffectForLevel(item, lvl)
+      progTable.addRow(@[$lvl, $costFor, $slFor, effect])
+
+    let selectedLevel = clamp(level - 1, 0, maxLevelInt - 1)
+    progTable = progTable.selectedIdx(selectedLevel)
+
+    let availableHeight = max(1, detailInner.bottom - dy)
+    let maxRows = max(1, availableHeight - progTable.renderHeight(0))
+    let visibleRows = min(maxLevelInt, maxRows)
+    let tableHeight = progTable.renderHeight(visibleRows)
+    let tableArea = rect(detailInner.x, dy, detailInner.width, tableHeight)
+    progTable.render(tableArea, buf)
 
 proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
                            model: TuiModel, scroll: ScrollState) =

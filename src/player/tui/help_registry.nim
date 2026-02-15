@@ -150,6 +150,13 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     if HelpItems.hasKey(code):
       let item = HelpItems[code]
       result.add(item.label & " = " & item.desc)
+  if ctx == HelpContext.Research:
+    result.add("Up/Down = navigate")
+    result.add("+/- = adjust PP")
+    result.add("Shift+/- = fine adjust")
+    result.add("0 = clear allocation")
+    result.add("0-9 = set PP")
+    result.add("Enter = confirm")
   if ctx == HelpContext.Messages:
     result.add("Tab = cycle focus")
     result.add("M = jump to Messages")

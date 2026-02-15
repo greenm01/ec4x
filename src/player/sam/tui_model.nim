@@ -639,10 +639,140 @@ type
     turnIdx*: int       ## Index into turnBuckets (if TurnBucket)
     unread*: int        ## Unread count badge
 
-  # ============================================================================
-  # UI State (interaction + transient)
-  # ============================================================================
+  ResearchItemKind* {.pure.} = enum
+    EconomicLevel
+    ScienceLevel
+    Technology
 
+  ResearchItem* = object
+    category*: string
+    code*: string
+    name*: string
+    kind*: ResearchItemKind
+    field*: TechField
+
+const ResearchItems* = [
+  ResearchItem(
+    category: "FOUNDATIONS",
+    code: "SL",
+    name: "Science Level",
+    kind: ResearchItemKind.ScienceLevel,
+    field: TechField.WeaponsTech
+  ),
+  ResearchItem(
+    category: "FOUNDATIONS",
+    code: "EL",
+    name: "Economic Level",
+    kind: ResearchItemKind.EconomicLevel,
+    field: TechField.WeaponsTech
+  ),
+  ResearchItem(
+    category: "MILITARY",
+    code: "WEP",
+    name: "Weapons Tech",
+    kind: ResearchItemKind.Technology,
+    field: TechField.WeaponsTech
+  ),
+  ResearchItem(
+    category: "MILITARY",
+    code: "CST",
+    name: "Construction",
+    kind: ResearchItemKind.Technology,
+    field: TechField.ConstructionTech
+  ),
+  ResearchItem(
+    category: "MILITARY",
+    code: "FC",
+    name: "Fleet Command",
+    kind: ResearchItemKind.Technology,
+    field: TechField.FlagshipCommandTech
+  ),
+  ResearchItem(
+    category: "MILITARY",
+    code: "SC",
+    name: "Strategic Cmd",
+    kind: ResearchItemKind.Technology,
+    field: TechField.StrategicCommandTech
+  ),
+  ResearchItem(
+    category: "MILITARY",
+    code: "FD",
+    name: "Fighter Doc",
+    kind: ResearchItemKind.Technology,
+    field: TechField.FighterDoctrine
+  ),
+  ResearchItem(
+    category: "MILITARY",
+    code: "ACO",
+    name: "Carrier Ops",
+    kind: ResearchItemKind.Technology,
+    field: TechField.AdvancedCarrierOps
+  ),
+  ResearchItem(
+    category: "SCIENCE",
+    code: "SLD",
+    name: "Shields",
+    kind: ResearchItemKind.Technology,
+    field: TechField.ShieldTech
+  ),
+  ResearchItem(
+    category: "SCIENCE",
+    code: "CLK",
+    name: "Cloaking",
+    kind: ResearchItemKind.Technology,
+    field: TechField.CloakingTech
+  ),
+  ResearchItem(
+    category: "SCIENCE",
+    code: "ELI",
+    name: "Electronic Int",
+    kind: ResearchItemKind.Technology,
+    field: TechField.ElectronicIntelligence
+  ),
+  ResearchItem(
+    category: "SCIENCE",
+    code: "TER",
+    name: "Terraforming",
+    kind: ResearchItemKind.Technology,
+    field: TechField.TerraformingTech
+  ),
+  ResearchItem(
+    category: "SCIENCE",
+    code: "STL",
+    name: "Strategic Lift",
+    kind: ResearchItemKind.Technology,
+    field: TechField.StrategicLiftTech
+  ),
+  ResearchItem(
+    category: "SCIENCE",
+    code: "CIC",
+    name: "Counter Intel",
+    kind: ResearchItemKind.Technology,
+    field: TechField.CounterIntelligence
+  )
+]
+
+proc researchItems*(): seq[ResearchItem] =
+  @ResearchItems
+
+proc researchSelectableCount*(): int =
+  ResearchItems.len
+
+proc researchItemAt*(idx: int): ResearchItem =
+  let clamped = clamp(idx, 0, max(0, ResearchItems.len - 1))
+  ResearchItems[clamped]
+
+proc researchIndexForCode*(code: string): int =
+  for idx, item in ResearchItems:
+    if item.code == code:
+      return idx
+  0
+
+# ============================================================================
+# UI State (interaction + transient)
+# ============================================================================
+
+type
   TuiUiState* = object
     appPhase*: AppPhase
     mode*: ViewMode
@@ -774,6 +904,11 @@ type
     intelScroll*: ScrollState
     messagesScroll*: ScrollState
     settingsScroll*: ScrollState
+
+    # Research state
+    researchAllocation*: ResearchAllocation
+    researchDigitBuffer*: string
+    researchDigitTime*: float
 
     # Inbox state (unified messages + reports)
     inboxFocus*: InboxPaneFocus
@@ -1065,6 +1200,13 @@ proc initTuiUiState*(): TuiUiState =
     intelScroll: initScrollState(),
     messagesScroll: initScrollState(),
     settingsScroll: initScrollState(),
+    researchAllocation: ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int32]()
+    ),
+    researchDigitBuffer: "",
+    researchDigitTime: 0.0,
     inboxFocus: InboxPaneFocus.List,
     inboxSection: InboxSection.Messages,
     inboxListIdx: 0,
@@ -1292,7 +1434,7 @@ proc currentListLength*(model: TuiModel): int =
       model.filteredFleets().len
     else:
       model.view.fleets.len
-  of ViewMode.Research: 0  # Research has no list
+  of ViewMode.Research: researchSelectableCount()
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.IntelDb: model.view.intelRows.len
@@ -2266,11 +2408,7 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
     repairCommands: model.ui.stagedRepairCommands,
     scrapCommands: model.ui.stagedScrapCommands,
     # Empty/default values for other command types (Phase 2+)
-    researchAllocation: ResearchAllocation(
-      economic: 0,
-      science: 0,
-      technology: initTable[TechField, int32]()
-    ),
+    researchAllocation: model.ui.researchAllocation,
     diplomaticCommand: @[],
     populationTransfers: @[],
     terraformCommands: @[],
