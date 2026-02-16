@@ -62,16 +62,37 @@ proc runTui*(gameId: string = "") =
   var authoritativeConfigLoaded = false
   var authoritativeConfigHash = ""
   var authoritativeConfigSchema = 0'i32
+  var authoritativeConfigError = ""
 
   var nostrHandlers = PlayerNostrHandlers()
 
   proc applyAuthoritativeConfig(snapshot: AuthoritativeConfig): bool =
+    authoritativeConfigError = ""
     if snapshot.schemaVersion != ConfigSchemaVersion:
+      authoritativeConfigError = "schema version mismatch"
+      logWarn("TUI/Config", "Rejected config: ", authoritativeConfigError)
       return false
     if computeConfigHash(snapshot) != snapshot.configHash:
+      authoritativeConfigError = "config hash mismatch"
+      logWarn("TUI/Config", "Rejected config: ", authoritativeConfigError)
+      return false
+    if not snapshot.hasRequiredSections():
+      authoritativeConfigError = "missing required sections"
+      logWarn("TUI/Config", "Rejected config: ", authoritativeConfigError)
+      return false
+    if not snapshot.hasRequiredCapabilities():
+      authoritativeConfigError = "missing required capabilities"
+      logWarn("TUI/Config", "Rejected config: ", authoritativeConfigError)
+      return false
+    let contentError = snapshot.requiredContentError()
+    if contentError.len > 0:
+      authoritativeConfigError = contentError
+      logWarn("TUI/Config", "Rejected config: ", authoritativeConfigError)
       return false
     let configOpt = toGameConfig(snapshot)
     if configOpt.isNone:
+      authoritativeConfigError = "failed to materialize game config"
+      logWarn("TUI/Config", "Rejected config: ", authoritativeConfigError)
       return false
     gameConfig = configOpt.get()
     authoritativeConfigLoaded = true
@@ -439,9 +460,13 @@ proc runTui*(gameId: string = "") =
           if envelopeOpt.isSome:
             let envelope = envelopeOpt.get()
             if not applyAuthoritativeConfig(envelope.authoritativeConfig):
+              let reason = if authoritativeConfigError.len > 0:
+                authoritativeConfigError
+              else:
+                "invalid authoritative config"
               setConfigBlockingError(
                 sam.model,
-                "Rejected full state: invalid authoritative config"
+                "Rejected full state: " & reason
               )
               enqueueProposal(emptyProposal())
               return
@@ -1237,6 +1262,7 @@ proc runTui*(gameId: string = "") =
       authoritativeConfigLoaded = false
       authoritativeConfigHash = ""
       authoritativeConfigSchema = 0
+      authoritativeConfigError = ""
 
       # Check for valid houseId
       if sam.model.ui.loadHouseId == 0:
@@ -1248,8 +1274,10 @@ proc runTui*(gameId: string = "") =
       else:
         let houseId = HouseId(sam.model.ui.loadHouseId.uint32)
         let cachedConfigOpt = tuiCache.loadLatestConfigSnapshot(gameId)
+        var invalidCachedConfig = false
         if cachedConfigOpt.isSome:
-          discard applyAuthoritativeConfig(cachedConfigOpt.get().snapshot)
+          if not applyAuthoritativeConfig(cachedConfigOpt.get().snapshot):
+            invalidCachedConfig = true
 
         # Try to load from TUI cache first (for Nostr games)
         let cachedStateOpt = tuiCache.loadLatestPlayerState(gameId,
@@ -1282,10 +1310,17 @@ proc runTui*(gameId: string = "") =
           activeGameId = gameId
           viewingHouse = houseId
           sam.model.view.viewingHouse = int(houseId)
-          setConfigBlockingError(
-            sam.model,
-            "Waiting for authoritative config snapshot..."
-          )
+          if invalidCachedConfig and authoritativeConfigError.len > 0:
+            setConfigBlockingError(
+              sam.model,
+              "Cached config invalid (" & authoritativeConfigError &
+                "); waiting for server snapshot..."
+            )
+          else:
+            setConfigBlockingError(
+              sam.model,
+              "Waiting for authoritative config snapshot..."
+            )
         else:
           # No cached state - set up for Nostr subscription
           # The game will load when full state arrives via onFullState handler

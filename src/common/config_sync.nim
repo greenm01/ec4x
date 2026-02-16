@@ -1,6 +1,6 @@
 ## Shared authoritative rules payload for engine <-> player sync.
 
-import std/[options, strutils]
+import std/[options, strutils, tables]
 import msgpack4nim
 import nimcrypto/sha2
 import ../engine/types/config
@@ -102,11 +102,49 @@ proc hasRequiredCapabilities*(snapshot: TuiRulesSnapshot): bool =
       return false
   true
 
+proc requiredContentError*(snapshot: TuiRulesSnapshot): string =
+  ## Returns empty string when required content is present and valid.
+  if not snapshot.hasRequiredSections():
+    return "missing required config sections"
+
+  let tech = snapshot.sections.tech.get()
+  if len(tech.el.levels) == 0:
+    return "missing EL progression levels"
+  if len(tech.sl.levels) == 0:
+    return "missing SL progression levels"
+  if len(tech.cst.levels) == 0:
+    return "missing CST progression levels"
+  if len(tech.wep.levels) == 0:
+    return "missing WEP progression levels"
+  if len(tech.sc.levels) == 0:
+    return "missing SC progression levels"
+
+  let limits = snapshot.sections.limits.get()
+  if limits.c2Limits.c2ConversionRatio <= 0.0'f32:
+    return "invalid C2 conversion ratio"
+  if limits.c2Limits.c2OverdraftRatio <= 0.0'f32:
+    return "invalid C2 overdraft ratio"
+
+  let economy = snapshot.sections.economy.get()
+  if economy.industrialInvestment.baseCost <= 0:
+    return "invalid industrial investment base cost"
+
+  let construction = snapshot.sections.construction.get()
+  if construction.construction.shipTurns <= 0:
+    return "invalid construction ship turns"
+
+  ""
+
+proc hasRequiredContent*(snapshot: TuiRulesSnapshot): bool =
+  snapshot.requiredContentError().len == 0
+
 proc toGameConfig*(snapshot: TuiRulesSnapshot): Option[GameConfig] =
   ## Materialize minimal GameConfig needed by current player TUI.
   if not snapshot.hasRequiredSections():
     return none(GameConfig)
   if not snapshot.hasRequiredCapabilities():
+    return none(GameConfig)
+  if not snapshot.hasRequiredContent():
     return none(GameConfig)
 
   var config = GameConfig()

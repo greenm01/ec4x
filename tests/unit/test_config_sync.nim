@@ -5,6 +5,7 @@ import std/[unittest, options, tables]
 import ../../src/common/config_sync
 import ../../src/engine/config/engine as config_engine
 import ../../src/engine/globals
+import ../../src/engine/types/config
 
 gameConfig = config_engine.loadGameConfig()
 
@@ -36,3 +37,12 @@ suite "Config Sync Snapshot":
     check cfg.ships.ships.len > 0
     check cfg.groundUnits.units.len > 0
     check cfg.facilities.facilities.len > 0
+
+  test "toGameConfig rejects semantically empty content":
+    let emptySnapshot = buildTuiRulesSnapshot(GameConfig())
+    check emptySnapshot.hasRequiredSections()
+    check emptySnapshot.hasRequiredCapabilities()
+    check not emptySnapshot.hasRequiredContent()
+    check emptySnapshot.requiredContentError().len > 0
+    let configOpt = toGameConfig(emptySnapshot)
+    check configOpt.isNone

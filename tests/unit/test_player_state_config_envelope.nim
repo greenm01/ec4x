@@ -1,6 +1,6 @@
 ## Unit tests for full-state/delta config envelope validation.
 
-import std/[unittest, options]
+import std/[unittest, options, tables]
 import msgpack4nim
 
 import ../../src/common/config_sync
@@ -29,6 +29,10 @@ suite "Player State Config Envelope":
     check parsed.isSome
     check parsed.get().playerState.turn == 3
     check parsed.get().authoritativeConfig.configHash == snapshot.configHash
+    check parsed.get().authoritativeConfig.sections.tech.isSome
+    let slLevels =
+      parsed.get().authoritativeConfig.sections.tech.get().sl.levels
+    check len(slLevels) > 0
 
   test "applyDeltaMsgpack accepts matching config hash":
     var ps = PlayerState(

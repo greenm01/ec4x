@@ -1056,6 +1056,12 @@ proc start*(
       logError("Daemon", "Relay URL is empty")
       return 1
 
+  try:
+    gameConfig = loadGameConfig("config")
+  except CatchableError as e:
+    logError("Daemon", "Failed to load game config: ", e.msg)
+    return 1
+
   setControlCHook(requestShutdown)
 
   let allowIdentityRegen = getEnv("EC4X_REGEN_IDENTITY") == "1"
