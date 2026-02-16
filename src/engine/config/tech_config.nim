@@ -42,6 +42,9 @@ proc parseScienceLevel(node: KdlNode, ctx: var KdlConfigContext): SlConfig =
   ##   level 3 { erpRequired 12; srpRequired 13 }
   ## }
   ## ```
+  ##
+  ## Note: SL advancement uses srpRequired.
+  ## erpRequired is retained for compatibility and display tables.
   result = SlConfig()
 
   for child in node.children:

@@ -22,7 +22,7 @@ import ../../engine/types/[core, production, ship, facilities, ground_unit,
   fleet, command, tech]
 import ../../engine/systems/capacity/construction_docks
 import ../../engine/systems/tech/costs
-import ../tui/data/tech_info
+import ../tui/data/research_projection
 
 export types, tui_model, actions
 
@@ -96,79 +96,40 @@ proc setResearchItemAllocation(
   of ResearchItemKind.Technology:
     allocation.technology[item.field] = int32(clamped)
 
-proc currentTechLevel(model: TuiModel, item: ResearchItem): int =
-  if model.view.techLevels.isNone:
-    return 0
-  let levels = model.view.techLevels.get()
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    levels.el.int
-  of ResearchItemKind.ScienceLevel:
-    levels.sl.int
-  of ResearchItemKind.Technology:
-    case item.field
-    of TechField.ConstructionTech:
-      levels.cst.int
-    of TechField.WeaponsTech:
-      levels.wep.int
-    of TechField.TerraformingTech:
-      levels.ter.int
-    of TechField.ElectronicIntelligence:
-      levels.eli.int
-    of TechField.CloakingTech:
-      levels.clk.int
-    of TechField.ShieldTech:
-      levels.sld.int
-    of TechField.CounterIntelligence:
-      levels.cic.int
-    of TechField.StrategicLiftTech:
-      levels.stl.int
-    of TechField.FlagshipCommandTech:
-      levels.fc.int
-    of TechField.StrategicCommandTech:
-      levels.sc.int
-    of TechField.FighterDoctrine:
-      levels.fd.int
-    of TechField.AdvancedCarrierOps:
-      levels.aco.int
-
-proc currentResearchPoints(model: TuiModel, item: ResearchItem): int =
-  if model.view.researchPoints.isNone:
-    return 0
-  let points = model.view.researchPoints.get()
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    points.economic.int
-  of ResearchItemKind.ScienceLevel:
-    points.science.int
-  of ResearchItemKind.Technology:
-    if points.technology.hasKey(item.field):
-      points.technology[item.field].int
-    else:
-      0
-
-proc researchSlGate(model: TuiModel, item: ResearchItem): bool =
-  if model.view.techLevels.isNone:
-    return false
-  let levels = model.view.techLevels.get()
-  let currentLevel = currentTechLevel(model, item)
-  let required = techSlRequiredForLevel(item, currentLevel + 1)
-  levels.sl.int >= required
-
 proc researchMaxAllocation(model: TuiModel, item: ResearchItem): int =
-  if model.view.techLevels.isNone:
+  if model.view.techLevels.isNone or model.view.researchPoints.isNone:
     return 0
-  if model.view.researchPoints.isNone:
-    return 0
-  let currentLevel = currentTechLevel(model, item)
-  let maxLevel = progressionMaxLevel(item)
-  if currentLevel >= maxLevel:
-    return 0
-  if not researchSlGate(model, item):
-    return 0
-  let cost = techProgressCost(item, currentLevel)
-  let progress = currentResearchPoints(model, item)
-  max(0, cost - progress)
+  let levels = model.view.techLevels.get()
+  let points = model.view.researchPoints.get()
+  research_projection.maxProjectedAllocation(
+    levels, points, model.ui.researchAllocation, item
+  )
+
+proc normalizeResearchAllocation(model: var TuiModel): bool =
+  ## Re-clamp all rows against projected SL.
+  ## Returns true when dependent staged allocations were reduced.
+  if model.view.techLevels.isNone or model.view.researchPoints.isNone:
+    return false
+
+  let levels = model.view.techLevels.get()
+  let points = model.view.researchPoints.get()
+  var dependentReduced = false
+  var changed = true
+
+  while changed:
+    changed = false
+    for item in researchItems():
+      let current = researchItemAllocation(model.ui.researchAllocation, item)
+      let maxAllowed = research_projection.maxProjectedAllocation(
+        levels, points, model.ui.researchAllocation, item
+      )
+      if current > maxAllowed:
+        if item.kind != ResearchItemKind.ScienceLevel and current > 0:
+          dependentReduced = true
+        setResearchItemAllocation(model.ui.researchAllocation, item, maxAllowed)
+        changed = true
+
+  dependentReduced
 
 proc adjustResearchAllocation(
     model: var TuiModel,
@@ -195,6 +156,8 @@ proc adjustResearchAllocation(
     if diff > remaining:
       nextValue = current + remaining
   setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
+  if normalizeResearchAllocation(model):
+    model.ui.statusMessage = "SL reduced: blocked allocations were cleared"
 
 proc applyResearchDigitInput(
     model: var TuiModel,
@@ -229,6 +192,8 @@ proc applyResearchDigitInput(
   if nextValue > maxPerTech:
     nextValue = maxPerTech
   setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
+  if normalizeResearchAllocation(model):
+    model.ui.statusMessage = "SL reduced: blocked allocations were cleared"
 
 
 proc updateFleetDetailScroll(model: var TuiModel): tuple[
@@ -968,6 +933,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
           let item = items[idx]
           setResearchItemAllocation(model.ui.researchAllocation, item, 0)
+          if normalizeResearchAllocation(model):
+            model.ui.statusMessage =
+              "SL reduced: blocked allocations were cleared"
     of ActionKind.researchDigitInput:
       if proposal.gameActionData.len > 0:
         applyResearchDigitInput(model, proposal.gameActionData[0])

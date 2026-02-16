@@ -84,7 +84,7 @@
 | CST | Construction tech level – required shipyard level to build a ship class | [4.5](04-research_development.md#45-construction-cst) |
 | EL | Economic Level – entrepreneurial & education advancement (max 10+) | [4.2](04-research_development.md#42-economic-level-el) |
 | ELI | Electronic Intelligence – detection tech level | [4.8](04-research_development.md#48-electronic-intelligence-eli) |
-| ERP | Economic Research Points – used to advance Economic Level | [4.1](04-research_development.md#41-science-level-sl) |
+| ERP | Economic Research Points – used to advance Economic Level | [4.2](04-research_development.md#42-economic-level-el) |
 | FC | Fleet Command – tech that increases maximum ships per fleet | [4.10](04-research_development.md#410-fleet-command-fc) |
 | FD | Fighter Doctrine tech level – multiplier to per-colony fighter capacity | [4.12](04-research_development.md#412-fighter-doctrine-fd) |
 | SC | Strategic Command – tech that increases maximum number of fleets | [4.11](04-research_development.md#411-strategic-command-sc) |

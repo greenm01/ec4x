@@ -308,7 +308,9 @@ For detailed facility capabilities and construction rules, see [Sections 5.0-5.4
 
 ## 3.8 Research & Development Investment
 
-You allocate PP to three research pools during the Income Phase. PP is converted to Research Points (RP) based on your Gross House Output (GHO) and Science Level (SL):
+You allocate PP to research during the Income Phase. The engine converts PP
+into Research Points (RP) pools based on your Gross House Output (GHO) and
+Science Level (SL):
 
 **PP to RP Conversion Formulas:**
 
@@ -325,11 +327,18 @@ Where:
 
 **Logarithmic Scaling**: The logarithmic GHO bonus ensures that economic growth provides meaningful research advantages without creating runaway snowball effects. A House with 10x the GHO of a rival has only ~1.3x the research efficiency, not 10x.
 
-**Economic Research Points (ERP)**: Improves your colony economic output through Economic Level (EL) technology. Each EL tier increases the economic multiplier applied to Industrial Units in the GCO formula. Benefits strongly from both GHO and SL bonuses (strongest GHO scaling).
+**Economic Research Points (ERP)**: Advances Economic Level (EL). EL increases
+the economic multiplier applied to Industrial Units in the GCO formula.
+Benefits strongly from both GHO and SL bonuses (strongest GHO scaling).
 
-**Science Research Points (SRP)**: Unlocks critical infrastructure and doctrinal technologies including Fighter Doctrine (FD), Advanced Carrier Operations (ACO), Cloaking (CLK), Electronic Intelligence (ELI), Shields (SLD), Terraforming (TER), and Strategic Lift (STL). Benefits from both GHO and SL bonuses (moderate GHO scaling, strong SL scaling).
+**Science Research Points (SRP)**: Advances Science Level (SL) and SRP-funded
+tech fields (TER, ELI, CLK, SLD, CIC, STL). Benefits from both GHO and SL
+bonuses (moderate GHO scaling, strong SL scaling).
 
-**Technology Research Points (TRP)**: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes. Benefits from both GHO and SL bonuses (moderate GHO scaling, modest SL scaling).
+**Technology Research Points (TRP)**: Advances TRP-funded tech fields (CST, WEP,
+FC, SC, FD, ACO). WEP improves ship combat effectiveness. CST improves
+construction capacity and unlocks hull classes. Benefits from both GHO and SL
+bonuses (moderate GHO scaling, modest SL scaling).
 
 **Efficiency Scaling Examples:**
 

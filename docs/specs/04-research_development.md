@@ -21,7 +21,7 @@ These are checked at runtime from `house.techTree.levels` and apply to all appli
 | SC   | Strategic Command          | TRP     | C2 Pool bonus for total navy capacity          | Runtime      |
 | FD   | Fighter Doctrine           | TRP     | Fighter capacity multiplier per colony         | Runtime      |
 | EL   | Economic Level             | ERP     | Production multiplier (all colonies)           | Runtime      |
-| SL   | Science Level              | ERP+SRP | Gates tech research                            | Build-time   |
+| SL   | Science Level              | SRP     | Gates tech research                            | Build-time   |
 | TER  | Terraforming               | SRP     | Enables planet upgrades                        | Build-time   |
 | SLD  | Shields                    | SRP     | Shield construction capability                 | Build-time   |
 
@@ -69,30 +69,35 @@ Science Level represents your House's overall technological sophistication and r
 
 <!-- SL_TABLE_START -->
 
-| SL  | ERP Required | SRP Required | Total RP Required | Cumulative RP |
-|:---:|:------------:|:------------:|:-----------------:|:-------------:|
-| 1   | 0            | 0            | 0                 | 0             |
-| 2   | 10           | 10           | 20                | 20            |
-| 3   | 12           | 13           | 25                | 45            |
-| 4   | 15           | 16           | 31                | 76            |
-| 5   | 19           | 21           | 40                | 116           |
-| 6   | 24           | 27           | 51                | 167           |
-| 7   | 31           | 35           | 66                | 233           |
-| 8   | 40           | 46           | 86                | 319           |
-| 9   | 52           | 60           | 112               | 431           |
-| 10  | 68           | 78           | 146               | 577           |
+| SL  | SRP Required | Cumulative SRP |
+|:---:|:------------:|:--------------:|
+| 1   | 0            | 0              |
+| 2   | 10           | 10             |
+| 3   | 13           | 23             |
+| 4   | 16           | 39             |
+| 5   | 21           | 60             |
+| 6   | 27           | 87             |
+| 7   | 35           | 122            |
+| 8   | 46           | 168            |
+| 9   | 60           | 228            |
+| 10  | 78           | 306            |
 
 *Source: config/tech.kdl [science_levels] section*
 
 <!-- SL_TABLE_END -->
 
-SL advances automatically when your House accumulates the required ERP and SRP thresholds. Both pools must meet their respective requirements simultaneously.
+SL advances automatically when your House accumulates the required SRP
+threshold.
 
 **Per-Turn Advancement Limit:**
 
 - A House may advance at most **one level per tech per turn** (EL, SL, and each tech field).
 - Research allocation is capped to the RP required for the next level only.
 - Any excess PP allocated beyond the next-level requirement is **returned to the treasury**.
+- If staged SL investment reaches the next SL threshold this turn, the House
+  may also stage EL and tech investments gated by that next SL level.
+- If staged SL investment is later reduced below the threshold, dependent staged
+  allocations are automatically cleared.
 
 **Strategic Implications:**
 
@@ -648,5 +653,6 @@ For carrier combat mechanics, see [Section 2.4.1](02-assets.md#241-fighters--car
 ## 4.14 Strategic Considerations
 
 - **Balancing R&D Investments**: You must balance investments across ERP, SRP, and TRP to maximize your economic output, technological advancements, and military strength.
-- **Economic Synergies**: Increasing EL and SL together provides synergistic benefits, enhancing your overall productivity and unlocking powerful technologies.
+- **Economic Synergies**: SL unlocks higher EL tiers and advanced technologies,
+  while EL increases PP output to fund further research.
 - **Adapting to Opponents**: Flexibility in R&D strategy is key. Prioritize weapons technology (WEP) during military conflicts or focus on terraforming (TER) for long-term economic growth—critical decisions based on the game state.

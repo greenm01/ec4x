@@ -10,7 +10,7 @@
 ##   F1 Overview   - Empire dashboard, leaderboard, alerts
 ##   F2 Colony     - Colony list and management
 ##   F3 Fleets     - Fleet console (system/list view)
-##   F4 Tech       - Tech levels, ERP/SRP/TRP allocation
+##   F4 Tech       - PP allocation -> ERP/SRP/TRP progress
 ##   F5 Espionage  - EBP/CIP budget, intel operations
 ##   F6 General    - Diplomacy, tax, empire policy
 ##   F7 (unused)   - Reserved

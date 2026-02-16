@@ -196,7 +196,7 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         keyCode = KeyCode.KeyZ
       of "+":
         keyCode = KeyCode.KeyPlus
-        modifier = KeyModifier.None
+        modifier = KeyModifier.Shift
       of "-":
         keyCode = KeyCode.KeyMinus
         modifier = KeyModifier.None
@@ -205,7 +205,7 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
         modifier = KeyModifier.None
       of "_":
         keyCode = KeyCode.KeyMinus
-        modifier = KeyModifier.None
+        modifier = KeyModifier.Shift
       of ":":
         keyCode = KeyCode.KeyColon
       of "/":

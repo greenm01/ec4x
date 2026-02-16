@@ -133,7 +133,7 @@ proc techEffectForLevel*(item: ResearchItem, level: int): string =
       "Base infrastructure"
     elif gameConfig.tech.sl.levels.hasKey(int32(level)):
       let data = gameConfig.tech.sl.levels[int32(level)]
-      "ERP " & $data.erpRequired & " SRP " & $data.srpRequired
+      "SRP " & $data.srpRequired
     else:
       "Research tier " & $level
   of ResearchItemKind.Technology:

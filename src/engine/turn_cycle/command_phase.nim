@@ -383,27 +383,6 @@ proc processResearchAllocation(
 
     # Cap per-tech allocation to one level per turn and apply SL gating
     var refundPP: int32 = 0
-    if scaledAllocation.economic > 0:
-      let currentEL = house.techTree.levels.el
-      let elCost = elUpgradeCost(currentEL)
-      let elSlRequired =
-        if gameConfig.tech.el.levels.hasKey(currentEL + 1):
-          gameConfig.tech.el.levels[currentEL + 1].slRequired
-        else:
-          0
-      if house.techTree.levels.sl < elSlRequired:
-        refundPP += scaledAllocation.economic
-        scaledAllocation.economic = 0
-      elif elCost <= 0:
-        refundPP += scaledAllocation.economic
-        scaledAllocation.economic = 0
-      else:
-        let remainingEL =
-          max(0'i32, elCost - house.techTree.accumulated.economic)
-        if scaledAllocation.economic > remainingEL:
-          refundPP += scaledAllocation.economic - remainingEL
-          scaledAllocation.economic = remainingEL
-
     if scaledAllocation.science > 0:
       let currentSL = house.techTree.levels.sl
       let slCost = slUpgradeCost(currentSL)
@@ -416,6 +395,36 @@ proc processResearchAllocation(
         if scaledAllocation.science > remainingSL:
           refundPP += scaledAllocation.science - remainingSL
           scaledAllocation.science = remainingSL
+
+    let currentSL = house.techTree.levels.sl
+    var effectiveSL = currentSL
+    let slCost = slUpgradeCost(currentSL)
+    if slCost > 0:
+      let projectedScience =
+        house.techTree.accumulated.science + scaledAllocation.science
+      if projectedScience >= slCost:
+        effectiveSL = currentSL + 1
+
+    if scaledAllocation.economic > 0:
+      let currentEL = house.techTree.levels.el
+      let elCost = elUpgradeCost(currentEL)
+      let elSlRequired =
+        if gameConfig.tech.el.levels.hasKey(currentEL + 1):
+          gameConfig.tech.el.levels[currentEL + 1].slRequired
+        else:
+          0
+      if effectiveSL < elSlRequired:
+        refundPP += scaledAllocation.economic
+        scaledAllocation.economic = 0
+      elif elCost <= 0:
+        refundPP += scaledAllocation.economic
+        scaledAllocation.economic = 0
+      else:
+        let remainingEL =
+          max(0'i32, elCost - house.techTree.accumulated.economic)
+        if scaledAllocation.economic > remainingEL:
+          refundPP += scaledAllocation.economic - remainingEL
+          scaledAllocation.economic = remainingEL
 
     var cappedTech = initTable[TechField, int32]()
     for field, pp in scaledAllocation.technology:
@@ -455,7 +464,7 @@ proc processResearchAllocation(
         allowed = 0
       else:
         let slRequired = slRequiredForNext(field, currentLevel)
-        if house.techTree.levels.sl < slRequired:
+        if effectiveSL < slRequired:
           refundPP += allowed
           allowed = 0
         else:
@@ -493,10 +502,12 @@ proc processResearchAllocation(
       gho += colony.production
 
     # Get current science level for RP conversion
-    let currentSL = house.techTree.levels.sl
+    let currentSLForConversion = house.techTree.levels.sl
 
     # Convert PP to RP using tech costs
-    let earnedRP = allocateResearch(scaledAllocation, gho, currentSL)
+    let earnedRP = allocateResearch(
+      scaledAllocation, gho, currentSLForConversion
+    )
 
     # Accumulate RP
     house.techTree.accumulated.economic += earnedRP.economic

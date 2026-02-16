@@ -35,6 +35,7 @@ import ../tui/adapters
 import ../tui/columns
 import ../tui/hex_labels
 import ../tui/help_registry
+import ../tui/data/research_projection
 import ./sync
 import ../../common/message_types
 
@@ -1558,6 +1559,21 @@ proc researchAllocatedTotal(allocation: ResearchAllocation): int =
     total += pp
   total.int
 
+proc researchPoolLabel(item: ResearchItem): string =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    "ERP"
+  of ResearchItemKind.ScienceLevel:
+    "SRP"
+  of ResearchItemKind.Technology:
+    case item.field
+    of TechField.TerraformingTech, TechField.ElectronicIntelligence,
+        TechField.CloakingTech, TechField.ShieldTech,
+        TechField.CounterIntelligence, TechField.StrategicLiftTech:
+      "SRP"
+    else:
+      "TRP"
+
 proc techLevelFor(item: ResearchItem, levels: TechLevel): int =
   case item.kind
   of ResearchItemKind.EconomicLevel:
@@ -1686,7 +1702,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let listInner = listFrame.inner(listArea)
 
   let listColumns = @[
-    tableColumn("Category", 12, table.Alignment.Left),
+    tableColumn("Pool", 4, table.Alignment.Left),
     tableColumn("Tech", 4, table.Alignment.Left),
     tableColumn("Name", 0, table.Alignment.Left, 6),
     tableColumn("Lvl", 3, table.Alignment.Center),
@@ -1695,29 +1711,42 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   var listTable = table(listColumns)
     .showBorders(true)
-    .rowStyle(modalDimStyle())
+    .rowStyle(normalStyle())
     .selectedStyle(selectedStyle())
 
-  var lastCategory = ""
+  var lastPool = ""
   var rowIdx = 0
   var selectedRowIdx = -1
   for idx, item in items:
-    if lastCategory.len > 0 and item.category != lastCategory:
+    let pool = researchPoolLabel(item)
+    if lastPool.len > 0 and pool != lastPool:
       listTable.addSeparatorRow()
       rowIdx.inc
     let level = techLevelFor(item, levels)
     let allocated = researchItemAllocation(model.ui.researchAllocation, item)
-    listTable.addRow(@[
-      item.category,
-      item.code,
-      item.name,
-      $level,
-      $allocated
-    ])
+    let blocked = research_projection.isBlockedProjected(
+      levels, points, model.ui.researchAllocation, item
+    )
+    var cellStyles: seq[Option[CellStyle]] = @[]
+    cellStyles.setLen(listColumns.len)
+    if blocked:
+      for i in 0 ..< cellStyles.len:
+        cellStyles[i] = some(canvasDimStyle())
+    listTable.addRow(TableRow(
+      cells: @[
+        pool,
+        item.code,
+        item.name,
+        $level,
+        $allocated
+      ],
+      cellStyles: cellStyles,
+      kind: TableRowKind.Normal
+    ))
     if idx == selection:
       selectedRowIdx = rowIdx
     rowIdx.inc
-    lastCategory = item.category
+    lastPool = pool
 
   if items.len > 0 and selectedRowIdx >= 0:
     listTable = listTable.selectedIdx(selectedRowIdx)

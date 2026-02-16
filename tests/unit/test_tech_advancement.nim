@@ -4,9 +4,9 @@
 ##
 ## Per economy.md:4.1
 
-import std/[unittest, random, options, tables]
+import std/[unittest, random, options, tables, sequtils]
 import ../../src/engine/engine
-import ../../src/engine/types/[tech, command]
+import ../../src/engine/types/[core, tech, command, event]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/turn_cycle/command_phase
 import ../../src/engine/systems/tech/[advancement, costs]
@@ -17,7 +17,7 @@ suite "Tech: Maximum Level Constants":
 
   test "Economic and Science max levels":
     check maxEconomicLevel == 11
-    check maxScienceLevel == 8
+    check maxScienceLevel == 10
 
   test "Construction tech max levels":
     check maxConstructionTech == 15
@@ -304,6 +304,39 @@ suite "Tech: Allocation Caps":
     let updated = game.house(houseId).get()
     check updated.treasury == house.treasury
     check updated.techTree.accumulated.technology.len == 0
+
+suite "Tech: Science Level Advancement":
+  test "SL advances from 8 to 9 with required SRP":
+    var tree = TechTree(
+      houseId: HouseId(1),
+      levels: TechLevel(sl: 8),
+      accumulated: ResearchPoints(
+        economic: 0,
+        science: slUpgradeCost(8),
+        technology: initTable[TechField, int32]()
+      ),
+      breakthroughBonus: initTable[TechField, float32]()
+    )
+
+    let adv = tree.attemptSLAdvancement(8)
+    check adv.isSome
+    check tree.levels.sl == 9
+
+  test "SL advances from 9 to 10 with required SRP":
+    var tree = TechTree(
+      houseId: HouseId(1),
+      levels: TechLevel(sl: 9),
+      accumulated: ResearchPoints(
+        economic: 0,
+        science: slUpgradeCost(9),
+        technology: initTable[TechField, int32]()
+      ),
+      breakthroughBonus: initTable[TechField, float32]()
+    )
+
+    let adv = tree.attemptSLAdvancement(9)
+    check adv.isSome
+    check tree.levels.sl == 10
 
 when isMainModule:
   echo "========================================"

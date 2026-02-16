@@ -76,6 +76,7 @@ proc convertPPToSRP*(pp: int32, gho: int32, slLevel: int32): int32 =
 proc slUpgradeCost*(currentLevel: int32): int32 =
   ## Get SRP cost to advance Science Level
   ## Per economy.md:4.3 and config/tech.kdl
+  ## Model 2: SL advancement is SRP-only.
   ## Uses Table pattern for levels
   let nextLevel = currentLevel + 1
   if gameConfig.tech.sl.levels.hasKey(nextLevel):

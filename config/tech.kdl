@@ -5,7 +5,8 @@
 // Science Level Progression (SRP and ERP Costs)
 scienceLevel {
     (docs)"docs/specs/04-research_development.md#section-4-2"
-    // SL advances automatically when both ERP and SRP thresholds are met.
+    // SL advances automatically when srpRequired is met.
+    // erpRequired is retained for compatibility and display tables.
     level 2 {
         erpRequired 10
         srpRequired 10

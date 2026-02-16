@@ -14,6 +14,8 @@ type
 
   SlLevelData* = object
     ## Science Level data (SL)
+    ## Legacy display field for SL progression tables.
+    ## Advancement cost uses srpRequired.
     erpRequired*: int32
     srpRequired*: int32
 

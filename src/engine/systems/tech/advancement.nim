@@ -62,7 +62,7 @@ proc applyDockCapacityUpgrade*(state: GameState, houseId: HouseId) =
 
 const
   maxEconomicLevel* = 11 # EL caps at 11 per economy.md:4.2
-  maxScienceLevel* = 8 # SL caps at 8 per economy.md:4.3
+  maxScienceLevel* = 10 # SL caps at 10 per research_development.md:4.1
   maxConstructionTech* = 15 # CST extended for long games
   maxWeaponsTech* = 15 # WEP extended for long games
   maxTerraformingTech* = 7 # TER limited to planet classes
