@@ -2290,22 +2290,23 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
     for flt in fleets.mitems:
       if flt.fleetId == fid:
         flt.commandLabel = cmdLbl
-        if newRoe >= 0: flt.roe = newRoe
-      if destLabel.len > 0:
-        flt.destinationLabel = destLabel
-      flt.needsAttention = false
-      if isStationary:
-        flt.eta = 0
-      elif cmd.targetSystem.isSome:
-        let isEtacOnly =
-          flt.etacs > 0 and
-          flt.shipCount == flt.etacs
-        flt.eta = model.estimateETA(
-          systemId,
-          int(cmd.targetSystem.get()),
-          isEtacOnly,
-        )
-      return
+        if newRoe >= 0:
+          flt.roe = newRoe
+        if destLabel.len > 0:
+          flt.destinationLabel = destLabel
+        flt.needsAttention = false
+        if isStationary:
+          flt.eta = 0
+        elif cmd.targetSystem.isSome:
+          let isEtacOnly =
+            flt.etacs > 0 and
+            flt.shipCount == flt.etacs
+          flt.eta = model.estimateETA(
+            systemId,
+            int(cmd.targetSystem.get()),
+            isEtacOnly,
+          )
+        return
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
   ## Stage a fleet command and optimistically update fleet display data.
