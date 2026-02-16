@@ -156,7 +156,6 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     result.add("Shift+/- = fine adjust")
     result.add("0 = clear allocation")
     result.add("0-9 = set PP")
-    result.add("Enter = confirm")
   if ctx == HelpContext.Messages:
     result.add("Tab = cycle focus")
     result.add("M = jump to Messages")

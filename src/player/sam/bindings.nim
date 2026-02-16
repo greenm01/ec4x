@@ -954,12 +954,6 @@ proc initBindings*() =
     context: BindingContext.Research,
     longLabel: "CLEAR", shortLabel: "0", priority: 44))
 
-  registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
-    context: BindingContext.Research,
-    longLabel: "CONFIRM", shortLabel: "OK", priority: 40))
-
   # =========================================================================
   # Espionage Context
   # =========================================================================

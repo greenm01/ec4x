@@ -157,8 +157,21 @@ type NostrClient* = ref object
    - p: own_pubkey (encrypted to me)
 2. Receive delta events from relay
 3. Decrypt using NIP-44, decompress with zstd
-4. Parse msgpack to PlayerStateDelta
-5. Apply deltas to local cached state
+4. Parse msgpack to PlayerStateDeltaEnvelope
+5. Validate config schema/hash against active TuiRulesSnapshot
+6. Apply deltas to local cached state
+```
+
+#### Authoritative Config Flow
+```
+1. Receive EventKindGameState (30405)
+2. Parse PlayerStateEnvelope:
+   - playerState
+   - authoritativeConfig (TuiRulesSnapshot)
+3. Validate snapshot schema/capabilities/hash
+4. Cache snapshot in local SQLite (per game)
+5. Materialize runtime rules used by TUI screens/validators
+6. Reject future deltas whose config hash/schema do not match snapshot
 ```
 
 ### Daemon Operations
@@ -220,9 +233,17 @@ type PlayerStateDelta* = object
   fleets*: EntityDelta[Fleet]
   ships*: EntityDelta[Ship]
   # ... other entity types
+
+type PlayerStateDeltaEnvelope* = object
+  delta*: PlayerStateDelta
+  configSchemaVersion*: int32
+  configHash*: string
 ```
 
 **Bandwidth Reduction**: 20-40x smaller than full state.
+
+30405 full state uses a `PlayerStateEnvelope` containing both
+`playerState` and authoritative `TuiRulesSnapshot`.
 
 **Implementation:**
 - `src/daemon/transport/nostr/delta_msgpack.nim`

@@ -486,6 +486,16 @@ CREATE TABLE player_states (
     UNIQUE(game_id, player_pubkey, turn)
 );
 
+-- Authoritative TUI rules snapshots per game/hash (msgpack)
+CREATE TABLE config_snapshots (
+    game_id TEXT NOT NULL,
+    config_hash TEXT NOT NULL,
+    schema_version INTEGER NOT NULL,
+    snapshot_msgpack TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY(game_id, config_hash)
+);
+
 -- Nostr event deduplication
 CREATE TABLE received_events (
     event_id TEXT PRIMARY KEY,
@@ -496,6 +506,22 @@ CREATE TABLE received_events (
 ```
 
 **Note:** Client cache also uses msgpack for PlayerState snapshots (consistency)
+and stores authoritative sectioned rules snapshots (`TuiRulesSnapshot`) for
+config/schema/hash validation on reconnect and delta application.
+
+### Authoritative Rules in Client Cache
+
+The daemon remains the authoritative source for gameplay config used by
+the player TUI. The TUI cache stores the latest valid
+`TuiRulesSnapshot` per game in `config_snapshots` and uses it to:
+
+- Materialize runtime rules consumed by TUI screens/validators
+- Validate incoming 30403 delta envelopes via `configHash` and
+  `configSchemaVersion`
+- Block gameplay entry when no valid authoritative snapshot is available
+
+This prevents client-side config drift while still allowing the server
+to evolve rule sections/capabilities over time.
 
 ### Implementation
 
@@ -523,6 +549,7 @@ config {
 - [Architecture Overview](./overview.md)
 - [Intel System](./intel.md)
 - [Transport Layer](./transport.md)
+- [Nostr Protocol](./nostr-protocol.md)
 - Schema implementation: `src/daemon/persistence/schema.nim`
 - Writer implementation: `src/daemon/persistence/writer.nim`
 - Reader implementation: `src/daemon/persistence/reader.nim`

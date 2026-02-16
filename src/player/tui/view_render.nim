@@ -1533,7 +1533,7 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   let modalArea = modal.calculateArea(canvas, contentHeight)
   let footerLine =
     "[Up/Down/J/K]Navigate  [+/-]+/-5  [Shift+/-]+/-1  [0]Clear  " &
-    "[Enter]OK  [/]Help"
+    "[/]Help"
   modal.renderWithFooter(modalArea, buf, footerLine)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   renderResearchPanel(contentArea, buf, model)
@@ -1573,53 +1573,6 @@ proc researchPoolLabel(item: ResearchItem): string =
       "SRP"
     else:
       "TRP"
-
-proc techLevelFor(item: ResearchItem, levels: TechLevel): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    levels.el.int
-  of ResearchItemKind.ScienceLevel:
-    levels.sl.int
-  of ResearchItemKind.Technology:
-    case item.field
-    of TechField.ConstructionTech:
-      levels.cst.int
-    of TechField.WeaponsTech:
-      levels.wep.int
-    of TechField.TerraformingTech:
-      levels.ter.int
-    of TechField.ElectronicIntelligence:
-      levels.eli.int
-    of TechField.CloakingTech:
-      levels.clk.int
-    of TechField.ShieldTech:
-      levels.sld.int
-    of TechField.CounterIntelligence:
-      levels.cic.int
-    of TechField.StrategicLiftTech:
-      levels.stl.int
-    of TechField.FlagshipCommandTech:
-      levels.fc.int
-    of TechField.StrategicCommandTech:
-      levels.sc.int
-    of TechField.FighterDoctrine:
-      levels.fd.int
-    of TechField.AdvancedCarrierOps:
-      levels.aco.int
-
-
-proc techProgressPoints(item: ResearchItem, points: ResearchPoints): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    points.economic.int
-  of ResearchItemKind.ScienceLevel:
-    points.science.int
-  of ResearchItemKind.Technology:
-    if points.technology.hasKey(item.field):
-      points.technology[item.field].int
-    else:
-      0
-
 
 proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if area.isEmpty or area.height < 10:
@@ -1722,7 +1675,9 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     if lastPool.len > 0 and pool != lastPool:
       listTable.addSeparatorRow()
       rowIdx.inc
-    let level = techLevelFor(item, levels)
+    let level = research_projection.projectedTechLevel(
+      levels, points, model.ui.researchAllocation, item
+    )
     let allocated = researchItemAllocation(model.ui.researchAllocation, item)
     let blocked = research_projection.isBlockedProjected(
       levels, points, model.ui.researchAllocation, item
@@ -1771,7 +1726,10 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if items.len > 0:
     let item = items[selection]
     var dy = detailInner.y
-    let level = techLevelFor(item, levels)
+    let level = research_projection.projectedTechLevel(
+      levels, points, model.ui.researchAllocation, item
+    )
+    let currentLevel = research_projection.currentTechLevel(levels, item)
     let maxLevel = progressionMaxLevel(item)
     if dy < detailInner.bottom:
       let levelHeader = "Level: " & $level & " / " & $maxLevel
@@ -1785,8 +1743,9 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       )
       dy += 1
     let staged = researchItemAllocation(model.ui.researchAllocation, item)
-    var pointsCurrent = techProgressPoints(item, points) + staged
-    let cost = techProgressCost(item, level)
+    let basePoints = research_projection.currentResearchPoints(points, item)
+    var pointsCurrent = basePoints + staged
+    let cost = techProgressCost(item, currentLevel)
     if pointsCurrent > cost:
       pointsCurrent = cost
     let barWidth = max(8, detailInner.width - 18)

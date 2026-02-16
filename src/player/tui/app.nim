@@ -6,9 +6,9 @@ import std/[options, strformat, tables, strutils, parseopt, os,
   asyncdispatch, sequtils, sets, times]
 
 import ../../common/logger
-import ../../engine/config/engine
 import ../../engine/globals
 import ../../engine/types/[core, player_state as ps_types]
+import ../../common/config_sync
 import ../../daemon/transport/nostr/[types, events, filter, crypto, nip01]
 import ../nostr/client
 import ../tui/term/term
@@ -38,12 +38,6 @@ proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
 
-  try:
-    gameConfig = loadGameConfig("config")
-  except CatchableError as e:
-    logError("TUI Player SAM", "Failed to load game config: ", e.msg)
-    quit(1)
-
   # Initialize keybinding registry (single source of truth)
   initBindings()
 
@@ -65,8 +59,32 @@ proc runTui*(gameId: string = "") =
   var nostrSubscriptions: seq[string] = @[]
   var nostrDaemonPubkey = ""
   var nostrGameDefinitionSeen = initTable[string, int64]()
+  var authoritativeConfigLoaded = false
+  var authoritativeConfigHash = ""
+  var authoritativeConfigSchema = 0'i32
 
   var nostrHandlers = PlayerNostrHandlers()
+
+  proc applyAuthoritativeConfig(snapshot: AuthoritativeConfig): bool =
+    if snapshot.schemaVersion != ConfigSchemaVersion:
+      return false
+    if computeConfigHash(snapshot) != snapshot.configHash:
+      return false
+    let configOpt = toGameConfig(snapshot)
+    if configOpt.isNone:
+      return false
+    gameConfig = configOpt.get()
+    authoritativeConfigLoaded = true
+    authoritativeConfigHash = snapshot.configHash
+    authoritativeConfigSchema = snapshot.schemaVersion
+    true
+
+  proc setConfigBlockingError(model: var TuiModel, message: string) =
+    ## Show a persistent blocking sync error in lobby/load flow.
+    model.ui.statusMessage = message
+    model.ui.lobbyJoinError = message
+    model.ui.entryModal.inviteError = message
+    model.ui.appPhase = AppPhase.Lobby
 
   # Initialize terminal
   var tty = openTty()
@@ -232,7 +250,7 @@ proc runTui*(gameId: string = "") =
   initialModel.ui.mode = ViewMode.Overview
 
   if gameId.len > 0:
-    initialModel.ui.appPhase = AppPhase.InGame
+    initialModel.ui.appPhase = AppPhase.Lobby
     activeGameId = gameId
     # Load game info from cache instead of daemon's DB
     let cachedGame = tuiCache.getGame(gameId)
@@ -331,7 +349,8 @@ proc runTui*(gameId: string = "") =
     initialModel.ui.nostrRelayUrl = tuiConfig.defaultRelay
 
   # Sync player state to model (only after joining a game)
-  if initialModel.ui.appPhase == AppPhase.InGame:
+  if initialModel.ui.appPhase == AppPhase.InGame and
+      initialModel.view.playerStateLoaded:
     syncPlayerStateToModel(initialModel, playerState)
     syncCachedIntelNotes(initialModel)
     syncCachedMessages(initialModel)
@@ -348,6 +367,10 @@ proc runTui*(gameId: string = "") =
 
       nostrHandlers.onDelta = proc(event: NostrEvent, payload: string) =
         try:
+          if not authoritativeConfigLoaded:
+            sam.model.ui.statusMessage =
+              "Ignored delta: missing authoritative config"
+            return
           let turnOpt = event.getTurn()
           if turnOpt.isNone:
             sam.model.ui.statusMessage = "Ignored event: missing turn"
@@ -361,7 +384,12 @@ proc runTui*(gameId: string = "") =
               event.pubkey != nostrDaemonPubkey:
             sam.model.ui.statusMessage = "Ignored event: unknown server"
             return
-          let appliedTurnOpt = applyDeltaMsgpack(playerState, payload)
+          let appliedTurnOpt = applyDeltaMsgpack(
+            playerState,
+            payload,
+            authoritativeConfigHash,
+            authoritativeConfigSchema
+          )
           if appliedTurnOpt.isSome:
             sam.model.view.turn = int(appliedTurnOpt.get())
             sam.model.view.playerStateLoaded = true
@@ -377,7 +405,8 @@ proc runTui*(gameId: string = "") =
               tuiCache.savePlayerState(activeGameId, int(viewingHouse),
                 playerState.turn, playerState)
           else:
-            sam.model.ui.statusMessage = "Invalid delta payload"
+            sam.model.ui.statusMessage =
+              "Rejected delta: config mismatch or invalid payload"
           enqueueProposal(emptyProposal())
         except CatchableError as e:
           sam.model.ui.nostrLastError = e.msg
@@ -406,12 +435,25 @@ proc runTui*(gameId: string = "") =
             return
           logDebug("TUI/State", "Parsing full state msgpack",
             "payloadLen=", $payload.len)
-          let stateOpt = parseFullStateMsgpack(payload)
-          if stateOpt.isSome:
+          let envelopeOpt = parseFullStateMsgpack(payload)
+          if envelopeOpt.isSome:
+            let envelope = envelopeOpt.get()
+            if not applyAuthoritativeConfig(envelope.authoritativeConfig):
+              setConfigBlockingError(
+                sam.model,
+                "Rejected full state: invalid authoritative config"
+              )
+              enqueueProposal(emptyProposal())
+              return
+            if activeGameId.len > 0:
+              tuiCache.saveConfigSnapshot(
+                activeGameId,
+                envelope.authoritativeConfig
+              )
             logDebug("TUI/State", "State parsed successfully",
-              "turn=", $stateOpt.get().turn,
-              "houseId=", $stateOpt.get().viewingHouse)
-            playerState = stateOpt.get()
+              "turn=", $envelope.playerState.turn,
+              "houseId=", $envelope.playerState.viewingHouse)
+            playerState = envelope.playerState
             sam.model.view.playerStateLoaded = true
             viewingHouse = playerState.viewingHouse
             sam.model.view.viewingHouse = int(viewingHouse)
@@ -1192,18 +1234,27 @@ proc runTui*(gameId: string = "") =
     if sam.model.ui.loadGameRequested:
       let gameId = sam.model.ui.loadGameId
       sam.model.view.playerStateLoaded = false
+      authoritativeConfigLoaded = false
+      authoritativeConfigHash = ""
+      authoritativeConfigSchema = 0
 
       # Check for valid houseId
       if sam.model.ui.loadHouseId == 0:
-        sam.model.ui.statusMessage = "Cannot load: no house assigned yet"
-        sam.model.ui.loadGameRequested = false
+          setConfigBlockingError(
+            sam.model,
+            "Cannot load: no house assigned yet"
+          )
+          sam.model.ui.loadGameRequested = false
       else:
         let houseId = HouseId(sam.model.ui.loadHouseId.uint32)
-        
+        let cachedConfigOpt = tuiCache.loadLatestConfigSnapshot(gameId)
+        if cachedConfigOpt.isSome:
+          discard applyAuthoritativeConfig(cachedConfigOpt.get().snapshot)
+
         # Try to load from TUI cache first (for Nostr games)
         let cachedStateOpt = tuiCache.loadLatestPlayerState(gameId,
           int(houseId))
-        if cachedStateOpt.isSome:
+        if cachedStateOpt.isSome and authoritativeConfigLoaded:
           playerState = cachedStateOpt.get()
           viewingHouse = houseId
           sam.model.view.playerStateLoaded = true
@@ -1226,6 +1277,15 @@ proc runTui*(gameId: string = "") =
           activeGameId = gameId
           syncCachedIntelNotes(sam.model)
           syncCachedMessages(sam.model)
+        elif cachedStateOpt.isSome and not authoritativeConfigLoaded:
+          # Cached state exists but config snapshot is missing/invalid.
+          activeGameId = gameId
+          viewingHouse = houseId
+          sam.model.view.viewingHouse = int(houseId)
+          setConfigBlockingError(
+            sam.model,
+            "Waiting for authoritative config snapshot..."
+          )
         else:
           # No cached state - set up for Nostr subscription
           # The game will load when full state arrives via onFullState handler
@@ -1236,7 +1296,7 @@ proc runTui*(gameId: string = "") =
           let gameName = if cachedGame.isSome: cachedGame.get().name
                          else: gameId
           sam.model.view.houseName = gameName
-          sam.model.ui.statusMessage = "Waiting for game state..."
+          setConfigBlockingError(sam.model, "Waiting for game state...")
           # Don't switch to InGame yet - wait for state via Nostr
         sam.model.ui.loadGameRequested = false
 

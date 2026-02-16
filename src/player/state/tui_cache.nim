@@ -22,9 +22,10 @@ import msgpack4nim
 import ../../common/logger
 import ../../engine/types/player_state
 import ../../common/message_types
+import ../../common/config_sync
 
 const
-  SchemaVersion* = 3  # Bumped for message storage
+  SchemaVersion* = 4  # Bumped for authoritative config snapshots
   DefaultCacheDir* = ".local/share/ec4x"
   CacheFileName* = "cache.db"
 
@@ -47,6 +48,13 @@ type
     playerPubkey*: string
     houseId*: int
     joinedAt*: int64
+
+  CachedConfigSnapshot* = object
+    gameId*: string
+    configHash*: string
+    schemaVersion*: int32
+    snapshot*: AuthoritativeConfig
+    updatedAt*: int64
 
 # =============================================================================
 # Cache Path
@@ -91,6 +99,7 @@ proc checkAndMigrateSchema(db: DbConn): bool =
     db.exec(sql"DROP TABLE IF EXISTS received_events")
     db.exec(sql"DROP TABLE IF EXISTS messages")
     db.exec(sql"DROP TABLE IF EXISTS player_slots")
+    db.exec(sql"DROP TABLE IF EXISTS config_snapshots")
     db.exec(sql"DROP TABLE IF EXISTS games")
     db.exec(sql"DROP TABLE IF EXISTS settings")
   
@@ -144,6 +153,18 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
     )
   """)
 
+  # Authoritative config snapshots (msgpack blob stored as base64)
+  db.exec(sql"""
+    CREATE TABLE IF NOT EXISTS config_snapshots (
+      game_id TEXT NOT NULL,
+      config_hash TEXT NOT NULL,
+      schema_version INTEGER NOT NULL,
+      snapshot_msgpack TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (game_id, config_hash)
+    )
+  """)
+
   # Intel notes table (local player annotations)
   db.exec(sql"""
     CREATE TABLE IF NOT EXISTS intel_notes (
@@ -188,6 +209,10 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
   db.exec(sql"""
     CREATE INDEX IF NOT EXISTS idx_player_states_game_house
     ON player_states(game_id, house_id)
+  """)
+  db.exec(sql"""
+    CREATE INDEX IF NOT EXISTS idx_config_snapshots_game
+    ON config_snapshots(game_id, updated_at DESC)
   """)
 
   db.exec(sql"""
@@ -239,6 +264,19 @@ proc openTuiCache*(): TuiCache =
   
   TuiCache(db: db, path: cachePath)
 
+proc openTuiCacheAt*(cachePath: string): TuiCache =
+  ## Open cache database at an explicit path (tests/tools).
+  let cacheDir = parentDir(cachePath)
+  if cacheDir.len > 0:
+    createDir(cacheDir)
+
+  let db = open(cachePath, "", "", "")
+  
+  let wasReset = checkAndMigrateSchema(db)
+  initSchema(db, wasReset)
+  
+  TuiCache(db: db, path: cachePath)
+
 proc close*(cache: TuiCache) =
   ## Close the cache database
   if cache != nil and cache.db != nil:
@@ -259,6 +297,7 @@ proc clearCacheGames*(): bool =
   let cache = openTuiCache()
   defer: cache.close()
   cache.db.exec(sql"DELETE FROM player_states")
+  cache.db.exec(sql"DELETE FROM config_snapshots")
   cache.db.exec(sql"DELETE FROM intel_notes")
   cache.db.exec(sql"DELETE FROM player_slots")
   cache.db.exec(sql"DELETE FROM games")
@@ -272,6 +311,7 @@ proc clearCacheGame*(gameId: string): bool =
   let cache = openTuiCache()
   defer: cache.close()
   cache.db.exec(sql"DELETE FROM player_states WHERE game_id = ?", gameId)
+  cache.db.exec(sql"DELETE FROM config_snapshots WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
@@ -372,6 +412,7 @@ proc listGames*(cache: TuiCache): seq[CachedGame] =
 
 proc deleteGame*(cache: TuiCache, id: string) =
   ## Delete a game from cache
+  cache.db.exec(sql"DELETE FROM config_snapshots WHERE game_id = ?", id)
   cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", id)
   cache.db.exec(sql"DELETE FROM games WHERE id = ?", id)
 
@@ -507,6 +548,52 @@ proc pruneOldPlayerStates*(cache: TuiCache, gameId: string, houseId: int,
       ORDER BY turn DESC LIMIT ?
     )
   """, gameId, $houseId, gameId, $houseId, $keepTurns)
+
+proc saveConfigSnapshot*(cache: TuiCache, gameId: string,
+                         snapshot: AuthoritativeConfig) =
+  ## Save authoritative config snapshot for a game.
+  let now = epochTime().int64
+  let binary = pack(snapshot)
+  let payload = encode(binary)
+  cache.db.exec(sql"""
+    INSERT INTO config_snapshots (
+      game_id, config_hash, schema_version, snapshot_msgpack, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(game_id, config_hash) DO UPDATE SET
+      schema_version = excluded.schema_version,
+      snapshot_msgpack = excluded.snapshot_msgpack,
+      updated_at = excluded.updated_at
+  """, gameId, snapshot.configHash, $snapshot.schemaVersion, payload, $now)
+
+proc loadLatestConfigSnapshot*(cache: TuiCache, gameId: string):
+    Option[CachedConfigSnapshot] =
+  ## Load most recent authoritative config snapshot for a game.
+  let row = cache.db.getRow(
+    sql"""SELECT game_id, config_hash, schema_version, snapshot_msgpack,
+                 updated_at
+          FROM config_snapshots
+          WHERE game_id = ?
+          ORDER BY updated_at DESC
+          LIMIT 1""",
+    gameId
+  )
+  if row[0] == "":
+    return none(CachedConfigSnapshot)
+
+  try:
+    let binary = decode(row[3])
+    let snapshot = unpack(binary, AuthoritativeConfig)
+    some(CachedConfigSnapshot(
+      gameId: row[0],
+      configHash: row[1],
+      schemaVersion: parseInt(row[2]).int32,
+      snapshot: snapshot,
+      updatedAt: parseBiggestInt(row[4])
+    ))
+  except CatchableError as e:
+    logError("TuiCache", "Failed to parse config snapshot: ", e.msg)
+    none(CachedConfigSnapshot)
 
 # =============================================================================
 # Intel Note Operations
@@ -741,7 +828,10 @@ proc pruneStaleGames*(
     return
 
   for gameId in staleGameIds:
+    cache.db.exec(sql"DELETE FROM config_snapshots WHERE game_id = ?", gameId)
+    cache.db.exec(sql"DELETE FROM player_states WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", gameId)
+    cache.db.exec(sql"DELETE FROM received_events WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
 

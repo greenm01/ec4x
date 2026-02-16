@@ -85,6 +85,27 @@ proc projectedScienceLevel*(
   if totalScience >= nextCost:
     result += 1
 
+proc projectedTechLevel*(
+    levels: TechLevel,
+    points: ResearchPoints,
+    allocation: ResearchAllocation,
+    item: ResearchItem
+): int =
+  ## Project a research row level with one-level-per-turn cap.
+  result = currentTechLevel(levels, item)
+  let maxLevel = progressionMaxLevel(item)
+  if result >= maxLevel:
+    return maxLevel
+
+  let cost = techProgressCost(item, result)
+  if cost <= 0:
+    return result
+
+  let progress = currentResearchPoints(points, item)
+  let staged = researchItemAllocation(allocation, item)
+  if progress + staged >= cost:
+    result = min(maxLevel, result + 1)
+
 proc maxProjectedAllocation*(
     levels: TechLevel,
     points: ResearchPoints,

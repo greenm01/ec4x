@@ -9,7 +9,9 @@ import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_sta
   progression, capacity, tech]
 import ../../../engine/types/game_state
 import ../../../engine/state/fog_of_war
+import ../../../engine/globals
 import ../../persistence/player_state_snapshot
+import ../../../common/config_sync
 import ../../../common/msgpack_types
 export msgpack_types
 
@@ -55,6 +57,11 @@ type
     eliminatedHouses*: EntityDelta[HouseId]
     actProgressionChanged*: bool
     actProgression*: Option[ActProgressionState]
+
+  PlayerStateDeltaEnvelope* = object
+    delta*: PlayerStateDelta
+    configSchemaVersion*: int32
+    configHash*: string
 
 # =============================================================================
 # Delta Builders
@@ -473,15 +480,31 @@ proc deserializePlayerStateDelta*(data: string): PlayerStateDelta =
   ## Deserialize msgpack binary to PlayerStateDelta
   unpack(data, PlayerStateDelta)
 
+proc serializePlayerStateDeltaEnvelope*(
+    envelope: PlayerStateDeltaEnvelope
+): string =
+  ## Serialize delta + authoritative config metadata.
+  pack(envelope)
+
+proc deserializePlayerStateDeltaEnvelope*(
+    data: string
+): PlayerStateDeltaEnvelope =
+  ## Deserialize delta + authoritative config metadata.
+  unpack(data, PlayerStateDeltaEnvelope)
+
 proc formatPlayerStateDeltaMsgpack*(
   gameId: string,
   delta: PlayerStateDelta
 ): string =
-  ## Serialize delta to msgpack binary for wire transmission
-  ## gameId is included for logging/debugging but not in the payload
-  ## (the Nostr event tags already identify the game)
-  discard gameId  # Used for logging context only
-  serializePlayerStateDelta(delta)
+  ## Serialize delta + config metadata for wire transmission.
+  discard gameId
+  let rulesSnapshot = buildTuiRulesSnapshot(gameConfig)
+  let envelope = PlayerStateDeltaEnvelope(
+    delta: delta,
+    configSchemaVersion: ConfigSchemaVersion,
+    configHash: rulesSnapshot.configHash
+  )
+  serializePlayerStateDeltaEnvelope(envelope)
 
 # =============================================================================
 # Snapshot Helpers

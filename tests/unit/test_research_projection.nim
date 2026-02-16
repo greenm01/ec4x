@@ -8,6 +8,7 @@ import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
 import ../../src/player/sam/tui_model
 import ../../src/player/tui/data/research_projection
+import ../../src/player/tui/data/tech_info
 
 gameConfig = config_engine.loadGameConfig()
 
@@ -79,3 +80,51 @@ suite "Research Projection: Gating":
 
     check maxProjectedAllocation(levels, points, alloc, item) ==
       elUpgradeCost(1).int
+
+suite "Research Projection: Tech Level":
+  test "projected tech level stays at current without threshold":
+    let levels = baseLevels(sl = 1, wep = 1)
+    let points = emptyPoints()
+    let alloc = emptyAllocation()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+
+    check projectedTechLevel(levels, points, alloc, item) == 1
+
+  test "projected tech level advances when staged PP meets threshold":
+    let levels = baseLevels(sl = 1, wep = 1)
+    let points = emptyPoints()
+    var alloc = emptyAllocation()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+    alloc.technology[item.field] = techProgressCost(item, 1).int32
+
+    check projectedTechLevel(levels, points, alloc, item) == 2
+
+  test "projected tech level uses existing progress plus staged PP":
+    let levels = baseLevels(sl = 1, wep = 1)
+    var points = emptyPoints()
+    var alloc = emptyAllocation()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+    let cost = techProgressCost(item, 1)
+    points.technology[item.field] = (cost - 1).int32
+    alloc.technology[item.field] = 1
+
+    check projectedTechLevel(levels, points, alloc, item) == 2
+
+  test "projected tech level is capped at max level":
+    let item = researchItemAt(researchIndexForCode("WEP"))
+    let maxLevel = progressionMaxLevel(item)
+    let levels = baseLevels(sl = 1, wep = maxLevel.int32)
+    let points = emptyPoints()
+    var alloc = emptyAllocation()
+    alloc.technology[item.field] = 999
+
+    check projectedTechLevel(levels, points, alloc, item) == maxLevel
+
+  test "projected tech level remains capped at one level per turn":
+    let levels = baseLevels(sl = 1, wep = 1)
+    let points = emptyPoints()
+    var alloc = emptyAllocation()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+    alloc.technology[item.field] = 999
+
+    check projectedTechLevel(levels, points, alloc, item) == 2

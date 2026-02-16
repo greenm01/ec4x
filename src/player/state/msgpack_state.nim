@@ -6,22 +6,25 @@
 import std/[options, tables]
 import msgpack4nim
 import ../../engine/types/[core, player_state]
+import ../../common/config_sync
 import ../../common/msgpack_types
 import ../../daemon/transport/nostr/delta_msgpack
+import ../../daemon/transport/nostr/state_msgpack
 
 export msgpack_types
 export delta_msgpack
+export state_msgpack
 
 # =============================================================================
 # Full State Deserialization
 # =============================================================================
 
-proc parseFullStateMsgpack*(payload: string): Option[PlayerState] =
-  ## Deserialize msgpack binary to PlayerState
+proc parseFullStateMsgpack*(payload: string): Option[PlayerStateEnvelope] =
+  ## Deserialize msgpack binary to full state envelope.
   try:
-    some(unpack(payload, PlayerState))
+    some(unpack(payload, PlayerStateEnvelope))
   except CatchableError:
-    none(PlayerState)
+    none(PlayerStateEnvelope)
 
 # =============================================================================
 # Delta Application
@@ -329,22 +332,37 @@ proc applyDeltaToPlayerState*(
     state.actProgression = delta.actProgression.get()
 
 proc parseDeltaMsgpack*(payload: string): Option[PlayerStateDelta] =
-  ## Deserialize msgpack binary to PlayerStateDelta
+  ## Deserialize msgpack binary to PlayerStateDelta envelope.
   try:
-    some(unpack(payload, PlayerStateDelta))
+    let envelope = unpack(payload, PlayerStateDeltaEnvelope)
+    if envelope.configSchemaVersion != ConfigSchemaVersion:
+      return none(PlayerStateDelta)
+    some(envelope.delta)
   except CatchableError:
     none(PlayerStateDelta)
 
 proc applyDeltaMsgpack*(
   state: var PlayerState,
-  payload: string
+  payload: string,
+  expectedConfigHash: string,
+  expectedConfigSchemaVersion: int32
 ): Option[int32] =
   ## Apply a msgpack-encoded delta to a PlayerState
   ## Returns the new turn number if successful
-  let deltaOpt = parseDeltaMsgpack(payload)
-  if deltaOpt.isNone:
+  let envelopeOpt =
+    try:
+      some(unpack(payload, PlayerStateDeltaEnvelope))
+    except CatchableError:
+      none(PlayerStateDeltaEnvelope)
+  if envelopeOpt.isNone:
     return none(int32)
-  
-  let delta = deltaOpt.get()
+
+  let envelope = envelopeOpt.get()
+  if envelope.configSchemaVersion != expectedConfigSchemaVersion:
+    return none(int32)
+  if envelope.configHash != expectedConfigHash:
+    return none(int32)
+
+  let delta = envelope.delta
   applyDeltaToPlayerState(state, delta)
   some(delta.turn)

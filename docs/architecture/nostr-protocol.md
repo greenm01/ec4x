@@ -386,6 +386,16 @@ The content field contains: `base64(NIP-44-encrypt(zstd-compress(msgpack)))`
 The delta contains only the changes from this turn, filtered by fog of
 war for the target player. Clients apply deltas to their local state.
 
+In the current implementation, the msgpack payload is a
+`PlayerStateDeltaEnvelope`:
+
+- `delta`: the `PlayerStateDelta`
+- `configSchemaVersion`: authoritative rules schema version
+- `configHash`: hash of the active `TuiRulesSnapshot`
+
+Clients must reject deltas whose schema or hash do not match the active
+rules snapshot from the most recent 30405 full-state payload.
+
 See [Payload Formats](#payload-formats) for the msgpack structure.
 
 ### 30405: Game State
@@ -412,6 +422,14 @@ turn as authoritative.
 
 The content field contains: `base64(NIP-44-encrypt(zstd-compress(msgpack)))`
 
+In the current implementation, the msgpack payload is a
+`PlayerStateEnvelope`:
+
+- `playerState`: fog-of-war filtered `PlayerState`
+- `authoritativeConfig`: sectioned `TuiRulesSnapshot`
+  (`schemaVersion`, `configHash`, section versions, capabilities,
+  optional sections)
+
 Clients request this when:
 
 - First connecting to a game
@@ -419,6 +437,32 @@ Clients request this when:
 - Manual resync requested
 
 See [Payload Formats](#payload-formats) for the msgpack structure.
+
+### Authoritative TUI Rules Snapshot
+
+The daemon is authoritative for gameplay config values used by player
+clients. The player TUI does not load local gameplay KDL files.
+
+`TuiRulesSnapshot` is delivered in 30405 full-state events and cached by
+the TUI per game. It is intentionally sectioned and forward-compatible:
+
+- `schemaVersion`: top-level snapshot schema
+- `configHash`: integrity hash over snapshot contents
+- `capabilities`: feature capability strings (`rd.v1`, `build.v1`, etc.)
+- Section versions: `techVersion`, `shipsVersion`, `groundUnitsVersion`,
+  `facilitiesVersion`, `constructionVersion`, `limitsVersion`,
+  `economyVersion`
+- Optional sections: `tech`, `ships`, `groundUnits`, `facilities`,
+  `construction`, `limits`, `economy`
+
+Client behavior:
+
+- Apply full state only if `schemaVersion`, required capabilities, and
+  hash validation pass.
+- Reject 30403 deltas when envelope `configHash` or
+  `configSchemaVersion` differs from active snapshot.
+- Remain in lobby/loading state until a valid authoritative snapshot is
+  available.
 
 ---
 
