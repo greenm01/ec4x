@@ -11,6 +11,7 @@
 ##   - games: Game metadata from Nostr events
 ##   - player_slots: Player's house assignments per game
 ##   - player_states: PlayerState snapshots per game/turn (msgpack encoded)
+##   - order_drafts: Staged CommandPacket drafts per game/house
 ##   - intel_notes: Per-system player notes (local-only annotations)
 ##   - received_events: Nostr event deduplication
 
@@ -21,6 +22,7 @@ import msgpack4nim
 
 import ../../common/logger
 import ../../engine/types/player_state
+import ../../engine/types/command
 import ../../common/message_types
 import ../../common/config_sync
 
@@ -54,6 +56,14 @@ type
     configHash*: string
     schemaVersion*: int32
     snapshot*: AuthoritativeConfig
+    updatedAt*: int64
+
+  CachedOrderDraft* = object
+    gameId*: string
+    houseId*: int
+    turn*: int32
+    configHash*: string
+    packet*: CommandPacket
     updatedAt*: int64
 
 # =============================================================================
@@ -100,6 +110,7 @@ proc checkAndMigrateSchema(db: DbConn): bool =
     db.exec(sql"DROP TABLE IF EXISTS messages")
     db.exec(sql"DROP TABLE IF EXISTS player_slots")
     db.exec(sql"DROP TABLE IF EXISTS config_snapshots")
+    db.exec(sql"DROP TABLE IF EXISTS order_drafts")
     db.exec(sql"DROP TABLE IF EXISTS games")
     db.exec(sql"DROP TABLE IF EXISTS settings")
   
@@ -165,6 +176,19 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
     )
   """)
 
+  # Staged order drafts (msgpack blob stored as base64)
+  db.exec(sql"""
+    CREATE TABLE IF NOT EXISTS order_drafts (
+      game_id TEXT NOT NULL,
+      house_id INTEGER NOT NULL,
+      turn INTEGER NOT NULL,
+      config_hash TEXT NOT NULL,
+      packet_msgpack TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (game_id, house_id)
+    )
+  """)
+
   # Intel notes table (local player annotations)
   db.exec(sql"""
     CREATE TABLE IF NOT EXISTS intel_notes (
@@ -213,6 +237,10 @@ proc initSchema(db: DbConn, forceInit: bool = false) =
   db.exec(sql"""
     CREATE INDEX IF NOT EXISTS idx_config_snapshots_game
     ON config_snapshots(game_id, updated_at DESC)
+  """)
+  db.exec(sql"""
+    CREATE INDEX IF NOT EXISTS idx_order_drafts_game_house
+    ON order_drafts(game_id, house_id, updated_at DESC)
   """)
 
   db.exec(sql"""
@@ -298,6 +326,7 @@ proc clearCacheGames*(): bool =
   defer: cache.close()
   cache.db.exec(sql"DELETE FROM player_states")
   cache.db.exec(sql"DELETE FROM config_snapshots")
+  cache.db.exec(sql"DELETE FROM order_drafts")
   cache.db.exec(sql"DELETE FROM intel_notes")
   cache.db.exec(sql"DELETE FROM player_slots")
   cache.db.exec(sql"DELETE FROM games")
@@ -312,6 +341,7 @@ proc clearCacheGame*(gameId: string): bool =
   defer: cache.close()
   cache.db.exec(sql"DELETE FROM player_states WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM config_snapshots WHERE game_id = ?", gameId)
+  cache.db.exec(sql"DELETE FROM order_drafts WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM player_slots WHERE game_id = ?", gameId)
   cache.db.exec(sql"DELETE FROM games WHERE id = ?", gameId)
@@ -413,6 +443,7 @@ proc listGames*(cache: TuiCache): seq[CachedGame] =
 proc deleteGame*(cache: TuiCache, id: string) =
   ## Delete a game from cache
   cache.db.exec(sql"DELETE FROM config_snapshots WHERE game_id = ?", id)
+  cache.db.exec(sql"DELETE FROM order_drafts WHERE game_id = ?", id)
   cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", id)
   cache.db.exec(sql"DELETE FROM games WHERE id = ?", id)
 
@@ -594,6 +625,62 @@ proc loadLatestConfigSnapshot*(cache: TuiCache, gameId: string):
   except CatchableError as e:
     logError("TuiCache", "Failed to parse config snapshot: ", e.msg)
     none(CachedConfigSnapshot)
+
+proc saveOrderDraft*(cache: TuiCache, gameId: string, houseId: int,
+                     turn: int32, configHash: string,
+                     packet: CommandPacket) =
+  ## Save staged CommandPacket draft for a game/house.
+  let now = epochTime().int64
+  let binary = pack(packet)
+  let payload = encode(binary)
+  cache.db.exec(sql"""
+    INSERT INTO order_drafts (
+      game_id, house_id, turn, config_hash, packet_msgpack, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(game_id, house_id) DO UPDATE SET
+      turn = excluded.turn,
+      config_hash = excluded.config_hash,
+      packet_msgpack = excluded.packet_msgpack,
+      updated_at = excluded.updated_at
+  """, gameId, $houseId, $turn, configHash, payload, $now)
+
+proc loadOrderDraft*(cache: TuiCache, gameId: string,
+                     houseId: int): Option[CachedOrderDraft] =
+  ## Load the latest staged CommandPacket draft for a game/house.
+  let row = cache.db.getRow(
+    sql"""SELECT game_id, house_id, turn, config_hash, packet_msgpack,
+                 updated_at
+          FROM order_drafts
+          WHERE game_id = ? AND house_id = ?
+          ORDER BY updated_at DESC
+          LIMIT 1""",
+    gameId, $houseId
+  )
+  if row[0] == "":
+    return none(CachedOrderDraft)
+
+  try:
+    let binary = decode(row[4])
+    let packet = unpack(binary, CommandPacket)
+    some(CachedOrderDraft(
+      gameId: row[0],
+      houseId: parseInt(row[1]),
+      turn: parseInt(row[2]).int32,
+      configHash: row[3],
+      packet: packet,
+      updatedAt: parseBiggestInt(row[5])
+    ))
+  except CatchableError as e:
+    logError("TuiCache", "Failed to parse order draft: ", e.msg)
+    none(CachedOrderDraft)
+
+proc clearOrderDraft*(cache: TuiCache, gameId: string, houseId: int) =
+  ## Clear staged CommandPacket draft for a game/house.
+  cache.db.exec(
+    sql"DELETE FROM order_drafts WHERE game_id = ? AND house_id = ?",
+    gameId, $houseId
+  )
 
 # =============================================================================
 # Intel Note Operations
@@ -829,6 +916,7 @@ proc pruneStaleGames*(
 
   for gameId in staleGameIds:
     cache.db.exec(sql"DELETE FROM config_snapshots WHERE game_id = ?", gameId)
+    cache.db.exec(sql"DELETE FROM order_drafts WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM player_states WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM intel_notes WHERE game_id = ?", gameId)
     cache.db.exec(sql"DELETE FROM received_events WHERE game_id = ?", gameId)

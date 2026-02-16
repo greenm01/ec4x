@@ -2,12 +2,12 @@
 ##
 ## Main SAM-based TUI loop and event handling.
 
-import std/[options, strformat, tables, strutils, parseopt, os,
+import std/[options, strformat, tables, strutils, parseopt, os, algorithm,
   asyncdispatch, sequtils, sets, times]
 
 import ../../common/logger
 import ../../engine/globals
-import ../../engine/types/[core, player_state as ps_types]
+import ../../engine/types/[core, command, fleet, tech, player_state as ps_types]
 import ../../common/config_sync
 import ../../daemon/transport/nostr/[types, events, filter, crypto, nip01]
 import ../nostr/client
@@ -63,6 +63,7 @@ proc runTui*(gameId: string = "") =
   var authoritativeConfigHash = ""
   var authoritativeConfigSchema = 0'i32
   var authoritativeConfigError = ""
+  var lastDraftFingerprint = ""
 
   var nostrHandlers = PlayerNostrHandlers()
 
@@ -106,6 +107,56 @@ proc runTui*(gameId: string = "") =
     model.ui.lobbyJoinError = message
     model.ui.entryModal.inviteError = message
     model.ui.appPhase = AppPhase.Lobby
+
+  proc normalizeDraftPacket(packet: CommandPacket): CommandPacket =
+    ## Stable ordering for deterministic draft fingerprints.
+    result = packet
+    result.fleetCommands.sort(
+      proc(a: FleetCommand, b: FleetCommand): int =
+        cmp(int(a.fleetId), int(b.fleetId))
+    )
+
+  proc hasResearchDraft(allocation: ResearchAllocation): bool =
+    if allocation.economic > 0 or allocation.science > 0:
+      return true
+    for _, pp in allocation.technology.pairs:
+      if pp > 0:
+        return true
+    false
+
+  proc packetHasDraftData(packet: CommandPacket): bool =
+    packet.fleetCommands.len > 0 or
+      packet.buildCommands.len > 0 or
+      packet.repairCommands.len > 0 or
+      packet.scrapCommands.len > 0 or
+      packet.colonyManagement.len > 0 or
+      packet.diplomaticCommand.len > 0 or
+      packet.populationTransfers.len > 0 or
+      packet.terraformCommands.len > 0 or
+      packet.espionageActions.len > 0 or
+      packet.ebpInvestment > 0 or
+      packet.cipInvestment > 0 or
+      hasResearchDraft(packet.researchAllocation)
+
+  proc packetFingerprint(packet: CommandPacket): string =
+    serializeCommandPacket(normalizeDraftPacket(packet))
+
+  proc applyOrderDraft(model: var TuiModel, packet: CommandPacket) =
+    ## Replace staged UI orders with restored draft content.
+    let normalized = normalizeDraftPacket(packet)
+    model.ui.stagedFleetCommands.clear()
+    model.ui.stagedBuildCommands = @[]
+    model.ui.stagedRepairCommands = @[]
+    model.ui.stagedScrapCommands = @[]
+    model.ui.stagedColonyManagement = @[]
+    for cmd in normalized.fleetCommands:
+      model.stageFleetCommand(cmd)
+    model.ui.stagedBuildCommands = normalized.buildCommands
+    model.ui.stagedRepairCommands = normalized.repairCommands
+    model.ui.stagedScrapCommands = normalized.scrapCommands
+    model.ui.stagedColonyManagement = normalized.colonyManagement
+    model.ui.researchAllocation = normalized.researchAllocation
+    model.ui.turnSubmissionConfirmed = false
 
   # Initialize terminal
   var tty = openTty()
@@ -491,6 +542,28 @@ proc runTui*(gameId: string = "") =
             syncCachedIntelNotes(sam.model)
             syncCachedMessages(sam.model)
             syncBuildModalData(sam.model, playerState)
+            if activeGameId.len > 0 and authoritativeConfigLoaded:
+              let draftOpt = tuiCache.loadOrderDraft(
+                activeGameId,
+                int(viewingHouse)
+              )
+              if draftOpt.isSome:
+                let draft = draftOpt.get()
+                if draft.turn != playerState.turn:
+                  tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+                  sam.model.ui.statusMessage =
+                    "Discarded saved draft (turn changed)"
+                elif draft.configHash != authoritativeConfigHash:
+                  tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+                  sam.model.ui.statusMessage =
+                    "Discarded saved draft (rules changed)"
+                else:
+                  applyOrderDraft(sam.model, draft.packet)
+                  syncBuildModalData(sam.model, playerState)
+                  let cmdCount = sam.model.stagedCommandCount()
+                  sam.model.ui.statusMessage =
+                    "Restored saved draft (" & $cmdCount & " staged)"
+                  lastDraftFingerprint = packetFingerprint(draft.packet)
             sam.model.resetBreadcrumbs(sam.model.ui.mode)
             if sam.model.view.homeworld.isSome:
               sam.model.ui.mapState.cursor = sam.model.view.homeworld.get
@@ -1263,6 +1336,7 @@ proc runTui*(gameId: string = "") =
       authoritativeConfigHash = ""
       authoritativeConfigSchema = 0
       authoritativeConfigError = ""
+      lastDraftFingerprint = ""
 
       # Check for valid houseId
       if sam.model.ui.loadHouseId == 0:
@@ -1285,6 +1359,7 @@ proc runTui*(gameId: string = "") =
         if cachedStateOpt.isSome and authoritativeConfigLoaded:
           playerState = cachedStateOpt.get()
           viewingHouse = houseId
+          activeGameId = gameId
           sam.model.view.playerStateLoaded = true
           sam.model.ui.appPhase = AppPhase.InGame
           sam.model.view.viewingHouse = int(houseId)
@@ -1302,7 +1377,30 @@ proc runTui*(gameId: string = "") =
           let gameName = if cachedGame.isSome: cachedGame.get().name
                          else: gameId
           sam.model.ui.statusMessage = "Loaded game " & gameName
-          activeGameId = gameId
+          let draftOpt = tuiCache.loadOrderDraft(
+            activeGameId,
+            int(viewingHouse)
+          )
+          if draftOpt.isSome:
+            let draft = draftOpt.get()
+            if draft.turn != playerState.turn:
+              tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+              sam.model.ui.statusMessage =
+                "Loaded game " & gameName &
+                " (discarded stale draft: turn changed)"
+            elif draft.configHash != authoritativeConfigHash:
+              tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+              sam.model.ui.statusMessage =
+                "Loaded game " & gameName &
+                " (discarded stale draft: rules changed)"
+            else:
+              applyOrderDraft(sam.model, draft.packet)
+              syncBuildModalData(sam.model, playerState)
+              let cmdCount = sam.model.stagedCommandCount()
+              sam.model.ui.statusMessage =
+                "Loaded game " & gameName &
+                " (restored draft: " & $cmdCount & " staged)"
+              lastDraftFingerprint = packetFingerprint(draft.packet)
           syncCachedIntelNotes(sam.model)
           syncCachedMessages(sam.model)
         elif cachedStateOpt.isSome and not authoritativeConfigLoaded:
@@ -1390,6 +1488,13 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.stagedRepairCommands.setLen(0)
           sam.model.ui.stagedScrapCommands.setLen(0)
           sam.model.ui.stagedColonyManagement.setLen(0)
+          if activeGameId.len > 0:
+            tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+          let postSubmit = sam.model.buildCommandPacket(
+            playerState.turn,
+            viewingHouse
+          )
+          lastDraftFingerprint = packetFingerprint(postSubmit)
         else:
           sam.model.ui.statusMessage =
             "Cannot submit: not connected to relay"
@@ -1485,7 +1590,31 @@ proc runTui*(gameId: string = "") =
       needsRender = true
 
     # -------------------------------------------------------------------------
-    # Phase 8: Frame-based rendering
+    # Phase 8: Persist staged order draft
+    # -------------------------------------------------------------------------
+    if activeGameId.len > 0 and sam.model.view.playerStateLoaded and
+        authoritativeConfigLoaded and int(viewingHouse) > 0:
+      let draftPacket = sam.model.buildCommandPacket(
+        playerState.turn,
+        viewingHouse
+      )
+      let fingerprint = packetFingerprint(draftPacket)
+      if packetHasDraftData(draftPacket):
+        if fingerprint != lastDraftFingerprint:
+          tuiCache.saveOrderDraft(
+            activeGameId,
+            int(viewingHouse),
+            playerState.turn,
+            authoritativeConfigHash,
+            normalizeDraftPacket(draftPacket)
+          )
+          lastDraftFingerprint = fingerprint
+      elif lastDraftFingerprint.len > 0:
+        tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+        lastDraftFingerprint = ""
+
+    # -------------------------------------------------------------------------
+    # Phase 9: Frame-based rendering
     # -------------------------------------------------------------------------
     # Render if needed. Since we wait for input at the start of each iteration,
     # we render at most once per TargetFrameTimeMs.

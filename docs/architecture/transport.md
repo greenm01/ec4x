@@ -174,6 +174,15 @@ type NostrClient* = ref object
 6. Reject future deltas whose config hash/schema do not match snapshot
 ```
 
+#### Draft Restore Gate (Player TUI)
+```
+1. Load cached CommandPacket draft from order_drafts
+2. Require draft.turn == current PlayerState.turn
+3. Require draft.config_hash == active TuiRulesSnapshot.configHash
+4. Restore staged orders/research only when both checks pass
+5. Otherwise discard stale draft
+```
+
 ### Daemon Operations
 
 #### Discover Games

@@ -111,6 +111,15 @@ Queue operational commands for turn resolution
 4. Receive `ZeroTurnResult`s for immediate feedback
 5. Updated `PlayerState` saved to SQLite after processing
 
+**Draft Workflow (Player TUI):**
+1. Stage commands/research in UI
+2. Save staged `CommandPacket` to local `order_drafts` cache
+3. On re-entry, load draft and validate:
+   - `draft.turn == PlayerState.turn`
+   - `draft.config_hash == active configHash`
+4. Restore staged UI state when valid
+5. Clear draft after successful turn submission
+
 **Server Workflow:**
 1. Receive `CommandPacket` from client
 2. Extract zero-turn commands

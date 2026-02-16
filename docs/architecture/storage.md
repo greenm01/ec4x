@@ -496,6 +496,17 @@ CREATE TABLE config_snapshots (
     PRIMARY KEY(game_id, config_hash)
 );
 
+-- Staged CommandPacket draft per game/house (msgpack)
+CREATE TABLE order_drafts (
+    game_id TEXT NOT NULL,
+    house_id INTEGER NOT NULL,
+    turn INTEGER NOT NULL,
+    config_hash TEXT NOT NULL,
+    packet_msgpack TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY(game_id, house_id)
+);
+
 -- Nostr event deduplication
 CREATE TABLE received_events (
     event_id TEXT PRIMARY KEY,
@@ -522,6 +533,21 @@ the player TUI. The TUI cache stores the latest valid
 
 This prevents client-side config drift while still allowing the server
 to evolve rule sections/capabilities over time.
+
+### Draft Order Persistence
+
+The player TUI persists staged orders and R&D allocation locally as a
+`CommandPacket` draft in `order_drafts` so players can exit/re-enter
+without losing work.
+
+Restore policy:
+- Restore only when `draft.turn == current PlayerState.turn`
+- Restore only when `draft.config_hash == active TuiRulesSnapshot.configHash`
+- Discard draft automatically on turn or config mismatch
+
+Lifecycle:
+- Save/update draft while staged commands or research allocation change
+- Clear draft after successful turn submission
 
 ### Implementation
 
