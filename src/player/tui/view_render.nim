@@ -2347,6 +2347,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       tableColumn("AS", 4, table.Alignment.Right),
       tableColumn("DS", 4, table.Alignment.Right),
       tableColumn("CMD", 8, table.Alignment.Left),
+      tableColumn("ROE", 4, table.Alignment.Right),
       tableColumn("LTU", 5, table.Alignment.Right)
     ])
   var fleetRows = 0
@@ -2360,13 +2361,21 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
             attackStr += ship.stats.attackStrength
             defenseStr += ship.stats.defenseStrength
             break
-      let cmdLabel = case fleet.command.commandType
-        of FleetCommandType.Hold: "Hold"
-        of FleetCommandType.Move: "Move"
-        of FleetCommandType.Patrol: "Patrol"
-        of FleetCommandType.GuardColony: "Guard"
-        of FleetCommandType.Blockade: "Blockade"
-        else: "---"
+      var cmdLabel: string
+      var roeLabel: string
+      let fleetId = int(fleet.id)
+      if fleetId in model.ui.stagedFleetCommands:
+        let staged = model.ui.stagedFleetCommands[fleetId]
+        let cmdNum = sam_pkg.fleetCommandNumber(staged.commandType)
+        cmdLabel = sam_pkg.commandLabel(cmdNum)
+        if staged.roe.isSome:
+          roeLabel = $int(staged.roe.get())
+        else:
+          roeLabel = $int(fleet.roe)
+      else:
+        let cmdNum = sam_pkg.fleetCommandNumber(fleet.command.commandType)
+        cmdLabel = sam_pkg.commandLabel(cmdNum)
+        roeLabel = $int(fleet.roe)
       fleetTable.addRow(@[
         "You",
         fleet.name,
@@ -2374,6 +2383,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
         $attackStr,
         $defenseStr,
         cmdLabel,
+        roeLabel,
         "T" & $model.view.turn
       ])
       fleetRows.inc
@@ -2393,6 +2403,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
         houseName,
         "---",
         ships,
+        "?",
         "?",
         "?",
         "?",
@@ -2735,6 +2746,21 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     if meta.isOwn:
       for fleet in ps.ownFleets:
         if int(fleet.id) == meta.fleetId:
+          var cmdLabel: string
+          var roeLabel: string
+          let fleetId = int(fleet.id)
+          if fleetId in model.ui.stagedFleetCommands:
+            let staged = model.ui.stagedFleetCommands[fleetId]
+            let cmdNum = sam_pkg.fleetCommandNumber(staged.commandType)
+            cmdLabel = sam_pkg.commandLabel(cmdNum)
+            if staged.roe.isSome:
+              roeLabel = $int(staged.roe.get())
+            else:
+              roeLabel = $int(fleet.roe)
+          else:
+            let cmdNum = sam_pkg.fleetCommandNumber(fleet.command.commandType)
+            cmdLabel = sam_pkg.commandLabel(cmdNum)
+            roeLabel = $int(fleet.roe)
           var classCounts = stdtables.initTable[ShipClass, int]()
           var totalShips = 0
           for shipId in fleet.ships:
@@ -2745,6 +2771,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
                 totalShips.inc
                 break
           headerLines.add("Owner: You  Fleet: " & fleet.name)
+          headerLines.add("Command/ROE: " & cmdLabel & "/" & roeLabel)
           for cls in ShipClass:
             if classCounts.hasKey(cls):
               shipTable.addRow(@[
