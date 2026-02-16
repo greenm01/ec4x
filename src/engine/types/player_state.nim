@@ -197,6 +197,7 @@ type
     homeworldSystemId*: Option[SystemId]
     treasuryBalance*: Option[int32]
     netIncome*: Option[int32]
+    taxRate*: Option[int32]
     techLevels*: Option[TechLevel]
     researchPoints*: Option[ResearchPoints]
 

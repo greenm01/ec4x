@@ -17,7 +17,7 @@
 ## Data-oriented design: Calculate capacity (pure), check violations (pure),
 ## enforce at load time (explicit mutations)
 
-import std/[options, math, tables]
+import std/[options, tables]
 import ../../types/[capacity, core, game_state, ship]
 import ../../state/[engine, iterators]
 import ../../globals

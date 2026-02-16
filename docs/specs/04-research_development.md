@@ -88,6 +88,12 @@ Science Level represents your House's overall technological sophistication and r
 
 SL advances automatically when your House accumulates the required ERP and SRP thresholds. Both pools must meet their respective requirements simultaneously.
 
+**Per-Turn Advancement Limit:**
+
+- A House may advance at most **one level per tech per turn** (EL, SL, and each tech field).
+- Research allocation is capped to the RP required for the next level only.
+- Any excess PP allocated beyond the next-level requirement is **returned to the treasury**.
+
 **Strategic Implications:**
 
 SL advancement is non-linear and becomes progressively more expensive. Early SL tiers unlock rapidly with modest investment, but reaching SL 10 requires sustained R&D commitment over many turns. Houses that neglect research find themselves technologically outpaced and unable to field advanced unit types or economic multipliers.

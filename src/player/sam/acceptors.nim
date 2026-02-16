@@ -6,7 +6,7 @@
 ##
 ## Acceptor signature: proc(model: var M, proposal: Proposal)
 
-import std/[options, times, strutils, tables, math]
+import std/[options, times, strutils, tables]
 import ./types
 import ./tui_model
 import ./actions
@@ -21,6 +21,8 @@ import ../../common/logger
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
   fleet, command, tech]
 import ../../engine/systems/capacity/construction_docks
+import ../../engine/systems/tech/costs
+import ../tui/data/tech_info
 
 export types, tui_model, actions
 
@@ -94,6 +96,80 @@ proc setResearchItemAllocation(
   of ResearchItemKind.Technology:
     allocation.technology[item.field] = int32(clamped)
 
+proc currentTechLevel(model: TuiModel, item: ResearchItem): int =
+  if model.view.techLevels.isNone:
+    return 0
+  let levels = model.view.techLevels.get()
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    levels.el.int
+  of ResearchItemKind.ScienceLevel:
+    levels.sl.int
+  of ResearchItemKind.Technology:
+    case item.field
+    of TechField.ConstructionTech:
+      levels.cst.int
+    of TechField.WeaponsTech:
+      levels.wep.int
+    of TechField.TerraformingTech:
+      levels.ter.int
+    of TechField.ElectronicIntelligence:
+      levels.eli.int
+    of TechField.CloakingTech:
+      levels.clk.int
+    of TechField.ShieldTech:
+      levels.sld.int
+    of TechField.CounterIntelligence:
+      levels.cic.int
+    of TechField.StrategicLiftTech:
+      levels.stl.int
+    of TechField.FlagshipCommandTech:
+      levels.fc.int
+    of TechField.StrategicCommandTech:
+      levels.sc.int
+    of TechField.FighterDoctrine:
+      levels.fd.int
+    of TechField.AdvancedCarrierOps:
+      levels.aco.int
+
+proc currentResearchPoints(model: TuiModel, item: ResearchItem): int =
+  if model.view.researchPoints.isNone:
+    return 0
+  let points = model.view.researchPoints.get()
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    points.economic.int
+  of ResearchItemKind.ScienceLevel:
+    points.science.int
+  of ResearchItemKind.Technology:
+    if points.technology.hasKey(item.field):
+      points.technology[item.field].int
+    else:
+      0
+
+proc researchSlGate(model: TuiModel, item: ResearchItem): bool =
+  if model.view.techLevels.isNone:
+    return false
+  let levels = model.view.techLevels.get()
+  let currentLevel = currentTechLevel(model, item)
+  let required = techSlRequiredForLevel(item, currentLevel + 1)
+  levels.sl.int >= required
+
+proc researchMaxAllocation(model: TuiModel, item: ResearchItem): int =
+  if model.view.techLevels.isNone:
+    return 0
+  if model.view.researchPoints.isNone:
+    return 0
+  let currentLevel = currentTechLevel(model, item)
+  let maxLevel = progressionMaxLevel(item)
+  if currentLevel >= maxLevel:
+    return 0
+  if not researchSlGate(model, item):
+    return 0
+  let cost = techProgressCost(item, currentLevel)
+  let progress = currentResearchPoints(model, item)
+  max(0, cost - progress)
+
 proc adjustResearchAllocation(
     model: var TuiModel,
     delta: int
@@ -109,6 +185,9 @@ proc adjustResearchAllocation(
   var nextValue = current + delta
   if nextValue < 0:
     nextValue = 0
+  let maxPerTech = researchMaxAllocation(model, item)
+  if nextValue > maxPerTech:
+    nextValue = maxPerTech
   var total = researchAllocatedTotal(model.ui.researchAllocation)
   let diff = nextValue - current
   if diff > 0:
@@ -145,7 +224,10 @@ proc applyResearchDigitInput(
   let current = researchItemAllocation(model.ui.researchAllocation, item)
   let total = researchAllocatedTotal(model.ui.researchAllocation)
   let remaining = max(0, model.view.treasury - (total - current))
-  let nextValue = min(parsed, remaining)
+  var nextValue = min(parsed, remaining)
+  let maxPerTech = researchMaxAllocation(model, item)
+  if nextValue > maxPerTech:
+    nextValue = maxPerTech
   setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
 
 
@@ -2010,12 +2092,6 @@ proc buildOptionMatchesRow(opt: BuildOption, key: BuildRowKey): bool =
       cls == key.facilityClass.get()
     except:
       false
-
-proc buildOptionCost(state: BuildModalState, key: BuildRowKey): int =
-  for opt in state.availableOptions:
-    if buildOptionMatchesRow(opt, key):
-      return opt.cost
-  buildRowCost(key)
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   if buildRowCst(key) > state.cstLevel:

@@ -50,6 +50,7 @@ type
     homeworldSystemId*: Option[SystemId]
     treasuryBalance*: Option[int32]
     netIncome*: Option[int32]
+    taxRate*: Option[int32]
     techLevels*: Option[TechLevel]
     researchPoints*: Option[ResearchPoints]
     ownColonies*: seq[Colony]
@@ -79,6 +80,7 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.homeworldSystemId = ps.homeworldSystemId
   result.treasuryBalance = ps.treasuryBalance
   result.netIncome = ps.netIncome
+  result.taxRate = ps.taxRate
   result.techLevels = ps.techLevels
   result.researchPoints = ps.researchPoints
   result.ownColonies = ps.ownColonies

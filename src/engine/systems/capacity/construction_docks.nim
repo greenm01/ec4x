@@ -20,7 +20,7 @@
 ##
 ## Data-oriented design: Calculate violations (pure), report status (no enforcement needed - hard limit)
 
-import std/[strutils, algorithm, options, math]
+import std/[strutils, algorithm, options]
 import ../../types/[capacity, core, game_state, ship, production, facilities, colony,
                     combat]
 import ../../state/[engine, iterators]

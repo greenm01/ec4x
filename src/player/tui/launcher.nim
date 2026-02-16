@@ -167,7 +167,7 @@ end tell
     return true
   
   of TerminalEmulator.None:
-    return false
+    result = false
 
 proc getCurrentTerminalSize*(): tuple[width, height: int] =
   ## Get current terminal size using tput
@@ -195,21 +195,19 @@ proc isTerminalSizeOk*(width, height: int): tuple[ok: bool, msg: string] =
 proc shouldLaunchInNewWindow*(): bool =
   ## Determine if we should try to launch in a new window
   ## Returns false if we're already in an interactive terminal session
-  
+  result = false
+
   # First check: Are we already in a TTY?
   # If stdin is a TTY, we're likely already in a terminal - don't spawn another
   when not defined(windows):
     if isatty(0) != 0:  # stdin (fd 0) is a TTY
       return false
-  
+
   # If DISPLAY is set (X11) and we have a terminal emulator, launch new window
   when not defined(windows):
     if getEnv("DISPLAY") != "" or getEnv("WAYLAND_DISPLAY") != "":
       return true
-  
+
   # If on macOS with GUI session (and not already in TTY per above check)
   when defined(macosx):
-    return true
-  
-  # Otherwise run in current terminal
-  return false
+    result = true

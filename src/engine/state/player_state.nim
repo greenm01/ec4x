@@ -126,6 +126,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   result.homeworldSystemId = none(SystemId)
   result.treasuryBalance = none(int32)
   result.netIncome = none(int32)
+  result.taxRate = none(int32)
   result.techLevels = none(TechLevel)
   result.researchPoints = none(ResearchPoints)
   result.ltuSystems = initTable[SystemId, int32]()
@@ -146,6 +147,7 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
     if house.latestIncomeReport.isSome:
       result.netIncome =
         some(house.latestIncomeReport.get().totalNet)
+    result.taxRate = some(house.taxPolicy.currentRate)
     result.techLevels = some(house.techTree.levels)
     result.researchPoints = some(house.techTree.accumulated)
 

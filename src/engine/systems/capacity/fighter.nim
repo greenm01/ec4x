@@ -22,7 +22,7 @@
 ##
 ## Data-oriented design: Calculate violations (pure), apply enforcement (explicit mutations)
 
-import std/[sequtils, math, strutils, options, tables, algorithm]
+import std/[sequtils, strutils, options, tables, algorithm]
 import
   ../../types/
     [capacity, core, game_state, ship, production, event, colony, house]

@@ -4,9 +4,13 @@
 ##
 ## Per economy.md:4.1
 
-import std/[unittest, random, options]
-import ../../src/engine/types/tech
-import ../../src/engine/systems/tech/advancement
+import std/[unittest, random, options, tables]
+import ../../src/engine/engine
+import ../../src/engine/types/[tech, command]
+import ../../src/engine/state/[engine, iterators]
+import ../../src/engine/turn_cycle/command_phase
+import ../../src/engine/systems/tech/[advancement, costs]
+import ../../src/engine/globals
 
 suite "Tech: Maximum Level Constants":
   ## Verify all tech max level constants are defined correctly
@@ -209,6 +213,97 @@ suite "Tech: Deterministic Breakthrough (Seeded)":
 
     # Should NOT be all the same
     check same < 100
+
+suite "Tech: Allocation Caps":
+  ## Ensure one-level-per-tech-per-turn cap and SL gating
+
+  test "allocations cap to next level and refund excess":
+    var game = newGame()
+    let houseId = game.allHouses().toSeq[0].id
+    var house = game.house(houseId).get()
+    house.treasury = 1000
+    house.techTree.levels.sl = 10
+    house.techTree.levels.wep = 1
+    house.techTree.accumulated.technology = initTable[TechField, int32]()
+    game.updateHouse(houseId, house)
+
+    let cost = techUpgradeCost(TechField.WeaponsTech, 1)
+    var allocation = ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int32]()
+    )
+    allocation.technology[TechField.WeaponsTech] = cost + 50
+
+    var orders = initTable[HouseId, CommandPacket]()
+    orders[houseId] = CommandPacket(
+      houseId: houseId,
+      turn: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
+      researchAllocation: allocation,
+      diplomaticCommand: @[],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
+
+    var events: seq[GameEvent] = @[]
+    game.processResearchAllocation(orders, events)
+
+    let updated = game.house(houseId).get()
+    let expectedSpent = cost
+    check updated.treasury == house.treasury - expectedSpent
+    check updated.techTree.accumulated.technology[TechField.WeaponsTech] > 0
+    check updated.techTree.accumulated.technology[TechField.WeaponsTech] <=
+      techUpgradeCost(TechField.WeaponsTech, 1)
+
+  test "SL gating blocks allocation and refunds PP":
+    var game = newGame()
+    let houseId = game.allHouses().toSeq[0].id
+    var house = game.house(houseId).get()
+    house.treasury = 500
+    house.techTree.levels.sl = 1
+    house.techTree.levels.wep = 1
+    house.techTree.accumulated.technology = initTable[TechField, int32]()
+    game.updateHouse(houseId, house)
+
+    var allocation = ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int32]()
+    )
+    allocation.technology[TechField.WeaponsTech] = 100
+
+    var orders = initTable[HouseId, CommandPacket]()
+    orders[houseId] = CommandPacket(
+      houseId: houseId,
+      turn: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
+      researchAllocation: allocation,
+      diplomaticCommand: @[],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      ebpInvestment: 0,
+      cipInvestment: 0
+    )
+
+    var events: seq[GameEvent] = @[]
+    game.processResearchAllocation(orders, events)
+
+    let updated = game.house(houseId).get()
+    check updated.treasury == house.treasury
+    check updated.techTree.accumulated.technology.len == 0
 
 when isMainModule:
   echo "========================================"

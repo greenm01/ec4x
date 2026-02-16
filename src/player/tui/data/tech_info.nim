@@ -210,6 +210,15 @@ proc techCostForLevel*(item: ResearchItem, level: int): int =
     return slUpgradeCost(int32(level - 1)).int
   techUpgradeCost(item.field, int32(level - 1)).int
 
+proc techProgressCost*(item: ResearchItem, currentLevel: int): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    elUpgradeCost(int32(currentLevel)).int
+  of ResearchItemKind.ScienceLevel:
+    slUpgradeCost(int32(currentLevel)).int
+  of ResearchItemKind.Technology:
+    techUpgradeCost(item.field, int32(currentLevel)).int
+
 proc techSlRequiredForLevel*(item: ResearchItem, level: int): int =
   if item.kind == ResearchItemKind.ScienceLevel:
     return 0

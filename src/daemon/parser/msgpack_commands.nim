@@ -4,7 +4,7 @@
 ## Much simpler than KDL parsing since msgpack4nim handles the structure.
 
 import msgpack4nim
-import ../../engine/types/[command, core]
+import ../../engine/types/command
 import ../../common/msgpack_types
 export msgpack_types
 

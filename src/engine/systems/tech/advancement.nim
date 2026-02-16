@@ -5,7 +5,7 @@
 ## Tech Upgrade Rules:
 ## - Can be purchased EVERY TURN if player has enough RP
 ## - Sequential command only (must buy level N before N+1)
-## - No turn restrictions on purchases
+## - One level per tech per turn (excess PP is refunded at allocation)
 ##
 ## Research Breakthrough Rules:
 ## - Breakthrough rolls occur every 5 turns (turns 5, 10, 15, 20, etc.)

@@ -8,7 +8,7 @@ import std/[options, strformat, tables, strutils, parseopt, os,
 import ../../common/logger
 import ../../engine/config/engine
 import ../../engine/globals
-import ../../engine/types/[core, fleet, player_state as ps_types]
+import ../../engine/types/[core, player_state as ps_types]
 import ../../daemon/transport/nostr/[types, events, filter, crypto, nip01]
 import ../nostr/client
 import ../tui/term/term
@@ -29,7 +29,6 @@ import ../state/msgpack_state
 import ../state/tui_cache
 import ../state/tui_config
 import ../../common/message_types
-import ../svg/svg_pkg
 import ./sync
 import ./input_map
 import ./view_render

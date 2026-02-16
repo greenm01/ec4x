@@ -11,7 +11,7 @@
 ## - CMD5: Player Submission Window - Colony mgmt, transfers, terraforming
 ## - CMD6: Order Processing & Validation - Fleet commands, builds, research
 
-import std/[tables, options, random, strformat, sets, hashes]
+import std/[tables, options, random, strformat, sets]
 
 # Logging
 import ../../common/logger
@@ -31,7 +31,8 @@ import ../systems/production/[commissioning, construction, repairs]
 import ../systems/fleet/mechanics
 import ../systems/colony/[engine, terraforming, salvage]
 import ../systems/population/transfers
-import ../systems/tech/costs
+import ../systems/tech/[costs, advancement]
+import ../globals
 import ../event_factory/init
 
 # =============================================================================
@@ -265,6 +266,70 @@ proc processResearchAllocation(
   ## Process research allocation with treasury scaling
   ## Per canonical spec CMD6d
 
+  proc slRequiredForNext(field: TechField, currentLevel: int32): int32 =
+    let nextLevel = currentLevel + 1
+    case field
+    of TechField.ConstructionTech:
+      if gameConfig.tech.cst.levels.hasKey(nextLevel):
+        gameConfig.tech.cst.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.WeaponsTech:
+      if gameConfig.tech.wep.levels.hasKey(nextLevel):
+        gameConfig.tech.wep.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.TerraformingTech:
+      if gameConfig.tech.ter.levels.hasKey(nextLevel):
+        gameConfig.tech.ter.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.ElectronicIntelligence:
+      if gameConfig.tech.eli.levels.hasKey(nextLevel):
+        gameConfig.tech.eli.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.CloakingTech:
+      if gameConfig.tech.clk.levels.hasKey(nextLevel):
+        gameConfig.tech.clk.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.ShieldTech:
+      if gameConfig.tech.sld.levels.hasKey(nextLevel):
+        gameConfig.tech.sld.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.CounterIntelligence:
+      if gameConfig.tech.cic.levels.hasKey(nextLevel):
+        gameConfig.tech.cic.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.StrategicLiftTech:
+      if gameConfig.tech.stl.levels.hasKey(nextLevel):
+        gameConfig.tech.stl.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.FlagshipCommandTech:
+      if gameConfig.tech.fc.levels.hasKey(nextLevel):
+        gameConfig.tech.fc.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.StrategicCommandTech:
+      if gameConfig.tech.sc.levels.hasKey(nextLevel):
+        gameConfig.tech.sc.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.FighterDoctrine:
+      if gameConfig.tech.fd.levels.hasKey(nextLevel):
+        gameConfig.tech.fd.levels[nextLevel].slRequired
+      else:
+        0
+    of TechField.AdvancedCarrierOps:
+      if gameConfig.tech.aco.levels.hasKey(nextLevel):
+        gameConfig.tech.aco.levels[nextLevel].slRequired
+      else:
+        0
+
   for (houseId, _) in state.activeHousesWithId():
     if houseId notin orders:
       continue
@@ -315,6 +380,107 @@ proc processResearchAllocation(
 
       logWarn("Research",
         &"{houseId} research scaled to {int(affordablePercent * 100)}%")
+
+    # Cap per-tech allocation to one level per turn and apply SL gating
+    var refundPP: int32 = 0
+    if scaledAllocation.economic > 0:
+      let currentEL = house.techTree.levels.el
+      let elCost = elUpgradeCost(currentEL)
+      let elSlRequired =
+        if gameConfig.tech.el.levels.hasKey(currentEL + 1):
+          gameConfig.tech.el.levels[currentEL + 1].slRequired
+        else:
+          0
+      if house.techTree.levels.sl < elSlRequired:
+        refundPP += scaledAllocation.economic
+        scaledAllocation.economic = 0
+      elif elCost <= 0:
+        refundPP += scaledAllocation.economic
+        scaledAllocation.economic = 0
+      else:
+        let remainingEL =
+          max(0'i32, elCost - house.techTree.accumulated.economic)
+        if scaledAllocation.economic > remainingEL:
+          refundPP += scaledAllocation.economic - remainingEL
+          scaledAllocation.economic = remainingEL
+
+    if scaledAllocation.science > 0:
+      let currentSL = house.techTree.levels.sl
+      let slCost = slUpgradeCost(currentSL)
+      if slCost <= 0:
+        refundPP += scaledAllocation.science
+        scaledAllocation.science = 0
+      else:
+        let remainingSL =
+          max(0'i32, slCost - house.techTree.accumulated.science)
+        if scaledAllocation.science > remainingSL:
+          refundPP += scaledAllocation.science - remainingSL
+          scaledAllocation.science = remainingSL
+
+    var cappedTech = initTable[TechField, int32]()
+    for field, pp in scaledAllocation.technology:
+      var allowed = pp
+      let currentLevel =
+        case field
+        of TechField.ConstructionTech: house.techTree.levels.cst
+        of TechField.WeaponsTech: house.techTree.levels.wep
+        of TechField.TerraformingTech: house.techTree.levels.ter
+        of TechField.ElectronicIntelligence: house.techTree.levels.eli
+        of TechField.CloakingTech: house.techTree.levels.clk
+        of TechField.ShieldTech: house.techTree.levels.sld
+        of TechField.CounterIntelligence: house.techTree.levels.cic
+        of TechField.StrategicLiftTech: house.techTree.levels.stl
+        of TechField.FlagshipCommandTech: house.techTree.levels.fc
+        of TechField.StrategicCommandTech: house.techTree.levels.sc
+        of TechField.FighterDoctrine: house.techTree.levels.fd
+        of TechField.AdvancedCarrierOps: house.techTree.levels.aco
+
+      let maxLevel =
+        case field
+        of TechField.ConstructionTech: maxConstructionTech
+        of TechField.WeaponsTech: maxWeaponsTech
+        of TechField.TerraformingTech: maxTerraformingTech
+        of TechField.ElectronicIntelligence: maxElectronicIntelligence
+        of TechField.CloakingTech: maxCloakingTech
+        of TechField.ShieldTech: maxShieldTech
+        of TechField.CounterIntelligence: maxCounterIntelligence
+        of TechField.StrategicLiftTech: maxStrategicLiftTech
+        of TechField.FlagshipCommandTech: maxFlagshipCommandTech
+        of TechField.StrategicCommandTech: maxStrategicCommandTech
+        of TechField.FighterDoctrine: maxFighterDoctrine
+        of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
+
+      if currentLevel >= maxLevel:
+        refundPP += allowed
+        allowed = 0
+      else:
+        let slRequired = slRequiredForNext(field, currentLevel)
+        if house.techTree.levels.sl < slRequired:
+          refundPP += allowed
+          allowed = 0
+        else:
+          let cost = techUpgradeCost(field, currentLevel)
+          let currentPoints =
+            if house.techTree.accumulated.technology.hasKey(field):
+              house.techTree.accumulated.technology[field]
+            else:
+              0
+          if cost <= 0:
+            refundPP += allowed
+            allowed = 0
+          else:
+            let remaining = max(0'i32, cost - currentPoints)
+            if allowed > remaining:
+              refundPP += allowed - remaining
+              allowed = remaining
+
+      if allowed > 0:
+        cappedTech[field] = allowed
+    scaledAllocation.technology = cappedTech
+
+    if refundPP > 0:
+      house.treasury += refundPP
+      totalResearchCost -= refundPP
 
     # Deduct from treasury
     if totalResearchCost > 0:

@@ -42,6 +42,8 @@ proc applyDeltaToPlayerState*(
     state.treasuryBalance = delta.treasuryBalance
   if delta.netIncomeChanged:
     state.netIncome = delta.netIncome
+  if delta.taxRateChanged:
+    state.taxRate = delta.taxRate
   if delta.techLevelsChanged:
     state.techLevels = delta.techLevels
   if delta.researchPointsChanged:

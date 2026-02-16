@@ -4,7 +4,6 @@
 ## categorized command picker and ROE picker sub-modals.
 
 import ./modal
-import ./borders
 import ./table
 import ./scroll_state
 import ./text/text_pkg
@@ -400,7 +399,6 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       0
 
   let desiredWidth = min(maxWidth, max(desiredInnerWidth, subModalMinInner) + 2)
-  let isSubModal = state.subModal != FleetSubModal.None
   let modal = widget.modal
     .maxWidth(desiredWidth)
     .minWidth(desiredWidth)

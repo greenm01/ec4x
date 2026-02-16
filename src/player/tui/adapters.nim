@@ -4,7 +4,7 @@
 ## and TUI widget types. Maintains separation between engine (game logic)
 ## and presentation (TUI) layers.
 
-import std/[options, tables, algorithm, strutils, math]
+import std/[options, tables, strutils, math]
 import ../../common/logger
 import ../../engine/types/[core, starmap, colony, fleet, player_state, ship,
   combat, production, facilities, ground_unit, tech]

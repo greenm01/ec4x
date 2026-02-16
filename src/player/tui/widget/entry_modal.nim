@@ -940,11 +940,6 @@ proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
   1 + LogoHeight + 1 + 3 + 1 + gamesHeight + 1 + inviteHeight + adminHeight +
     relayHeight
 
-proc calculateContentHeight(state: EntryModalState): int =
-  ## Calculate the content height needed
-  let gamesHeight = desiredGamesHeight(state)
-  calculateContentHeight(state, gamesHeight)
-
 proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
   ## Render the complete entry modal
   let modal = newModal()

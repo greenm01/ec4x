@@ -8,7 +8,7 @@
 ## - Uses entity ops for mutations (population_transfer_ops)
 ## - Follows three-layer pattern: State → Business Logic → Entity Ops
 
-import std/[tables, sequtils, options, math, strformat]
+import std/[tables, sequtils, options, strformat]
 import ../../types/[
   game_state, core, event, population as pop_types, starmap, colony, command,
 ]

@@ -3,7 +3,7 @@
 ## Shows staged build commands for the selected colony and allows
 ## deleting staged items.
 
-import std/[options, strutils]
+import std/options
 
 import ./modal
 import ./table

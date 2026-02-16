@@ -22,10 +22,8 @@ import ../tui/widget/breadcrumb
 import ../tui/widget/command_dock
 import ../tui/widget/progress_bar
 import ../tui/widget/hud
-import ../../engine/globals
 import ../tui/widget/status_bar
 import ../tui/styles/ec_palette
-import ../tui/widget/scrollbar
 import ../tui/widget/modal
 import ../tui/widget/table
 import ../tui/widget/build_modal
@@ -1593,47 +1591,6 @@ proc techLevelFor(item: ResearchItem, levels: TechLevel): int =
     of TechField.AdvancedCarrierOps:
       levels.aco.int
 
-proc techMaxLevel(item: ResearchItem): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    maxEconomicLevel.int
-  of ResearchItemKind.ScienceLevel:
-    maxScienceLevel.int
-  of ResearchItemKind.Technology:
-    case item.field
-    of TechField.ConstructionTech:
-      maxConstructionTech.int
-    of TechField.WeaponsTech:
-      maxWeaponsTech.int
-    of TechField.TerraformingTech:
-      maxTerraformingTech.int
-    of TechField.ElectronicIntelligence:
-      maxElectronicIntelligence.int
-    of TechField.CloakingTech:
-      maxCloakingTech.int
-    of TechField.ShieldTech:
-      maxShieldTech.int
-    of TechField.CounterIntelligence:
-      maxCounterIntelligence.int
-    of TechField.StrategicLiftTech:
-      maxStrategicLiftTech.int
-    of TechField.FlagshipCommandTech:
-      maxFlagshipCommandTech.int
-    of TechField.StrategicCommandTech:
-      maxStrategicCommandTech.int
-    of TechField.FighterDoctrine:
-      maxFighterDoctrine.int
-    of TechField.AdvancedCarrierOps:
-      maxAdvancedCarrierOps.int
-
-proc techProgressCost(item: ResearchItem, currentLevel: int): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    elUpgradeCost(int32(currentLevel)).int
-  of ResearchItemKind.ScienceLevel:
-    slUpgradeCost(int32(currentLevel)).int
-  of ResearchItemKind.Technology:
-    techUpgradeCost(item.field, int32(currentLevel)).int
 
 proc techProgressPoints(item: ResearchItem, points: ResearchPoints): int =
   case item.kind
@@ -1647,78 +1604,6 @@ proc techProgressPoints(item: ResearchItem, points: ResearchPoints): int =
     else:
       0
 
-proc slRequiredForNext(item: ResearchItem, currentLevel: int): int =
-  let nextLevel = int32(currentLevel + 1)
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    if gameConfig.tech.el.levels.hasKey(nextLevel):
-      gameConfig.tech.el.levels[nextLevel].slRequired.int
-    else:
-      0
-  of ResearchItemKind.ScienceLevel:
-    0
-  of ResearchItemKind.Technology:
-    case item.field
-    of TechField.ConstructionTech:
-      if gameConfig.tech.cst.levels.hasKey(nextLevel):
-        gameConfig.tech.cst.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.WeaponsTech:
-      if gameConfig.tech.wep.levels.hasKey(nextLevel):
-        gameConfig.tech.wep.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.TerraformingTech:
-      if gameConfig.tech.ter.levels.hasKey(nextLevel):
-        gameConfig.tech.ter.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.ElectronicIntelligence:
-      if gameConfig.tech.eli.levels.hasKey(nextLevel):
-        gameConfig.tech.eli.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.CloakingTech:
-      if gameConfig.tech.clk.levels.hasKey(nextLevel):
-        gameConfig.tech.clk.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.ShieldTech:
-      if gameConfig.tech.sld.levels.hasKey(nextLevel):
-        gameConfig.tech.sld.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.CounterIntelligence:
-      if gameConfig.tech.cic.levels.hasKey(nextLevel):
-        gameConfig.tech.cic.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.StrategicLiftTech:
-      if gameConfig.tech.stl.levels.hasKey(nextLevel):
-        gameConfig.tech.stl.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.FlagshipCommandTech:
-      if gameConfig.tech.fc.levels.hasKey(nextLevel):
-        gameConfig.tech.fc.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.StrategicCommandTech:
-      if gameConfig.tech.sc.levels.hasKey(nextLevel):
-        gameConfig.tech.sc.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.FighterDoctrine:
-      if gameConfig.tech.fd.levels.hasKey(nextLevel):
-        gameConfig.tech.fd.levels[nextLevel].slRequired.int
-      else:
-        0
-    of TechField.AdvancedCarrierOps:
-      if gameConfig.tech.aco.levels.hasKey(nextLevel):
-        gameConfig.tech.aco.levels[nextLevel].slRequired.int
-      else:
-        0
 
 proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if area.isEmpty or area.height < 10:
@@ -1870,8 +1755,11 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
         modalDimStyle()
       )
       dy += 1
-    let pointsCurrent = techProgressPoints(item, points)
+    let staged = researchItemAllocation(model.ui.researchAllocation, item)
+    var pointsCurrent = techProgressPoints(item, points) + staged
     let cost = techProgressCost(item, level)
+    if pointsCurrent > cost:
+      pointsCurrent = cost
     let barWidth = max(8, detailInner.width - 18)
     let pb = progressBar(pointsCurrent, cost, barWidth)
       .showPercent(false)
@@ -2007,15 +1895,6 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   discard buf.setString(contentArea.x, contentArea.y,
     "Settings view (TODO)", dimStyle())
-
-proc messageGroupId(msg: GameMessage,
-    viewingHouse: int): int32 =
-  ## Determine thread group for a message
-  if msg.toHouse == 0:
-    return 0
-  if msg.fromHouse == int32(viewingHouse):
-    return msg.toHouse
-  msg.fromHouse
 
 proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
                           model: var TuiModel) =

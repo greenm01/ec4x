@@ -25,6 +25,10 @@ suite "Game Initialization - Complete Flow":
       check house.treasury == gameSetup.startingResources.treasury
       check house.prestige == gameSetup.startingResources.startingPrestige
       check house.status == HouseStatus.Active
+      let ps = game.createPlayerState(house.id)
+      check ps.taxRate.isSome
+      if ps.taxRate.isSome:
+        check ps.taxRate.get() == house.taxPolicy.currentRate
 
   test "Houses have correct starting tech":
     let game = newGame()

@@ -409,14 +409,6 @@ proc syncGameStateToModel*(
   let playerState = state.createPlayerState(viewingHouse)
   model.syncKnownEnemyColonies(playerState)
 
-# =============================================================================
-# PlayerState ETA Helpers (A* pathfinding + turn simulation)
-# =============================================================================
-
-type PsPathNode = tuple[f: uint32, system: SystemId]
-
-proc `<`(a, b: PsPathNode): bool = a.f < b.f
-
 proc hexDistance(
     visibleSystems: Table[SystemId, ps_types.VisibleSystem],
     a: SystemId,
@@ -454,7 +446,7 @@ proc findPathPS(
   if start == goal:
     return (true, @[start])
 
-  var openSet: HeapQueue[PsPathNode]
+  var openSet: HeapQueue[tuple[f: uint32, system: SystemId]]
   var cameFrom: Table[SystemId, SystemId]
   var gScore: Table[SystemId, uint32]
 
@@ -766,7 +758,9 @@ proc syncPlayerStateToOverview*(
   # === Empire Status ===
   result.empireStatus.coloniesOwned = ps.ownColonies.len
 
-  if ps.ownColonies.len > 0 and ps.ownColonies[0].taxRate > 0:
+  if ps.taxRate.isSome:
+    result.empireStatus.taxRate = ps.taxRate.get().int
+  elif ps.ownColonies.len > 0 and ps.ownColonies[0].taxRate > 0:
     result.empireStatus.taxRate = ps.ownColonies[0].taxRate.int
   else:
     result.empireStatus.taxRate = 0
@@ -880,7 +874,9 @@ proc syncPlayerStateToModel*(
     model.view.production = ps.netIncome.get().int
   else:
     model.view.production = 0
-  if ps.ownColonies.len > 0 and ps.ownColonies[0].taxRate > 0:
+  if ps.taxRate.isSome:
+    model.view.houseTaxRate = ps.taxRate.get().int
+  elif ps.ownColonies.len > 0 and ps.ownColonies[0].taxRate > 0:
     model.view.houseTaxRate = ps.ownColonies[0].taxRate.int
   else:
     model.view.houseTaxRate = 0

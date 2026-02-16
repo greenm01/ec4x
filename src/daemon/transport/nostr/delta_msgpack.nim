@@ -32,6 +32,8 @@ type
     treasuryBalance*: Option[int32]
     netIncomeChanged*: bool
     netIncome*: Option[int32]
+    taxRateChanged*: bool
+    taxRate*: Option[int32]
     techLevelsChanged*: bool
     techLevels*: Option[TechLevel]
     researchPointsChanged*: bool
@@ -370,6 +372,8 @@ proc diffPlayerState*(
     result.treasuryBalance = current.treasuryBalance
     result.netIncomeChanged = true
     result.netIncome = current.netIncome
+    result.taxRateChanged = true
+    result.taxRate = current.taxRate
     result.techLevelsChanged = true
     result.techLevels = current.techLevels
     result.researchPointsChanged = true
@@ -444,6 +448,10 @@ proc diffPlayerState*(
   if oldSnapshot.netIncome != current.netIncome:
     result.netIncomeChanged = true
     result.netIncome = current.netIncome
+
+  if oldSnapshot.taxRate != current.taxRate:
+    result.taxRateChanged = true
+    result.taxRate = current.taxRate
 
   if oldSnapshot.techLevels != current.techLevels:
     result.techLevelsChanged = true
