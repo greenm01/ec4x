@@ -200,6 +200,15 @@ type
     researchAdjustFineDec
     researchClearAllocation
     researchDigitInput
+    espionageFocusNext
+    espionageFocusPrev
+    espionageSelectEbp
+    espionageSelectCip
+    espionageBudgetAdjustInc
+    espionageBudgetAdjustDec
+    espionageQueueAdd
+    espionageQueueDelete
+    espionageClearBudget
 
   # ============================================================================
   # Core SAM Types

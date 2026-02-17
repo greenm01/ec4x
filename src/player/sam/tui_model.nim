@@ -24,8 +24,10 @@ import ../tui/hex_labels
 import ../state/identity
 import ../tui/widget/text_input
 import ../../common/message_types
+import ../../engine/globals
 import ../../engine/types/[core, fleet, production, command, tech, ship,
-  facilities, ground_unit, zero_turn]
+  facilities, ground_unit, zero_turn, espionage]
+import ../../engine/systems/espionage/engine
 
 export entry_modal
 export identity
@@ -411,6 +413,8 @@ type
     Repair
     Scrap
     ColonyManagement
+    EspionageBudget
+    EspionageAction
 
   StagedCommandEntry* = object
     kind*: StagedCommandKind
@@ -548,6 +552,16 @@ type
     ## Fleet console sub-modes
     SystemView    ## Grouped by location
     ListView      ## Flat list with multi-select
+
+  EspionageFocus* {.pure.} = enum
+    Budget
+    Targets
+    Operations
+    Queue
+
+  EspionageBudgetChannel* {.pure.} = enum
+    Ebp
+    Cip
 
   FleetConsoleFocus* {.pure.} = enum
     ## Fleet console pane focus (SystemView mode only)
@@ -768,6 +782,27 @@ proc researchIndexForCode*(code: string): int =
       return idx
   0
 
+proc espionageActions*(): seq[EspionageAction] =
+  result = @[]
+  for action in EspionageAction:
+    result.add(action)
+
+proc espionageActionLabel*(action: EspionageAction): string =
+  case action
+  of EspionageAction.TechTheft: "Tech Theft"
+  of EspionageAction.SabotageLow: "Low Impact Sabotage"
+  of EspionageAction.SabotageHigh: "High Impact Sabotage"
+  of EspionageAction.Assassination: "Assassination"
+  of EspionageAction.CyberAttack: "Cyber Attack"
+  of EspionageAction.EconomicManipulation: "Economic Manipulation"
+  of EspionageAction.PsyopsCampaign: "Psyops Campaign"
+  of EspionageAction.CounterIntelSweep: "Counter-Intel Sweep"
+  of EspionageAction.IntelTheft: "Intel Theft"
+  of EspionageAction.PlantDisinformation: "Plant Disinformation"
+
+proc espionageActionCost*(action: EspionageAction): int =
+  actionCost(action)
+
 # ============================================================================
 # UI State (interaction + transient)
 # ============================================================================
@@ -909,6 +944,16 @@ type
     researchAllocation*: ResearchAllocation
     researchDigitBuffer*: string
     researchDigitTime*: float
+
+    # Espionage state
+    espionageFocus*: EspionageFocus
+    espionageBudgetChannel*: EspionageBudgetChannel
+    espionageTargetIdx*: int
+    espionageOperationIdx*: int
+    espionageQueueIdx*: int
+    stagedEbpInvestment*: int32
+    stagedCipInvestment*: int32
+    stagedEspionageActions*: seq[EspionageAttempt]
 
     # Inbox state (unified messages + reports)
     inboxFocus*: InboxPaneFocus
@@ -1207,6 +1252,14 @@ proc initTuiUiState*(): TuiUiState =
     ),
     researchDigitBuffer: "",
     researchDigitTime: 0.0,
+    espionageFocus: EspionageFocus.Budget,
+    espionageBudgetChannel: EspionageBudgetChannel.Ebp,
+    espionageTargetIdx: 0,
+    espionageOperationIdx: 0,
+    espionageQueueIdx: 0,
+    stagedEbpInvestment: 0,
+    stagedCipInvestment: 0,
+    stagedEspionageActions: @[],
     inboxFocus: InboxPaneFocus.List,
     inboxSection: InboxSection.Messages,
     inboxListIdx: 0,
@@ -1394,6 +1447,19 @@ proc initTuiModel*(): TuiModel =
     ui: initTuiUiState(),
     view: initTuiViewState()
   )
+
+proc espionageTargetHouses*(
+    model: TuiModel
+): seq[tuple[id: int, name: string]] =
+  result = @[]
+  for id, name in model.view.houseNames.pairs:
+    if id <= 0:
+      continue
+    if id == model.view.viewingHouse:
+      continue
+    result.add((id: id, name: name))
+  result.sort(proc(a, b: tuple[id: int, name: string]): int =
+    cmp(a.id, b.id))
 
 # =============================================================================
 # Hex Navigation Helpers
@@ -1818,11 +1884,17 @@ proc addToExpertHistory*(model: var TuiModel, command: string) =
 
 proc stagedCommandCount*(model: TuiModel): int =
   ## Get total number of staged commands
-  model.ui.stagedFleetCommands.len +
+  var count = model.ui.stagedFleetCommands.len +
     model.ui.stagedBuildCommands.len +
     model.ui.stagedRepairCommands.len +
     model.ui.stagedScrapCommands.len +
     model.ui.stagedColonyManagement.len
+  if model.ui.stagedEbpInvestment > 0:
+    count.inc
+  if model.ui.stagedCipInvestment > 0:
+    count.inc
+  count += model.ui.stagedEspionageActions.len
+  count
 
 proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   ## Get flattened list of staged commands in display order
@@ -1839,6 +1911,15 @@ proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   for idx in 0 ..< model.ui.stagedColonyManagement.len:
     result.add(StagedCommandEntry(
       kind: StagedCommandKind.ColonyManagement, index: idx))
+  if model.ui.stagedEbpInvestment > 0:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.EspionageBudget, index: 0))
+  if model.ui.stagedCipInvestment > 0:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.EspionageBudget, index: 1))
+  for idx in 0 ..< model.ui.stagedEspionageActions.len:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.EspionageAction, index: idx))
 
 proc formatFleetOrder*(cmd: FleetCommand): string =
   ## Format a fleet command for display
@@ -1884,6 +1965,34 @@ proc formatColonyManagementOrder*(cmd: ColonyManagementCommand): string =
     "  Marines " & onOff(cmd.autoLoadMarines) &
     "  Fighters " & onOff(cmd.autoLoadFighters)
 
+proc formatEspionageBudgetOrder*(
+    model: TuiModel,
+    channelIdx: int
+): string =
+  let ebpCostPp = int(gameConfig.espionage.costs.ebpCostPp)
+  let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
+  if channelIdx == 0:
+    let points = int(model.ui.stagedEbpInvestment)
+    return "Espionage Budget: EBP +" & $points & " (" &
+      $(points * ebpCostPp) & " PP)"
+  let points = int(model.ui.stagedCipInvestment)
+  "Espionage Budget: CIP +" & $points & " (" &
+    $(points * cipCostPp) & " PP)"
+
+proc formatEspionageActionOrder*(
+    model: TuiModel,
+    idx: int
+): string =
+  if idx < 0 or idx >= model.ui.stagedEspionageActions.len:
+    return "Espionage action " & $idx
+  let attempt = model.ui.stagedEspionageActions[idx]
+  let targetName = model.view.houseNames.getOrDefault(
+    int(attempt.target), "House " & $int(attempt.target)
+  )
+  let actionLabel = espionageActionLabel(attempt.action)
+  let cost = espionageActionCost(attempt.action)
+  actionLabel & " vs " & targetName & " (" & $cost & " EBP)"
+
 proc stagedCommandsSummary*(model: TuiModel): string =
   ## Summarize staged commands with numbered list
   let entries = model.stagedCommandEntries()
@@ -1907,6 +2016,10 @@ proc stagedCommandsSummary*(model: TuiModel): string =
       of StagedCommandKind.ColonyManagement:
         formatColonyManagementOrder(
           model.ui.stagedColonyManagement[entry.index])
+      of StagedCommandKind.EspionageBudget:
+        formatEspionageBudgetOrder(model, entry.index)
+      of StagedCommandKind.EspionageAction:
+        formatEspionageActionOrder(model, entry.index)
     lines.add("  " & $(idx + 1) & ". " & label)
   lines.join(" | ")
 
@@ -1932,6 +2045,17 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   of StagedCommandKind.ColonyManagement:
     if entry.index < model.ui.stagedColonyManagement.len:
       model.ui.stagedColonyManagement.delete(entry.index)
+      return true
+  of StagedCommandKind.EspionageBudget:
+    if entry.index == 0 and model.ui.stagedEbpInvestment > 0:
+      model.ui.stagedEbpInvestment = 0
+      return true
+    if entry.index == 1 and model.ui.stagedCipInvestment > 0:
+      model.ui.stagedCipInvestment = 0
+      return true
+  of StagedCommandKind.EspionageAction:
+    if entry.index < model.ui.stagedEspionageActions.len:
+      model.ui.stagedEspionageActions.delete(entry.index)
       return true
   false
 
@@ -2414,7 +2538,7 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
     populationTransfers: @[],
     terraformCommands: @[],
     colonyManagement: model.ui.stagedColonyManagement,
-    espionageActions: @[],
-    ebpInvestment: 0,
-    cipInvestment: 0
+    espionageActions: model.ui.stagedEspionageActions,
+    ebpInvestment: model.ui.stagedEbpInvestment,
+    cipInvestment: model.ui.stagedCipInvestment
   )

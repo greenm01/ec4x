@@ -301,6 +301,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     keyCode = KeyCode.KeyHome
   of Key.Backspace:
     keyCode = KeyCode.KeyBackspace
+  of Key.Delete:
+    keyCode = KeyCode.KeyDelete
   of Key.PageUp:
     keyCode = KeyCode.KeyPageUp
   of Key.PageDown:

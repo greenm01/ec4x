@@ -364,6 +364,37 @@ proc actionResearchDigitInput*(digit: char): Proposal =
   gameActionProposal(ActionKind.researchDigitInput, $digit)
 
 # ============================================================================
+# Espionage Actions
+# ============================================================================
+
+proc actionEspionageFocusNext*(): Proposal =
+  gameActionProposal(ActionKind.espionageFocusNext, "")
+
+proc actionEspionageFocusPrev*(): Proposal =
+  gameActionProposal(ActionKind.espionageFocusPrev, "")
+
+proc actionEspionageSelectEbp*(): Proposal =
+  gameActionProposal(ActionKind.espionageSelectEbp, "")
+
+proc actionEspionageSelectCip*(): Proposal =
+  gameActionProposal(ActionKind.espionageSelectCip, "")
+
+proc actionEspionageBudgetAdjustInc*(): Proposal =
+  gameActionProposal(ActionKind.espionageBudgetAdjustInc, "")
+
+proc actionEspionageBudgetAdjustDec*(): Proposal =
+  gameActionProposal(ActionKind.espionageBudgetAdjustDec, "")
+
+proc actionEspionageQueueAdd*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueAdd, "")
+
+proc actionEspionageQueueDelete*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueDelete, "")
+
+proc actionEspionageClearBudget*(): Proposal =
+  gameActionProposal(ActionKind.espionageClearBudget, "")
+
+# ============================================================================
 # Fleet List Actions
 # ============================================================================
 
@@ -1347,7 +1378,7 @@ type
       # Navigation
       KeyUp, KeyDown, KeyLeft, KeyRight
       KeyEnter, KeyEscape, KeyTab, KeyShiftTab
-      KeyHome, KeyBackspace
+      KeyHome, KeyBackspace, KeyDelete
       KeyPageUp, KeyPageDown
       KeyF1, KeyF2, KeyF3, KeyF4, KeyF5, KeyF6
       KeyF7, KeyF8, KeyF9, KeyF10, KeyF11, KeyF12

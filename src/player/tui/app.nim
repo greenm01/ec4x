@@ -149,12 +149,18 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedRepairCommands = @[]
     model.ui.stagedScrapCommands = @[]
     model.ui.stagedColonyManagement = @[]
+    model.ui.stagedEspionageActions = @[]
+    model.ui.stagedEbpInvestment = 0
+    model.ui.stagedCipInvestment = 0
     for cmd in normalized.fleetCommands:
       model.stageFleetCommand(cmd)
     model.ui.stagedBuildCommands = normalized.buildCommands
     model.ui.stagedRepairCommands = normalized.repairCommands
     model.ui.stagedScrapCommands = normalized.scrapCommands
     model.ui.stagedColonyManagement = normalized.colonyManagement
+    model.ui.stagedEspionageActions = normalized.espionageActions
+    model.ui.stagedEbpInvestment = normalized.ebpInvestment
+    model.ui.stagedCipInvestment = normalized.cipInvestment
     model.ui.researchAllocation = normalized.researchAllocation
     model.ui.turnSubmissionConfirmed = false
 
@@ -1488,6 +1494,9 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.stagedRepairCommands.setLen(0)
           sam.model.ui.stagedScrapCommands.setLen(0)
           sam.model.ui.stagedColonyManagement.setLen(0)
+          sam.model.ui.stagedEspionageActions.setLen(0)
+          sam.model.ui.stagedEbpInvestment = 0
+          sam.model.ui.stagedCipInvestment = 0
           if activeGameId.len > 0:
             tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
           let postSubmit = sam.model.buildCommandPacket(

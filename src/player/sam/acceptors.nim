@@ -18,8 +18,9 @@ import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
 import ../../common/logger
+import ../../engine/globals
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
-  fleet, command, tech]
+  fleet, command, tech, espionage]
 import ../../engine/systems/capacity/construction_docks
 import ../../engine/systems/tech/costs
 import ../tui/data/research_projection
@@ -31,6 +32,7 @@ const DigitBufferTimeout = 1.0  ## Seconds to wait for a second keystroke in mul
 const ResearchAdjustStep = 5
 const ResearchAdjustFineStep = 1
 const ResearchDigitBufferTimeout = 1.5
+const EspionageBudgetStep = 1
 
 proc viewModeFromInt(value: int): Option[ViewMode] =
   case value
@@ -194,6 +196,51 @@ proc applyResearchDigitInput(
   setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
   if normalizeResearchAllocation(model):
     model.ui.statusMessage = "SL reduced: blocked allocations were cleared"
+
+proc espionageBudgetCostPp(model: TuiModel): int =
+  let ebpCost = int(gameConfig.espionage.costs.ebpCostPp)
+  let cipCost = int(gameConfig.espionage.costs.cipCostPp)
+  int(model.ui.stagedEbpInvestment) * ebpCost +
+    int(model.ui.stagedCipInvestment) * cipCost
+
+proc adjustEspionageBudget(
+    model: var TuiModel,
+    delta: int
+) =
+  if model.ui.mode != ViewMode.Espionage:
+    return
+  let totalResearchPp = researchAllocatedTotal(model.ui.researchAllocation)
+  let currentBudgetPp = model.espionageBudgetCostPp()
+  let ebpCostPp = int(gameConfig.espionage.costs.ebpCostPp)
+  let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
+  var currentPoints = 0
+  var pointCost = 0
+  case model.ui.espionageBudgetChannel
+  of EspionageBudgetChannel.Ebp:
+    currentPoints = int(model.ui.stagedEbpInvestment)
+    pointCost = ebpCostPp
+  of EspionageBudgetChannel.Cip:
+    currentPoints = int(model.ui.stagedCipInvestment)
+    pointCost = cipCostPp
+  if pointCost <= 0:
+    return
+  var nextPoints = currentPoints + delta
+  if nextPoints < 0:
+    nextPoints = 0
+  if nextPoints > currentPoints:
+    let availablePp = max(
+      0,
+      model.view.treasury - totalResearchPp - currentBudgetPp
+    )
+    let maxIncrease = availablePp div pointCost
+    if nextPoints > currentPoints + maxIncrease:
+      nextPoints = currentPoints + maxIncrease
+  case model.ui.espionageBudgetChannel
+  of EspionageBudgetChannel.Ebp:
+    model.ui.stagedEbpInvestment = int32(nextPoints)
+  of EspionageBudgetChannel.Cip:
+    model.ui.stagedCipInvestment = int32(nextPoints)
+  model.ui.turnSubmissionConfirmed = false
 
 
 proc updateFleetDetailScroll(model: var TuiModel): tuple[
@@ -653,6 +700,23 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       of FleetConsoleFocus.ShipsPane:
         if model.ui.fleetConsoleShipIdx > 0:
           model.ui.fleetConsoleShipIdx -= 1
+    elif model.ui.mode == ViewMode.Espionage:
+      case model.ui.espionageFocus
+      of EspionageFocus.Budget:
+        if model.ui.espionageBudgetChannel == EspionageBudgetChannel.Cip:
+          model.ui.espionageBudgetChannel = EspionageBudgetChannel.Ebp
+      of EspionageFocus.Targets:
+        let targets = model.espionageTargetHouses()
+        if model.ui.espionageTargetIdx > 0 and targets.len > 0:
+          model.ui.espionageTargetIdx.dec
+      of EspionageFocus.Operations:
+        let ops = espionageActions()
+        if model.ui.espionageOperationIdx > 0 and ops.len > 0:
+          model.ui.espionageOperationIdx.dec
+      of EspionageFocus.Queue:
+        if model.ui.espionageQueueIdx > 0 and
+            model.ui.stagedEspionageActions.len > 0:
+          model.ui.espionageQueueIdx.dec
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -752,6 +816,26 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
       of FleetConsoleFocus.ShipsPane:
         model.ui.fleetConsoleShipIdx += 1  # Ships bounds checked at render
+    elif model.ui.mode == ViewMode.Espionage:
+      case model.ui.espionageFocus
+      of EspionageFocus.Budget:
+        if model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp:
+          model.ui.espionageBudgetChannel = EspionageBudgetChannel.Cip
+      of EspionageFocus.Targets:
+        let targets = model.espionageTargetHouses()
+        let maxIdx = max(0, targets.len - 1)
+        if targets.len > 0 and model.ui.espionageTargetIdx < maxIdx:
+          model.ui.espionageTargetIdx.inc
+      of EspionageFocus.Operations:
+        let ops = espionageActions()
+        let maxIdx = max(0, ops.len - 1)
+        if ops.len > 0 and model.ui.espionageOperationIdx < maxIdx:
+          model.ui.espionageOperationIdx.inc
+      of EspionageFocus.Queue:
+        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
+        if model.ui.stagedEspionageActions.len > 0 and
+            model.ui.espionageQueueIdx < maxIdx:
+          model.ui.espionageQueueIdx.inc
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -839,6 +923,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
+    elif model.ui.mode == ViewMode.Espionage:
+      if model.ui.espionageFocus == EspionageFocus.Queue:
+        let pageSize = max(1, model.ui.termHeight - 12)
+        model.ui.espionageQueueIdx = max(
+          0, model.ui.espionageQueueIdx - pageSize
+        )
     else:
       let pageSize = max(1, model.ui.termHeight - 10)
       model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
@@ -856,6 +946,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
+    elif model.ui.mode == ViewMode.Espionage:
+      if model.ui.espionageFocus == EspionageFocus.Queue:
+        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
+        let pageSize = max(1, model.ui.termHeight - 12)
+        model.ui.espionageQueueIdx = min(
+          maxIdx, model.ui.espionageQueueIdx + pageSize
+        )
     else:
       let maxIdx = model.currentListLength() - 1
       let pageSize = max(1, model.ui.termHeight - 10)
@@ -939,6 +1036,86 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.researchDigitInput:
       if proposal.gameActionData.len > 0:
         applyResearchDigitInput(model, proposal.gameActionData[0])
+    of ActionKind.espionageFocusNext:
+      if model.ui.mode == ViewMode.Espionage:
+        case model.ui.espionageFocus
+        of EspionageFocus.Budget:
+          model.ui.espionageFocus = EspionageFocus.Targets
+        of EspionageFocus.Targets:
+          model.ui.espionageFocus = EspionageFocus.Operations
+        of EspionageFocus.Operations:
+          model.ui.espionageFocus = EspionageFocus.Queue
+        of EspionageFocus.Queue:
+          model.ui.espionageFocus = EspionageFocus.Budget
+    of ActionKind.espionageFocusPrev:
+      if model.ui.mode == ViewMode.Espionage:
+        case model.ui.espionageFocus
+        of EspionageFocus.Budget:
+          model.ui.espionageFocus = EspionageFocus.Queue
+        of EspionageFocus.Targets:
+          model.ui.espionageFocus = EspionageFocus.Budget
+        of EspionageFocus.Operations:
+          model.ui.espionageFocus = EspionageFocus.Targets
+        of EspionageFocus.Queue:
+          model.ui.espionageFocus = EspionageFocus.Operations
+    of ActionKind.espionageSelectEbp:
+      if model.ui.mode == ViewMode.Espionage:
+        model.ui.espionageFocus = EspionageFocus.Budget
+        model.ui.espionageBudgetChannel = EspionageBudgetChannel.Ebp
+    of ActionKind.espionageSelectCip:
+      if model.ui.mode == ViewMode.Espionage:
+        model.ui.espionageFocus = EspionageFocus.Budget
+        model.ui.espionageBudgetChannel = EspionageBudgetChannel.Cip
+    of ActionKind.espionageBudgetAdjustInc:
+      adjustEspionageBudget(model, EspionageBudgetStep)
+    of ActionKind.espionageBudgetAdjustDec:
+      adjustEspionageBudget(model, -EspionageBudgetStep)
+    of ActionKind.espionageQueueAdd:
+      if model.ui.mode == ViewMode.Espionage:
+        let targets = model.espionageTargetHouses()
+        let ops = espionageActions()
+        if targets.len == 0 or ops.len == 0:
+          model.ui.statusMessage = "No valid espionage target"
+          return
+        let targetIdx = clamp(
+          model.ui.espionageTargetIdx, 0, targets.len - 1
+        )
+        let opIdx = clamp(
+          model.ui.espionageOperationIdx, 0, ops.len - 1
+        )
+        let targetHouse = HouseId(targets[targetIdx].id.uint32)
+        model.ui.stagedEspionageActions.add(EspionageAttempt(
+          attacker: HouseId(model.view.viewingHouse.uint32),
+          target: targetHouse,
+          action: ops[opIdx],
+          targetSystem: none(SystemId)
+        ))
+        model.ui.espionageFocus = EspionageFocus.Queue
+        model.ui.espionageQueueIdx =
+          model.ui.stagedEspionageActions.len - 1
+        model.ui.turnSubmissionConfirmed = false
+    of ActionKind.espionageQueueDelete:
+      if model.ui.mode == ViewMode.Espionage and
+          model.ui.stagedEspionageActions.len > 0:
+        let idx = clamp(
+          model.ui.espionageQueueIdx,
+          0,
+          model.ui.stagedEspionageActions.len - 1
+        )
+        model.ui.stagedEspionageActions.delete(idx)
+        if model.ui.stagedEspionageActions.len == 0:
+          model.ui.espionageQueueIdx = 0
+        else:
+          model.ui.espionageQueueIdx = min(
+            model.ui.espionageQueueIdx,
+            model.ui.stagedEspionageActions.len - 1
+          )
+        model.ui.turnSubmissionConfirmed = false
+    of ActionKind.espionageClearBudget:
+      if model.ui.mode == ViewMode.Espionage:
+        model.ui.stagedEbpInvestment = 0
+        model.ui.stagedCipInvestment = 0
+        model.ui.turnSubmissionConfirmed = false
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
        ActionKind.toggleAutoLoadFighters:

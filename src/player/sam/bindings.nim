@@ -185,6 +185,7 @@ proc formatKeyCode*(key: actions.KeyCode): string =
   of actions.KeyCode.KeyShiftTab: "S-Tab"
   of actions.KeyCode.KeyHome: "Home"
   of actions.KeyCode.KeyBackspace: "Bksp"
+  of actions.KeyCode.KeyDelete: "Del"
   of actions.KeyCode.KeyPageUp: "PgUp"
   of actions.KeyCode.KeyPageDown: "PgDn"
   of actions.KeyCode.KeyF1: "F1"
@@ -959,52 +960,106 @@ proc initBindings*() =
   # =========================================================================
 
   registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageFocusNext,
+    context: BindingContext.Espionage,
+    longLabel: "NEXT PANEL", shortLabel: "Tab", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageFocusPrev,
+    context: BindingContext.Espionage,
+    longLabel: "PREV PANEL", shortLabel: "←", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageFocusNext,
+    context: BindingContext.Espionage,
+    longLabel: "NEXT PANEL", shortLabel: "→", priority: 3))
+
+  registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
     actionKind: ActionKind.listUp,
     context: BindingContext.Espionage,
-    longLabel: "NAV", shortLabel: "Nav", priority: 1))
+    longLabel: "NAV", shortLabel: "Nav", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyK, modifier: KeyModifier.None,
     actionKind: ActionKind.listUp,
     context: BindingContext.Espionage,
-    longLabel: "NAV", shortLabel: "K", priority: 1))
+    longLabel: "NAV", shortLabel: "K", priority: 5))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Espionage,
-    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+    longLabel: "NAV", shortLabel: "Nav", priority: 6))
 
   registerBinding(Binding(
     key: KeyCode.KeyJ, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Espionage,
-    longLabel: "NAV", shortLabel: "J", priority: 2))
+    longLabel: "NAV", shortLabel: "J", priority: 7))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
     actionKind: ActionKind.listPageUp,
     context: BindingContext.Espionage,
-    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
+    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 8))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
     actionKind: ActionKind.listPageDown,
     context: BindingContext.Espionage,
-    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
+    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 9))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageBudgetAdjustInc,
+    context: BindingContext.Espionage,
+    longLabel: "BUDGET+", shortLabel: "+", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageBudgetAdjustDec,
+    context: BindingContext.Espionage,
+    longLabel: "BUDGET-", shortLabel: "-", priority: 11))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueAdd,
+    context: BindingContext.Espionage,
+    longLabel: "QUEUE", shortLabel: "Enter", priority: 12))
 
   registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.espionageSelectEbp,
     context: BindingContext.Espionage,
-    longLabel: "BUY EBP", shortLabel: "EBP", priority: 10))
+    longLabel: "SELECT EBP", shortLabel: "EBP", priority: 13))
 
   registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.espionageSelectCip,
     context: BindingContext.Espionage,
-    longLabel: "BUY CIP", shortLabel: "CIP", priority: 20))
+    longLabel: "SELECT CIP", shortLabel: "CIP", priority: 14))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDelete, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueDelete,
+    context: BindingContext.Espionage,
+    longLabel: "REMOVE", shortLabel: "Del", priority: 15))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyX, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueDelete,
+    context: BindingContext.Espionage,
+    longLabel: "REMOVE", shortLabel: "X", priority: 16))
+
+  registerBinding(Binding(
+    key: KeyCode.Key0, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageClearBudget,
+    context: BindingContext.Espionage,
+    longLabel: "CLEAR BUDGET", shortLabel: "0", priority: 17))
 
   # =========================================================================
   # Economy Context
@@ -1797,6 +1852,26 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.researchDigitInput:
     # This is handled specially - digit passed via gameActionData
     return none(Proposal)
+
+  # Espionage actions
+  of ActionKind.espionageFocusNext:
+    return some(actionEspionageFocusNext())
+  of ActionKind.espionageFocusPrev:
+    return some(actionEspionageFocusPrev())
+  of ActionKind.espionageSelectEbp:
+    return some(actionEspionageSelectEbp())
+  of ActionKind.espionageSelectCip:
+    return some(actionEspionageSelectCip())
+  of ActionKind.espionageBudgetAdjustInc:
+    return some(actionEspionageBudgetAdjustInc())
+  of ActionKind.espionageBudgetAdjustDec:
+    return some(actionEspionageBudgetAdjustDec())
+  of ActionKind.espionageQueueAdd:
+    return some(actionEspionageQueueAdd())
+  of ActionKind.espionageQueueDelete:
+    return some(actionEspionageQueueDelete())
+  of ActionKind.espionageClearBudget:
+    return some(actionEspionageClearBudget())
 
   else:
     discard
