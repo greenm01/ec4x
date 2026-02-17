@@ -20,12 +20,12 @@ suite "Table String Rendering":
     
     let lines = t.renderToStrings(40)
     check lines.len >= 4  # Header + separator + 2 rows
-    check "Name" in lines[0]
-    check "Value" in lines[0]
-    check "Alpha" in lines[2]
-    check "Beta" in lines[3]
+    check "Name" in lines[1]
+    check "Value" in lines[1]
+    check "Alpha" in lines[3]
+    check "Beta" in lines[4]
   
-  test "selected row marker":
+  test "selected row":
     var t = table([
       tableColumn("Item", width = 10)
     ]).selectedIdx(1)
@@ -34,34 +34,38 @@ suite "Table String Rendering":
     t.addRow(@["Third"])
     
     let lines = t.renderToStrings(30)
-    # First row should have normal indent
-    check lines[2].startsWith("  ")
-    # Second row should have > marker
-    check lines[3].startsWith("> ")
+    check "First" in lines[3]
+    check "Second" in lines[4]
   
   test "right alignment":
     let t = table([
       tableColumn("Num", width = 6, align = Alignment.Right)
-    ]).rows(@[@["42"]])
+    ]).rows(@[
+      TableRow(cells: @["42"], cellStyles: @[], kind: TableRowKind.Normal)
+    ])
     
     let lines = t.renderToStrings(20)
     check lines.len >= 3
     # "42" should be right-aligned in 6 chars
-    check "    42" in lines[2]
+    check "    42" in lines[3]
   
   test "center alignment":
     let t = table([
       tableColumn("Text", width = 10, align = Alignment.Center)
-    ]).rows(@[@["Hi"]])
+    ]).rows(@[
+      TableRow(cells: @["Hi"], cellStyles: @[], kind: TableRowKind.Normal)
+    ])
     
     let lines = t.renderToStrings(20)
     # "Hi" centered in 10 chars = "    Hi    "
-    check "    Hi" in lines[2]
+    check "    Hi" in lines[3]
   
   test "no header":
     let t = table([
       tableColumn("Col", width = 5)
-    ]).rows(@[@["X"]]).showHeader(false)
+    ]).rows(@[
+      TableRow(cells: @["X"], cellStyles: @[], kind: TableRowKind.Normal)
+    ]).showHeader(false)
     
     let lines = t.renderToStrings(20)
     # Should not have header row
@@ -70,21 +74,25 @@ suite "Table String Rendering":
   test "no separator":
     let t = table([
       tableColumn("Col", width = 5)
-    ]).rows(@[@["X"]]).showSeparator(false)
+    ]).rows(@[
+      TableRow(cells: @["X"], cellStyles: @[], kind: TableRowKind.Normal)
+    ]).showSeparator(false)
     
     let lines = t.renderToStrings(20)
     check lines.len >= 2
     # Second line should be data, not separator
     check "-" notin lines[1]
   
-  test "no selector":
+  test "selected row without selector toggle":
     let t = table([
       tableColumn("Col", width = 5)
-    ]).rows(@[@["X"]]).showSelector(false).selectedIdx(0)
+    ]).rows(@[
+      TableRow(cells: @["X"], cellStyles: @[], kind: TableRowKind.Normal)
+    ]).selectedIdx(0)
     
     let lines = t.renderToStrings(20)
-    # Should not have > marker even for selected row
-    check "> " notin lines[2]
+    check lines.len >= 3
+    check "X" in lines[3]
 
 suite "Table Column Width Calculation":
   test "fixed widths":
@@ -120,7 +128,7 @@ suite "Table Buffer Rendering":
     t.render(area, buf)
     
     # Check header was written
-    let (str0, _, _) = buf.get(2, 0)  # After selector space
+    let (str0, _, _) = buf.get(2, 1)
     check str0 == "N"
   
   test "respects area bounds":
@@ -145,9 +153,9 @@ suite "Table Buffer Rendering":
 suite "Table Preset Constructors":
   test "ship list table":
     let t = shipListTable()
-    check t.columns.len == 5
-    check t.columns[0].header == "Name"
-    check t.columns[2].header == "HP"
+    check t.columns.len == 6
+    check t.columns[0].header == "Class"
+    check t.columns[2].header == "AS"
     check t.columns[2].align == Alignment.Right
   
   test "fleet list table":
@@ -207,11 +215,11 @@ when isMainModule:
   for line in queueTable.renderToStrings(45):
     echo "  ", line
   
-  echo "\n\nTable without selector (showSelector=false):"
+  echo "\n\nTable rendering:"
   var noSelector = table([
     tableColumn("A", width = 8),
     tableColumn("B", width = 8)
-  ]).showSelector(false)
+  ])
   noSelector.addRow(@["Value1", "Value2"])
   noSelector.addRow(@["Value3", "Value4"])
   

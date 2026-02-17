@@ -208,6 +208,13 @@ type
     espionageBudgetAdjustDec
     espionageQueueAdd
     espionageQueueDelete
+    espionageQueueModalOpen
+    espionageQueueModalClose
+    espionageQueueModalUp
+    espionageQueueModalDown
+    espionageQueueModalPageUp
+    espionageQueueModalPageDown
+    espionageQueueModalDelete
     espionageClearBudget
 
   # ============================================================================

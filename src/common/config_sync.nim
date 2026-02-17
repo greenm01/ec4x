@@ -14,6 +14,7 @@ const
   ConstructionSectionVersion* = 1'i32
   LimitsSectionVersion* = 1'i32
   EconomySectionVersion* = 1'i32
+  EspionageSectionVersion* = 1'i32
 
 type
   TuiRulesSections* = object
@@ -24,6 +25,7 @@ type
     construction*: Option[ConstructionConfig]
     limits*: Option[LimitsConfig]
     economy*: Option[EconomyConfig]
+    espionage*: Option[EspionageConfig]
 
   TuiRulesSnapshot* = object
     schemaVersion*: int32
@@ -36,6 +38,7 @@ type
     constructionVersion*: int32
     limitsVersion*: int32
     economyVersion*: int32
+    espionageVersion*: int32
     sections*: TuiRulesSections
 
   ## Backward-compatible alias while transitioning call sites.
@@ -53,7 +56,8 @@ proc requiredCapabilities*(): seq[string] =
     "rd.v1",
     "build.v1",
     "limits.v1",
-    "economy.v1"
+    "economy.v1",
+    "espionage.v1"
   ]
 
 proc computeConfigHash*(snapshot: TuiRulesSnapshot): string =
@@ -74,6 +78,7 @@ proc buildTuiRulesSnapshot*(config: GameConfig): TuiRulesSnapshot =
     constructionVersion: ConstructionSectionVersion,
     limitsVersion: LimitsSectionVersion,
     economyVersion: EconomySectionVersion,
+    espionageVersion: EspionageSectionVersion,
     sections: TuiRulesSections(
       tech: some(config.tech),
       ships: some(config.ships),
@@ -81,7 +86,8 @@ proc buildTuiRulesSnapshot*(config: GameConfig): TuiRulesSnapshot =
       facilities: some(config.facilities),
       construction: some(config.construction),
       limits: some(config.limits),
-      economy: some(config.economy)
+      economy: some(config.economy),
+      espionage: some(config.espionage)
     )
   )
   result.configHash = computeConfigHash(result)
@@ -93,7 +99,8 @@ proc hasRequiredSections*(snapshot: TuiRulesSnapshot): bool =
     snapshot.sections.facilities.isSome and
     snapshot.sections.construction.isSome and
     snapshot.sections.limits.isSome and
-    snapshot.sections.economy.isSome
+    snapshot.sections.economy.isSome and
+    snapshot.sections.espionage.isSome
 
 proc hasRequiredCapabilities*(snapshot: TuiRulesSnapshot): bool =
   let capabilities = requiredCapabilities()
@@ -133,6 +140,12 @@ proc requiredContentError*(snapshot: TuiRulesSnapshot): string =
   if construction.construction.shipTurns <= 0:
     return "invalid construction ship turns"
 
+  let espionage = snapshot.sections.espionage.get()
+  if espionage.costs.ebpCostPp <= 0:
+    return "invalid espionage EBP PP cost"
+  if espionage.costs.cipCostPp <= 0:
+    return "invalid espionage CIP PP cost"
+
   ""
 
 proc hasRequiredContent*(snapshot: TuiRulesSnapshot): bool =
@@ -155,4 +168,5 @@ proc toGameConfig*(snapshot: TuiRulesSnapshot): Option[GameConfig] =
   config.construction = snapshot.sections.construction.get()
   config.limits = snapshot.sections.limits.get()
   config.economy = snapshot.sections.economy.get()
+  config.espionage = snapshot.sections.espionage.get()
   some(config)

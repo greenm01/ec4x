@@ -1831,6 +1831,93 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let tableArea = rect(detailInner.x, dy, detailInner.width, tableHeight)
     progTable.render(tableArea, buf)
 
+proc renderEspionageQueueModal*(canvas: Rect, buf: var CellBuffer,
+                                model: TuiModel) =
+  if not model.ui.espionageQueueModal.active:
+    return
+
+  proc drawTextLine(
+      outBuf: var CellBuffer,
+      x, y, width: int,
+      text: string,
+      style: CellStyle
+  ) =
+    if width <= 0:
+      return
+    var line = text
+    if line.len > width:
+      line = line[0 ..< width]
+    discard outBuf.setString(x, y, line, style)
+
+  let modal = newModal()
+    .title("PLANNED OPERATIONS QUEUE")
+    .maxWidth(92)
+    .minWidth(58)
+    .borderStyle(primaryBorderStyle())
+    .bgStyle(modalBgStyle())
+  let contentHeight = min(canvas.height - 6, 16) + 2
+  let modalArea = modal.calculateArea(canvas, contentHeight)
+  modal.renderWithFooter(
+    modalArea,
+    buf,
+    "[Del] Remove Item  [Esc] Close"
+  )
+  let contentArea = modal.contentArea(modalArea, hasFooter = true)
+  if contentArea.isEmpty:
+    return
+
+  let selectedIdx = clamp(
+    model.ui.espionageQueueModal.selectedIdx,
+    0,
+    max(0, model.ui.stagedEspionageActions.len - 1)
+  )
+  var scroll = model.ui.espionageQueueModal.scroll
+  scroll.contentLength = model.ui.stagedEspionageActions.len
+  scroll.viewportLength = max(1, contentArea.height - 2)
+  scroll.ensureVisible(selectedIdx)
+  scroll.clampOffsets()
+
+  let header = alignLeft("Target", 18) & " " &
+    alignLeft("Operation", 24) & " " &
+    align("Cost", 7)
+  drawTextLine(
+    buf, contentArea.x, contentArea.y, contentArea.width, header,
+    canvasHeaderStyle()
+  )
+
+  var totalCost = 0
+  for attempt in model.ui.stagedEspionageActions:
+    totalCost += espionageActionCost(attempt.action)
+
+  let rowsAreaHeight = max(1, contentArea.height - 2)
+  let startIdx = scroll.verticalOffset
+  for i in 0 ..< min(
+      rowsAreaHeight,
+      model.ui.stagedEspionageActions.len - startIdx
+  ):
+    let idx = startIdx + i
+    let rowY = contentArea.y + 1 + i
+    let attempt = model.ui.stagedEspionageActions[idx]
+    let targetName = model.view.houseNames.getOrDefault(
+      int(attempt.target),
+      "House " & $int(attempt.target)
+    )
+    let costLabel = $espionageActionCost(attempt.action) & " EBP"
+    let row = alignLeft(targetName, 18) & " " &
+      alignLeft(espionageActionLabel(attempt.action), 24) & " " &
+      align(costLabel, 7)
+    let rowStyle = if idx == selectedIdx: selectedStyle() else: normalStyle()
+    drawTextLine(buf, contentArea.x, rowY, contentArea.width, row, rowStyle)
+
+  drawTextLine(
+    buf,
+    contentArea.x,
+    contentArea.bottom - 1,
+    contentArea.width,
+    "Total Cost: " & $totalCost & " EBP",
+    dimStyle()
+  )
+
 proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
                            model: TuiModel, scroll: ScrollState) =
   ## Render espionage view as centered floating modal
@@ -1838,27 +1925,41 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let operations = espionageActions()
   let targetIdx = clamp(model.ui.espionageTargetIdx, 0, max(0, targets.len - 1))
   let opIdx = clamp(model.ui.espionageOperationIdx, 0, max(0, operations.len - 1))
-  let queueIdx = clamp(
-    model.ui.espionageQueueIdx,
-    0,
-    max(0, model.ui.stagedEspionageActions.len - 1)
-  )
   let ebpCostPp = int(gameConfig.espionage.costs.ebpCostPp)
   let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
   let ebpPoints = int(model.ui.stagedEbpInvestment)
   let cipPoints = int(model.ui.stagedCipInvestment)
   let ebpPp = ebpPoints * ebpCostPp
   let cipPp = cipPoints * cipCostPp
-  let budgetPp = ebpPp + cipPp
-  let researchPp = researchAllocatedTotal(model.ui.researchAllocation)
-  let remainingPp = max(0, model.view.treasury - researchPp - budgetPp)
-  var queuedEbpCost = 0
-  for attempt in model.ui.stagedEspionageActions:
-    queuedEbpCost += espionageActionCost(attempt.action)
+  discard model.espionageQueuedTotalEbp()
+  let selectedTargetName = if targets.len > 0:
+    targets[targetIdx].name
+  else:
+    "No Target"
+  let opColumns = @[
+    tableColumn("Operation", 24, table.Alignment.Left),
+    tableColumn("Cost", 7, table.Alignment.Left),
+    tableColumn("Qty", 3, table.Alignment.Right)
+  ]
+  let targetsPanelWidth = 24
+  let opsTableWidth = tableWidthFromColumns(
+    opColumns,
+    max(48, canvas.width - targetsPanelWidth - 10),
+    showBorders = true
+  )
+  let contentWidth = clamp(
+    targetsPanelWidth + 1 + opsTableWidth,
+    66,
+    max(66, canvas.width - 6)
+  )
+  var opsTableProbe = table(opColumns).showBorders(true)
+  let opsTableHeightNeeded = opsTableProbe.renderHeight(operations.len) + 2
+  let budgetHeight = 6
+  let bodyHeight = max(6, max(opsTableHeightNeeded, targets.len + 2))
+  let desiredMainHeight = budgetHeight + bodyHeight
+  let modalMainHeight = min(desiredMainHeight, max(8, canvas.height - 6))
 
-  proc panelTitleStyle(
-      focus: EspionageFocus
-  ): CellStyle =
+  proc panelTitleStyle(focus: EspionageFocus): CellStyle =
     if model.ui.espionageFocus == focus:
       selectedStyle()
     else:
@@ -1879,100 +1980,86 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
 
   let modal = newModal()
     .title("INTEL OPERATIONS")
-    .maxWidth(120)
-    .minWidth(96)
+    .maxWidth(112)
+    .minWidth(64)
     .borderStyle(primaryBorderStyle())
     .bgStyle(modalBgStyle())
-  let contentHeight = min(canvas.height - 4, 26) + 2
-  let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf,
-    "[Tab]Focus  [↑↓/J/K]Navigate  [←→ or +/-]Adjust  [Enter]Queue  " &
-    "[Del/X]Remove  [0]Clear Budget  [B]EBP  [C]CIP  [/]Help")
+  let modalArea = modal.calculateArea(
+    canvas,
+    contentWidth,
+    modalMainHeight + 2
+  )
+  let footerText = "[Tab]Focus  [↑↓]Select  [+/−]Budget/Qty  [Enter]Add  " &
+    "[Q]ueue"
+  modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   if contentArea.height <= 0 or contentArea.width <= 0:
     return
 
-  let leftWidth = max(24, (contentArea.width - 3) div 2)
-  let rightWidth = max(24, contentArea.width - leftWidth - 3)
-  let topHeight = 7
-  let middleHeight = max(8, contentArea.height - topHeight - 8)
-  let queueHeight = max(5, contentArea.height - topHeight - middleHeight - 2)
+  let rows = vertical()
+    .constraints(length(budgetHeight), fill())
+    .split(contentArea)
+  let budgetArea = rows[0]
+  let bodyArea = rows[1]
+  let bodyCols = horizontal()
+    .constraints(length(targetsPanelWidth), fill())
+    .split(bodyArea)
+  let targetsArea = bodyCols[0]
+  let opsArea = bodyCols[1]
 
-  let budgetArea = rect(
-    contentArea.x,
-    contentArea.y,
-    contentArea.width,
-    topHeight
-  )
-  let targetsArea = rect(
-    contentArea.x,
-    budgetArea.bottom,
-    leftWidth,
-    middleHeight
-  )
-  let opsArea = rect(
-    targetsArea.right + 1,
-    budgetArea.bottom,
-    rightWidth,
-    middleHeight
-  )
-  let queueArea = rect(
-    contentArea.x,
-    targetsArea.bottom,
-    contentArea.width,
-    queueHeight
-  )
-
-  newFrame().title("BUDGET").borderStyle(primaryBorderStyle()).render(
-    budgetArea, buf
-  )
-  let bInner = newFrame().inner(budgetArea)
+  bordered().title("BUDGET ALLOCATION").borderStyle(
+    primaryBorderStyle()
+  ).render(budgetArea, buf)
+  let bInner = bordered().inner(budgetArea)
+  if bInner.isEmpty:
+    return
+  let boxY = bInner.y
+  let boxH = max(1, bInner.bottom - boxY)
+  let leftW = max(24, (bInner.width - 1) div 2)
+  let rightW = max(24, bInner.width - leftW - 1)
+  let ebpArea = rect(bInner.x, boxY, leftW, boxH)
+  let cipArea = rect(ebpArea.right + 1, boxY, rightW, boxH)
+  let ebpActive = model.ui.espionageFocus == EspionageFocus.Budget and
+    model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp
+  let cipActive = model.ui.espionageFocus == EspionageFocus.Budget and
+    model.ui.espionageBudgetChannel == EspionageBudgetChannel.Cip
+  bordered().title("EBP (OFFENSE)").borderStyle(
+    if ebpActive: primaryBorderStyle() else: modalBorderStyle()
+  ).render(ebpArea, buf)
+  bordered().title("CIP (DEFENSE)").borderStyle(
+    if cipActive: primaryBorderStyle() else: modalBorderStyle()
+  ).render(cipArea, buf)
+  let ebpInner = bordered().inner(ebpArea)
+  let cipInner = bordered().inner(cipArea)
   drawTextLine(
     buf,
-    bInner.x, bInner.y, bInner.width,
-    "Treasury: " & formatNumber(model.view.treasury) & " PP",
-    normalStyle()
+    ebpInner.x, ebpInner.y, ebpInner.width,
+    "Invest: [ " & $ebpPoints & " ]",
+    if ebpActive: selectedStyle() else: normalStyle()
   )
   drawTextLine(
     buf,
-    bInner.x, bInner.y + 1, bInner.width,
-    "Allocated to Research: " & formatNumber(researchPp) & " PP",
+    ebpInner.x, ebpInner.y + 1, ebpInner.width,
+    "Cost: " & formatNumber(ebpPp) & " PP",
     dimStyle()
   )
-  let ebpStyle = if model.ui.espionageFocus == EspionageFocus.Budget and
-      model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp:
-        selectedStyle()
-      else:
-        normalStyle()
-  let cipStyle = if model.ui.espionageFocus == EspionageFocus.Budget and
-      model.ui.espionageBudgetChannel == EspionageBudgetChannel.Cip:
-        selectedStyle()
-      else:
-        normalStyle()
   drawTextLine(
     buf,
-    bInner.x, bInner.y + 2, bInner.width,
-    "EBP + " & $ebpPoints & "  (" & formatNumber(ebpPp) & " PP)",
-    ebpStyle
+    cipInner.x, cipInner.y, cipInner.width,
+    "Invest: [ " & $cipPoints & " ]",
+    if cipActive: selectedStyle() else: normalStyle()
   )
   drawTextLine(
     buf,
-    bInner.x, bInner.y + 3, bInner.width,
-    "CIP + " & $cipPoints & "  (" & formatNumber(cipPp) & " PP)",
-    cipStyle
-  )
-  drawTextLine(
-    buf,
-    bInner.x, bInner.y + 4, bInner.width,
-    "Espionage PP: " & formatNumber(budgetPp) &
-      "  Remaining PP: " & formatNumber(remainingPp),
+    cipInner.x, cipInner.y + 1, cipInner.width,
+    "Cost: " & formatNumber(cipPp) & " PP",
     dimStyle()
   )
 
-  newFrame().title("TARGETS").titleStyle(
+  bordered().title("TARGETS").titleStyle(
     panelTitleStyle(EspionageFocus.Targets)
   ).borderStyle(primaryBorderStyle()).render(targetsArea, buf)
-  let tInner = newFrame().inner(targetsArea)
+  let tInner = bordered().inner(targetsArea)
   if targets.len == 0:
     drawTextLine(
       buf,
@@ -1981,116 +2068,48 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
       dimStyle()
     )
   else:
-    let visible = max(1, tInner.height)
-    let startIdx = clamp(targetIdx - visible + 1, 0, max(0, targets.len - visible))
-    for i in 0 ..< min(visible, targets.len - startIdx):
-      let idx = startIdx + i
-      let marker = if idx == targetIdx: "> " else: "  "
-      let rowStyle = if idx == targetIdx and
-          model.ui.espionageFocus == EspionageFocus.Targets:
-            selectedStyle()
-          elif idx == targetIdx:
-            normalStyle()
-          else:
-            dimStyle()
-      drawTextLine(
-        buf,
-        tInner.x,
-        tInner.y + i,
-        tInner.width,
-        marker & targets[idx].name,
-        rowStyle
-      )
+    for i in 0 ..< min(tInner.height, targets.len):
+      let rowStyle = if i == targetIdx: selectedStyle() else: normalStyle()
+      drawTextLine(buf, tInner.x, tInner.y + i, tInner.width, targets[i].name,
+        rowStyle)
 
-  newFrame().title("OPERATIONS").titleStyle(
+  let opsTitle = "OPERATIONS (vs " & selectedTargetName & ")"
+  bordered().title(opsTitle).titleStyle(
     panelTitleStyle(EspionageFocus.Operations)
   ).borderStyle(primaryBorderStyle()).render(opsArea, buf)
-  let oInner = newFrame().inner(opsArea)
-  if operations.len == 0:
-    drawTextLine(
-      buf,
-      oInner.x, oInner.y, oInner.width,
-      "No operations available",
-      dimStyle()
-    )
+  let oInner = bordered().inner(opsArea)
+  let targetId = if targets.len > 0:
+    HouseId(targets[targetIdx].id.uint32)
   else:
-    let visible = max(1, oInner.height)
-    let startIdx = clamp(opIdx - visible + 1, 0, max(0, operations.len - visible))
-    for i in 0 ..< min(visible, operations.len - startIdx):
-      let idx = startIdx + i
-      let action = operations[idx]
-      let marker = if idx == opIdx: "> " else: "  "
-      let rowStyle = if idx == opIdx and
-          model.ui.espionageFocus == EspionageFocus.Operations:
-            selectedStyle()
-          elif idx == opIdx:
-            normalStyle()
-          else:
-            dimStyle()
-      drawTextLine(
-        buf,
-        oInner.x,
-        oInner.y + i,
-        oInner.width,
-        marker & espionageActionLabel(action) & " (" &
-          $espionageActionCost(action) & " EBP)",
-        rowStyle
-      )
-
-  newFrame().title("PLANNED OPERATIONS").titleStyle(
-    panelTitleStyle(EspionageFocus.Queue)
-  ).borderStyle(primaryBorderStyle()).render(queueArea, buf)
-  let qInner = newFrame().inner(queueArea)
-  if model.ui.stagedEspionageActions.len == 0:
-    drawTextLine(
-      buf,
-      qInner.x, qInner.y, qInner.width,
-      "No operations queued",
-      dimStyle()
-    )
+    HouseId(0'u32)
+  var opsTable = table(opColumns)
+    .showBorders(true)
+    .rowStyle(normalStyle())
+    .selectedStyle(selectedStyle())
+  let selectedRow = if model.ui.espionageFocus == EspionageFocus.Operations:
+    opIdx
   else:
-    let reserved = 1
-    let visible = max(1, qInner.height - reserved)
-    let startIdx = clamp(
-      queueIdx - visible + 1,
-      0,
-      max(0, model.ui.stagedEspionageActions.len - visible)
-    )
-    for i in 0 ..< min(visible, model.ui.stagedEspionageActions.len - startIdx):
-      let idx = startIdx + i
-      let attempt = model.ui.stagedEspionageActions[idx]
-      let targetName = model.view.houseNames.getOrDefault(
-        int(attempt.target),
-        "House " & $int(attempt.target)
-      )
-      let marker = if idx == queueIdx: "> " else: "  "
-      let rowStyle = if idx == queueIdx and
-          model.ui.espionageFocus == EspionageFocus.Queue:
-            selectedStyle()
-          elif idx == queueIdx:
-            normalStyle()
-          else:
-            dimStyle()
-      drawTextLine(
-        buf,
-        qInner.x,
-        qInner.y + i,
-        qInner.width,
-        marker & $(idx + 1) & ". " &
-          espionageActionLabel(attempt.action) & " vs " &
-          targetName & " (" &
-          $espionageActionCost(attempt.action) & " EBP)",
-        rowStyle
-      )
-  if qInner.height > 0:
-    drawTextLine(
-      buf,
-      qInner.x,
-      qInner.bottom - 1,
-      qInner.width,
-      "Queued Cost: " & $queuedEbpCost & " EBP",
-      dimStyle()
-    )
+    -1
+  opsTable = opsTable.selectedIdx(selectedRow)
+  let visibleRows = max(1, oInner.height - opsTable.renderHeight(0))
+  let startIdx = if operations.len > visibleRows and opIdx >= visibleRows:
+    clamp(opIdx - visibleRows + 1, 0, max(0, operations.len - visibleRows))
+  else:
+    0
+  opsTable = opsTable.scrollOffset(startIdx)
+  for i in 0 ..< operations.len:
+    let action = operations[i]
+    let qty = if targets.len > 0:
+      model.espionageQueuedQty(targetId, action)
+    else:
+      0
+    let qtyLabel = if qty > 0: $qty else: ""
+    opsTable.addRow(@[
+      espionageActionLabel(action),
+      $espionageActionCost(action) & " EBP",
+      qtyLabel
+    ])
+  opsTable.render(oInner, buf)
 
 proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
@@ -3258,6 +3277,9 @@ proc buildHudData*(model: TuiModel): HudData =
   let optimisticPp = optimisticTreasury(
     model.view.treasury,
     model.ui.stagedBuildCommands,
+    model.ui.researchAllocation,
+    model.ui.stagedEbpInvestment,
+    model.ui.stagedCipInvestment,
   )
   HudData(
     houseName: model.view.houseName,
@@ -3511,6 +3533,9 @@ proc renderDashboard*(
   if model.ui.queueModal.active:
     let queueModalWidget = newQueueModalWidget()
     queueModalWidget.render(model.ui.queueModal, canvasArea, buf)
+  if model.ui.mode == ViewMode.Espionage and
+      model.ui.espionageQueueModal.active:
+    renderEspionageQueueModal(canvasArea, buf, model)
 
   renderIntelNoteEditor(canvasArea, buf, model)
 

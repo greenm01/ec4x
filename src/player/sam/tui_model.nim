@@ -246,6 +246,11 @@ type
     stagedBuildCommands*: seq[BuildCommand]
     scroll*: ScrollState
 
+  EspionageQueueModalState* = object
+    active*: bool
+    selectedIdx*: int
+    scroll*: ScrollState
+
   FleetConsoleSystem* = object
     ## System with fleets for fleet console (cached from PlayerState)
     systemId*: int
@@ -557,7 +562,6 @@ type
     Budget
     Targets
     Operations
-    Queue
 
   EspionageBudgetChannel* {.pure.} = enum
     Ebp
@@ -803,6 +807,29 @@ proc espionageActionLabel*(action: EspionageAction): string =
 proc espionageActionCost*(action: EspionageAction): int =
   actionCost(action)
 
+proc espionageActionDesc*(action: EspionageAction): string =
+  case action
+  of EspionageAction.TechTheft:
+    "Steal research"
+  of EspionageAction.SabotageLow:
+    "Minor disruption"
+  of EspionageAction.SabotageHigh:
+    "Major disruption"
+  of EspionageAction.Assassination:
+    "Remove leader"
+  of EspionageAction.CyberAttack:
+    "Disrupt systems"
+  of EspionageAction.EconomicManipulation:
+    "Distort markets"
+  of EspionageAction.PsyopsCampaign:
+    "Influence morale"
+  of EspionageAction.CounterIntelSweep:
+    "Expose agents"
+  of EspionageAction.IntelTheft:
+    "Steal intel"
+  of EspionageAction.PlantDisinformation:
+    "Seed false intel"
+
 # ============================================================================
 # UI State (interaction + transient)
 # ============================================================================
@@ -950,7 +977,6 @@ type
     espionageBudgetChannel*: EspionageBudgetChannel
     espionageTargetIdx*: int
     espionageOperationIdx*: int
-    espionageQueueIdx*: int
     stagedEbpInvestment*: int32
     stagedCipInvestment*: int32
     stagedEspionageActions*: seq[EspionageAttempt]
@@ -974,6 +1000,7 @@ type
     buildModal*: BuildModalState
     # Queue modal state
     queueModal*: QueueModalState
+    espionageQueueModal*: EspionageQueueModalState
 
     # Fleet detail modal state
     fleetDetailModal*: FleetDetailModalState
@@ -1256,7 +1283,6 @@ proc initTuiUiState*(): TuiUiState =
     espionageBudgetChannel: EspionageBudgetChannel.Ebp,
     espionageTargetIdx: 0,
     espionageOperationIdx: 0,
-    espionageQueueIdx: 0,
     stagedEbpInvestment: 0,
     stagedCipInvestment: 0,
     stagedEspionageActions: @[],
@@ -1293,6 +1319,11 @@ proc initTuiUiState*(): TuiUiState =
       colonyName: "",
       selectedIdx: 0,
       stagedBuildCommands: @[],
+      scroll: initScrollState()
+    ),
+    espionageQueueModal: EspionageQueueModalState(
+      active: false,
+      selectedIdx: 0,
       scroll: initScrollState()
     ),
     fleetDetailModal: FleetDetailModalState(
@@ -1895,6 +1926,19 @@ proc stagedCommandCount*(model: TuiModel): int =
     count.inc
   count += model.ui.stagedEspionageActions.len
   count
+
+proc espionageQueuedQty*(
+    model: TuiModel,
+    target: HouseId,
+    action: EspionageAction
+): int =
+  for attempt in model.ui.stagedEspionageActions:
+    if attempt.target == target and attempt.action == action:
+      result.inc
+
+proc espionageQueuedTotalEbp*(model: TuiModel): int =
+  for attempt in model.ui.stagedEspionageActions:
+    result += espionageActionCost(attempt.action)
 
 proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   ## Get flattened list of staged commands in display order

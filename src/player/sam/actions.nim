@@ -391,6 +391,27 @@ proc actionEspionageQueueAdd*(): Proposal =
 proc actionEspionageQueueDelete*(): Proposal =
   gameActionProposal(ActionKind.espionageQueueDelete, "")
 
+proc actionEspionageQueueModalOpen*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalOpen, "")
+
+proc actionEspionageQueueModalClose*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalClose, "")
+
+proc actionEspionageQueueModalUp*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalUp, "")
+
+proc actionEspionageQueueModalDown*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalDown, "")
+
+proc actionEspionageQueueModalPageUp*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalPageUp, "")
+
+proc actionEspionageQueueModalPageDown*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalPageDown, "")
+
+proc actionEspionageQueueModalDelete*(): Proposal =
+  gameActionProposal(ActionKind.espionageQueueModalDelete, "")
+
 proc actionEspionageClearBudget*(): Proposal =
   gameActionProposal(ActionKind.espionageClearBudget, "")
 

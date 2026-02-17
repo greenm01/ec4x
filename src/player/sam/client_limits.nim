@@ -275,9 +275,35 @@ proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int =
     else:
       discard
 
+proc stagedResearchPp*(allocation: ResearchAllocation): int =
+  ## Sum staged PP allocated to research tracks.
+  var total = allocation.economic + allocation.science
+  for pp in allocation.technology.values:
+    total += pp
+  total.int
+
+proc stagedEspionagePp*(stagedEbpInvestment, stagedCipInvestment: int32): int =
+  ## Sum staged PP allocated to EBP/CIP investments.
+  let ebpCost = int(gameConfig.espionage.costs.ebpCostPp)
+  let cipCost = int(gameConfig.espionage.costs.cipCostPp)
+  int(stagedEbpInvestment) * ebpCost + int(stagedCipInvestment) * cipCost
+
 proc optimisticTreasury*(baseTreasury: int,
                          stagedBuildCommands: seq[BuildCommand]): int =
   max(0, baseTreasury - stagedPpCost(stagedBuildCommands))
+
+proc optimisticTreasury*(baseTreasury: int,
+                         stagedBuildCommands: seq[BuildCommand],
+                         researchAllocation: ResearchAllocation,
+                         stagedEbpInvestment, stagedCipInvestment: int32): int =
+  ## Client-side treasury preview including staged build/research/espionage.
+  max(
+    0,
+    baseTreasury -
+      stagedPpCost(stagedBuildCommands) -
+      stagedResearchPp(researchAllocation) -
+      stagedEspionagePp(stagedEbpInvestment, stagedCipInvestment)
+  )
 
 proc computeBaseC2FromPlayerState*(
     ps: PlayerState,

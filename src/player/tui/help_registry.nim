@@ -156,6 +156,12 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     result.add("Shift+/- = fine adjust")
     result.add("0 = clear allocation")
     result.add("0-9 = set PP")
+  if ctx == HelpContext.Espionage:
+    result.add("Tab = cycle focus")
+    result.add("B/C = select EBP/CIP")
+    result.add("Left/Right or +/- = adjust budget")
+    result.add("Enter = add selected operation")
+    result.add("Q = open planned-operations queue")
   if ctx == HelpContext.Messages:
     result.add("Tab = cycle focus")
     result.add("M = jump to Messages")

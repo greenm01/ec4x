@@ -242,6 +242,50 @@ proc adjustEspionageBudget(
     model.ui.stagedCipInvestment = int32(nextPoints)
   model.ui.turnSubmissionConfirmed = false
 
+proc stageSelectedEspionageOperation(model: var TuiModel): bool =
+  let targets = model.espionageTargetHouses()
+  let ops = espionageActions()
+  if targets.len == 0 or ops.len == 0:
+    model.ui.statusMessage = "No valid espionage target"
+    return false
+  let targetIdx = clamp(model.ui.espionageTargetIdx, 0, targets.len - 1)
+  let opIdx = clamp(model.ui.espionageOperationIdx, 0, ops.len - 1)
+  var queuedEbpCost = 0
+  for attempt in model.ui.stagedEspionageActions:
+    queuedEbpCost += espionageActionCost(attempt.action)
+  let selectedCost = espionageActionCost(ops[opIdx])
+  let availableEbp = int(model.ui.stagedEbpInvestment)
+  if queuedEbpCost + selectedCost > availableEbp:
+    model.ui.statusMessage = "Insufficient staged EBP (" &
+      $availableEbp & ")"
+    return false
+  let targetHouse = HouseId(targets[targetIdx].id.uint32)
+  model.ui.stagedEspionageActions.add(EspionageAttempt(
+    attacker: HouseId(model.view.viewingHouse.uint32),
+    target: targetHouse,
+    action: ops[opIdx],
+    targetSystem: none(SystemId)
+  ))
+  model.ui.turnSubmissionConfirmed = false
+  result = true
+
+proc removeSelectedEspionageOperation(model: var TuiModel): bool =
+  let targets = model.espionageTargetHouses()
+  let ops = espionageActions()
+  if targets.len == 0 or ops.len == 0:
+    return false
+  let targetIdx = clamp(model.ui.espionageTargetIdx, 0, targets.len - 1)
+  let opIdx = clamp(model.ui.espionageOperationIdx, 0, ops.len - 1)
+  let targetHouse = HouseId(targets[targetIdx].id.uint32)
+  let selectedAction = ops[opIdx]
+  for idx in countdown(model.ui.stagedEspionageActions.len - 1, 0):
+    let attempt = model.ui.stagedEspionageActions[idx]
+    if attempt.target == targetHouse and attempt.action == selectedAction:
+      model.ui.stagedEspionageActions.delete(idx)
+      model.ui.turnSubmissionConfirmed = false
+      return true
+  false
+
 
 proc updateFleetDetailScroll(model: var TuiModel): tuple[
     pageSize, maxOffset: int] =
@@ -713,10 +757,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let ops = espionageActions()
         if model.ui.espionageOperationIdx > 0 and ops.len > 0:
           model.ui.espionageOperationIdx.dec
-      of EspionageFocus.Queue:
-        if model.ui.espionageQueueIdx > 0 and
-            model.ui.stagedEspionageActions.len > 0:
-          model.ui.espionageQueueIdx.dec
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -831,11 +871,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let maxIdx = max(0, ops.len - 1)
         if ops.len > 0 and model.ui.espionageOperationIdx < maxIdx:
           model.ui.espionageOperationIdx.inc
-      of EspionageFocus.Queue:
-        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
-        if model.ui.stagedEspionageActions.len > 0 and
-            model.ui.espionageQueueIdx < maxIdx:
-          model.ui.espionageQueueIdx.inc
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -924,11 +959,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     elif model.ui.mode == ViewMode.Espionage:
-      if model.ui.espionageFocus == EspionageFocus.Queue:
-        let pageSize = max(1, model.ui.termHeight - 12)
-        model.ui.espionageQueueIdx = max(
-          0, model.ui.espionageQueueIdx - pageSize
-        )
+      discard
     else:
       let pageSize = max(1, model.ui.termHeight - 10)
       model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
@@ -947,12 +978,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     elif model.ui.mode == ViewMode.Espionage:
-      if model.ui.espionageFocus == EspionageFocus.Queue:
-        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
-        let pageSize = max(1, model.ui.termHeight - 12)
-        model.ui.espionageQueueIdx = min(
-          maxIdx, model.ui.espionageQueueIdx + pageSize
-        )
+      discard
     else:
       let maxIdx = model.currentListLength() - 1
       let pageSize = max(1, model.ui.termHeight - 10)
@@ -1044,20 +1070,16 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         of EspionageFocus.Targets:
           model.ui.espionageFocus = EspionageFocus.Operations
         of EspionageFocus.Operations:
-          model.ui.espionageFocus = EspionageFocus.Queue
-        of EspionageFocus.Queue:
           model.ui.espionageFocus = EspionageFocus.Budget
     of ActionKind.espionageFocusPrev:
       if model.ui.mode == ViewMode.Espionage:
         case model.ui.espionageFocus
         of EspionageFocus.Budget:
-          model.ui.espionageFocus = EspionageFocus.Queue
+          model.ui.espionageFocus = EspionageFocus.Operations
         of EspionageFocus.Targets:
           model.ui.espionageFocus = EspionageFocus.Budget
         of EspionageFocus.Operations:
           model.ui.espionageFocus = EspionageFocus.Targets
-        of EspionageFocus.Queue:
-          model.ui.espionageFocus = EspionageFocus.Operations
     of ActionKind.espionageSelectEbp:
       if model.ui.mode == ViewMode.Espionage:
         model.ui.espionageFocus = EspionageFocus.Budget
@@ -1067,47 +1089,76 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.espionageFocus = EspionageFocus.Budget
         model.ui.espionageBudgetChannel = EspionageBudgetChannel.Cip
     of ActionKind.espionageBudgetAdjustInc:
-      adjustEspionageBudget(model, EspionageBudgetStep)
+      if model.ui.mode == ViewMode.Espionage and
+          model.ui.espionageFocus == EspionageFocus.Operations:
+        discard model.stageSelectedEspionageOperation()
+      else:
+        adjustEspionageBudget(model, EspionageBudgetStep)
     of ActionKind.espionageBudgetAdjustDec:
-      adjustEspionageBudget(model, -EspionageBudgetStep)
+      if model.ui.mode == ViewMode.Espionage and
+          model.ui.espionageFocus == EspionageFocus.Operations:
+        discard model.removeSelectedEspionageOperation()
+      else:
+        adjustEspionageBudget(model, -EspionageBudgetStep)
     of ActionKind.espionageQueueAdd:
       if model.ui.mode == ViewMode.Espionage:
-        let targets = model.espionageTargetHouses()
-        let ops = espionageActions()
-        if targets.len == 0 or ops.len == 0:
-          model.ui.statusMessage = "No valid espionage target"
-          return
-        let targetIdx = clamp(
-          model.ui.espionageTargetIdx, 0, targets.len - 1
-        )
-        let opIdx = clamp(
-          model.ui.espionageOperationIdx, 0, ops.len - 1
-        )
-        let targetHouse = HouseId(targets[targetIdx].id.uint32)
-        model.ui.stagedEspionageActions.add(EspionageAttempt(
-          attacker: HouseId(model.view.viewingHouse.uint32),
-          target: targetHouse,
-          action: ops[opIdx],
-          targetSystem: none(SystemId)
-        ))
-        model.ui.espionageFocus = EspionageFocus.Queue
-        model.ui.espionageQueueIdx =
-          model.ui.stagedEspionageActions.len - 1
-        model.ui.turnSubmissionConfirmed = false
+        if model.stageSelectedEspionageOperation():
+          model.ui.espionageFocus = EspionageFocus.Operations
     of ActionKind.espionageQueueDelete:
       if model.ui.mode == ViewMode.Espionage and
           model.ui.stagedEspionageActions.len > 0:
+        model.ui.stagedEspionageActions.delete(
+          model.ui.stagedEspionageActions.len - 1
+        )
+        model.ui.turnSubmissionConfirmed = false
+    of ActionKind.espionageQueueModalOpen:
+      if model.ui.mode == ViewMode.Espionage:
+        model.ui.espionageQueueModal.active = true
+        model.ui.espionageQueueModal.selectedIdx = clamp(
+          model.ui.espionageQueueModal.selectedIdx,
+          0,
+          max(0, model.ui.stagedEspionageActions.len - 1)
+        )
+    of ActionKind.espionageQueueModalClose:
+      model.ui.espionageQueueModal.active = false
+    of ActionKind.espionageQueueModalUp:
+      if model.ui.espionageQueueModal.active and
+          model.ui.espionageQueueModal.selectedIdx > 0:
+        model.ui.espionageQueueModal.selectedIdx.dec
+    of ActionKind.espionageQueueModalDown:
+      if model.ui.espionageQueueModal.active:
+        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
+        if model.ui.espionageQueueModal.selectedIdx < maxIdx:
+          model.ui.espionageQueueModal.selectedIdx.inc
+    of ActionKind.espionageQueueModalPageUp:
+      if model.ui.espionageQueueModal.active:
+        let pageSize = max(1, model.ui.termHeight - 12)
+        model.ui.espionageQueueModal.selectedIdx = max(
+          0,
+          model.ui.espionageQueueModal.selectedIdx - pageSize
+        )
+    of ActionKind.espionageQueueModalPageDown:
+      if model.ui.espionageQueueModal.active:
+        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
+        let pageSize = max(1, model.ui.termHeight - 12)
+        model.ui.espionageQueueModal.selectedIdx = min(
+          maxIdx,
+          model.ui.espionageQueueModal.selectedIdx + pageSize
+        )
+    of ActionKind.espionageQueueModalDelete:
+      if model.ui.espionageQueueModal.active and
+          model.ui.stagedEspionageActions.len > 0:
         let idx = clamp(
-          model.ui.espionageQueueIdx,
+          model.ui.espionageQueueModal.selectedIdx,
           0,
           model.ui.stagedEspionageActions.len - 1
         )
         model.ui.stagedEspionageActions.delete(idx)
         if model.ui.stagedEspionageActions.len == 0:
-          model.ui.espionageQueueIdx = 0
+          model.ui.espionageQueueModal.selectedIdx = 0
         else:
-          model.ui.espionageQueueIdx = min(
-            model.ui.espionageQueueIdx,
+          model.ui.espionageQueueModal.selectedIdx = min(
+            model.ui.espionageQueueModal.selectedIdx,
             model.ui.stagedEspionageActions.len - 1
           )
         model.ui.turnSubmissionConfirmed = false

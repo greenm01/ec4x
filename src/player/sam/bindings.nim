@@ -51,6 +51,7 @@ type
     ExpertMode    ## Expert command mode
     BuildModal    ## Build command modal
     QueueModal    ## Queue modal
+    EspionageQueueModal ## Espionage queue modal
 
   Binding* = object
     key*: actions.KeyCode
@@ -266,6 +267,7 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
   of BindingContext.QueueModal: none(ViewMode)
+  of BindingContext.EspionageQueueModal: none(ViewMode)
   else: none(ViewMode)
 
 # =============================================================================
@@ -1032,6 +1034,12 @@ proc initBindings*() =
     longLabel: "QUEUE", shortLabel: "Enter", priority: 12))
 
   registerBinding(Binding(
+    key: KeyCode.KeyQ, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalOpen,
+    context: BindingContext.Espionage,
+    longLabel: "QUEUE", shortLabel: "Q", priority: 12))
+
+  registerBinding(Binding(
     key: KeyCode.KeyB, modifier: KeyModifier.None,
     actionKind: ActionKind.espionageSelectEbp,
     context: BindingContext.Espionage,
@@ -1044,22 +1052,10 @@ proc initBindings*() =
     longLabel: "SELECT CIP", shortLabel: "CIP", priority: 14))
 
   registerBinding(Binding(
-    key: KeyCode.KeyDelete, modifier: KeyModifier.None,
-    actionKind: ActionKind.espionageQueueDelete,
-    context: BindingContext.Espionage,
-    longLabel: "REMOVE", shortLabel: "Del", priority: 15))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyX, modifier: KeyModifier.None,
-    actionKind: ActionKind.espionageQueueDelete,
-    context: BindingContext.Espionage,
-    longLabel: "REMOVE", shortLabel: "X", priority: 16))
-
-  registerBinding(Binding(
     key: KeyCode.Key0, modifier: KeyModifier.None,
     actionKind: ActionKind.espionageClearBudget,
     context: BindingContext.Espionage,
-    longLabel: "CLEAR BUDGET", shortLabel: "0", priority: 17))
+    longLabel: "CLEAR BUDGET", shortLabel: "0", priority: 15))
 
   # =========================================================================
   # Economy Context
@@ -1508,6 +1504,64 @@ proc initBindings*() =
     longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
+  # Espionage Queue Modal Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalUp,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "NAV", shortLabel: "↑", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalUp,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalDown,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "NAV", shortLabel: "↓", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalDown,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalPageUp,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "PGUP", shortLabel: "PgU", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalPageDown,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "PGDN", shortLabel: "PgD", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDelete, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalDelete,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "DELETE", shortLabel: "Del", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyX, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalDelete,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "DELETE", shortLabel: "X", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageQueueModalClose,
+    context: BindingContext.EspionageQueueModal,
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
+
+  # =========================================================================
   # Expert Mode Context
   # =========================================================================
 
@@ -1870,6 +1924,20 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEspionageQueueAdd())
   of ActionKind.espionageQueueDelete:
     return some(actionEspionageQueueDelete())
+  of ActionKind.espionageQueueModalOpen:
+    return some(actionEspionageQueueModalOpen())
+  of ActionKind.espionageQueueModalClose:
+    return some(actionEspionageQueueModalClose())
+  of ActionKind.espionageQueueModalUp:
+    return some(actionEspionageQueueModalUp())
+  of ActionKind.espionageQueueModalDown:
+    return some(actionEspionageQueueModalDown())
+  of ActionKind.espionageQueueModalPageUp:
+    return some(actionEspionageQueueModalPageUp())
+  of ActionKind.espionageQueueModalPageDown:
+    return some(actionEspionageQueueModalPageDown())
+  of ActionKind.espionageQueueModalDelete:
+    return some(actionEspionageQueueModalDelete())
   of ActionKind.espionageClearBudget:
     return some(actionEspionageClearBudget())
 
@@ -1902,6 +1970,9 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
   if model.ui.mode == ViewMode.IntelDetail and
       model.ui.intelDetailFleetPopupActive:
     return some(actionIntelFleetPopupClose())
+  if model.ui.mode == ViewMode.Espionage and
+      model.ui.espionageQueueModal.active:
+    return some(actionEspionageQueueModalClose())
   if model.ui.queueModal.active:
     return some(actionCloseQueueModal())
   if model.ui.buildModal.active:
@@ -1971,6 +2042,17 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return none(Proposal)
 
   # Build modal mode: use registry
+  if model.ui.mode == ViewMode.Espionage and
+      model.ui.espionageQueueModal.active and
+      modifier == KeyModifier.None:
+    if key != KeyCode.KeyEscape:
+      let espionageQueueResult = lookupAndDispatch(
+        key, KeyModifier.None, BindingContext.EspionageQueueModal, model
+      )
+      if espionageQueueResult.isSome:
+        return espionageQueueResult
+      return none(Proposal)
+
   if model.ui.queueModal.active and modifier == KeyModifier.None:
     if key != KeyCode.KeyEscape:
       let queueResult = lookupAndDispatch(
