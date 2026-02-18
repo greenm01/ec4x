@@ -1927,11 +1927,35 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let opIdx = clamp(model.ui.espionageOperationIdx, 0, max(0, operations.len - 1))
   let ebpCostPp = int(gameConfig.espionage.costs.ebpCostPp)
   let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
-  let ebpPoints = int(model.ui.stagedEbpInvestment)
-  let cipPoints = int(model.ui.stagedCipInvestment)
-  let ebpPp = ebpPoints * ebpCostPp
-  let cipPp = cipPoints * cipCostPp
-  discard model.espionageQueuedTotalEbp()
+  let ebpPool =
+    if model.view.espionageEbpPool.isSome:
+      model.view.espionageEbpPool.get()
+    else:
+      0
+  let cipPool =
+    if model.view.espionageCipPool.isSome:
+      model.view.espionageCipPool.get()
+    else:
+      0
+  let ebpInvest = int(model.ui.stagedEbpInvestment)
+  let cipInvest = int(model.ui.stagedCipInvestment)
+  let ebpTotal = model.espionageEbpTotal()
+  let cipTotal = model.espionageCipTotal()
+  let ebpPp = ebpInvest * ebpCostPp
+  let cipPp = cipInvest * cipCostPp
+  let queuedEbp = model.espionageQueuedTotalEbp()
+  let availableEbp = model.espionageEbpAvailable()
+  let stagedEspionagePp = stagedEspionagePp(
+    model.ui.stagedEbpInvestment,
+    model.ui.stagedCipInvestment
+  )
+  let treasuryFree = optimisticTreasury(
+    model.view.treasury,
+    model.ui.stagedBuildCommands,
+    model.ui.researchAllocation,
+    model.ui.stagedEbpInvestment,
+    model.ui.stagedCipInvestment
+  )
   let selectedTargetName = if targets.len > 0:
     targets[targetIdx].name
   else:
@@ -1954,7 +1978,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   )
   var opsTableProbe = table(opColumns).showBorders(true)
   let opsTableHeightNeeded = opsTableProbe.renderHeight(operations.len) + 2
-  let budgetHeight = 6
+  let budgetHeight = 10
   let bodyHeight = max(6, max(opsTableHeightNeeded, targets.len + 2))
   let desiredMainHeight = budgetHeight + bodyHeight
   let modalMainHeight = min(desiredMainHeight, max(8, canvas.height - 6))
@@ -1977,6 +2001,18 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     if line.len > width:
       line = line[0 ..< width]
     discard outBuf.setString(x, y, line, style)
+
+  proc drawMetric(
+      outBuf: var CellBuffer,
+      x, y, width: int,
+      label, value: string,
+      style: CellStyle
+  ) =
+    if width <= 0:
+      return
+    let prefix = label & " "
+    let valueWidth = max(0, width - prefix.len)
+    drawTextLine(outBuf, x, y, width, prefix & align(value, valueWidth), style)
 
   let modal = newModal()
     .title("INTEL OPERATIONS")
@@ -2013,12 +2049,11 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let bInner = bordered().inner(budgetArea)
   if bInner.isEmpty:
     return
-  let boxY = bInner.y
-  let boxH = max(1, bInner.bottom - boxY)
+  let cardsH = max(1, bInner.height - 1)
   let leftW = max(24, (bInner.width - 1) div 2)
   let rightW = max(24, bInner.width - leftW - 1)
-  let ebpArea = rect(bInner.x, boxY, leftW, boxH)
-  let cipArea = rect(ebpArea.right + 1, boxY, rightW, boxH)
+  let ebpArea = rect(bInner.x, bInner.y, leftW, cardsH)
+  let cipArea = rect(ebpArea.right + 1, bInner.y, rightW, cardsH)
   let ebpActive = model.ui.espionageFocus == EspionageFocus.Budget and
     model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp
   let cipActive = model.ui.espionageFocus == EspionageFocus.Budget and
@@ -2031,28 +2066,70 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   ).render(cipArea, buf)
   let ebpInner = bordered().inner(ebpArea)
   let cipInner = bordered().inner(cipArea)
-  drawTextLine(
+  drawMetric(
     buf,
     ebpInner.x, ebpInner.y, ebpInner.width,
-    "Invest: [ " & $ebpPoints & " ]",
-    if ebpActive: selectedStyle() else: normalStyle()
-  )
-  drawTextLine(
-    buf,
-    ebpInner.x, ebpInner.y + 1, ebpInner.width,
-    "Cost: " & formatNumber(ebpPp) & " PP",
+    "Pool:",
+    formatNumber(ebpPool),
     dimStyle()
   )
   drawTextLine(
     buf,
+    ebpInner.x, ebpInner.y + 1, ebpInner.width,
+    "Invest: [ " & align($ebpInvest, 3) & " ]",
+    if ebpActive: selectedStyle() else: normalStyle()
+  )
+  drawMetric(
+    buf,
+    ebpInner.x, ebpInner.y + 2, ebpInner.width,
+    "Total:",
+    formatNumber(ebpTotal),
+    dimStyle()
+  )
+  drawMetric(
+    buf,
+    ebpInner.x, ebpInner.y + 3, ebpInner.width,
+    "Cost:",
+    formatNumber(ebpPp) & " PP",
+    dimStyle()
+  )
+  drawMetric(
+    buf,
     cipInner.x, cipInner.y, cipInner.width,
-    "Invest: [ " & $cipPoints & " ]",
-    if cipActive: selectedStyle() else: normalStyle()
+    "Pool:",
+    formatNumber(cipPool),
+    dimStyle()
   )
   drawTextLine(
     buf,
     cipInner.x, cipInner.y + 1, cipInner.width,
-    "Cost: " & formatNumber(cipPp) & " PP",
+    "Invest: [ " & align($cipInvest, 3) & " ]",
+    if cipActive: selectedStyle() else: normalStyle()
+  )
+  drawMetric(
+    buf,
+    cipInner.x, cipInner.y + 2, cipInner.width,
+    "Total:",
+    formatNumber(cipTotal),
+    dimStyle()
+  )
+  drawMetric(
+    buf,
+    cipInner.x, cipInner.y + 3, cipInner.width,
+    "Cost:",
+    formatNumber(cipPp) & " PP",
+    dimStyle()
+  )
+  let summary = "Staged PP: " & formatNumber(stagedEspionagePp) &
+    "   Treasury Free: " & formatNumber(treasuryFree) &
+    "   EBP Queued: " & formatNumber(queuedEbp) &
+    "   EBP Avail: " & formatNumber(availableEbp)
+  drawTextLine(
+    buf,
+    bInner.x,
+    bInner.bottom - 1,
+    bInner.width,
+    summary,
     dimStyle()
   )
 

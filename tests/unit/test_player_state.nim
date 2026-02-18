@@ -13,6 +13,10 @@ suite "PlayerState: Tax Rate":
     for house in game.allHouses():
       let ps = game.createPlayerState(house.id)
       check ps.taxRate.isSome()
+      check ps.ebpPool.isSome()
+      check ps.cipPool.isSome()
       let encoded = serializePlayerState(ps)
       let decoded = deserializePlayerState(encoded)
       check decoded.taxRate == ps.taxRate
+      check decoded.ebpPool == ps.ebpPool
+      check decoded.cipPool == ps.cipPool

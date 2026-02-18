@@ -32,6 +32,10 @@ type
     homeworldSystemId*: Option[SystemId]
     treasuryBalanceChanged*: bool
     treasuryBalance*: Option[int32]
+    ebpPoolChanged*: bool
+    ebpPool*: Option[int32]
+    cipPoolChanged*: bool
+    cipPool*: Option[int32]
     netIncomeChanged*: bool
     netIncome*: Option[int32]
     taxRateChanged*: bool
@@ -377,6 +381,10 @@ proc diffPlayerState*(
     result.homeworldSystemId = current.homeworldSystemId
     result.treasuryBalanceChanged = true
     result.treasuryBalance = current.treasuryBalance
+    result.ebpPoolChanged = true
+    result.ebpPool = current.ebpPool
+    result.cipPoolChanged = true
+    result.cipPool = current.cipPool
     result.netIncomeChanged = true
     result.netIncome = current.netIncome
     result.taxRateChanged = true
@@ -451,6 +459,14 @@ proc diffPlayerState*(
   if oldSnapshot.treasuryBalance != current.treasuryBalance:
     result.treasuryBalanceChanged = true
     result.treasuryBalance = current.treasuryBalance
+
+  if oldSnapshot.ebpPool != current.ebpPool:
+    result.ebpPoolChanged = true
+    result.ebpPool = current.ebpPool
+
+  if oldSnapshot.cipPool != current.cipPool:
+    result.cipPoolChanged = true
+    result.cipPool = current.cipPool
 
   if oldSnapshot.netIncome != current.netIncome:
     result.netIncomeChanged = true

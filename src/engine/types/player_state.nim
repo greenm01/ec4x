@@ -196,6 +196,8 @@ type
     turn*: int32
     homeworldSystemId*: Option[SystemId]
     treasuryBalance*: Option[int32]
+    ebpPool*: Option[int32]
+    cipPool*: Option[int32]
     netIncome*: Option[int32]
     taxRate*: Option[int32]
     techLevels*: Option[TechLevel]

@@ -59,6 +59,38 @@ suite "Player State Config Envelope":
     check applied.isSome
     check ps.turn == 2
 
+  test "applyDeltaMsgpack updates EBP/CIP pools":
+    var ps = PlayerState(
+      turn: 1,
+      viewingHouse: HouseId(1),
+      ebpPool: some(3'i32),
+      cipPool: some(2'i32)
+    )
+    let snapshot = buildTuiRulesSnapshot(gameConfig)
+    let delta = PlayerStateDelta(
+      viewingHouse: HouseId(1),
+      turn: 2,
+      ebpPoolChanged: true,
+      ebpPool: some(11'i32),
+      cipPoolChanged: true,
+      cipPool: some(7'i32)
+    )
+    let envelope = PlayerStateDeltaEnvelope(
+      delta: delta,
+      configSchemaVersion: ConfigSchemaVersion,
+      configHash: snapshot.configHash
+    )
+    let payload = pack(envelope)
+    let applied = applyDeltaMsgpack(
+      ps,
+      payload,
+      snapshot.configHash,
+      ConfigSchemaVersion
+    )
+    check applied.isSome
+    check ps.ebpPool == some(11'i32)
+    check ps.cipPool == some(7'i32)
+
   test "applyDeltaMsgpack rejects mismatched config hash":
     var ps = PlayerState(
       turn: 1,

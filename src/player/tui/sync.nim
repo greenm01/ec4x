@@ -56,6 +56,8 @@ proc syncGameStateToModel*(
   model.view.viewingHouse = int(viewingHouse)
   model.view.houseName = house.name
   model.view.treasury = house.treasury.int
+  model.view.espionageEbpPool = some(int(house.espionageBudget.ebpPoints))
+  model.view.espionageCipPool = some(int(house.espionageBudget.cipPoints))
   model.view.prestige = house.prestige.int
   model.view.alertCount = 0
   # unreadMessages managed via local cache
@@ -866,6 +868,14 @@ proc syncPlayerStateToModel*(
     model.view.treasury = ps.treasuryBalance.get().int
   else:
     model.view.treasury = 0
+  if ps.ebpPool.isSome:
+    model.view.espionageEbpPool = some(int(ps.ebpPool.get()))
+  else:
+    model.view.espionageEbpPool = none(int)
+  if ps.cipPool.isSome:
+    model.view.espionageCipPool = some(int(ps.cipPool.get()))
+  else:
+    model.view.espionageCipPool = none(int)
   model.view.prestige =
     ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
   model.view.alertCount = 0

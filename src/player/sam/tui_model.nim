@@ -1017,6 +1017,8 @@ type
     viewingHouse*: int
     houseName*: string
     treasury*: int
+    espionageEbpPool*: Option[int]
+    espionageCipPool*: Option[int]
     prestige*: int
     prestigeRank*: int
     totalHouses*: int
@@ -1358,6 +1360,8 @@ proc initTuiViewState*(): TuiViewState =
     viewingHouse: 1,
     houseName: "Unknown",
     treasury: 0,
+    espionageEbpPool: none(int),
+    espionageCipPool: none(int),
     prestige: 0,
     prestigeRank: 0,
     totalHouses: 0,
@@ -1939,6 +1943,25 @@ proc espionageQueuedQty*(
 proc espionageQueuedTotalEbp*(model: TuiModel): int =
   for attempt in model.ui.stagedEspionageActions:
     result += espionageActionCost(attempt.action)
+
+proc espionageEbpTotal*(model: TuiModel): int =
+  let pool =
+    if model.view.espionageEbpPool.isSome:
+      model.view.espionageEbpPool.get()
+    else:
+      0
+  pool + int(model.ui.stagedEbpInvestment)
+
+proc espionageEbpAvailable*(model: TuiModel): int =
+  max(0, model.espionageEbpTotal() - model.espionageQueuedTotalEbp())
+
+proc espionageCipTotal*(model: TuiModel): int =
+  let pool =
+    if model.view.espionageCipPool.isSome:
+      model.view.espionageCipPool.get()
+    else:
+      0
+  pool + int(model.ui.stagedCipInvestment)
 
 proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   ## Get flattened list of staged commands in display order

@@ -125,6 +125,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   result.turn = state.turn
   result.homeworldSystemId = none(SystemId)
   result.treasuryBalance = none(int32)
+  result.ebpPool = none(int32)
+  result.cipPool = none(int32)
   result.netIncome = none(int32)
   result.taxRate = none(int32)
   result.techLevels = none(TechLevel)
@@ -144,6 +146,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   if houseOpt.isSome:
     let house = houseOpt.get()
     result.treasuryBalance = some(house.treasury)
+    result.ebpPool = some(house.espionageBudget.ebpPoints)
+    result.cipPool = some(house.espionageBudget.cipPoints)
     if house.latestIncomeReport.isSome:
       result.netIncome =
         some(house.latestIncomeReport.get().totalNet)

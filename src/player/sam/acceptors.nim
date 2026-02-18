@@ -250,14 +250,11 @@ proc stageSelectedEspionageOperation(model: var TuiModel): bool =
     return false
   let targetIdx = clamp(model.ui.espionageTargetIdx, 0, targets.len - 1)
   let opIdx = clamp(model.ui.espionageOperationIdx, 0, ops.len - 1)
-  var queuedEbpCost = 0
-  for attempt in model.ui.stagedEspionageActions:
-    queuedEbpCost += espionageActionCost(attempt.action)
   let selectedCost = espionageActionCost(ops[opIdx])
-  let availableEbp = int(model.ui.stagedEbpInvestment)
-  if queuedEbpCost + selectedCost > availableEbp:
-    model.ui.statusMessage = "Insufficient staged EBP (" &
-      $availableEbp & ")"
+  let availableEbp = model.espionageEbpAvailable()
+  if selectedCost > availableEbp:
+    model.ui.statusMessage = "Insufficient EBP: need " & $selectedCost &
+      ", available " & $availableEbp
     return false
   let targetHouse = HouseId(targets[targetIdx].id.uint32)
   model.ui.stagedEspionageActions.add(EspionageAttempt(

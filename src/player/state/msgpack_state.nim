@@ -43,6 +43,10 @@ proc applyDeltaToPlayerState*(
     state.homeworldSystemId = delta.homeworldSystemId
   if delta.treasuryBalanceChanged:
     state.treasuryBalance = delta.treasuryBalance
+  if delta.ebpPoolChanged:
+    state.ebpPool = delta.ebpPool
+  if delta.cipPoolChanged:
+    state.cipPool = delta.cipPool
   if delta.netIncomeChanged:
     state.netIncome = delta.netIncome
   if delta.taxRateChanged:

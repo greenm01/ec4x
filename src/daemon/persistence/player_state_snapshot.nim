@@ -49,6 +49,8 @@ type
     turn*: int32
     homeworldSystemId*: Option[SystemId]
     treasuryBalance*: Option[int32]
+    ebpPool*: Option[int32]
+    cipPool*: Option[int32]
     netIncome*: Option[int32]
     taxRate*: Option[int32]
     techLevels*: Option[TechLevel]
@@ -79,6 +81,8 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.turn = ps.turn
   result.homeworldSystemId = ps.homeworldSystemId
   result.treasuryBalance = ps.treasuryBalance
+  result.ebpPool = ps.ebpPool
+  result.cipPool = ps.cipPool
   result.netIncome = ps.netIncome
   result.taxRate = ps.taxRate
   result.techLevels = ps.techLevels
