@@ -306,6 +306,12 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker
   of "isNoticePrompt":
     model.ui.fleetDetailModal.subModal == FleetSubModal.NoticePrompt
+  of "isEspionageBudgetFocus":
+    model.ui.mode == ViewMode.Espionage and
+      model.ui.espionageFocus == EspionageFocus.Budget
+  of "isEspionageNonBudgetFocus":
+    model.ui.mode == ViewMode.Espionage and
+      model.ui.espionageFocus != EspionageFocus.Budget
   else:
     true
 
@@ -966,16 +972,38 @@ proc initBindings*() =
     longLabel: "NEXT PANEL", shortLabel: "Tab", priority: 1))
 
   registerBinding(Binding(
+    key: KeyCode.KeyShiftTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageFocusPrev,
+    context: BindingContext.Espionage,
+    longLabel: "PREV PANEL", shortLabel: "S-Tab", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageSelectEbp,
+    context: BindingContext.Espionage,
+    longLabel: "SELECT EBP", shortLabel: "←", priority: 3,
+    enabledCheck: "isEspionageBudgetFocus"))
+
+  registerBinding(Binding(
     key: KeyCode.KeyLeft, modifier: KeyModifier.None,
     actionKind: ActionKind.espionageFocusPrev,
     context: BindingContext.Espionage,
-    longLabel: "PREV PANEL", shortLabel: "←", priority: 2))
+    longLabel: "PREV PANEL", shortLabel: "←", priority: 4,
+    enabledCheck: "isEspionageNonBudgetFocus"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageSelectCip,
+    context: BindingContext.Espionage,
+    longLabel: "SELECT CIP", shortLabel: "→", priority: 5,
+    enabledCheck: "isEspionageBudgetFocus"))
 
   registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
     actionKind: ActionKind.espionageFocusNext,
     context: BindingContext.Espionage,
-    longLabel: "NEXT PANEL", shortLabel: "→", priority: 3))
+    longLabel: "NEXT PANEL", shortLabel: "→", priority: 6,
+    enabledCheck: "isEspionageNonBudgetFocus"))
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
@@ -1038,16 +1066,22 @@ proc initBindings*() =
     longLabel: "SELECT EBP", shortLabel: "EBP", priority: 13))
 
   registerBinding(Binding(
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
+    actionKind: ActionKind.espionageSelectEbp,
+    context: BindingContext.Espionage,
+    longLabel: "SELECT EBP", shortLabel: "EBP", priority: 14))
+
+  registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
     actionKind: ActionKind.espionageSelectCip,
     context: BindingContext.Espionage,
-    longLabel: "SELECT CIP", shortLabel: "CIP", priority: 14))
+    longLabel: "SELECT CIP", shortLabel: "CIP", priority: 15))
 
   registerBinding(Binding(
     key: KeyCode.Key0, modifier: KeyModifier.None,
     actionKind: ActionKind.espionageClearBudget,
     context: BindingContext.Espionage,
-    longLabel: "CLEAR BUDGET", shortLabel: "0", priority: 15))
+    longLabel: "CLEAR BUDGET", shortLabel: "0", priority: 16))
 
   # =========================================================================
   # Economy Context

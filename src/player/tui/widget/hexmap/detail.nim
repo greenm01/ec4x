@@ -10,13 +10,8 @@ import ./hexmap
 import ../frame
 import ../../buffer
 import ../../layout/rect
-import ../../term/term
-import ../../term/types/core
+import ../../styles/ec_palette
 import ../../hex_labels
-
-# Helper to create Color from ANSI 256-color index
-proc colorAnsi(n: int): Color {.inline.} =
-  color(Ansi256Color(n))
 
 type
   JumpLaneInfo* = object
@@ -79,15 +74,15 @@ proc renderDetailPanel*(area: Rect, buf: var CellBuffer,
     attrs: {StyleAttr.Bold}
   )
   let labelStyle = CellStyle(
-    fg: colorAnsi(245),  # Gray
+    fg: color(CanvasDimColor),
     attrs: {}
   )
   let valueStyle = CellStyle(
-    fg: colorAnsi(255),  # White
+    fg: color(CanvasFgColor),
     attrs: {}
   )
   let dividerStyle = CellStyle(
-    fg: colorAnsi(240),  # Dark gray
+    fg: color(CanvasFogColor),
     attrs: {}
   )
   

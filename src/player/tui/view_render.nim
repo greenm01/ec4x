@@ -1938,7 +1938,8 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     contentWidth,
     modalMainHeight + 2
   )
-  let footerText = "[Tab]Focus  [↑↓]Select  [+/−]Budget/Qty  [Enter]Add"
+  let footerText =
+    "[Tab]Panel  [Arrows]Nav  [E]BP  [C]IP  [+/−]Adjust"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   if contentArea.height <= 0 or contentArea.width <= 0:
@@ -1955,8 +1956,13 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let targetsArea = bodyCols[0]
   let opsArea = bodyCols[1]
 
+  let budgetBorderStyle =
+    if model.ui.espionageFocus == EspionageFocus.Budget:
+      focusBorderStyle()
+    else:
+      primaryBorderStyle()
   bordered().title("BUDGET ALLOCATION").borderStyle(
-    primaryBorderStyle()
+    budgetBorderStyle
   ).render(budgetArea, buf)
   let bInner = bordered().inner(budgetArea)
   if bInner.isEmpty:
@@ -1971,10 +1977,10 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let cipActive = model.ui.espionageFocus == EspionageFocus.Budget and
     model.ui.espionageBudgetChannel == EspionageBudgetChannel.Cip
   bordered().title("EBP (OFFENSE)").borderStyle(
-    if ebpActive: primaryBorderStyle() else: modalBorderStyle()
+    if ebpActive: accentBorderStyle() else: modalBorderStyle()
   ).render(ebpArea, buf)
   bordered().title("CIP (DEFENSE)").borderStyle(
-    if cipActive: primaryBorderStyle() else: modalBorderStyle()
+    if cipActive: accentBorderStyle() else: modalBorderStyle()
   ).render(cipArea, buf)
   let ebpInner = bordered().inner(ebpArea)
   let cipInner = bordered().inner(cipArea)
@@ -2045,9 +2051,14 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     dimStyle()
   )
 
+  let targetsBorderStyle =
+    if model.ui.espionageFocus == EspionageFocus.Targets:
+      focusBorderStyle()
+    else:
+      primaryBorderStyle()
   bordered().title("TARGETS").titleStyle(
     panelTitleStyle(EspionageFocus.Targets)
-  ).borderStyle(primaryBorderStyle()).render(targetsArea, buf)
+  ).borderStyle(targetsBorderStyle).render(targetsArea, buf)
   let tInner = bordered().inner(targetsArea)
   if targets.len == 0:
     drawTextLine(
@@ -2063,9 +2074,14 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
         rowStyle)
 
   let opsTitle = "OPERATIONS (vs " & selectedTargetName & ")"
+  let opsBorderStyle =
+    if model.ui.espionageFocus == EspionageFocus.Operations:
+      focusBorderStyle()
+    else:
+      primaryBorderStyle()
   bordered().title(opsTitle).titleStyle(
     panelTitleStyle(EspionageFocus.Operations)
-  ).borderStyle(primaryBorderStyle()).render(opsArea, buf)
+  ).borderStyle(opsBorderStyle).render(opsArea, buf)
   let oInner = bordered().inner(opsArea)
   let targetId = if targets.len > 0:
     HouseId(targets[targetIdx].id.uint32)

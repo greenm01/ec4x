@@ -157,12 +157,13 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     result.add("0 = clear allocation")
     result.add("0-9 = set PP")
   if ctx == HelpContext.Espionage:
-    result.add("Tab = cycle focus")
-    result.add("B/C = select EBP/CIP")
+    result.add("Tab/Shift+Tab = cycle panels")
+    result.add("E/B = select EBP, C = select CIP")
     result.add(
       "EBP Total = remaining after queued ops; CIP Total = Pool+Invest"
     )
-    result.add("Left/Right or +/- = adjust budget")
+    result.add("Left/Right = panel nav or EBP/CIP in Budget")
+    result.add("+/- = adjust budget or operation quantity")
     result.add("Enter = add selected operation")
   if ctx == HelpContext.Messages:
     result.add("Tab = cycle focus")

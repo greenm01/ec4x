@@ -195,7 +195,10 @@ proc renderWithFooter*(m: Modal, area: Rect, buf: var CellBuffer,
   ## renders the footer text in the bottom section
   m.renderWithSeparator(area, buf, 2)
   let inner = m.inner(area)
-  discard buf.setString(inner.x, inner.bottom - 1, footerText, canvasDimStyle())
+  var clipped = footerText
+  if clipped.len > inner.width:
+    clipped = clipped[0 ..< inner.width]
+  discard buf.setString(inner.x, inner.bottom - 1, clipped, canvasDimStyle())
 
 proc contentArea*(m: Modal, area: Rect, hasFooter: bool): Rect =
   ## Get area for content rendering

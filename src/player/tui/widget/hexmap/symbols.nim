@@ -5,10 +5,7 @@
 
 import ../../term/term
 import ../../term/types/core
-
-# Helper to create Color from ANSI 256-color index
-proc colorAnsi(n: int): Color {.inline.} =
-  color(Ansi256Color(n))
+import ../../styles/ec_palette
 
 type
   HexSymbol* {.pure.} = enum
@@ -100,19 +97,19 @@ type
 proc defaultColors*(): HexColors =
   ## Default color scheme for hex map
   HexColors(
-    hub: newStyle().foreground(colorAnsi(226)),        # Bright yellow
-    homeworld: newStyle().foreground(colorAnsi(46)),   # Bright green
-    colony: newStyle().foreground(colorAnsi(39)),      # Cyan/blue
-    enemyColony: newStyle().foreground(colorAnsi(196)),# Red
-    neutral: newStyle().foreground(colorAnsi(250)),    # Light gray
-    unknown: newStyle().foreground(colorAnsi(240)),    # Dark gray
-    selected: newStyle().foreground(colorAnsi(231))    # White
+    hub: newStyle().foreground(color(PrestigeColor)),
+    homeworld: newStyle().foreground(color(PositiveColor)),
+    colony: newStyle().foreground(color(ProductionColor)),
+    enemyColony: newStyle().foreground(color(AlertColor)),
+    neutral: newStyle().foreground(color(NeutralColor)),
+    unknown: newStyle().foreground(color(CanvasDimColor)),
+    selected: newStyle().foreground(color(CanvasFgColor))
                         .bold(),
-    cursor: newStyle().foreground(colorAnsi(226))      # Yellow
+    cursor: newStyle().foreground(color(PrestigeColor))
                       .bold(),
-    jumpLaneMajor: newStyle().foreground(colorAnsi(255)),    # White
-    jumpLaneMinor: newStyle().foreground(colorAnsi(245)),    # Gray
-    jumpLaneRestricted: newStyle().foreground(colorAnsi(88)) # Dark red
+    jumpLaneMajor: newStyle().foreground(color(CanvasFgColor)),
+    jumpLaneMinor: newStyle().foreground(color(CanvasDimColor)),
+    jumpLaneRestricted: newStyle().foreground(color(NegativeColor))
   )
 
 proc styleFor*(colors: HexColors, sym: HexSymbol): Style =
@@ -133,21 +130,21 @@ proc styleFor*(colors: HexColors, sym: HexSymbol): Style =
 const
   ## Color palette for up to 8 houses
   ## Index 0 is always the viewing player (highlighted)
-  HouseColorPalette*: array[8, int] = [
-    39,   # Cyan (player)
-    196,  # Red
-    208,  # Orange
-    129,  # Purple
-    226,  # Yellow
-    46,   # Green
-    201,  # Magenta
-    245,  # Gray (neutral/unknown)
+  HouseColorPalette*: array[8, RgbColor] = [
+    ProductionColor,                                  # Player
+    AlertColor,                                       # Rival 1
+    WarningColor,                                     # Rival 2
+    AccentColor,                                      # Rival 3
+    PrestigeColor,                                    # Rival 4
+    PositiveColor,                                    # Rival 5
+    KeyHintColor,                                     # Rival 6
+    CanvasDimColor                                    # Unknown
   ]
 
 proc houseStyle*(houseIndex: int): Style =
   ## Get style for a specific house (0 = viewing player)
   let colorIdx = min(houseIndex, HouseColorPalette.high)
-  newStyle().foreground(colorAnsi(HouseColorPalette[colorIdx]))
+  newStyle().foreground(color(HouseColorPalette[colorIdx]))
 
 # -----------------------------------------------------------------------------
 # Planet class display
@@ -172,16 +169,16 @@ proc planetClassStyle*(classOrd: int): Style =
   ## Get style for planet class (0=Extreme to 6=Eden)
   ## Colors range from red (harsh) to green (hospitable)
   let colors = [
-    196,  # Extreme - Red
-    208,  # Desolate - Orange
-    220,  # Hostile - Gold
-    226,  # Harsh - Yellow
-    154,  # Benign - Yellow-green
-    46,   # Lush - Green
-    51,   # Eden - Cyan
+    AlertColor,                                       # Extreme
+    WarningColor,                                     # Desolate
+    PrestigeColor,                                    # Hostile
+    PrestigeColor,                                    # Harsh
+    PositiveColor,                                    # Benign
+    PositiveColor,                                    # Lush
+    InfoColor                                         # Eden
   ]
   let idx = clamp(classOrd, 0, 6)
-  newStyle().foreground(colorAnsi(colors[idx]))
+  newStyle().foreground(color(colors[idx]))
 
 # -----------------------------------------------------------------------------
 # Resource rating display
@@ -199,14 +196,14 @@ const
 proc resourceStyle*(ratingOrd: int): Style =
   ## Get style for resource rating
   let colors = [
-    240,  # Very Poor - Dark gray
-    245,  # Poor - Gray
-    255,  # Abundant - White
-    226,  # Rich - Yellow
-    46,   # Very Rich - Green
+    CanvasFogColor,                                   # Very poor
+    CanvasDimColor,                                   # Poor
+    CanvasFgColor,                                    # Abundant
+    PrestigeColor,                                    # Rich
+    PositiveColor                                     # Very rich
   ]
   let idx = clamp(ratingOrd, 0, 4)
-  newStyle().foreground(colorAnsi(colors[idx]))
+  newStyle().foreground(color(colors[idx]))
 
 # -----------------------------------------------------------------------------
 # Jump lane display

@@ -179,14 +179,15 @@ proc espionageContextActions*(hasSelection: bool): seq[ContextAction] =
   ## Context actions for Espionage (View 5)
   @[
     ContextAction(
-      key: "Tab",
-      label: "Next panel",
+      key: "Tab/S-Tab",
+      label: "Cycle panels",
       enabled: true
     ),
+    ContextAction(key: "←→", label: "Panel or EBP/CIP", enabled: true),
     ContextAction(key: "↑↓", label: "Navigate", enabled: true),
     ContextAction(key: "+/-", label: "Adjust", enabled: true),
     ContextAction(key: "Enter", label: "Add", enabled: hasSelection),
-    ContextAction(key: "B/C", label: "EBP/CIP", enabled: true),
+    ContextAction(key: "E/B/C", label: "Select EBP/CIP", enabled: true),
   ]
 
 proc economyContextActions*(): seq[ContextAction] =

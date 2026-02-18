@@ -27,55 +27,62 @@ const
 # Style Definitions (must be before rendering procs)
 # =============================================================================
 
-# Bar background
-const BarBgColor = RgbColor(r: 36, g: 40, b: 59)     ## #24283b (slightly lighter)
-const BarFgColor = RgbColor(r: 192, g: 202, b: 245)  ## #c0caf5
-const BarKeyColor = RgbColor(r: 125, g: 207, b: 255) ## #7dcfff (cyan)
-const BarAltBgColor = RgbColor(r: 42, g: 46, b: 66)  ## Slightly different bg
-const BarSelectedBg = RgbColor(r: 122, g: 162, b: 247) ## #7aa2f7 (blue)
-const BarSelectedFg = RgbColor(r: 26, g: 27, b: 38)  ## #1a1b26 (dark)
-const BarDisabledFg = RgbColor(r: 86, g: 95, b: 137) ## #565f89 (dim)
-
 proc barBgStyle*(): CellStyle =
-  CellStyle(fg: color(BarFgColor), bg: color(BarBgColor), attrs: {})
+  CellStyle(fg: color(CanvasFgColor), bg: color(StatusBarBgColor), attrs: {})
 
 proc barTextStyle*(): CellStyle =
-  CellStyle(fg: color(BarFgColor), bg: color(BarBgColor), attrs: {})
+  CellStyle(fg: color(CanvasFgColor), bg: color(StatusBarBgColor), attrs: {})
 
 proc barKeyStyle*(): CellStyle =
-  CellStyle(fg: color(BarKeyColor), bg: color(BarBgColor),
+  CellStyle(fg: color(KeyHintColor), bg: color(StatusBarBgColor),
       attrs: {StyleAttr.Bold})
 
 proc barSepStyle*(): CellStyle =
-  CellStyle(fg: color(BarBgColor), bg: color(BarBgColor), attrs: {})
+  CellStyle(
+    fg: color(StatusBarBgColor),
+    bg: color(StatusBarBgColor),
+    attrs: {}
+  )
 
 proc barAltTextStyle*(): CellStyle =
-  CellStyle(fg: color(BarFgColor), bg: color(BarAltBgColor), attrs: {})
+  CellStyle(
+    fg: color(CanvasFgColor),
+    bg: color(StatusBarAltBgColor),
+    attrs: {}
+  )
 
 proc barAltKeyStyle*(): CellStyle =
-  CellStyle(fg: color(BarKeyColor), bg: color(BarAltBgColor),
+  CellStyle(fg: color(KeyHintColor), bg: color(StatusBarAltBgColor),
       attrs: {StyleAttr.Bold})
 
 proc barAltSepStyle*(): CellStyle =
-  CellStyle(fg: color(BarAltBgColor), bg: color(BarBgColor), attrs: {})
+  CellStyle(
+    fg: color(StatusBarAltBgColor),
+    bg: color(StatusBarBgColor),
+    attrs: {}
+  )
 
 proc barSelectedTextStyle*(): CellStyle =
-  CellStyle(fg: color(BarSelectedFg), bg: color(BarSelectedBg),
+  CellStyle(fg: color(SelectedFgColor), bg: color(SelectedBgColor),
       attrs: {StyleAttr.Bold})
 
 proc barSelectedKeyStyle*(): CellStyle =
-  CellStyle(fg: color(BarSelectedFg), bg: color(BarSelectedBg),
+  CellStyle(fg: color(SelectedFgColor), bg: color(SelectedBgColor),
       attrs: {StyleAttr.Bold})
 
 proc barSelectedSepStyle*(): CellStyle =
-  CellStyle(fg: color(BarSelectedBg), bg: color(BarBgColor), attrs: {})
+  CellStyle(
+    fg: color(SelectedBgColor),
+    bg: color(StatusBarBgColor),
+    attrs: {}
+  )
 
 proc barDisabledStyle*(): CellStyle =
-  CellStyle(fg: color(BarDisabledFg), bg: color(BarBgColor),
+  CellStyle(fg: color(DisabledColor), bg: color(StatusBarBgColor),
       attrs: {StyleAttr.Italic})
 
 proc barCursorStyle*(): CellStyle =
-  CellStyle(fg: color(BarBgColor), bg: color(BarKeyColor), attrs: {})
+  CellStyle(fg: color(StatusBarBgColor), bg: color(KeyHintColor), attrs: {})
 
 # =============================================================================
 # Status Bar Data

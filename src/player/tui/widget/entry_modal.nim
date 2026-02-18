@@ -358,7 +358,7 @@ proc confirmImport*(state: var EntryModalState): bool =
 proc renderLogo(buf: var CellBuffer, area: Rect) =
   ## Render the EC4X ASCII logo centered in the area
   let logoStyle = CellStyle(
-    fg: color(Ansi256Color(75)),  # tokyoBlue
+    fg: color(CursorColor),
     bg: color(TrueBlackColor),
     attrs: {StyleAttr.Bold}
   )
@@ -383,7 +383,7 @@ proc renderIdentitySection(buf: var CellBuffer, area: Rect,
   )
   let typeStyle = modalDimStyle()
   let hotkeyStyle = CellStyle(
-    fg: color(Ansi256Color(223)),
+    fg: color(KeyHintColor),
     bg: color(TrueBlackColor),
     attrs: {StyleAttr.Bold}
   )
@@ -543,7 +543,7 @@ proc renderInviteCodeSection(buf: var CellBuffer, area: Rect,
     attrs: {}
   )
   let cursorStyle = CellStyle(
-    fg: color(Ansi256Color(110)),
+    fg: color(CursorColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -586,7 +586,7 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   ## Render the footer with hotkeys and version
   let dimStyle = modalDimStyle()
   let keyStyle = CellStyle(
-    fg: color(Ansi256Color(223)),
+    fg: color(KeyHintColor),
     bg: color(TrueBlackColor),
     attrs: {StyleAttr.Bold}
   )
@@ -675,7 +675,7 @@ proc renderAdminSection(buf: var CellBuffer, area: Rect,
   ## Render the Admin section (only shown if user has Admin privileges)
   let headerStyle = modalBgStyle()
   let cursorStyle = CellStyle(
-    fg: color(Ansi256Color(110)),
+    fg: color(CursorColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -730,7 +730,7 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
     attrs: {}
   )
   let cursorStyle = CellStyle(
-    fg: color(Ansi256Color(110)),
+    fg: color(CursorColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -738,7 +738,7 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
   # Connection status indicator and color (using ASCII text for visibility)
   let (statusText, statusColor) = case nostrStatus
     of "connected": ("[OK]", color(PositiveColor))
-    of "connecting": ("[...]", color(Ansi256Color(220)))  # Yellow
+    of "connecting": ("[...]", color(WarningColor))
     of "error": ("[ERR]", color(AlertColor))
     else: ("[--]", color(DisabledColor))  # idle/unknown
   
@@ -842,7 +842,7 @@ proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
     attrs: {StyleAttr.Bold}
   )
   let cursorStyle = CellStyle(
-    fg: color(Ansi256Color(110)),
+    fg: color(CursorColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -853,7 +853,7 @@ proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   )
   let buttonStyle = modalBgStyle()
   let selectedButtonStyle = CellStyle(
-    fg: color(Ansi256Color(0)),  # Black text
+    fg: color(SelectedFgColor),
     bg: color(PositiveColor),    # Green background
     attrs: {StyleAttr.Bold}
   )

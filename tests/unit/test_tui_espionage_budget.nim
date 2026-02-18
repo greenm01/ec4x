@@ -84,3 +84,15 @@ suite "TUI Espionage Budget":
     gameActionAcceptor(model, actionEspionageClearBudget())
     check model.ui.stagedEbpInvestment == 0
     check model.ui.stagedEspionageActions.len == 0
+
+  test "up down in budget do not toggle EBP/CIP":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Espionage
+    model.ui.espionageFocus = EspionageFocus.Budget
+    model.ui.espionageBudgetChannel = EspionageBudgetChannel.Ebp
+
+    gameActionAcceptor(model, actionListDown())
+    check model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp
+
+    gameActionAcceptor(model, actionListUp())
+    check model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp

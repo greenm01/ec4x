@@ -766,8 +766,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Espionage:
       case model.ui.espionageFocus
       of EspionageFocus.Budget:
-        if model.ui.espionageBudgetChannel == EspionageBudgetChannel.Cip:
-          model.ui.espionageBudgetChannel = EspionageBudgetChannel.Ebp
+        discard
       of EspionageFocus.Targets:
         let targets = model.espionageTargetHouses()
         if model.ui.espionageTargetIdx > 0 and targets.len > 0:
@@ -878,8 +877,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Espionage:
       case model.ui.espionageFocus
       of EspionageFocus.Budget:
-        if model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp:
-          model.ui.espionageBudgetChannel = EspionageBudgetChannel.Cip
+        discard
       of EspionageFocus.Targets:
         let targets = model.espionageTargetHouses()
         let maxIdx = max(0, targets.len - 1)

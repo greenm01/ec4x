@@ -104,7 +104,7 @@ proc priorityStyle*(priority: ActionPriority): CellStyle =
   of ActionPriority.Info:
     canvasDimStyle()
   of ActionPriority.Warning:
-    CellStyle(fg: color(Ansi256Color(208)), attrs: {})  # Orange
+    warningStyle()
   of ActionPriority.Critical:
     alertStyle()
 

@@ -16,7 +16,7 @@ export core, style, buffer
 const
   HudBgColor* = RgbColor(r: 26, g: 27, b: 38)   ## #1a1b26
   HudFgColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
-  HudBorderColor* = RgbColor(r: 65, g: 72, b: 104) ## #414868
+  HudBorderColor* = RgbColor(r: 41, g: 46, b: 66) ## #292e42
 
 # Main Canvas Colors
 const
@@ -30,7 +30,12 @@ const
 # Status Colors
 const
   AlertColor* = RgbColor(r: 247, g: 118, b: 142)    ## #f7768e
-  SelectedBgColor* = RgbColor(r: 122, g: 162, b: 247) ## #7aa2f7
+  WarningColor* = RgbColor(r: 255, g: 158, b: 100)  ## #ff9e64
+  InfoColor* = RgbColor(r: 134, g: 225, b: 252)     ## #86e1fc
+  AccentColor* = RgbColor(r: 192, g: 153, b: 255)   ## #c099ff
+  KeyHintColor* = RgbColor(r: 125, g: 207, b: 255)  ## #7dcfff
+  CursorColor* = RgbColor(r: 130, g: 170, b: 255)   ## #82aaff
+  SelectedBgColor* = RgbColor(r: 130, g: 170, b: 255) ## #82aaff
   SelectedFgColor* = RgbColor(r: 26, g: 27, b: 38)  ## #1a1b26
   DisabledColor* = RgbColor(r: 86, g: 95, b: 137)   ## #565f89
 
@@ -44,7 +49,7 @@ const
 const
   PrestigeColor* = RgbColor(r: 224, g: 175, b: 104) ## #e0af68
   TreasuryColor* = RgbColor(r: 224, g: 175, b: 104) ## #e0af68
-  ProductionColor* = RgbColor(r: 125, g: 207, b: 255) ## #7dcfff
+  ProductionColor* = RgbColor(r: 134, g: 225, b: 252) ## #86e1fc
 
 # Diplomatic Status Colors
 const
@@ -57,8 +62,13 @@ const
 const
   DockBgColor* = RgbColor(r: 26, g: 27, b: 38)   ## #1a1b26
   DockFgColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
-  DockKeyColor* = RgbColor(r: 125, g: 207, b: 255) ## #7dcfff
+  DockKeyColor* = KeyHintColor
   DockSeparatorColor* = RgbColor(r: 65, g: 72, b: 104) ## #414868
+
+# Status Bar Colors
+const
+  StatusBarBgColor* = RgbColor(r: 36, g: 40, b: 59) ## #24283b
+  StatusBarAltBgColor* = RgbColor(r: 41, g: 46, b: 66) ## #292e42
 
 # Breadcrumb Colors
 const
@@ -189,6 +199,34 @@ proc alertStyle*(): CellStyle =
     attrs: {StyleAttr.Bold}
   )
 
+proc warningStyle*(): CellStyle =
+  ## Non-critical warning style
+  CellStyle(
+    fg: color(WarningColor),
+    attrs: {}
+  )
+
+proc infoStyle*(): CellStyle =
+  ## Informational style
+  CellStyle(
+    fg: color(InfoColor),
+    attrs: {}
+  )
+
+proc keyHintStyle*(): CellStyle =
+  ## Key hint / hotkey accent style
+  CellStyle(
+    fg: color(KeyHintColor),
+    attrs: {StyleAttr.Bold}
+  )
+
+proc cursorStyle*(): CellStyle =
+  ## Cursor/focus marker style
+  CellStyle(
+    fg: color(CursorColor),
+    attrs: {}
+  )
+
 proc positiveStyle*(): CellStyle =
   ## Positive delta style (green)
   CellStyle(
@@ -272,6 +310,20 @@ proc primaryBorderStyle*(): CellStyle =
   CellStyle(
     fg: color(HudBorderColor),
     attrs: {}
+  )
+
+proc focusBorderStyle*(): CellStyle =
+  ## Focused panel border (yellow)
+  CellStyle(
+    fg: color(PrestigeColor),
+    attrs: {StyleAttr.Bold}
+  )
+
+proc accentBorderStyle*(): CellStyle =
+  ## Secondary focus border (purple)
+  CellStyle(
+    fg: color(AccentColor),
+    attrs: {StyleAttr.Bold}
   )
 
 proc dialogBorderStyle*(): CellStyle =
