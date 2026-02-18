@@ -76,8 +76,9 @@ proc renderRecentEvents(area: Rect, buf: var CellBuffer,
   # Draw frame
   let frame = bordered()
     .title("RECENT EVENTS")
+    .titleStyle(panelTitleStyle())
     .borderType(BorderType.Plain)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(innerBorderStyle())
   frame.render(area, buf)
   
   let inner = frame.inner(area)
@@ -202,9 +203,10 @@ proc renderOverviewModal*(canvas: Rect, buf: var CellBuffer,
 
   let modal = newModal()
     .title("STRATEGIC OVERVIEW")
+    .titleStyle(modalTitleStyle())
     .maxWidth(120)
     .minWidth(80)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
 
   # Overview has a relatively fixed layout height

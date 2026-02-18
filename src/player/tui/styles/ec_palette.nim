@@ -16,7 +16,9 @@ export core, style, buffer
 const
   HudBgColor* = RgbColor(r: 26, g: 27, b: 38)   ## #1a1b26
   HudFgColor* = RgbColor(r: 192, g: 202, b: 245) ## #c0caf5
-  HudBorderColor* = RgbColor(r: 41, g: 46, b: 66) ## #292e42
+  PrimaryBorderColor* = RgbColor(r: 31, g: 59, b: 138) ## #1f3b8a
+  HudBorderColor* = RgbColor(r: 65, g: 72, b: 104) ## #414868
+  OuterBorderColor* = PrimaryBorderColor
 
 # Main Canvas Colors
 const
@@ -26,6 +28,13 @@ const
   CanvasFogColor* = RgbColor(r: 65, g: 72, b: 104)  ## #414868
   TrueBlackColor* = RgbColor(r: 22, g: 22, b: 30)   ## #16161e
   ModalDimBgColor* = RgbColor(r: 10, g: 10, b: 14)   ## #0a0a0e
+  SecondaryBorderColor* = CanvasDimColor
+  TableBorderColor* = RgbColor(r: 115, g: 122, b: 162) ## #737aa2
+  InnerBorderColor* = SecondaryBorderColor
+  PanelTitleColor* = CanvasFgColor
+  ModalTitleColor* = CanvasFgColor
+  TableGridColor* = TableBorderColor
+  TableHeaderColor* = CanvasFgColor
 
 # Status Colors
 const
@@ -155,7 +164,7 @@ proc modalDimStyle*(): CellStyle =
 proc modalBorderStyle*(): CellStyle =
   ## Modal border style (darker bg)
   CellStyle(
-    fg: color(HudBorderColor),
+    fg: color(SecondaryBorderColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -180,6 +189,28 @@ proc canvasHeaderStyle*(): CellStyle =
   ## Canvas section header style
   CellStyle(
     fg: color(SelectedBgColor),
+    bg: color(CanvasBgColor),
+    attrs: {StyleAttr.Bold}
+  )
+
+proc panelTitleStyle*(): CellStyle =
+  ## Default title style for framed in-view panels.
+  CellStyle(
+    fg: color(PanelTitleColor),
+    attrs: {StyleAttr.Bold}
+  )
+
+proc modalTitleStyle*(): CellStyle =
+  ## Default title style for modal headers.
+  CellStyle(
+    fg: color(ModalTitleColor),
+    attrs: {StyleAttr.Bold}
+  )
+
+proc tableHeaderStyle*(): CellStyle =
+  ## Default table header foreground/background role.
+  CellStyle(
+    fg: color(TableHeaderColor),
     bg: color(CanvasBgColor),
     attrs: {StyleAttr.Bold}
   )
@@ -305,10 +336,17 @@ proc hudBorderStyle*(): CellStyle =
     attrs: {}
   )
 
-proc primaryBorderStyle*(): CellStyle =
-  ## Primary panel border (double-line)
+proc outerBorderStyle*(): CellStyle =
+  ## Outer container border style.
   CellStyle(
-    fg: color(HudBorderColor),
+    fg: color(OuterBorderColor),
+    attrs: {}
+  )
+
+proc innerBorderStyle*(): CellStyle =
+  ## Inner panel border style.
+  CellStyle(
+    fg: color(InnerBorderColor),
     attrs: {}
   )
 
@@ -329,9 +367,37 @@ proc accentBorderStyle*(): CellStyle =
 proc dialogBorderStyle*(): CellStyle =
   ## Dialog/overlay border (single-line)
   CellStyle(
-    fg: color(CanvasDimColor),
+    fg: color(SecondaryBorderColor),
     attrs: {}
   )
+
+proc tableGridStyle*(): CellStyle =
+  ## Table separator and grid border style.
+  CellStyle(
+    fg: color(TableGridColor),
+    attrs: {}
+  )
+
+proc panelBorderStyle*(focused: bool): CellStyle =
+  ## Border style for focusable top-level panels.
+  if focused:
+    focusBorderStyle()
+  else:
+    outerBorderStyle()
+
+proc nestedPanelBorderStyle*(active: bool): CellStyle =
+  ## Border style for nested controls inside a focused panel.
+  if active:
+    accentBorderStyle()
+  else:
+    modalBorderStyle()
+
+proc modalPanelBorderStyle*(focused: bool): CellStyle =
+  ## Border style for top-level focusable panels inside modals.
+  if focused:
+    focusBorderStyle()
+  else:
+    modalBorderStyle()
 
 # =============================================================================
 # Glyphs (from spec section 3)

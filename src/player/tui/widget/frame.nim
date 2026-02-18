@@ -280,6 +280,15 @@ proc renderTitles(b: Frame, area: Rect, buf: var CellBuffer,
   
   if availableWidth <= 0:
     return
+
+  proc mergeStyle(base: CellStyle, overlay: CellStyle): CellStyle =
+    ## Overlay non-default color channels and merge attributes.
+    result = base
+    if not overlay.fg.isNone:
+      result.fg = overlay.fg
+    if not overlay.bg.isNone:
+      result.bg = overlay.bg
+    result.attrs = result.attrs + overlay.attrs
   
   # Render left-aligned titles
   var x = area.x
@@ -287,8 +296,10 @@ proc renderTitles(b: Frame, area: Rect, buf: var CellBuffer,
     x += 1
   
   for title in leftTitles:
+    let titleStyle = b.titlesStyle.mergeStyle(title.style)
     for span in title.spans:
-      let written = buf.setString(x, y, span.content, span.style)
+      let spanStyle = titleStyle.mergeStyle(span.style)
+      let written = buf.setString(x, y, span.content, spanStyle)
       x += written
       if x >= area.right - (if b.borders.hasRight: 1 else: 0):
         return
@@ -303,6 +314,7 @@ proc renderTitles(b: Frame, area: Rect, buf: var CellBuffer,
     
     for i in countdown(rightTitles.len - 1, 0):
       let title = rightTitles[i]
+      let titleStyle = b.titlesStyle.mergeStyle(title.style)
       # Calculate title width
       var titleWidth = 0
       for span in title.spans:
@@ -315,7 +327,8 @@ proc renderTitles(b: Frame, area: Rect, buf: var CellBuffer,
       # Render spans
       var currentX = x
       for span in title.spans:
-        discard buf.setString(currentX, y, span.content, span.style)
+        let spanStyle = titleStyle.mergeStyle(span.style)
+        discard buf.setString(currentX, y, span.content, spanStyle)
         currentX += span.width()
       
       x -= 1  # Space before next title
@@ -332,8 +345,10 @@ proc renderTitles(b: Frame, area: Rect, buf: var CellBuffer,
     x = area.x + (area.width - totalWidth) div 2
     
     for title in centerTitles:
+      let titleStyle = b.titlesStyle.mergeStyle(title.style)
       for span in title.spans:
-        let written = buf.setString(x, y, span.content, span.style)
+        let spanStyle = titleStyle.mergeStyle(span.style)
+        let written = buf.setString(x, y, span.content, spanStyle)
         x += written
       x += 1  # Space
 

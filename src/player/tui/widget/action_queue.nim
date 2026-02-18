@@ -121,8 +121,9 @@ proc renderActionQueue*(area: Rect, buf: var CellBuffer,
   # Draw frame
   let frame = bordered()
     .title("ACTION QUEUE")
+    .titleStyle(panelTitleStyle())
     .borderType(BorderType.Plain)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(innerBorderStyle())
   frame.render(area, buf)
   
   let inner = frame.inner(area)
@@ -176,8 +177,9 @@ proc renderChecklist*(area: Rect, buf: var CellBuffer,
   # Draw frame
   let frame = bordered()
     .title("CHECKLIST")
+    .titleStyle(panelTitleStyle())
     .borderType(BorderType.Plain)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(innerBorderStyle())
   frame.render(area, buf)
   
   let inner = frame.inner(area)

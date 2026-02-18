@@ -90,8 +90,9 @@ proc renderEmpireStatus*(area: Rect, buf: var CellBuffer,
   # Draw frame
   let frame = bordered()
     .title("EMPIRE STATUS")
+    .titleStyle(panelTitleStyle())
     .borderType(BorderType.Plain)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(innerBorderStyle())
   frame.render(area, buf)
   
   let inner = frame.inner(area)

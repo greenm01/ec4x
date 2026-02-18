@@ -36,8 +36,8 @@ proc newModal*(): Modal =
   ## Create a new modal with default styling.
   Modal(
     title: none(string),
-    titleStyle: canvasHeaderStyle(),
-    borderStyle: modalBorderStyle(),
+    titleStyle: modalTitleStyle(),
+    borderStyle: outerBorderStyle(),
     bgStyle: modalBgStyle(),
     borderType: BorderType.Double,
     maxWidth: 72,

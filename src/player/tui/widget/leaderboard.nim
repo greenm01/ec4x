@@ -147,8 +147,9 @@ proc renderLeaderboard*(area: Rect, buf: var CellBuffer,
   # Draw frame
   let frame = bordered()
     .title("LEADERBOARD")
+    .titleStyle(panelTitleStyle())
     .borderType(BorderType.Plain)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(innerBorderStyle())
   frame.render(area, buf)
   
   let inner = frame.inner(area)

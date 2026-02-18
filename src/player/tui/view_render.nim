@@ -110,7 +110,7 @@ proc renderHelpOverlay(area: Rect, buf: var CellBuffer, model: TuiModel) =
     .minWidth(width)
     .minHeight(height)
     .showBackdrop(true)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
@@ -1118,7 +1118,8 @@ proc buildColonyStatusChips(data: PlanetDetailData): string =
 proc renderPlanetUnifiedView*(
   area: Rect,
   buf: var CellBuffer,
-  data: PlanetDetailData
+  data: PlanetDetailData,
+  sectionBorder: CellStyle = innerBorderStyle()
 ) =
   if area.isEmpty:
     return
@@ -1165,7 +1166,7 @@ proc renderPlanetUnifiedView*(
     let surfaceFrame = bordered()
       .title("SURFACE ASSETS")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(sectionBorder)
     surfaceFrame.render(left, buf)
     let surfaceInner = surfaceFrame.inner(left)
 
@@ -1196,7 +1197,7 @@ proc renderPlanetUnifiedView*(
     let orbitalFrame = bordered()
       .title("FACILITIES")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(sectionBorder)
     orbitalFrame.render(right, buf)
     let orbitalInner = orbitalFrame.inner(right)
 
@@ -1232,7 +1233,7 @@ proc renderPlanetUnifiedView*(
     let surfaceFrame = bordered()
       .title("SURFACE ASSETS")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(sectionBorder)
     surfaceFrame.render(topPanel, buf)
     let surfaceInner = surfaceFrame.inner(topPanel)
 
@@ -1263,7 +1264,7 @@ proc renderPlanetUnifiedView*(
     let orbitalFrame = bordered()
       .title("FACILITIES")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(sectionBorder)
     orbitalFrame.render(bottomPanel, buf)
     let orbitalInner = orbitalFrame.inner(bottomPanel)
 
@@ -1356,7 +1357,7 @@ proc renderPlanetDetailFromPS*(
   if area.isEmpty:
     return
 
-  renderPlanetUnifiedView(area, buf, planetData)
+  renderPlanetUnifiedView(area, buf, planetData, modalBorderStyle())
 
 # renderFleetDetailFromPS removed - see deprecated section above
 
@@ -1395,7 +1396,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
     .maxWidth(tableWidth + 2)
     .minWidth(min(80, tableWidth + 2))
     .minHeight(1)  # Don't force extra height
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   
   # Use content-aware sizing: +2 for footer separator + text
@@ -1438,7 +1439,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
       .maxWidth(tableWidth + 2)
       .minWidth(min(90, tableWidth + 2))
       .minHeight(1)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(outerBorderStyle())
       .bgStyle(modalBgStyle())
     let modalArea = modal.calculateArea(canvas, tableWidth,
       tableHeight + 2)
@@ -1492,7 +1493,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
       .maxWidth(contentWidth + 2)
       .minWidth(min(90, contentWidth + 2))
       .minHeight(1)  # Don't force extra height
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(outerBorderStyle())
       .bgStyle(modalBgStyle())
     
     # Use content-aware sizing
@@ -1510,7 +1511,7 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     .title("RESEARCH & DEVELOPMENT")
     .maxWidth(128)
     .minWidth(90)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   # +2 for footer (1 separator + 1 text line)
   let maxLevelCap = max(@[
@@ -1627,7 +1628,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let treasuryArea = rows[0]
   let treasuryFrame = bordered()
     .borderType(BorderType.Plain)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(modalBorderStyle())
     .padding(padding(1, 0))
   treasuryFrame.render(treasuryArea, buf)
   let treasuryInner = treasuryFrame.inner(treasuryArea)
@@ -1651,7 +1652,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let listFrame = bordered()
     .title("RESEARCH PROJECTS")
     .borderType(BorderType.Rounded)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(modalBorderStyle())
     .padding(1)
   listFrame.render(listArea, buf)
   let listInner = listFrame.inner(listArea)
@@ -1720,7 +1721,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let detailFrame = bordered()
     .title(detailTitle)
     .borderType(BorderType.Rounded)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(modalBorderStyle())
     .padding(1)
   detailFrame.render(detailArea, buf)
   let detailInner = detailFrame.inner(detailArea)
@@ -1932,7 +1933,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     .title("INTEL OPERATIONS")
     .maxWidth(112)
     .minWidth(64)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let modalArea = modal.calculateArea(
     canvas,
@@ -1957,13 +1958,8 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let targetsArea = bodyCols[0]
   let opsArea = bodyCols[1]
 
-  let budgetBorderStyle =
-    if model.ui.espionageFocus == EspionageFocus.Budget:
-      focusBorderStyle()
-    else:
-      primaryBorderStyle()
   bordered().title("BUDGET ALLOCATION").borderStyle(
-    budgetBorderStyle
+    modalPanelBorderStyle(model.ui.espionageFocus == EspionageFocus.Budget)
   ).render(budgetArea, buf)
   let bInner = bordered().inner(budgetArea)
   if bInner.isEmpty:
@@ -1978,10 +1974,10 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let cipActive = model.ui.espionageFocus == EspionageFocus.Budget and
     model.ui.espionageBudgetChannel == EspionageBudgetChannel.Cip
   bordered().title("EBP (OFFENSE)").borderStyle(
-    if ebpActive: accentBorderStyle() else: modalBorderStyle()
+    nestedPanelBorderStyle(ebpActive)
   ).render(ebpArea, buf)
   bordered().title("CIP (DEFENSE)").borderStyle(
-    if cipActive: accentBorderStyle() else: modalBorderStyle()
+    nestedPanelBorderStyle(cipActive)
   ).render(cipArea, buf)
   let ebpInner = bordered().inner(ebpArea)
   let cipInner = bordered().inner(cipArea)
@@ -2052,14 +2048,11 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     dimStyle()
   )
 
-  let targetsBorderStyle =
-    if model.ui.espionageFocus == EspionageFocus.Targets:
-      focusBorderStyle()
-    else:
-      primaryBorderStyle()
   bordered().title("TARGETS").titleStyle(
     panelTitleStyle(EspionageFocus.Targets)
-  ).borderStyle(targetsBorderStyle).render(targetsArea, buf)
+  ).borderStyle(
+    modalPanelBorderStyle(model.ui.espionageFocus == EspionageFocus.Targets)
+  ).render(targetsArea, buf)
   let tInner = bordered().inner(targetsArea)
   if targets.len == 0:
     drawTextLine(
@@ -2075,14 +2068,11 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
         rowStyle)
 
   let opsTitle = "OPERATIONS (vs " & selectedTargetName & ")"
-  let opsBorderStyle =
-    if model.ui.espionageFocus == EspionageFocus.Operations:
-      focusBorderStyle()
-    else:
-      primaryBorderStyle()
   bordered().title(opsTitle).titleStyle(
     panelTitleStyle(EspionageFocus.Operations)
-  ).borderStyle(opsBorderStyle).render(opsArea, buf)
+  ).borderStyle(
+    modalPanelBorderStyle(model.ui.espionageFocus == EspionageFocus.Operations)
+  ).render(opsArea, buf)
   let oInner = bordered().inner(opsArea)
   let targetId = if targets.len > 0:
     HouseId(targets[targetIdx].id.uint32)
@@ -2124,7 +2114,7 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
     .title("GENERAL POLICY")
     .maxWidth(120)
     .minWidth(80)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = 12 + 2
@@ -2142,7 +2132,7 @@ proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
     .title("GAME SETTINGS")
     .maxWidth(120)
     .minWidth(80)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   # +2 for footer (1 separator + 1 text line)
   let contentHeight = 10 + 2
@@ -2398,7 +2388,7 @@ proc renderInboxModal*(canvas: Rect,
     .title("INBOX")
     .maxWidth(120)
     .minWidth(80)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let contentHeight = max(16,
     min(canvas.height - 6, 28)) + 2
@@ -2420,11 +2410,9 @@ proc renderInboxModal*(canvas: Rect,
   let detailArea = columns[1]
 
   # Left panel frame - highlight when focused
-  let listBorder =
-    if model.ui.inboxFocus == InboxPaneFocus.List:
-      primaryBorderStyle()
-    else:
-      modalBorderStyle()
+  let listBorder = modalPanelBorderStyle(
+    model.ui.inboxFocus == InboxPaneFocus.List
+  )
   let listFrame = bordered()
     .title("INBOX")
     .borderType(BorderType.Rounded)
@@ -2442,9 +2430,7 @@ proc renderInboxModal*(canvas: Rect,
   let detailFocused =
     model.ui.inboxFocus == InboxPaneFocus.Detail or
     model.ui.inboxFocus == InboxPaneFocus.Compose
-  let detailBorder =
-    if detailFocused: primaryBorderStyle()
-    else: modalBorderStyle()
+  let detailBorder = modalPanelBorderStyle(detailFocused)
   let detailFrame = bordered()
     .title(detailTitle)
     .borderType(BorderType.Rounded)
@@ -2477,7 +2463,7 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
     .title(title)
     .maxWidth(120)
     .minWidth(100)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let headerLines = 3
   let panelContentLines = 3
@@ -2550,7 +2536,7 @@ proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
     .maxWidth(tableWidth + 2)
     .minWidth(min(80, tableWidth + 2))
     .minHeight(1)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let modalArea = modal.calculateArea(canvas, tableWidth,
     tableHeight + 2)
@@ -2713,7 +2699,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     .title(title)
     .maxWidth(contentWidth + 2)
     .minWidth(max(40, contentWidth + 2))
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
   let footerText =
@@ -2754,7 +2740,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let colonyFrame = bordered()
       .title("SURFACE ASSETS")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(modalBorderStyle())
     colonyFrame.render(leftPanel, buf)
     let colonyInner = colonyFrame.inner(leftPanel)
     var cy = colonyInner.y
@@ -2818,7 +2804,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let orbitalFrame = bordered()
       .title("FACILITIES")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(modalBorderStyle())
     orbitalFrame.render(rightPanel, buf)
     let orbitalInner = orbitalFrame.inner(rightPanel)
     var oy = orbitalInner.y
@@ -2893,7 +2879,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let fleetsFrame = bordered()
       .title("FLEETS")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(modalBorderStyle())
     let fleetsArea = rect(
       contentArea.x,
       y,
@@ -2924,7 +2910,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let jumpFrame = bordered()
       .title("JUMP LANES")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(modalBorderStyle())
     let jumpArea = rect(contentArea.x, y,
       contentArea.width,
       min(jumpBoxHeight, contentArea.bottom - y))
@@ -2939,7 +2925,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     let notesFrame = bordered()
       .title("NOTES")
       .borderType(BorderType.Rounded)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(modalBorderStyle())
     let notesArea = rect(contentArea.x, y,
       contentArea.width,
       min(notesBoxHeight, contentArea.bottom - y))
@@ -3092,7 +3078,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       .maxWidth(contentWidth + 2)
       .minWidth(max(32, contentWidth + 2))
       .showBackdrop(true)
-      .borderStyle(primaryBorderStyle())
+      .borderStyle(outerBorderStyle())
       .bgStyle(modalBgStyle())
     let detailArea = detailModal.calculateArea(canvas, contentWidth,
       bodyHeight + 2)
@@ -3137,7 +3123,7 @@ proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
     .maxWidth(100)
     .minWidth(70)
     .showBackdrop(true)
-    .borderStyle(primaryBorderStyle())
+    .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let modalHeight = min(max(12, canvas.height - 6), canvas.height - 2)
   let modalArea = modal.calculateArea(canvas, modalHeight)
