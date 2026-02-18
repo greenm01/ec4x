@@ -33,6 +33,7 @@ proc newQueueModalWidget*(): QueueModalWidget =
       .maxWidth(80)
       .minWidth(60)
       .minHeight(10)
+      .showBackdrop(true)
   )
 
 proc humanizeEnum(name: string): string =

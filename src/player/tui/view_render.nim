@@ -109,6 +109,7 @@ proc renderHelpOverlay(area: Rect, buf: var CellBuffer, model: TuiModel) =
     .maxWidth(width)
     .minWidth(width)
     .minHeight(height)
+    .showBackdrop(true)
     .borderStyle(primaryBorderStyle())
     .bgStyle(modalBgStyle())
   modal.renderWithFooter(modalArea, buf, footerText)
@@ -3090,12 +3091,11 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       .title("FLEET INTEL")
       .maxWidth(contentWidth + 2)
       .minWidth(max(32, contentWidth + 2))
+      .showBackdrop(true)
       .borderStyle(primaryBorderStyle())
       .bgStyle(modalBgStyle())
     let detailArea = detailModal.calculateArea(canvas, contentWidth,
       bodyHeight + 2)
-    let dimArea = rect(detailArea.x - 1, detailArea.y - 1, detailArea.width + 2, detailArea.height + 2)
-    buf.fillArea(dimArea, " ", modalDimOverlayStyle())
     detailModal.renderWithFooter(detailArea, buf, "[Esc]Close")
     let detailInner = detailModal.contentArea(detailArea, hasFooter = true)
     var dy = detailInner.y
@@ -3136,6 +3136,7 @@ proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
     .title("EDIT INTEL NOTE")
     .maxWidth(100)
     .minWidth(70)
+    .showBackdrop(true)
     .borderStyle(primaryBorderStyle())
     .bgStyle(modalBgStyle())
   let modalHeight = min(max(12, canvas.height - 6), canvas.height - 2)
@@ -3482,7 +3483,9 @@ proc renderDashboard*(
     of ViewMode.PlanetDetail:
       renderPlanetDetailModal(canvasArea, buf, model, playerState)
     of ViewMode.FleetDetail:
-      # Render fleet detail as full-screen view
+      # Render fleet detail as stacked overlay over fleets context
+      renderFleetsModal(canvasArea, buf, model, playerState,
+        model.ui.fleetsScroll)
       let fleetDetailWidget = newFleetDetailModalWidget()
       var fleetData = fleetToDetailDataFromPS(
         playerState, FleetId(model.ui.fleetDetailModal.fleetId)

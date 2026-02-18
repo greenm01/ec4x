@@ -28,6 +28,9 @@ type
     maxWidth: int
     minWidth: int
     minHeight: int
+    showBackdrop: bool
+    backdropStyle: CellStyle
+    backdropMargin: int
 
 proc newModal*(): Modal =
   ## Create a new modal with default styling.
@@ -39,7 +42,10 @@ proc newModal*(): Modal =
     borderType: BorderType.Double,
     maxWidth: 72,
     minWidth: 40,
-    minHeight: 10
+    minHeight: 10,
+    showBackdrop: false,
+    backdropStyle: modalDimOverlayStyle(),
+    backdropMargin: 1
   )
 
 # Builder methods (fluent API)
@@ -80,6 +86,21 @@ proc bgStyle*(m: Modal, s: CellStyle): Modal =
   ## Set the background style.
   result = m
   result.bgStyle = s
+
+proc showBackdrop*(m: Modal, enabled: bool): Modal =
+  ## Enable/disable dimmed backdrop behind modal.
+  result = m
+  result.showBackdrop = enabled
+
+proc backdropStyle*(m: Modal, s: CellStyle): Modal =
+  ## Set backdrop style.
+  result = m
+  result.backdropStyle = s
+
+proc backdropMargin*(m: Modal, margin: int): Modal =
+  ## Set backdrop margin around modal bounds.
+  result = m
+  result.backdropMargin = max(0, margin)
 
 proc maxWidth*(m: Modal, w: int): Modal =
   ## Set maximum width.
@@ -145,12 +166,24 @@ proc inner*(m: Modal, modalArea: Rect): Rect =
     modalArea.height - 2
   )
 
+proc renderBackdrop(m: Modal, area: Rect, buf: var CellBuffer) =
+  ## Render dim backdrop around modal bounds.
+  if not m.showBackdrop:
+    return
+  let expanded = area.inflate(m.backdropMargin, m.backdropMargin)
+  let clipped = expanded.clampTo(rect(0, 0, buf.w, buf.h))
+  if clipped.isEmpty:
+    return
+  buf.fillArea(clipped, " ", m.backdropStyle)
+
 proc render*(m: Modal, area: Rect, buf: var CellBuffer) =
   ## Render the modal frame (border and background).
   ## Content should be rendered separately in the inner area.
   
   if area.isEmpty:
     return
+
+  m.renderBackdrop(area, buf)
   
   # Fill background
   for pos in area.positions:

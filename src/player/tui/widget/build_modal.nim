@@ -30,6 +30,7 @@ proc newBuildModalWidget*(): BuildModalWidget =
       .maxWidth(96)
       .minWidth(44)
       .minHeight(10)
+      .showBackdrop(true)
   )
 
 proc columnsForCategory(category: BuildCategory): seq[TableColumn] =

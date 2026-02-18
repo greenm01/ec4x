@@ -3,6 +3,9 @@
 import std/[unittest, os, strutils]
 
 import ../../src/player/tui/styles/ec_palette
+import ../../src/player/tui/widget/modal
+import ../../src/player/tui/layout/rect
+import ../../src/player/tui/buffer
 
 suite "TUI Palette":
   test "core Tokyo Night Night tokens are canonical":
@@ -27,3 +30,15 @@ suite "TUI Palette":
       check not content.contains("Ansi256Color(")
       check not content.contains("colorAnsi(")
       check not content.contains("RgbColor(r:")
+
+  test "modal backdrop fills surrounding area when enabled":
+    var buf = initBuffer(24, 12)
+    buf.fillArea(rect(0, 0, 24, 12), " ", canvasStyle())
+    let m = newModal()
+      .showBackdrop(true)
+      .backdropMargin(1)
+      .bgStyle(modalBgStyle())
+    let area = rect(8, 4, 8, 4)
+    m.render(area, buf)
+    let outside = buf.get(7, 3)
+    check outside.style.bg == color(ModalDimBgColor)

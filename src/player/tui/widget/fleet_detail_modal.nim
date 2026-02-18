@@ -25,6 +25,7 @@ proc newFleetDetailModalWidget*(): FleetDetailModalWidget =
       .maxWidth(90)
       .minWidth(70)
       .minHeight(25)
+      .showBackdrop(true)
   )
 
 proc commandCategoryLabel*(category: CommandCategory): string =
