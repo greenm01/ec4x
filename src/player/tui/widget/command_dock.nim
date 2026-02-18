@@ -186,7 +186,6 @@ proc espionageContextActions*(hasSelection: bool): seq[ContextAction] =
     ContextAction(key: "↑↓", label: "Navigate", enabled: true),
     ContextAction(key: "+/-", label: "Adjust", enabled: true),
     ContextAction(key: "Enter", label: "Add", enabled: hasSelection),
-    ContextAction(key: "Q", label: "Queue", enabled: true),
     ContextAction(key: "B/C", label: "EBP/CIP", enabled: true),
   ]
 

@@ -421,28 +421,28 @@ suite "Key Mapping":
   
   test "map Q key to quit":
     let model = initTuiModel()
-    let result = mapKeyToAction(KeyCode.KeyQ, model)
+    let result = mapKeyToAction(KeyCode.KeyQ, KeyModifier.None, model)
     check result.isSome
     check result.get.kind == pkQuit
   
   test "map mode switch keys":
     var model = initTuiModel()
     
-    var result = mapKeyToAction(KeyCode.KeyC, model)
+    var result = mapKeyToAction(KeyCode.KeyC, KeyModifier.None, model)
     check result.isSome
     check result.get.navMode == ord(ViewMode.Planets)
     
-    result = mapKeyToAction(KeyCode.KeyF, model)
+    result = mapKeyToAction(KeyCode.KeyF, KeyModifier.None, model)
     check result.get.navMode == ord(ViewMode.Fleets)
     
-    result = mapKeyToAction(KeyCode.KeyM, model)
+    result = mapKeyToAction(KeyCode.KeyM, KeyModifier.None, model)
     check result.get.navMode == ord(ViewMode.Overview)
   
   test "map arrow keys in map mode":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Overview
     
-    let result = mapKeyToAction(KeyCode.KeyRight, model)
+    let result = mapKeyToAction(KeyCode.KeyRight, KeyModifier.None, model)
     check result.isSome
     check result.get.actionKind == ActionKind.moveCursor
   
@@ -450,11 +450,11 @@ suite "Key Mapping":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets
     
-    let upResult = mapKeyToAction(KeyCode.KeyUp, model)
+    let upResult = mapKeyToAction(KeyCode.KeyUp, KeyModifier.None, model)
     check upResult.isSome
     check upResult.get.actionKind == ActionKind.listUp
     
-    let downResult = mapKeyToAction(KeyCode.KeyDown, model)
+    let downResult = mapKeyToAction(KeyCode.KeyDown, KeyModifier.None, model)
     check downResult.isSome
     check downResult.get.actionKind == ActionKind.listDown
 

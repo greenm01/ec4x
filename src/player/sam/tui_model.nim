@@ -246,11 +246,6 @@ type
     stagedBuildCommands*: seq[BuildCommand]
     scroll*: ScrollState
 
-  EspionageQueueModalState* = object
-    active*: bool
-    selectedIdx*: int
-    scroll*: ScrollState
-
   FleetConsoleSystem* = object
     ## System with fleets for fleet console (cached from PlayerState)
     systemId*: int
@@ -1000,7 +995,6 @@ type
     buildModal*: BuildModalState
     # Queue modal state
     queueModal*: QueueModalState
-    espionageQueueModal*: EspionageQueueModalState
 
     # Fleet detail modal state
     fleetDetailModal*: FleetDetailModalState
@@ -1321,11 +1315,6 @@ proc initTuiUiState*(): TuiUiState =
       colonyName: "",
       selectedIdx: 0,
       stagedBuildCommands: @[],
-      scroll: initScrollState()
-    ),
-    espionageQueueModal: EspionageQueueModalState(
-      active: false,
-      selectedIdx: 0,
       scroll: initScrollState()
     ),
     fleetDetailModal: FleetDetailModalState(

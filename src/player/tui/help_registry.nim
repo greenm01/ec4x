@@ -159,10 +159,11 @@ proc helpLines*(ctx: HelpContext): seq[string] =
   if ctx == HelpContext.Espionage:
     result.add("Tab = cycle focus")
     result.add("B/C = select EBP/CIP")
-    result.add("Pool=current points, Invest=this turn, Total=Pool+Invest")
+    result.add(
+      "EBP Total = remaining after queued ops; CIP Total = Pool+Invest"
+    )
     result.add("Left/Right or +/- = adjust budget")
     result.add("Enter = add selected operation")
-    result.add("Q = open planned-operations queue")
   if ctx == HelpContext.Messages:
     result.add("Tab = cycle focus")
     result.add("M = jump to Messages")

@@ -203,6 +203,21 @@ proc espionageBudgetCostPp(model: TuiModel): int =
   int(model.ui.stagedEbpInvestment) * ebpCost +
     int(model.ui.stagedCipInvestment) * cipCost
 
+proc reconcileEspionageQueueToAvailableEbp(
+    model: var TuiModel
+): int =
+  ## Ensure queued espionage actions fit within available EBP.
+  ## Drops newest queued actions first until valid.
+  while model.ui.stagedEspionageActions.len > 0 and
+      model.espionageQueuedTotalEbp() > model.espionageEbpTotal():
+    model.ui.stagedEspionageActions.delete(
+      model.ui.stagedEspionageActions.len - 1
+    )
+    result.inc
+
+  if result > 0:
+    model.ui.turnSubmissionConfirmed = false
+
 proc adjustEspionageBudget(
     model: var TuiModel,
     delta: int
@@ -215,10 +230,12 @@ proc adjustEspionageBudget(
   let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
   var currentPoints = 0
   var pointCost = 0
+  var adjustEbp = false
   case model.ui.espionageBudgetChannel
   of EspionageBudgetChannel.Ebp:
     currentPoints = int(model.ui.stagedEbpInvestment)
     pointCost = ebpCostPp
+    adjustEbp = true
   of EspionageBudgetChannel.Cip:
     currentPoints = int(model.ui.stagedCipInvestment)
     pointCost = cipCostPp
@@ -240,6 +257,11 @@ proc adjustEspionageBudget(
     model.ui.stagedEbpInvestment = int32(nextPoints)
   of EspionageBudgetChannel.Cip:
     model.ui.stagedCipInvestment = int32(nextPoints)
+  if adjustEbp and delta < 0:
+    let removed = model.reconcileEspionageQueueToAvailableEbp()
+    if removed > 0:
+      model.ui.statusMessage = "Reduced EBP; removed " & $removed &
+        " queued operation(s)"
   model.ui.turnSubmissionConfirmed = false
 
 proc stageSelectedEspionageOperation(model: var TuiModel): bool =
@@ -1108,61 +1130,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedEspionageActions.len - 1
         )
         model.ui.turnSubmissionConfirmed = false
-    of ActionKind.espionageQueueModalOpen:
-      if model.ui.mode == ViewMode.Espionage:
-        model.ui.espionageQueueModal.active = true
-        model.ui.espionageQueueModal.selectedIdx = clamp(
-          model.ui.espionageQueueModal.selectedIdx,
-          0,
-          max(0, model.ui.stagedEspionageActions.len - 1)
-        )
-    of ActionKind.espionageQueueModalClose:
-      model.ui.espionageQueueModal.active = false
-    of ActionKind.espionageQueueModalUp:
-      if model.ui.espionageQueueModal.active and
-          model.ui.espionageQueueModal.selectedIdx > 0:
-        model.ui.espionageQueueModal.selectedIdx.dec
-    of ActionKind.espionageQueueModalDown:
-      if model.ui.espionageQueueModal.active:
-        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
-        if model.ui.espionageQueueModal.selectedIdx < maxIdx:
-          model.ui.espionageQueueModal.selectedIdx.inc
-    of ActionKind.espionageQueueModalPageUp:
-      if model.ui.espionageQueueModal.active:
-        let pageSize = max(1, model.ui.termHeight - 12)
-        model.ui.espionageQueueModal.selectedIdx = max(
-          0,
-          model.ui.espionageQueueModal.selectedIdx - pageSize
-        )
-    of ActionKind.espionageQueueModalPageDown:
-      if model.ui.espionageQueueModal.active:
-        let maxIdx = max(0, model.ui.stagedEspionageActions.len - 1)
-        let pageSize = max(1, model.ui.termHeight - 12)
-        model.ui.espionageQueueModal.selectedIdx = min(
-          maxIdx,
-          model.ui.espionageQueueModal.selectedIdx + pageSize
-        )
-    of ActionKind.espionageQueueModalDelete:
-      if model.ui.espionageQueueModal.active and
-          model.ui.stagedEspionageActions.len > 0:
-        let idx = clamp(
-          model.ui.espionageQueueModal.selectedIdx,
-          0,
-          model.ui.stagedEspionageActions.len - 1
-        )
-        model.ui.stagedEspionageActions.delete(idx)
-        if model.ui.stagedEspionageActions.len == 0:
-          model.ui.espionageQueueModal.selectedIdx = 0
-        else:
-          model.ui.espionageQueueModal.selectedIdx = min(
-            model.ui.espionageQueueModal.selectedIdx,
-            model.ui.stagedEspionageActions.len - 1
-          )
-        model.ui.turnSubmissionConfirmed = false
     of ActionKind.espionageClearBudget:
       if model.ui.mode == ViewMode.Espionage:
         model.ui.stagedEbpInvestment = 0
         model.ui.stagedCipInvestment = 0
+        let removed = model.reconcileEspionageQueueToAvailableEbp()
+        if removed > 0:
+          model.ui.statusMessage = "Reduced EBP; removed " & $removed &
+            " queued operation(s)"
         model.ui.turnSubmissionConfirmed = false
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
