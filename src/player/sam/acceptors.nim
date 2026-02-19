@@ -330,6 +330,7 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.systemPickerFilter = ""
   model.ui.fleetDetailModal.systemPickerFilterTime = 0.0
   model.ui.fleetDetailModal.ztcType = none(ZeroTurnCommandType)
+  model.ui.fleetDetailModal.ztcPickerCommands = @[]
   model.ui.fleetDetailModal.ztcTargetFleetId = 0
   model.ui.fleetDetailModal.shipSelectorIdx = 0
   model.ui.fleetDetailModal.shipSelectorShipIds = @[]
@@ -405,13 +406,6 @@ proc openCommandPicker(model: var TuiModel) =
   model.ui.fleetDetailModal.commandDigitTime = 0.0
   model.ui.fleetDetailModal.subModal =
     FleetSubModal.CommandPicker
-
-proc ztcSourceFleetIds(model: TuiModel): seq[int] =
-  if model.ui.selectedFleetIds.len > 0:
-    return model.ui.selectedFleetIds
-  if model.ui.fleetDetailModal.fleetId > 0:
-    return @[model.ui.fleetDetailModal.fleetId]
-  @[]
 
 proc ztcCloseToFleets(model: var TuiModel) =
   resetFleetDetailSubModal(model)
@@ -2140,6 +2134,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.resetBreadcrumbs(ViewMode.FleetDetail)
             model.ui.fleetDetailModal.fleetId = fleetId
             model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
+            model.ui.fleetDetailModal.ztcPickerCommands =
+              model.buildZtcPickerList()
+            if model.ui.fleetDetailModal.ztcPickerCommands.len == 0:
+              model.ui.mode = ViewMode.Fleets
+              model.resetBreadcrumbs(ViewMode.Fleets)
+              model.ui.statusMessage =
+                "No applicable zero-turn commands"
+              return
             model.ui.fleetDetailModal.ztcIdx = 0
             model.ui.fleetDetailModal.ztcDigitBuffer = ""
             model.ui.fleetDetailModal.ztcType = none(ZeroTurnCommandType)
@@ -2149,6 +2151,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.mode = ViewMode.FleetDetail
           model.resetBreadcrumbs(ViewMode.FleetDetail)
           model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
+          model.ui.fleetDetailModal.ztcPickerCommands =
+            model.buildZtcPickerList()
+          if model.ui.fleetDetailModal.ztcPickerCommands.len == 0:
+            model.ui.mode = ViewMode.Fleets
+            model.resetBreadcrumbs(ViewMode.Fleets)
+            model.ui.statusMessage =
+              "No applicable zero-turn commands"
+            return
           model.ui.fleetDetailModal.fleetId = 0
           model.ui.fleetDetailModal.ztcIdx = 0
           model.ui.fleetDetailModal.ztcDigitBuffer = ""
@@ -2769,7 +2779,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.roeValue += 1  # Down increases value (moves toward 10)
         model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
-      let maxZtc = allZeroTurnCommands().len - 1  # 8 (indices 0-8)
+      let maxZtc =
+        model.ui.fleetDetailModal.ztcPickerCommands.len - 1
       if model.ui.fleetDetailModal.ztcIdx < maxZtc:
         model.ui.fleetDetailModal.ztcIdx += 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ShipSelector:
@@ -3026,7 +3037,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.clearFleetSelection()
           model.resetBreadcrumbs(ViewMode.Fleets)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
-      let ztcCommands = allZeroTurnCommands()
+      let ztcCommands = model.ui.fleetDetailModal.ztcPickerCommands
       let idx = model.ui.fleetDetailModal.ztcIdx
       if idx >= 0 and idx < ztcCommands.len:
         let ztcType = ztcCommands[idx]
@@ -3530,6 +3541,11 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.resetBreadcrumbs(ViewMode.Fleets)
   of ActionKind.fleetDetailOpenZTC:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.None:
+      model.ui.fleetDetailModal.ztcPickerCommands =
+        model.buildZtcPickerList()
+      if model.ui.fleetDetailModal.ztcPickerCommands.len == 0:
+        model.ui.statusMessage = "No applicable zero-turn commands"
+        return
       model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
       model.ui.fleetDetailModal.ztcIdx = 0
       model.ui.fleetDetailModal.ztcDigitBuffer = ""
@@ -3737,7 +3753,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         let ch = if proposal.gameActionData.len > 0: proposal.gameActionData[0] else: '\0'
         if ch >= '1' and ch <= '9':
           let ztcNum = parseInt($ch) - 1  # Convert 1-9 to index 0-8
-          let ztcCommands = allZeroTurnCommands()
+          let ztcCommands = model.ui.fleetDetailModal.ztcPickerCommands
           if ztcNum >= 0 and ztcNum < ztcCommands.len:
             model.ui.fleetDetailModal.ztcIdx = ztcNum
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:

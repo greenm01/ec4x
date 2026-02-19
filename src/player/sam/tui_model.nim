@@ -26,7 +26,7 @@ import ../tui/widget/text_input
 import ../../common/message_types
 import ../../engine/globals
 import ../../engine/types/[core, colony, fleet, production, command, tech,
-  ship, facilities, ground_unit, zero_turn, espionage]
+  ship, combat, facilities, ground_unit, zero_turn, espionage]
 import ../../engine/systems/espionage/engine
 
 export entry_modal
@@ -329,8 +329,9 @@ type
     fleetPickerScroll*: ScrollState  # Scroll state for fleet picker list
     fleetPickerCandidates*: seq[FleetConsoleFleet]  # Other fleets at same system
     # ZTCPicker state (for Zero-Turn Commands)
-    ztcIdx*: int               # Selected ZTC index (0-8, maps to ZeroTurnCommandType)
+    ztcIdx*: int               # Selected ZTC index in filtered picker list
     ztcDigitBuffer*: string    # Single-digit quick select buffer (1-9)
+    ztcPickerCommands*: seq[ZeroTurnCommandType]
     ztcType*: Option[ZeroTurnCommandType]
     ztcTargetFleetId*: int
     shipSelectorIdx*: int
@@ -1342,6 +1343,7 @@ proc initTuiUiState*(): TuiUiState =
       fleetPickerCandidates: @[],
       ztcIdx: 0,
       ztcDigitBuffer: "",
+      ztcPickerCommands: @[],
       ztcType: none(ZeroTurnCommandType),
       ztcTargetFleetId: 0,
       shipSelectorIdx: 0,
@@ -1838,6 +1840,153 @@ proc ztcDescription*(ztc: ZeroTurnCommandType): string =
   of ZeroTurnCommandType.UnloadFighters: "Unload fighter ships from carrier to colony"
   of ZeroTurnCommandType.TransferFighters: "Transfer fighter ships between carriers"
   of ZeroTurnCommandType.Reactivate: "Return Reserved/Mothballed fleet to active"
+
+proc ztcSourceFleetIds*(model: TuiModel): seq[int] =
+  ## Source fleets for ZTC operations (batch selection or current fleet).
+  if model.ui.selectedFleetIds.len > 0:
+    return model.ui.selectedFleetIds
+  if model.ui.fleetDetailModal.fleetId > 0:
+    return @[model.ui.fleetDetailModal.fleetId]
+  @[]
+
+proc fleetHasOperationalClass(
+    model: TuiModel,
+    fleet: Fleet,
+    shipClass: ShipClass
+): bool =
+  for shipId in fleet.ships:
+    if int(shipId) notin model.view.ownShipsById:
+      continue
+    let ship = model.view.ownShipsById[int(shipId)]
+    if ship.state == CombatState.Destroyed:
+      continue
+    if ship.shipClass == shipClass:
+      return true
+  false
+
+proc fleetHasOperationalCarrier*(model: TuiModel, fleet: Fleet): bool =
+  for shipId in fleet.ships:
+    if int(shipId) notin model.view.ownShipsById:
+      continue
+    let ship = model.view.ownShipsById[int(shipId)]
+    if ship.state == CombatState.Destroyed:
+      continue
+    if ship.shipClass in {ShipClass.Carrier, ShipClass.SuperCarrier}:
+      return true
+  false
+
+proc fleetHasEmbarkedFighters*(model: TuiModel, fleet: Fleet): bool =
+  for shipId in fleet.ships:
+    if int(shipId) notin model.view.ownShipsById:
+      continue
+    let ship = model.view.ownShipsById[int(shipId)]
+    if ship.state == CombatState.Destroyed:
+      continue
+    if ship.shipClass in {ShipClass.Carrier, ShipClass.SuperCarrier} and
+        ship.embarkedFighters.len > 0:
+      return true
+  false
+
+proc hasZtcTargetFleetSameLocation*(
+    model: TuiModel,
+    sourceFleetId: int,
+    requireCarrier: bool = false
+): bool =
+  if sourceFleetId notin model.view.ownFleetsById:
+    return false
+  let source = model.view.ownFleetsById[sourceFleetId]
+  for fleetId, fleet in model.view.ownFleetsById.pairs:
+    if fleetId == sourceFleetId:
+      continue
+    if fleet.location != source.location:
+      continue
+    if requireCarrier and not model.fleetHasOperationalCarrier(fleet):
+      continue
+    return true
+  false
+
+proc ztcValidationErrorForFleet*(
+    model: TuiModel,
+    fleetId: int,
+    ztcType: ZeroTurnCommandType
+): string =
+  ## Conservative client-side applicability checks for ZTC picker filtering.
+  if fleetId notin model.view.ownFleetsById:
+    return "Fleet not found"
+  let fleet = model.view.ownFleetsById[fleetId]
+  let atFriendlyColony = int(fleet.location) in model.view.ownColoniesBySystem
+  case ztcType
+  of ZeroTurnCommandType.DetachShips:
+    if fleet.ships.len == 0:
+      return "No ships"
+  of ZeroTurnCommandType.TransferShips:
+    if fleet.ships.len == 0:
+      return "No ships"
+    if not model.hasZtcTargetFleetSameLocation(fleetId):
+      return "No target fleet at location"
+  of ZeroTurnCommandType.MergeFleets:
+    if not model.hasZtcTargetFleetSameLocation(fleetId):
+      return "No target fleet at location"
+  of ZeroTurnCommandType.LoadCargo:
+    if not atFriendlyColony:
+      return "Not at friendly colony"
+    if not model.fleetHasOperationalClass(fleet, ShipClass.TroopTransport) and
+        not model.fleetHasOperationalClass(fleet, ShipClass.ETAC):
+      return "No cargo-capable ships"
+  of ZeroTurnCommandType.UnloadCargo:
+    if not atFriendlyColony:
+      return "Not at friendly colony"
+    var hasCargo = false
+    for shipId in fleet.ships:
+      if int(shipId) notin model.view.ownShipsById:
+        continue
+      let ship = model.view.ownShipsById[int(shipId)]
+      if ship.state == CombatState.Destroyed:
+        continue
+      if ship.cargo.isSome and ship.cargo.get().quantity > 0:
+        hasCargo = true
+        break
+    if not hasCargo:
+      return "No cargo loaded"
+  of ZeroTurnCommandType.LoadFighters:
+    if not atFriendlyColony:
+      return "Not at friendly colony"
+    if not model.fleetHasOperationalCarrier(fleet):
+      return "No operational carrier"
+    if int(fleet.location) notin model.view.ownColoniesBySystem or
+        model.view.ownColoniesBySystem[int(fleet.location)].fighterIds.len == 0:
+      return "No colony fighters"
+  of ZeroTurnCommandType.UnloadFighters:
+    if not atFriendlyColony:
+      return "Not at friendly colony"
+    if not model.fleetHasEmbarkedFighters(fleet):
+      return "No embarked fighters"
+  of ZeroTurnCommandType.TransferFighters:
+    if not model.fleetHasEmbarkedFighters(fleet):
+      return "No embarked fighters"
+    if not model.hasZtcTargetFleetSameLocation(fleetId, requireCarrier = true):
+      return "No carrier target fleet"
+  of ZeroTurnCommandType.Reactivate:
+    if not atFriendlyColony:
+      return "Not at friendly colony"
+    if fleet.status == FleetStatus.Active:
+      return "Fleet already active"
+  ""
+
+proc buildZtcPickerList*(model: TuiModel): seq[ZeroTurnCommandType] =
+  ## Build applicable ZTC command list (single fleet or batch intersection).
+  let sourceFleetIds = model.ztcSourceFleetIds()
+  if sourceFleetIds.len == 0:
+    return @[]
+  result = @[]
+  for ztcType in allZeroTurnCommands():
+    var validForAll = true
+    for fleetId in sourceFleetIds:
+      if model.ztcValidationErrorForFleet(fleetId, ztcType).len > 0:
+        validForAll = false
+        break
+    if validForAll:
+      result.add(ztcType)
 
 # =============================================================================
 # ROE (Rules of Engagement) Helpers

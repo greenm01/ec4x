@@ -233,13 +233,14 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  let ztcCommands = allZeroTurnCommands()
+  let ztcCommands = state.ztcPickerCommands
   for idx, ztcType in ztcCommands:
     ztcTable.addRow([$(idx + 1), ztcLabel(ztcType), ztcDescription(ztcType)])
 
+  let itemCount = max(1, ztcCommands.len)
   renderPickerTable(ztcTable, area, buf,
     selectedIdx = state.ztcIdx,
-    itemCount = ztcCommands.len)
+    itemCount = itemCount)
 
 proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
                       buf: var CellBuffer) =
@@ -506,7 +507,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       8
     of FleetSubModal.ZTCPicker:
       # Table-based picker: itemCount + tableBase(4) + footer(2)
-      let ztcCount = 9
+      let ztcCount = max(1, state.ztcPickerCommands.len)
       let tableBaseHeight = 4
       let footerHeight = 2
       ztcCount + tableBaseHeight + footerHeight
@@ -534,7 +535,13 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
 
   # Render modal frame with title
   # Determine footer text per sub-modal (pickers get bordered footers too)
-  let title = "FLEET DETAIL"
+  let title = if state.subModal in {FleetSubModal.ZTCPicker,
+      FleetSubModal.ShipSelector,
+      FleetSubModal.CargoParams,
+      FleetSubModal.FighterParams}:
+      "ZERO TURN COMMANDS"
+    else:
+      "FLEET DETAIL"
   let (hasFooter, footerText) = case state.subModal
     of FleetSubModal.None:
       (true, "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close")

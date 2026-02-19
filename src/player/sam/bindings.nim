@@ -300,6 +300,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker
   of "isROEPicker":
     model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker
+  of "isZTCPicker":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker
   of "isFleetPicker":
     model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker
   of "isSystemPicker":
@@ -818,6 +820,13 @@ proc initBindings*() =
     context: BindingContext.FleetDetail,
     longLabel: "SELECT", shortLabel: "Enter", priority: 34,
     enabledCheck: "isSystemPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailSelectCommand,
+    context: BindingContext.FleetDetail,
+    longLabel: "SELECT", shortLabel: "Enter", priority: 34,
+    enabledCheck: "isZTCPicker"))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
