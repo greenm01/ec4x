@@ -315,6 +315,7 @@ proc parseOrdersKdl*(doc: KdlDoc): CommandPacket =
   var packet = CommandPacket(
     houseId: houseId,
     turn: turn,
+    zeroTurnCommands: @[],
     fleetCommands: @[],
     buildCommands: @[],
     repairCommands: @[],

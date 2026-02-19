@@ -82,8 +82,12 @@ proc syncGameStateToModel*(
   model.view.commandUsed = c2Analysis.totalFleetCC.int
   model.view.commandMax = c2Analysis.c2Pool.int
   model.view.colonyLimits.clear()
+  model.view.ownColoniesBySystem.clear()
+  model.view.ownFleetsById.clear()
+  model.view.ownShipsById.clear()
   model.view.planetBreakersInFleets = 0
   for colony in state.coloniesOwned(viewingHouse):
+    model.view.ownColoniesBySystem[int(colony.systemId)] = colony
     var snapshot = ColonyLimitSnapshot(
       industrialUnits: int(colony.industrial.units),
       fighters: colony.fighterIds.len,
@@ -108,11 +112,14 @@ proc syncGameStateToModel*(
         snapshot.shields.inc
     model.view.colonyLimits[int(colony.id)] = snapshot
   for fleet in state.fleetsOwned(viewingHouse):
+    model.view.ownFleetsById[int(fleet.id)] = fleet
     for shipId in fleet.ships:
       let shipOpt = state.ship(shipId)
       if shipOpt.isSome and
           shipOpt.get().shipClass == ShipClass.PlanetBreaker:
         model.view.planetBreakersInFleets.inc
+  for ship in state.shipsOwned(viewingHouse):
+    model.view.ownShipsById[int(ship.id)] = ship
 
   # Prestige rank and total houses
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
@@ -893,6 +900,15 @@ proc syncPlayerStateToModel*(
   model.view.techLevels = ps.techLevels
   model.view.researchPoints = ps.researchPoints
   model.view.colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)
+  model.view.ownColoniesBySystem.clear()
+  model.view.ownFleetsById.clear()
+  model.view.ownShipsById.clear()
+  for colony in ps.ownColonies:
+    model.view.ownColoniesBySystem[int(colony.systemId)] = colony
+  for fleet in ps.ownFleets:
+    model.view.ownFleetsById[int(fleet.id)] = fleet
+  for ship in ps.ownShips:
+    model.view.ownShipsById[int(ship.id)] = ship
   model.view.planetBreakersInFleets = countPlanetBreakersInFleets(ps)
   let c2 = computeBaseC2FromPlayerState(ps)
   model.view.commandUsed = c2.used

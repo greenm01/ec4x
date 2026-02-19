@@ -652,6 +652,7 @@ proc newCommandPacket*(houseId: HouseId, turn: int32): CommandPacket =
   result = CommandPacket(
     houseId: houseId,
     turn: turn,
+    zeroTurnCommands: @[],
     fleetCommands: @[],
     buildCommands: @[],
     researchAllocation: ResearchAllocation(

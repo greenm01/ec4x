@@ -112,6 +112,22 @@ proc runTui*(gameId: string = "") =
   proc normalizeDraftPacket(packet: CommandPacket): CommandPacket =
     ## Stable ordering for deterministic draft fingerprints.
     result = packet
+    result.zeroTurnCommands.sort(
+      proc(a: ZeroTurnCommand, b: ZeroTurnCommand): int =
+        result = cmp(int(a.commandType), int(b.commandType))
+        if result != 0:
+          return
+        result = cmp(
+          if a.sourceFleetId.isSome: int(a.sourceFleetId.get()) else: -1,
+          if b.sourceFleetId.isSome: int(b.sourceFleetId.get()) else: -1
+        )
+        if result != 0:
+          return
+        result = cmp(
+          if a.targetFleetId.isSome: int(a.targetFleetId.get()) else: -1,
+          if b.targetFleetId.isSome: int(b.targetFleetId.get()) else: -1
+        )
+    )
     result.fleetCommands.sort(
       proc(a: FleetCommand, b: FleetCommand): int =
         cmp(int(a.fleetId), int(b.fleetId))
@@ -126,7 +142,8 @@ proc runTui*(gameId: string = "") =
     false
 
   proc packetHasDraftData(packet: CommandPacket): bool =
-    packet.fleetCommands.len > 0 or
+    packet.zeroTurnCommands.len > 0 or
+      packet.fleetCommands.len > 0 or
       packet.buildCommands.len > 0 or
       packet.repairCommands.len > 0 or
       packet.scrapCommands.len > 0 or
@@ -146,6 +163,7 @@ proc runTui*(gameId: string = "") =
     ## Replace staged UI orders with restored draft content.
     let normalized = normalizeDraftPacket(packet)
     model.ui.stagedFleetCommands.clear()
+    model.ui.stagedZeroTurnCommands = @[]
     model.ui.stagedBuildCommands = @[]
     model.ui.stagedRepairCommands = @[]
     model.ui.stagedScrapCommands = @[]
@@ -153,6 +171,7 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedEspionageActions = @[]
     model.ui.stagedEbpInvestment = 0
     model.ui.stagedCipInvestment = 0
+    model.ui.stagedZeroTurnCommands = normalized.zeroTurnCommands
     for cmd in normalized.fleetCommands:
       model.stageFleetCommand(cmd)
     model.ui.stagedBuildCommands = normalized.buildCommands
@@ -1501,6 +1520,7 @@ proc runTui*(gameId: string = "") =
           logInfo("TUI Player SAM", "Turn submitted via Nostr")
           # Clear staged commands on successful submission
           sam.model.ui.stagedFleetCommands.clear()
+          sam.model.ui.stagedZeroTurnCommands.setLen(0)
           sam.model.ui.stagedBuildCommands.setLen(0)
           sam.model.ui.stagedRepairCommands.setLen(0)
           sam.model.ui.stagedScrapCommands.setLen(0)

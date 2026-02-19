@@ -29,6 +29,7 @@ import ../state/[engine, iterators]
 import ../systems/command/commands
 import ../systems/production/[commissioning, construction, repairs]
 import ../systems/fleet/mechanics
+import ../systems/fleet/logistics
 import ../systems/colony/[engine, terraforming, salvage]
 import ../systems/population/transfers
 import ../systems/tech/[costs, advancement]
@@ -240,6 +241,19 @@ proc processPlayerSubmissions(
 
   for (houseId, house) in state.activeHousesWithId():
     if houseId in orders:
+      # Zero-turn administrative commands (execute immediately).
+      for ztc in orders[houseId].zeroTurnCommands:
+        let result = submitZeroTurnCommand(state, ztc, events)
+        if not result.success:
+          events.add(
+            orderRejected(
+              houseId,
+              $ztc.commandType,
+              result.error,
+              fleetId = ztc.sourceFleetId
+            )
+          )
+
       # Colony management commands (tax rates, auto-flags)
       state.resolveColonyCommands(orders[houseId])
 

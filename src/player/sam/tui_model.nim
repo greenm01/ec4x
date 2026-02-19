@@ -25,8 +25,8 @@ import ../state/identity
 import ../tui/widget/text_input
 import ../../common/message_types
 import ../../engine/globals
-import ../../engine/types/[core, fleet, production, command, tech, ship,
-  facilities, ground_unit, zero_turn, espionage]
+import ../../engine/types/[core, colony, fleet, production, command, tech,
+  ship, facilities, ground_unit, zero_turn, espionage]
 import ../../engine/systems/espionage/engine
 
 export entry_modal
@@ -331,6 +331,14 @@ type
     # ZTCPicker state (for Zero-Turn Commands)
     ztcIdx*: int               # Selected ZTC index (0-8, maps to ZeroTurnCommandType)
     ztcDigitBuffer*: string    # Single-digit quick select buffer (1-9)
+    ztcType*: Option[ZeroTurnCommandType]
+    ztcTargetFleetId*: int
+    shipSelectorIdx*: int
+    shipSelectorShipIds*: seq[ShipId]
+    shipSelectorSelected*: HashSet[ShipId]
+    cargoType*: CargoClass
+    cargoQuantityInput*: TextInputState
+    fighterQuantityInput*: TextInputState
     # SystemPicker state (for target system selection)
     systemPickerIdx*: int      # Selected system index
     systemPickerSystems*: seq[SystemPickerEntry]  # Sorted system list
@@ -409,6 +417,7 @@ const
 type
   StagedCommandKind* {.pure.} = enum
     Fleet
+    ZeroTurn
     Build
     Repair
     Scrap
@@ -909,6 +918,7 @@ type
 
     # Staged commands (for turn submission)
     stagedFleetCommands*: Table[int, FleetCommand]
+    stagedZeroTurnCommands*: seq[ZeroTurnCommand]
     stagedBuildCommands*: seq[BuildCommand]
     stagedRepairCommands*: seq[RepairCommand]
     stagedScrapCommands*: seq[ScrapCommand]
@@ -1049,6 +1059,9 @@ type
     knownEnemyColonySystemIds*: HashSet[int]
     systemCoords*: Table[int, HexCoord]
     colonyLimits*: Table[int, ColonyLimitSnapshot]
+    ownColoniesBySystem*: Table[int, Colony]
+    ownFleetsById*: Table[int, Fleet]
+    ownShipsById*: Table[int, Ship]
 
   # ============================================================================
   # The Complete TUI Model (SAM wrapper)
@@ -1222,6 +1235,7 @@ proc initTuiUiState*(): TuiUiState =
     expertModeFeedback: "",
     expertPaletteSelection: -1,
     stagedFleetCommands: initTable[int, FleetCommand](),
+    stagedZeroTurnCommands: @[],
     stagedBuildCommands: @[],
     stagedRepairCommands: @[],
     stagedScrapCommands: @[],
@@ -1328,6 +1342,14 @@ proc initTuiUiState*(): TuiUiState =
       fleetPickerCandidates: @[],
       ztcIdx: 0,
       ztcDigitBuffer: "",
+      ztcType: none(ZeroTurnCommandType),
+      ztcTargetFleetId: 0,
+      shipSelectorIdx: 0,
+      shipSelectorShipIds: @[],
+      shipSelectorSelected: initHashSet[ShipId](),
+      cargoType: CargoClass.Marines,
+      cargoQuantityInput: initTextInputState(),
+      fighterQuantityInput: initTextInputState(),
       directSubModal: false
     )
   )
@@ -1451,6 +1473,9 @@ proc initTuiViewState*(): TuiViewState =
     knownEnemyColonySystemIds: initHashSet[int](),
     systemCoords: initTable[int, HexCoord](),
     colonyLimits: initTable[int, ColonyLimitSnapshot](),
+    ownColoniesBySystem: initTable[int, Colony](),
+    ownFleetsById: initTable[int, Fleet](),
+    ownShipsById: initTable[int, Ship](),
   )
   result.turnBuckets = buildTurnBuckets(result.reports)
   result.inboxItems = buildInboxItems(
@@ -1900,6 +1925,7 @@ proc addToExpertHistory*(model: var TuiModel, command: string) =
 proc stagedCommandCount*(model: TuiModel): int =
   ## Get total number of staged commands
   var count = model.ui.stagedFleetCommands.len +
+    model.ui.stagedZeroTurnCommands.len +
     model.ui.stagedBuildCommands.len +
     model.ui.stagedRepairCommands.len +
     model.ui.stagedScrapCommands.len +
@@ -1949,6 +1975,9 @@ proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
   for fleetId in model.ui.stagedFleetCommands.keys:
     result.add(StagedCommandEntry(
       kind: StagedCommandKind.Fleet, index: fleetId))
+  for idx in 0 ..< model.ui.stagedZeroTurnCommands.len:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.ZeroTurn, index: idx))
   for idx in 0 ..< model.ui.stagedBuildCommands.len:
     result.add(StagedCommandEntry(kind: StagedCommandKind.Build, index: idx))
   for idx in 0 ..< model.ui.stagedRepairCommands.len:
@@ -2040,6 +2069,14 @@ proc formatEspionageActionOrder*(
   let cost = espionageActionCost(attempt.action)
   actionLabel & " vs " & targetName & " (" & $cost & " EBP)"
 
+proc formatZeroTurnOrder*(cmd: ZeroTurnCommand): string =
+  ## Format a zero-turn command for staged list display.
+  result = "ZTC " & $cmd.commandType
+  if cmd.sourceFleetId.isSome:
+    result.add(" src=" & $cmd.sourceFleetId.get())
+  if cmd.targetFleetId.isSome:
+    result.add(" dst=" & $cmd.targetFleetId.get())
+
 proc stagedCommandsSummary*(model: TuiModel): string =
   ## Summarize staged commands with numbered list
   let entries = model.stagedCommandEntries()
@@ -2054,6 +2091,10 @@ proc stagedCommandsSummary*(model: TuiModel): string =
       of StagedCommandKind.Fleet:
         formatFleetOrder(
           model.ui.stagedFleetCommands[entry.index])
+      of StagedCommandKind.ZeroTurn:
+        formatZeroTurnOrder(
+          model.ui.stagedZeroTurnCommands[entry.index]
+        )
       of StagedCommandKind.Build:
         formatBuildOrder(model.ui.stagedBuildCommands[entry.index])
       of StagedCommandKind.Repair:
@@ -2076,6 +2117,10 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   of StagedCommandKind.Fleet:
     if entry.index in model.ui.stagedFleetCommands:
       model.ui.stagedFleetCommands.del(entry.index)
+      return true
+  of StagedCommandKind.ZeroTurn:
+    if entry.index < model.ui.stagedZeroTurnCommands.len:
+      model.ui.stagedZeroTurnCommands.delete(entry.index)
       return true
   of StagedCommandKind.Build:
     if entry.index < model.ui.stagedBuildCommands.len:
@@ -2575,6 +2620,7 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
   CommandPacket(
     houseId: houseId,
     turn: turn,
+    zeroTurnCommands: model.ui.stagedZeroTurnCommands,
     fleetCommands: model.ui.stagedFleetCommands.values.toSeq,
     buildCommands: model.ui.stagedBuildCommands,
     repairCommands: model.ui.stagedRepairCommands,

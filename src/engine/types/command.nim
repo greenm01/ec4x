@@ -1,5 +1,6 @@
 import std/options
-import ./[core, fleet, production, tech, diplomacy, colony, espionage]
+import ./[core, fleet, production, tech, diplomacy, colony, espionage,
+  zero_turn]
 
 type
   ScrapTargetType* {.pure.} = enum
@@ -41,6 +42,7 @@ type
   CommandPacket* = object
     houseId*: HouseId
     turn*: int32
+    zeroTurnCommands*: seq[ZeroTurnCommand]
     fleetCommands*: seq[FleetCommand]
     buildCommands*: seq[BuildCommand]
     repairCommands*: seq[RepairCommand]  # Manual repair orders

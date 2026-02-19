@@ -2083,7 +2083,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         FleetSubModal.CommandPicker,
         FleetSubModal.ROEPicker,
         FleetSubModal.ZTCPicker,
-        FleetSubModal.SystemPicker}:
+        FleetSubModal.SystemPicker,
+        FleetSubModal.ShipSelector,
+        FleetSubModal.CargoParams,
+        FleetSubModal.FighterParams}:
       if modifier == KeyModifier.None:
         let digitChar = case key
           of KeyCode.Key0: '0'

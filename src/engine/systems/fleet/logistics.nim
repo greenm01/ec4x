@@ -245,7 +245,7 @@ proc validateZeroTurnCommand*(
       # Simulate the transfer to validate resulting fleet compositions
       # We need to check both fleets AFTER transfer to catch edge cases
       # Example: Transferring scouts from mixed fleet to combat fleet
-      let shipIdsToTransfer = cmd.shipIds.get()
+      let shipIdsToTransfer = cmd.shipIds
 
       # Simulate source fleet after transfer (remove transferred ships)
       var sourceShipsAfter = fleet.ships

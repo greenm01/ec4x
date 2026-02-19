@@ -3,6 +3,7 @@
 ## A modal popup for viewing fleet composition and issuing commands via
 ## categorized command picker and ROE picker sub-modals.
 
+import std/[sets, strutils]
 import ./modal
 import ./table
 import ./scroll_state
@@ -304,19 +305,66 @@ proc renderSystemPicker(state: FleetDetailModalState,
     selectedIdx = state.systemPickerIdx,
     itemCount = count)
 
-proc renderPlaceholderSubModal(label: string, area: Rect,
-                              buf: var CellBuffer) =
-  ## Render placeholder for not-yet-implemented sub-modals
+proc renderShipSelector(state: FleetDetailModalState, area: Rect,
+                        buf: var CellBuffer) =
   if area.isEmpty:
     return
-  let centerY = area.y + area.height div 2
-  let msg = label & " - Not Yet Implemented"
-  let msgX = area.x + max(0, (area.width - msg.len) div 2)
-  discard buf.setString(msgX, centerY, msg, canvasStyle())
-  let hint = "Press [Esc] to go back"
-  let hintX = area.x + max(0, (area.width - hint.len) div 2)
-  if centerY + 2 < area.bottom:
-    discard buf.setString(hintX, centerY + 2, hint, canvasDimStyle())
+  var shipTable = table([
+    tableColumn("No", width = 3, align = table.Alignment.Right),
+    tableColumn("Sel", width = 3, align = table.Alignment.Left),
+    tableColumn("Ship", width = 0, align = table.Alignment.Left, minWidth = 20)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .headerStyle(canvasHeaderStyle())
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
+  for idx, shipId in state.shipSelectorShipIds:
+    let mark = if shipId in state.shipSelectorSelected: "[x]" else: "[ ]"
+    shipTable.addRow([$(idx + 1), mark, "Ship #" & $int(shipId)])
+  let count = max(1, state.shipSelectorShipIds.len)
+  renderPickerTable(
+    shipTable,
+    area,
+    buf,
+    selectedIdx = state.shipSelectorIdx,
+    itemCount = count
+  )
+
+proc renderCargoParams(state: FleetDetailModalState, area: Rect,
+                       buf: var CellBuffer) =
+  if area.isEmpty:
+    return
+  var y = area.y
+  discard buf.setString(area.x, y, "CARGO PARAMETERS", canvasHeaderStyle())
+  y += 2
+  let cargoType = $state.cargoType
+  discard buf.setString(area.x, y, "Type: " & cargoType, canvasStyle())
+  y += 1
+  let qtyRaw = state.cargoQuantityInput.value().strip()
+  let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
+  discard buf.setString(area.x, y, "Quantity: " & qty, canvasStyle())
+  y += 2
+  discard buf.setString(area.x, y,
+    "Use [↑↓] to switch type, [0-9] qty, [Enter] confirm",
+    canvasDimStyle())
+
+proc renderFighterParams(state: FleetDetailModalState, area: Rect,
+                         buf: var CellBuffer) =
+  if area.isEmpty:
+    return
+  var y = area.y
+  discard buf.setString(area.x, y, "FIGHTER PARAMETERS", canvasHeaderStyle())
+  y += 2
+  let qtyRaw = state.fighterQuantityInput.value().strip()
+  let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
+  discard buf.setString(area.x, y, "Quantity: " & qty, canvasStyle())
+  y += 2
+  discard buf.setString(area.x, y,
+    "Use [↑↓] or [0-9], [Enter] confirm",
+    canvasDimStyle())
 
 proc renderFleetInfo(fleetData: FleetDetailData, area: Rect,
                     buf: var CellBuffer) =
@@ -463,13 +511,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       let footerHeight = 2
       ztcCount + tableBaseHeight + footerHeight
     of FleetSubModal.ShipSelector:
-      # Placeholder for ship selection sub-modal
-      10
+      let shipCount = min(20, max(1, state.shipSelectorShipIds.len))
+      shipCount + 6
     of FleetSubModal.CargoParams:
-      # Placeholder for cargo parameter sub-modal
       10
     of FleetSubModal.FighterParams:
-      # Placeholder for fighter parameter sub-modal
       10
     of FleetSubModal.None:
       # Normal fleet detail view with ship list
@@ -504,6 +550,12 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       (true,
         "[↑↓←→]Nav [type]Filter [PgUp/Dn] " &
         "[Enter]Select [Esc]Back")
+    of FleetSubModal.ShipSelector:
+      (true, "[↑↓]Nav [1-9]Toggle [Enter]Confirm [Esc]Cancel")
+    of FleetSubModal.CargoParams:
+      (true, "[↑↓]Type [0-9]Qty [Enter]Confirm [Esc]Cancel")
+    of FleetSubModal.FighterParams:
+      (true, "[↑↓]Qty [0-9]Qty [Enter]Confirm [Esc]Cancel")
     else:
       (false, "")
 
@@ -561,11 +613,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   of FleetSubModal.ZTCPicker:
     renderZTCPicker(state, inner, buf)
   of FleetSubModal.ShipSelector:
-    renderPlaceholderSubModal("Ship Selector", inner, buf)
+    renderShipSelector(state, inner, buf)
   of FleetSubModal.CargoParams:
-    renderPlaceholderSubModal("Cargo Parameters", inner, buf)
+    renderCargoParams(state, inner, buf)
   of FleetSubModal.FighterParams:
-    renderPlaceholderSubModal("Fighter Parameters", inner, buf)
+    renderFighterParams(state, inner, buf)
   of FleetSubModal.None:
     # Render main fleet detail view
     
