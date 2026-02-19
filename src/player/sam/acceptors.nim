@@ -316,6 +316,15 @@ proc updateFleetDetailScroll(model: var TuiModel): tuple[
   let maxOffset = model.ui.fleetDetailModal.shipScroll.maxVerticalOffset()
   (pageSize, maxOffset)
 
+proc combatStatusLabel(state: CombatState): string =
+  case state
+  of CombatState.Nominal:
+    "Nominal"
+  of CombatState.Crippled:
+    "Crippled"
+  of CombatState.Destroyed:
+    "Destroyed"
+
 proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.subModal = FleetSubModal.None
   model.ui.fleetDetailModal.confirmPending = false
@@ -334,6 +343,7 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.ztcTargetFleetId = 0
   model.ui.fleetDetailModal.shipSelectorIdx = 0
   model.ui.fleetDetailModal.shipSelectorShipIds = @[]
+  model.ui.fleetDetailModal.shipSelectorRows = @[]
   model.ui.fleetDetailModal.shipSelectorSelected = initHashSet[ShipId]()
   model.ui.fleetDetailModal.cargoType = CargoClass.Marines
   model.ui.fleetDetailModal.cargoQuantityInput.clear()
@@ -482,6 +492,7 @@ proc openShipSelectorForZtc(
   let sourceFleet = model.view.ownFleetsById[sourceFleetId]
   model.ui.fleetDetailModal.ztcType = some(ztcType)
   model.ui.fleetDetailModal.shipSelectorShipIds = @[]
+  model.ui.fleetDetailModal.shipSelectorRows = @[]
   model.ui.fleetDetailModal.shipSelectorSelected = initHashSet[ShipId]()
   model.ui.fleetDetailModal.shipSelectorIdx = 0
   for shipId in sourceFleet.ships:
@@ -491,6 +502,14 @@ proc openShipSelectorForZtc(
     if ship.state == CombatState.Destroyed:
       continue
     model.ui.fleetDetailModal.shipSelectorShipIds.add(shipId)
+    model.ui.fleetDetailModal.shipSelectorRows.add(ShipSelectorRow(
+      shipId: shipId,
+      classLabel: $ship.shipClass,
+      wepTech: int(ship.stats.wep),
+      attackStrength: ship.stats.attackStrength,
+      defenseStrength: ship.stats.defenseStrength,
+      combatStatus: combatStatusLabel(ship.state)
+    ))
   if model.ui.fleetDetailModal.shipSelectorShipIds.len == 0:
     model.ui.statusMessage = "No ships available"
     return
@@ -2747,8 +2766,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.fleetDetailModal.fleetPickerIdx > 0:
         model.ui.fleetDetailModal.fleetPickerIdx -= 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
-      if model.ui.fleetDetailModal.cargoType == CargoClass.Colonists:
-        model.ui.fleetDetailModal.cargoType = CargoClass.Marines
+      discard
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
       let current = max(0, parseInputQuantity(
         model.ui.fleetDetailModal.fighterQuantityInput
@@ -2793,8 +2811,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.fleetDetailModal.fleetPickerIdx < maxIdx:
         model.ui.fleetDetailModal.fleetPickerIdx += 1
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
-      if model.ui.fleetDetailModal.cargoType == CargoClass.Marines:
-        model.ui.fleetDetailModal.cargoType = CargoClass.Colonists
+      discard
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
       let current = max(0, parseInputQuantity(
         model.ui.fleetDetailModal.fighterQuantityInput
@@ -3286,7 +3303,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           targetFleetId: none(FleetId),
           shipIndices: @[],
           shipIds: @[],
-          cargoType: some(model.ui.fleetDetailModal.cargoType),
+          cargoType: some(CargoClass.Marines),
           cargoQuantity: some(qty),
           fighterIds: @[],
           carrierShipId: none(ShipId),
@@ -3788,8 +3805,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if proposal.kind == ProposalKind.pkGameAction:
         let ch = if proposal.gameActionData.len > 0:
           proposal.gameActionData[0] else: '\0'
-        if ch >= '1' and ch <= '9':
-          let row = parseInt($ch) - 1
+        if ch == 'X' or ch == 'x' or ch == ' ':
+          let row = model.ui.fleetDetailModal.shipSelectorIdx
           if row >= 0 and
               row < model.ui.fleetDetailModal.shipSelectorShipIds.len:
             let shipId =
@@ -3798,16 +3815,11 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.fleetDetailModal.shipSelectorSelected.excl(shipId)
             else:
               model.ui.fleetDetailModal.shipSelectorSelected.incl(shipId)
-            model.ui.fleetDetailModal.shipSelectorIdx = row
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
       if proposal.kind == ProposalKind.pkGameAction:
         let ch = if proposal.gameActionData.len > 0:
           proposal.gameActionData[0] else: '\0'
-        if ch == 'M':
-          model.ui.fleetDetailModal.cargoType = CargoClass.Marines
-        elif ch == 'C':
-          model.ui.fleetDetailModal.cargoType = CargoClass.Colonists
-        elif ch >= '0' and ch <= '9':
+        if ch >= '0' and ch <= '9':
           if model.ui.fleetDetailModal.cargoQuantityInput.value() == "0":
             model.ui.fleetDetailModal.cargoQuantityInput.clear()
           discard model.ui.fleetDetailModal.cargoQuantityInput.appendChar(ch)

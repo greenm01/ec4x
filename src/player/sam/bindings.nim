@@ -2087,6 +2087,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Fleet detail view mode: use registry
   if model.ui.mode == ViewMode.FleetDetail:
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.ShipSelector and
+        modifier == KeyModifier.None and key == KeyCode.KeyX:
+      return some(actionFleetDetailDigitInput('X'))
+
     # Handle digit keys for quick entry in sub-modals
     if model.ui.fleetDetailModal.subModal in {
         FleetSubModal.CommandPicker,

@@ -13,8 +13,8 @@ type
     MergeFleets ## Merge entire source fleet into target fleet
 
     # Cargo operations (from CargoManagementOrder)
-    LoadCargo ## Load marines/colonists onto transport ships
-    UnloadCargo ## Unload cargo from transport ships
+    LoadCargo ## Load marines onto troop transports
+    UnloadCargo ## Unload marines from troop transports
 
     # Fighter operations (from FighterManagementOrder)
     LoadFighters ## Load fighter ships from colony to carrier
@@ -41,7 +41,7 @@ type
     shipIds*: seq[ShipId] ## Direct ship IDs for operations
 
     # Cargo-specific
-    cargoType*: Option[CargoClass] ## Type: Marines, Colonists
+    cargoType*: Option[CargoClass] ## Type: Marines (for LoadCargo)
     cargoQuantity*: Option[int] ## Amount to load/unload (0 = all available)
 
     # Fighter-specific
@@ -69,5 +69,4 @@ type
   ValidationResult* = object ## Validation result (used internally)
     valid*: bool
     error*: string
-
 

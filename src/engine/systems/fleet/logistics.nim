@@ -26,7 +26,6 @@ import ../fleet/entity
 import ../ship/entity
 import ../capacity/carrier_hangar
   # For isCarrier, carrierMaxCapacity, canLoadFighters
-import ../../utils # For soulsPerPtu(), ptuSizeMillions()
 import ../../event_factory/init
 import ../../../common/logger
 
@@ -315,11 +314,58 @@ proc validateZeroTurnCommand*(
     if not mergeCheck.canMerge:
       return ValidationResult(valid: false, error: mergeCheck.reason)
   of ZeroTurnCommandType.LoadCargo, ZeroTurnCommandType.UnloadCargo:
+    let sourceFleetOpt = state.fleet(cmd.sourceFleetId.get())
+    if sourceFleetOpt.isNone:
+      return ValidationResult(valid: false, error: "Source fleet not found")
+    let sourceFleet = sourceFleetOpt.get()
+
     # Validate cargo type specified for LoadCargo
     if cmd.commandType == ZeroTurnCommandType.LoadCargo:
       if cmd.cargoType.isNone:
         return
           ValidationResult(valid: false, error: "Cargo type required for LoadCargo")
+      if cmd.cargoType.get() != CargoClass.Marines:
+        return ValidationResult(
+          valid: false,
+          error: "LoadCargo only supports Marines"
+        )
+      var hasTransport = false
+      for shipId in sourceFleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isNone:
+          continue
+        let ship = shipOpt.get()
+        if ship.state == CombatState.Destroyed or
+            ship.state == CombatState.Crippled:
+          continue
+        if ship.shipClass == ShipClass.TroopTransport:
+          hasTransport = true
+          break
+      if not hasTransport:
+        return ValidationResult(
+          valid: false,
+          error: "No operational troop transports"
+        )
+    else:
+      var hasMarineCargo = false
+      for shipId in sourceFleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isNone:
+          continue
+        let ship = shipOpt.get()
+        if ship.state == CombatState.Destroyed:
+          continue
+        if ship.shipClass != ShipClass.TroopTransport or ship.cargo.isNone:
+          continue
+        let cargo = ship.cargo.get()
+        if cargo.cargoType == CargoClass.Marines and cargo.quantity > 0:
+          hasMarineCargo = true
+          break
+      if not hasMarineCargo:
+        return ValidationResult(
+          valid: false,
+          error: "No marine cargo to unload"
+        )
   of ZeroTurnCommandType.LoadFighters:
     # Validate carrier ship ID
     if cmd.carrierShipId.isNone:
@@ -641,10 +687,19 @@ proc executeMergeFleets*(
 proc executeLoadCargo*(
     state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
-  ## Load marines or colonists onto transport squadrons at colony
+  ## Load marines onto troop transports at colony
   ## Source: economy_resolution.nim:409-501
 
   let cargoType = cmd.cargoType.get()
+  if cargoType != CargoClass.Marines:
+    return ZeroTurnResult(
+      success: false,
+      error: "LoadCargo only supports Marines",
+      newFleetId: none(FleetId),
+      cargoLoaded: 0,
+      cargoUnloaded: 0,
+      warnings: @[],
+    )
   let fleetId = cmd.sourceFleetId.get()
   var requestedQty =
     if cmd.cargoQuantity.isSome:
@@ -682,31 +737,12 @@ proc executeLoadCargo*(
   var colony = colonyOpt.get()
   var totalLoaded = 0
 
-  # Check colony inventory based on cargo type
-  var availableUnits =
-    case cargoType
-    of CargoClass.Marines:
-      # Count marine units in groundUnitIds
-      var marineCount = 0
-      for unitId in colony.groundUnitIds:
-        let unitOpt = state.groundUnit(unitId)
-        if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
-          marineCount += 1
-      marineCount
-    of CargoClass.Colonists:
-      # Calculate how many complete PTUs can be loaded from exact population
-      # Using souls field for accurate counting (no float rounding errors)
-      # Per config/population.toml [transfer_limits] min_source_pu_remaining = 1
-      # Must keep 1 PU minimum at source colony
-      let minSoulsToKeep = 1_000_000 # 1 PU = 1 million souls
-      if colony.souls <= minSoulsToKeep:
-        0 # Cannot load any PTUs, colony at minimum viable population
-      else:
-        let availableSouls = colony.souls - minSoulsToKeep
-        let maxPTUs = availableSouls div soulsPerPtu()
-        maxPTUs
-    else:
-      0
+  # Count marine units in groundUnitIds.
+  var availableUnits = 0
+  for unitId in colony.groundUnitIds:
+    let unitOpt = state.groundUnit(unitId)
+    if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+      availableUnits += 1
 
   if availableUnits <= 0:
     return ZeroTurnResult(
@@ -722,7 +758,7 @@ proc executeLoadCargo*(
   if requestedQty == 0:
     requestedQty = availableUnits
 
-  # Load cargo onto compatible transport ships (TroopTransport/ETAC)
+  # Load cargo onto troop transports only.
   var remainingToLoad = min(requestedQty, availableUnits)
 
   # Iterate over ship IDs, get entities via entity manager
@@ -741,15 +777,8 @@ proc executeLoadCargo*(
     if ship.state == CombatState.Crippled:
       continue
 
-    # Determine ship capacity and compatible cargo type
-    let shipCargoType =
-      case ship.shipClass
-      of ShipClass.TroopTransport: CargoClass.Marines
-      of ShipClass.ETAC: CargoClass.Colonists
-      else: CargoClass.None
-
-    if shipCargoType != cargoType:
-      continue # Ship can't carry this cargo type
+    if ship.shipClass != ShipClass.TroopTransport:
+      continue
 
     # Try to load cargo onto this ship
     let currentCargo =
@@ -777,31 +806,16 @@ proc executeLoadCargo*(
 
   # Update colony inventory
   if totalLoaded > 0:
-    case cargoType
-    of CargoClass.Marines:
-      # Remove loaded marines from colony (remove N marine units from groundUnitIds)
-      # Note: Removes marines from end of list (FIFO loading)
-      var marinesToRemove = totalLoaded
-      var i = colony.groundUnitIds.len - 1
-      while marinesToRemove > 0 and i >= 0:
-        let unitOpt = state.groundUnit(colony.groundUnitIds[i])
-        if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
-          colony.groundUnitIds.delete(i)
-          marinesToRemove -= 1
-        i -= 1
-    of CargoClass.Colonists:
-      # Colonists come from population: 1 PTU = 50k souls
-      # Use souls field for exact counting (no rounding errors)
-      let soulsToLoad = int32(totalLoaded * soulsPerPtu())
-      colony.souls -= soulsToLoad
-      # Update display field (population in millions)
-      colony.population = colony.souls div 1_000_000
-      logDebug(
-        "Economy",
-        &"Removed {totalLoaded} PTU ({soulsToLoad} souls, {totalLoaded.float * ptuSizeMillions()}M) from colony",
-      )
-    else:
-      discard
+    # Remove loaded marines from colony.
+    # Note: Removes marines from end of list (FIFO loading)
+    var marinesToRemove = totalLoaded
+    var i = colony.groundUnitIds.len - 1
+    while marinesToRemove > 0 and i >= 0:
+      let unitOpt = state.groundUnit(colony.groundUnitIds[i])
+      if unitOpt.isSome and unitOpt.get().stats.unitType == GroundClass.Marine:
+        colony.groundUnitIds.delete(i)
+        marinesToRemove -= 1
+      i -= 1
 
     # Write back modified colony via entity manager
     state.updateColony(colony.id, colony)
@@ -835,7 +849,7 @@ proc executeLoadCargo*(
 proc executeUnloadCargo*(
     state: GameState, cmd: ZeroTurnCommand, events: var seq[GameEvent]
 ): ZeroTurnResult =
-  ## Unload cargo from transport squadrons at colony
+  ## Unload marines from troop transports at colony
   ## Source: economy_resolution.nim:503-547
 
   let fleetId = cmd.sourceFleetId.get()
@@ -871,7 +885,7 @@ proc executeUnloadCargo*(
   var totalUnloaded = 0
   var unloadedType = CargoClass.None
 
-  # Unload cargo from transport ships (TroopTransport/ETAC)
+  # Unload marine cargo from troop transports only.
   # Iterate over ship IDs, get entities via entity manager
   for shipId in fleet.ships:
     # Get ship entity
@@ -881,6 +895,9 @@ proc executeUnloadCargo*(
 
     var ship = shipOpt.get()
 
+    if ship.shipClass != ShipClass.TroopTransport:
+      continue
+
     if ship.cargo.isNone:
       continue # No cargo to unload
 
@@ -888,31 +905,24 @@ proc executeUnloadCargo*(
     if cargo.cargoType == CargoClass.None or cargo.quantity == 0:
       continue # Empty cargo
 
+    if cargo.cargoType != CargoClass.Marines:
+      continue
+
     # Unload cargo back to colony inventory
     let cargoType = cargo.cargoType
     let quantity = cargo.quantity
     totalUnloaded += quantity
     unloadedType = cargoType
 
-    case cargoType
-    of CargoClass.Marines:
-      # Create ground unit entities for each marine
-      for i in 0 ..< quantity:
-        discard state.createGroundUnit(fleet.houseId, colony.id, GroundClass.Marine)
-      logDebug("Economy", &"Unloaded {quantity} Marines from ship {shipId} to colony {colony.id}")
-    of CargoClass.Colonists:
-      # Colonists are delivered to population: 1 PTU = 50k souls
-      # Use souls field for exact counting (no rounding errors)
-      let soulsToUnload = quantity * soulsPerPtu()
-      colony.souls += soulsToUnload
-      # Update display field (population in millions)
-      colony.population = colony.souls div 1_000_000
-      logDebug(
-        "Economy",
-        &"Unloaded {quantity} PTU ({soulsToUnload} souls, {quantity.float * ptuSizeMillions()}M) from ship {shipId} to colony"
+    # Create ground unit entities for each marine.
+    for i in 0 ..< quantity:
+      discard state.createGroundUnit(
+        fleet.houseId, colony.id, GroundClass.Marine
       )
-    else:
-      discard
+    logDebug(
+      "Economy",
+      &"Unloaded {quantity} Marines from ship {shipId} to colony {colony.id}"
+    )
 
     # Clear cargo from ship
     ship.cargo =

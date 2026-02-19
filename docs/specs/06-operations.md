@@ -538,7 +538,7 @@ Reorganize your forces instantly during command submission. Zero-turn administra
 
 **Administrative Commands (0 turns):**
 - Fleet reorganization (detach ships, transfer ships, merge fleets)
-- Cargo operations (load/unload troops and colonists)
+- Cargo operations (load/unload marines only)
 - Fleet reactivation (return Reserve/Mothballed fleets to Active status)
 - Entity scrapping (scrap ships, ground units, facilities for immediate PP recovery)
 - Execute **immediately** during command submission
@@ -641,28 +641,31 @@ Return a Reserve or Mothballed fleet to Active status instantly.
 
 ### 6.4.3 Cargo Operations
 
-Load and unload Marines and colonists instantly during order submission.
+Load and unload Marines instantly during order submission.
 
 **Requirements:**
 - Fleet at friendly colony
-- Compatible ships in fleet (Troop Transports for marines, ETACs for colonists)
-- Cargo available at colony (marines from garrison, colonists from population)
+- Compatible ships in fleet (Troop Transports)
+- Cargo available at colony (marines from garrison)
+
+**Clarification: ETAC colonists**
+- ETACs are one-time colonization hulls consumed during colonization.
+- Colonist handling for ETAC missions is part of the colonization flow, not
+  Zero-Turn cargo logistics.
+- Zero-Turn `LoadCargo`/`UnloadCargo` do **not** load or unload colonists.
 
 #### LoadCargo
 
-Load marines or colonists from colony onto fleet auxiliary ships.
+Load marines from colony onto Troop Transports.
 
 **Use cases:**
 - Load invasion forces immediately before launching offensive
-- Embark colonists for same-turn colonization mission
 - Prepare garrison reinforcements for allied colonies
 
 **Mechanics:**
 - **Marines**: Loaded onto Troop Transports from colony garrison
-- **Colonists**: Loaded onto ETACs from colony population (souls-based accounting)
 - Respects ship cargo capacity limits
 - Skips crippled ships (cannot carry cargo while damaged)
-- Colony retains minimum population threshold (cannot load last colonist)
 
 **Strategic Value:** Load invasion forces and execute Command 07 (Invade) in same turn—immediate operational readiness.
 
@@ -670,20 +673,19 @@ Load marines or colonists from colony onto fleet auxiliary ships.
 
 #### UnloadCargo
 
-Unload marines or colonists from fleet auxiliary ships to colony.
+Unload marines from Troop Transports to colony.
 
 **Use cases:**
 - Deliver garrison reinforcements to border colonies
-- Evacuate colonists from threatened systems
 - Consolidate forces at strategic staging bases
 
 **Mechanics:**
-- All cargo on fleet auxiliary ships unloaded to colony
+- Marine cargo on Troop Transports unloaded to colony
 - Marines added to colony garrison
-- Colonists added to colony population (souls + population units)
 - Instant transfer, no turn cost
 
-**Example:** Evacuate colony threatened by superior enemy fleet. Load colonists, move fleet to safe system, unload colonists → population preserved, enemy gains empty colony.
+**Example:** Reinforce border colony under threat. Move loaded transports to
+the colony and unload marines instantly to strengthen defenses.
 
 ### 6.4.4 Workflow: Prepare Forces → Execute Strategy
 

@@ -275,6 +275,15 @@ type
     name*: string
     coordLabel*: string      ## Ring+position label ("H", "A1", "B3")
 
+  ShipSelectorRow* = object
+    ## Ship entry for Zero-Turn ship selector table.
+    shipId*: ShipId
+    classLabel*: string
+    wepTech*: int
+    attackStrength*: int
+    defenseStrength*: int
+    combatStatus*: string
+
   SystemPickerFilterResult* = object
     systems*: seq[SystemPickerEntry]
     emptyMessage*: string
@@ -336,6 +345,7 @@ type
     ztcTargetFleetId*: int
     shipSelectorIdx*: int
     shipSelectorShipIds*: seq[ShipId]
+    shipSelectorRows*: seq[ShipSelectorRow]
     shipSelectorSelected*: HashSet[ShipId]
     cargoType*: CargoClass
     cargoQuantityInput*: TextInputState
@@ -1348,6 +1358,7 @@ proc initTuiUiState*(): TuiUiState =
       ztcTargetFleetId: 0,
       shipSelectorIdx: 0,
       shipSelectorShipIds: @[],
+      shipSelectorRows: @[],
       shipSelectorSelected: initHashSet[ShipId](),
       cargoType: CargoClass.Marines,
       cargoQuantityInput: initTextInputState(),
@@ -1834,8 +1845,8 @@ proc ztcDescription*(ztc: ZeroTurnCommandType): string =
   of ZeroTurnCommandType.DetachShips: "Split ships from fleet into new fleet"
   of ZeroTurnCommandType.TransferShips: "Move ships to another fleet (same system)"
   of ZeroTurnCommandType.MergeFleets: "Dissolve this fleet into another"
-  of ZeroTurnCommandType.LoadCargo: "Load marines/colonists onto transport ships"
-  of ZeroTurnCommandType.UnloadCargo: "Unload cargo from transport ships"
+  of ZeroTurnCommandType.LoadCargo: "Load marines onto troop transports"
+  of ZeroTurnCommandType.UnloadCargo: "Unload marines from troop transports"
   of ZeroTurnCommandType.LoadFighters: "Load fighter ships from colony to carrier"
   of ZeroTurnCommandType.UnloadFighters: "Unload fighter ships from carrier to colony"
   of ZeroTurnCommandType.TransferFighters: "Transfer fighter ships between carriers"
@@ -1930,9 +1941,8 @@ proc ztcValidationErrorForFleet*(
   of ZeroTurnCommandType.LoadCargo:
     if not atFriendlyColony:
       return "Not at friendly colony"
-    if not model.fleetHasOperationalClass(fleet, ShipClass.TroopTransport) and
-        not model.fleetHasOperationalClass(fleet, ShipClass.ETAC):
-      return "No cargo-capable ships"
+    if not model.fleetHasOperationalClass(fleet, ShipClass.TroopTransport):
+      return "No operational troop transports"
   of ZeroTurnCommandType.UnloadCargo:
     if not atFriendlyColony:
       return "Not at friendly colony"
@@ -1943,11 +1953,15 @@ proc ztcValidationErrorForFleet*(
       let ship = model.view.ownShipsById[int(shipId)]
       if ship.state == CombatState.Destroyed:
         continue
-      if ship.cargo.isSome and ship.cargo.get().quantity > 0:
+      if ship.shipClass != ShipClass.TroopTransport:
+        continue
+      if ship.cargo.isSome and
+          ship.cargo.get().cargoType == CargoClass.Marines and
+          ship.cargo.get().quantity > 0:
         hasCargo = true
         break
     if not hasCargo:
-      return "No cargo loaded"
+      return "No marines loaded"
   of ZeroTurnCommandType.LoadFighters:
     if not atFriendlyColony:
       return "Not at friendly colony"

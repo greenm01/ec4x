@@ -94,18 +94,66 @@ proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
   let tableArea = rect(area.x, area.y, area.width, tableHeight)
   t.render(tableArea, buf)
 
+proc maxStringLen(values: openArray[string]): int =
+  for value in values:
+    result = max(result, value.len)
+
+proc measuredColumnWidths(
+    headers: openArray[string],
+    rows: seq[seq[string]],
+    minWidths: openArray[int]
+): seq[int] =
+  result = newSeq[int](headers.len)
+  for i, header in headers:
+    var width = max(1, header.len)
+    if i < minWidths.len:
+      width = max(width, minWidths[i])
+    for row in rows:
+      if i < row.len:
+        width = max(width, row[i].len)
+    result[i] = width
+
+proc measuredTableInnerWidth(
+    headers: openArray[string],
+    rows: seq[seq[string]],
+    minWidths: openArray[int]
+): int =
+  let widths = measuredColumnWidths(headers, rows, minWidths)
+  var contentWidth = 0
+  for width in widths:
+    contentWidth += width
+  let colCount = headers.len
+  contentWidth + (colCount * 2) + (colCount + 1)
+
+proc measuredTableContentHeight(
+    rowCount: int,
+    footerHeight: int = 2
+): int =
+  let tableBaseHeight = 4
+  max(1, rowCount) + tableBaseHeight + footerHeight
+
 proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
   ## Render command picker using Table widget
   if area.isEmpty:
     return
 
+  let headers = @["No", "Mission", "Requirements"]
+  var rows: seq[seq[string]] = @[]
+  let commands = state.commandPickerCommands
+  for cmdType in commands:
+    rows.add(@[
+      fleetCommandCode(cmdType),
+      fleetCommandLabel(cmdType),
+      commandRequirements(cmdType)
+    ])
+  let widths = measuredColumnWidths(headers, rows, @[2, 7, 12])
+
   # Build table structure
   var commandTable = table([
-    tableColumn("No", width = 4, align = table.Alignment.Left),
-    tableColumn("Mission", width = 14, align = table.Alignment.Left),
-    tableColumn("Requirements", width = 0, align = table.Alignment.Left,
-                minWidth = 20)
+    tableColumn("No", width = widths[0], align = table.Alignment.Left),
+    tableColumn("Mission", width = widths[1], align = table.Alignment.Left),
+    tableColumn("Requirements", width = widths[2], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -115,12 +163,8 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  let commands = state.commandPickerCommands
-  for cmdType in commands:
-    let cmdCode = fleetCommandCode(cmdType)
-    let cmdLabel = fleetCommandLabel(cmdType)
-    let cmdReq = commandRequirements(cmdType)
-    commandTable.addRow([cmdCode, cmdLabel, cmdReq])
+  for row in rows:
+    commandTable.addRow(row)
 
   renderPickerTable(commandTable, area, buf,
     selectedIdx = state.commandIdx,
@@ -132,11 +176,16 @@ proc renderROEPicker(state: FleetDetailModalState, area: Rect,
   if area.isEmpty:
     return
 
+  let headers = @["ROE", "Meaning", "Use Case"]
+  var rows: seq[seq[string]] = @[]
+  for roe in 0..10:
+    rows.add(@[$roe, roeDescription(roe), roeUseCase(roe)])
+  let widths = measuredColumnWidths(headers, rows, @[3, 8, 8])
+
   var roeTable = table([
-    tableColumn("ROE", width = 3, align = table.Alignment.Right),
-    tableColumn("Meaning", width = 30, align = table.Alignment.Left),
-    tableColumn("Use Case", width = 0, align = table.Alignment.Left,
-                minWidth = 14)
+    tableColumn("ROE", width = widths[0], align = table.Alignment.Right),
+    tableColumn("Meaning", width = widths[1], align = table.Alignment.Left),
+    tableColumn("Use Case", width = widths[2], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -146,8 +195,8 @@ proc renderROEPicker(state: FleetDetailModalState, area: Rect,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  for roe in 0..10:
-    roeTable.addRow([$roe, roeDescription(roe), roeUseCase(roe)])
+  for row in rows:
+    roeTable.addRow(row)
 
   renderPickerTable(roeTable, area, buf,
     selectedIdx = state.roeValue,
@@ -219,11 +268,17 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
   if area.isEmpty:
     return
 
+  let headers = @["No", "Command", "Description"]
+  var rows: seq[seq[string]] = @[]
+  let ztcCommands = state.ztcPickerCommands
+  for idx, ztcType in ztcCommands:
+    rows.add(@[$(idx + 1), ztcLabel(ztcType), ztcDescription(ztcType)])
+  let widths = measuredColumnWidths(headers, rows, @[2, 8, 12])
+
   var ztcTable = table([
-    tableColumn("No", width = 3, align = table.Alignment.Right),
-    tableColumn("Command", width = 18, align = table.Alignment.Left),
-    tableColumn("Description", width = 0, align = table.Alignment.Left,
-                minWidth = 20)
+    tableColumn("No", width = widths[0], align = table.Alignment.Right),
+    tableColumn("Command", width = widths[1], align = table.Alignment.Left),
+    tableColumn("Description", width = widths[2], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -233,9 +288,8 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  let ztcCommands = state.ztcPickerCommands
-  for idx, ztcType in ztcCommands:
-    ztcTable.addRow([$(idx + 1), ztcLabel(ztcType), ztcDescription(ztcType)])
+  for row in rows:
+    ztcTable.addRow(row)
 
   let itemCount = max(1, ztcCommands.len)
   renderPickerTable(ztcTable, area, buf,
@@ -248,11 +302,22 @@ proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
   if area.isEmpty:
     return
 
+  let headers = @["Fleet", "Ships", "AS", "DS"]
+  var rows: seq[seq[string]] = @[]
+  for fleet in state.fleetPickerCandidates:
+    rows.add(@[
+      fleet.name,
+      $fleet.shipCount,
+      $fleet.attackStrength,
+      $fleet.defenseStrength
+    ])
+  let widths = measuredColumnWidths(headers, rows, @[5, 5, 2, 2])
+
   var fleetTable = table([
-    tableColumn("Fleet", width = 8, align = table.Alignment.Left),
-    tableColumn("Ships", width = 5, align = table.Alignment.Right),
-    tableColumn("AS", width = 4, align = table.Alignment.Right),
-    tableColumn("DS", width = 4, align = table.Alignment.Right)
+    tableColumn("Fleet", width = widths[0], align = table.Alignment.Left),
+    tableColumn("Ships", width = widths[1], align = table.Alignment.Right),
+    tableColumn("AS", width = widths[2], align = table.Alignment.Right),
+    tableColumn("DS", width = widths[3], align = table.Alignment.Right)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -262,13 +327,8 @@ proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  for fleet in state.fleetPickerCandidates:
-    fleetTable.addRow([
-      fleet.name,
-      $fleet.shipCount,
-      $fleet.attackStrength,
-      $fleet.defenseStrength
-    ])
+  for row in rows:
+    fleetTable.addRow(row)
 
   let count = max(1, state.fleetPickerCandidates.len)
   renderPickerTable(fleetTable, area, buf,
@@ -284,11 +344,17 @@ proc renderSystemPicker(state: FleetDetailModalState,
   if area.isEmpty:
     return
 
+  let headers = @["Coord", "System"]
+  var rows: seq[seq[string]] = @[]
+  for sys in state.systemPickerSystems:
+    rows.add(@[sys.coordLabel, sys.name])
+  let widths = measuredColumnWidths(headers, rows, @[5, 6])
+
   var sysTable = table([
-    tableColumn("Coord", width = 6,
+    tableColumn("Coord", width = widths[0],
       align = table.Alignment.Left),
-    tableColumn("System", width = 0,
-      align = table.Alignment.Left, minWidth = 20)
+    tableColumn("System", width = widths[1],
+      align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -298,8 +364,8 @@ proc renderSystemPicker(state: FleetDetailModalState,
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
-  for sys in state.systemPickerSystems:
-    sysTable.addRow([sys.coordLabel, sys.name])
+  for row in rows:
+    sysTable.addRow(row)
 
   let count = max(1, state.systemPickerSystems.len)
   renderPickerTable(sysTable, area, buf,
@@ -310,10 +376,34 @@ proc renderShipSelector(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =
   if area.isEmpty:
     return
+  let headers = @["No", "Sel", "Class", "ShipId", "Wep", "AS", "DS", "Status"]
+  var rows: seq[seq[string]] = @[]
+  for idx, shipRow in state.shipSelectorRows:
+    let mark = if shipRow.shipId in state.shipSelectorSelected: "[x]" else: "[ ]"
+    rows.add(@[
+      $(idx + 1),
+      mark,
+      shipRow.classLabel,
+      $int(shipRow.shipId),
+      $shipRow.wepTech,
+      $shipRow.attackStrength,
+      $shipRow.defenseStrength,
+      shipRow.combatStatus
+    ])
+  let widths = measuredColumnWidths(
+    headers,
+    rows,
+    @[2, 3, 14, 6, 3, 2, 2, 10]
+  )
   var shipTable = table([
-    tableColumn("No", width = 3, align = table.Alignment.Right),
-    tableColumn("Sel", width = 3, align = table.Alignment.Left),
-    tableColumn("Ship", width = 0, align = table.Alignment.Left, minWidth = 20)
+    tableColumn("No", width = widths[0], align = table.Alignment.Right),
+    tableColumn("Sel", width = widths[1], align = table.Alignment.Left),
+    tableColumn("Class", width = widths[2], align = table.Alignment.Left),
+    tableColumn("ShipId", width = widths[3], align = table.Alignment.Right),
+    tableColumn("Wep", width = widths[4], align = table.Alignment.Right),
+    tableColumn("AS", width = widths[5], align = table.Alignment.Right),
+    tableColumn("DS", width = widths[6], align = table.Alignment.Right),
+    tableColumn("Status", width = widths[7], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -322,10 +412,9 @@ proc renderShipSelector(state: FleetDetailModalState, area: Rect,
     .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
-  for idx, shipId in state.shipSelectorShipIds:
-    let mark = if shipId in state.shipSelectorSelected: "[x]" else: "[ ]"
-    shipTable.addRow([$(idx + 1), mark, "Ship #" & $int(shipId)])
-  let count = max(1, state.shipSelectorShipIds.len)
+  for row in rows:
+    shipTable.addRow(row)
+  let count = max(1, state.shipSelectorRows.len)
   renderPickerTable(
     shipTable,
     area,
@@ -341,15 +430,15 @@ proc renderCargoParams(state: FleetDetailModalState, area: Rect,
   var y = area.y
   discard buf.setString(area.x, y, "CARGO PARAMETERS", canvasHeaderStyle())
   y += 2
-  let cargoType = $state.cargoType
-  discard buf.setString(area.x, y, "Type: " & cargoType, canvasStyle())
+  discard buf.setString(area.x, y, "Cargo: Marines (Troop Transport only)",
+    canvasStyle())
   y += 1
   let qtyRaw = state.cargoQuantityInput.value().strip()
   let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
   discard buf.setString(area.x, y, "Quantity: " & qty, canvasStyle())
   y += 2
   discard buf.setString(area.x, y,
-    "Use [↑↓] to switch type, [0-9] qty, [Enter] confirm",
+    "Use [0-9] qty, [Enter] confirm",
     canvasDimStyle())
 
 proc renderFighterParams(state: FleetDetailModalState, area: Rect,
@@ -429,29 +518,102 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     max(line2.len, max(line3.len, shipHeader.len)))
   let desiredInnerWidth = max(tableWidth, infoWidth)
 
-  # Sub-modal picker tables may need more width than the ship table.
-  # Compute minimum inner width from known column content + padding + borders:
-  #   innerWidth = sum(colContentWidths) + cols*cellPadding*2 + (cols+1)
-  let subModalMinInner = case state.subModal
+  let subModalInnerWidth = case state.subModal
     of FleetSubModal.CommandPicker:
-      # No(4) + Mission(14) + Requirements(34) + padding(6) + borders(4)
-      62
+      var rows: seq[seq[string]] = @[]
+      for cmdType in state.commandPickerCommands:
+        rows.add(@[
+          fleetCommandCode(cmdType),
+          fleetCommandLabel(cmdType),
+          commandRequirements(cmdType)
+        ])
+      measuredTableInnerWidth(
+        @["No", "Mission", "Requirements"],
+        rows,
+        @[2, 7, 12]
+      )
     of FleetSubModal.ROEPicker:
-      # ROE(3) + Meaning(30) + UseCase(38) + padding(6) + borders(4)
-      81
-    of FleetSubModal.ZTCPicker:
-      # No(3) + Command(18) + Description(44) + padding(6) + borders(4)
-      75
+      var rows: seq[seq[string]] = @[]
+      for roe in 0..10:
+        rows.add(@[$roe, roeDescription(roe), roeUseCase(roe)])
+      measuredTableInnerWidth(
+        @["ROE", "Meaning", "Use Case"],
+        rows,
+        @[3, 8, 8]
+      )
     of FleetSubModal.SystemPicker:
-      # Coord(6) + System(20) + padding(4) + borders(3)
-      40
-    else:
-      0
+      var rows: seq[seq[string]] = @[]
+      for sys in state.systemPickerSystems:
+        rows.add(@[sys.coordLabel, sys.name])
+      measuredTableInnerWidth(@["Coord", "System"], rows, @[5, 6])
+    of FleetSubModal.FleetPicker:
+      var rows: seq[seq[string]] = @[]
+      for fleet in state.fleetPickerCandidates:
+        rows.add(@[
+          fleet.name,
+          $fleet.shipCount,
+          $fleet.attackStrength,
+          $fleet.defenseStrength
+        ])
+      measuredTableInnerWidth(@["Fleet", "Ships", "AS", "DS"],
+        rows, @[5, 5, 2, 2])
+    of FleetSubModal.ZTCPicker:
+      var rows: seq[seq[string]] = @[]
+      for idx, ztcType in state.ztcPickerCommands:
+        rows.add(@[$(idx + 1), ztcLabel(ztcType), ztcDescription(ztcType)])
+      measuredTableInnerWidth(@["No", "Command", "Description"],
+        rows, @[2, 8, 12])
+    of FleetSubModal.ShipSelector:
+      var rows: seq[seq[string]] = @[]
+      for idx, shipRow in state.shipSelectorRows:
+        let mark = if shipRow.shipId in state.shipSelectorSelected:
+            "[x]" else: "[ ]"
+        rows.add(@[
+          $(idx + 1),
+          mark,
+          shipRow.classLabel,
+          $int(shipRow.shipId),
+          $shipRow.wepTech,
+          $shipRow.attackStrength,
+          $shipRow.defenseStrength,
+          shipRow.combatStatus
+        ])
+      measuredTableInnerWidth(
+        @["No", "Sel", "Class", "ShipId", "Wep", "AS", "DS", "Status"],
+        rows,
+        @[2, 3, 14, 6, 3, 2, 2, 10]
+      )
+    of FleetSubModal.CargoParams:
+      let qtyRaw = state.cargoQuantityInput.value().strip()
+      let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
+      let lines = @[
+        "CARGO PARAMETERS",
+        "Cargo: Marines (Troop Transport only)",
+        "Quantity: " & qty,
+        "Use [0-9] qty, [Enter] confirm"
+      ]
+      maxStringLen(lines)
+    of FleetSubModal.FighterParams:
+      let qtyRaw = state.fighterQuantityInput.value().strip()
+      let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
+      let lines = @[
+        "FIGHTER PARAMETERS",
+        "Quantity: " & qty,
+        "Use [↑↓] or [0-9], [Enter] confirm"
+      ]
+      maxStringLen(lines)
+    of FleetSubModal.ConfirmPrompt:
+      max(state.confirmMessage.len, "Proceed? [Y]es / [N]o".len)
+    of FleetSubModal.NoticePrompt:
+      max(state.noticeMessage.len, "Press [Esc] to go back".len)
+    of FleetSubModal.Staged:
+      "Command staged successfully".len
+    of FleetSubModal.None:
+      desiredInnerWidth
 
-  let desiredWidth = min(maxWidth, max(desiredInnerWidth, subModalMinInner) + 2)
   let modal = widget.modal
-    .maxWidth(desiredWidth)
-    .minWidth(desiredWidth)
+    .maxWidth(maxWidth)
+    .minWidth(4)
     .minHeight(0)
 
   var shipTable = shipTableBase
@@ -469,55 +631,27 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   # Calculate content height based on active sub-modal
   let contentHeight = case state.subModal
     of FleetSubModal.CommandPicker:
-      # Command picker: itemCount + header + separator + borders + footer
-      # Table base height: 4 (top border + header + separator + bottom border)
-      # Footer: 2 lines
-      let commandCount = max(1,
-        state.commandPickerCommands.len)
-      let tableBaseHeight = 4
-      let footerHeight = 2
-      commandCount + tableBaseHeight + footerHeight
+      measuredTableContentHeight(state.commandPickerCommands.len)
     of FleetSubModal.ROEPicker:
-      # Table-based picker: itemCount + tableBase(4) + footer(2)
-      let roeCount = 11
-      let tableBaseHeight = 4
-      let footerHeight = 2
-      roeCount + tableBaseHeight + footerHeight
+      measuredTableContentHeight(11)
     of FleetSubModal.ConfirmPrompt:
-      # Confirmation dialog: compact centered message
       10
     of FleetSubModal.NoticePrompt:
-      # Notice dialog: compact centered message
       10
     of FleetSubModal.SystemPicker:
-      # Cap at 20 visible rows + tableBase(4) + footer(2)
-      let sysCount = min(20, max(1,
-        state.systemPickerSystems.len))
-      let tableBaseHeight = 4
-      let footerHeight = 2
-      sysCount + tableBaseHeight + footerHeight
+      measuredTableContentHeight(state.systemPickerSystems.len)
     of FleetSubModal.FleetPicker:
-      # Table-based picker: itemCount + tableBase(4) + footer(2)
-      let fleetCount = max(1, state.fleetPickerCandidates.len)
-      let tableBaseHeight = 4
-      let footerHeight = 2
-      fleetCount + tableBaseHeight + footerHeight
+      measuredTableContentHeight(state.fleetPickerCandidates.len)
     of FleetSubModal.Staged:
-      # Staged: success message, compact
       8
     of FleetSubModal.ZTCPicker:
-      # Table-based picker: itemCount + tableBase(4) + footer(2)
-      let ztcCount = max(1, state.ztcPickerCommands.len)
-      let tableBaseHeight = 4
-      let footerHeight = 2
-      ztcCount + tableBaseHeight + footerHeight
+      measuredTableContentHeight(state.ztcPickerCommands.len)
     of FleetSubModal.ShipSelector:
-      let shipCount = min(20, max(1, state.shipSelectorShipIds.len))
-      shipCount + 6
+      measuredTableContentHeight(state.shipSelectorRows.len)
     of FleetSubModal.CargoParams:
-      10
+      8
     of FleetSubModal.FighterParams:
-      10
+      7
     of FleetSubModal.None:
       # Normal fleet detail view with ship list
       let maxRows = fleetDetailMaxRows(viewport.height)
@@ -530,7 +664,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       FleetDetailInfoHeight + FleetDetailSeparatorHeight +
         shipsContentHeight + FleetDetailFooterHeight
   
-  var modalArea = modal.calculateArea(viewport, contentHeight)
+  var modalArea = modal.calculateArea(
+    viewport,
+    subModalInnerWidth,
+    contentHeight
+  )
   var effectiveModalArea = modalArea
 
   # Render modal frame with title
@@ -558,9 +696,9 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
         "[↑↓←→]Nav [type]Filter [PgUp/Dn] " &
         "[Enter]Select [Esc]Back")
     of FleetSubModal.ShipSelector:
-      (true, "[↑↓]Nav [1-9]Toggle [Enter]Confirm [Esc]Cancel")
+      (true, "[↑↓]Nav [X/Space]Toggle [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.CargoParams:
-      (true, "[↑↓]Type [0-9]Qty [Enter]Confirm [Esc]Cancel")
+      (true, "[0-9]Qty [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.FighterParams:
       (true, "[↑↓]Qty [0-9]Qty [Enter]Confirm [Esc]Cancel")
     else:
@@ -585,6 +723,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       FleetDetailFooterHeight
     if desiredContentHeight != contentHeight:
       effectiveModalArea = modal.calculateArea(viewport,
+        subModalInnerWidth,
         desiredContentHeight)
 
   if hasFooter:

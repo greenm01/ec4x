@@ -136,6 +136,11 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
 
   case event.key
   of Key.Rune:
+    # Fleet detail multi-ship selector: allow Space to toggle row selection.
+    if model.ui.mode == ViewMode.FleetDetail and
+        model.ui.fleetDetailModal.subModal == FleetSubModal.ShipSelector and
+        event.rune.int == 0x20:
+      return some(actionFleetDetailDigitInput(' '))
     if event.rune.int == 0x0D or event.rune.int == 0x0A:
       # CR/LF maps to Enter key - handled via KeyCode mapping below
       keyCode = KeyCode.KeyEnter
