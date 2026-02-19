@@ -7,6 +7,80 @@ import std/[options, unicode, strutils]
 import ../sam/sam_pkg
 import ../tui/events
 
+type
+  TextAppendProc = proc(value: string): Proposal
+
+proc mapSingleLineInput(
+    event: KeyEvent,
+    appendProc: TextAppendProc,
+    backspaceProposal: Proposal,
+    leftProposal: Proposal,
+    rightProposal: Proposal,
+    deleteProposal: Option[Proposal] = none(Proposal),
+    enterProposal: Option[Proposal] = none(Proposal),
+    escapeProposal: Option[Proposal] = none(Proposal)): Option[Proposal] =
+  case event.key
+  of Key.Rune:
+    if event.rune.int >= 0x20:
+      return some(appendProc($event.rune))
+    return none(Proposal)
+  of Key.Backspace:
+    return some(backspaceProposal)
+  of Key.Left:
+    return some(leftProposal)
+  of Key.Right:
+    return some(rightProposal)
+  of Key.Delete:
+    if deleteProposal.isSome:
+      return deleteProposal
+    return none(Proposal)
+  of Key.Enter, Key.CtrlJ:
+    if enterProposal.isSome:
+      return enterProposal
+    return none(Proposal)
+  of Key.Escape:
+    if escapeProposal.isSome:
+      return escapeProposal
+    return none(Proposal)
+  else:
+    return none(Proposal)
+
+proc mapIntelNoteInput(event: KeyEvent): Option[Proposal] =
+  case event.key
+  of Key.Rune:
+    if event.rune.int == 0x0D or event.rune.int == 0x0A:
+      return some(actionIntelNoteInsertNewline())
+    if event.rune.int >= 0x20:
+      return some(actionIntelNoteAppend($event.rune))
+    return none(Proposal)
+  of Key.Enter, Key.CtrlJ:
+    return some(actionIntelNoteInsertNewline())
+  of Key.CtrlS:
+    return some(actionIntelNoteSave())
+  of Key.Up:
+    return some(actionIntelNoteCursorUp())
+  of Key.Down:
+    return some(actionIntelNoteCursorDown())
+  of Key.Left:
+    return some(actionIntelNoteCursorLeft())
+  of Key.Right:
+    return some(actionIntelNoteCursorRight())
+  of Key.Backspace:
+    return some(actionIntelNoteBackspace())
+  of Key.Escape:
+    return some(actionIntelNoteCancel())
+  of Key.Delete:
+    return some(actionIntelNoteDelete())
+  else:
+    return none(Proposal)
+
+proc mapPrintableAppend(
+    event: KeyEvent,
+    appendProc: TextAppendProc): Option[Proposal] =
+  if event.key == Key.Rune and event.rune.int >= 0x20:
+    return some(appendProc($event.rune))
+  none(Proposal)
+
 proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   ## Map raw key events to SAM actions
 
@@ -29,57 +103,36 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
 
   # Intel note edit mode captures text input directly.
   if model.ui.intelNoteEditActive:
-    case event.key
-    of Key.Rune:
-      if event.rune.int == 0x0D or event.rune.int == 0x0A:
-        return some(actionIntelNoteInsertNewline())
-      if event.rune.int >= 0x20:
-        return some(actionIntelNoteAppend($event.rune))
-      return none(Proposal)
-    of Key.Enter:
-      return some(actionIntelNoteInsertNewline())
-    of Key.CtrlJ:
-      return some(actionIntelNoteInsertNewline())
-    of Key.CtrlS:
-      return some(actionIntelNoteSave())
-    of Key.Up:
-      return some(actionIntelNoteCursorUp())
-    of Key.Down:
-      return some(actionIntelNoteCursorDown())
-    of Key.Left:
-      return some(actionIntelNoteCursorLeft())
-    of Key.Right:
-      return some(actionIntelNoteCursorRight())
-    of Key.Backspace:
-      return some(actionIntelNoteBackspace())
-    of Key.Escape:
-      return some(actionIntelNoteCancel())
-    of Key.Delete:
-      return some(actionIntelNoteDelete())
-    else:
-      return none(Proposal)
+    return mapIntelNoteInput(event)
 
   # Message compose mode captures text input directly.
   if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
-    case event.key
-    of Key.Rune:
-      if event.rune.int >= 0x20:
-        return some(actionMessageComposeAppend($event.rune))
-      return none(Proposal)
-    of Key.Backspace:
-      return some(actionMessageComposeBackspace())
-    of Key.Left:
-      return some(actionMessageComposeCursorLeft())
-    of Key.Right:
-      return some(actionMessageComposeCursorRight())
-    of Key.Enter:
-      return some(actionMessageSend())
-    of Key.CtrlJ:
-      return some(actionMessageSend())
-    of Key.Escape:
-      return some(actionMessageComposeToggle())
-    else:
-      return none(Proposal)
+    return mapSingleLineInput(
+      event,
+      actionMessageComposeAppend,
+      actionMessageComposeBackspace(),
+      actionMessageComposeCursorLeft(),
+      actionMessageComposeCursorRight(),
+      some(actionMessageComposeDelete()),
+      some(actionMessageSend()),
+      some(actionMessageComposeToggle())
+    )
+
+  # Inbox detail pane: typing a non-navigation character starts compose mode
+  # and inserts that first character.
+  if model.ui.mode == ViewMode.Messages and
+      model.ui.inboxSection == InboxSection.Messages and
+      model.ui.inboxFocus == InboxPaneFocus.Detail and
+      not model.ui.messageComposeActive:
+    if event.key == Key.Rune and
+        event.rune.int >= 0x20 and
+        modifier != KeyModifier.Ctrl and
+        modifier != KeyModifier.Alt:
+      let ch = $event.rune
+      let lowerCh = ch.toLowerAscii()
+      if lowerCh != "h" and lowerCh != "j" and
+          lowerCh != "k" and lowerCh != "l":
+        return some(actionMessageComposeStartWithChar(ch))
 
   case event.key
   of Key.Rune:
@@ -91,23 +144,17 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
       if modifier != KeyModifier.Alt:
           if not model.ui.quitConfirmationActive:
             if model.ui.expertModeActive:
-              if event.rune.int >= 0x20:
-                return some(actionExpertInputAppend($event.rune))
-              return none(Proposal)
+              return mapPrintableAppend(event, actionExpertInputAppend)
           # Entry modal import mode: append characters to nsec buffer
           if model.ui.appPhase == AppPhase.Lobby and
               model.ui.entryModal.mode == EntryModalMode.ImportNsec:
-            if event.rune.int >= 0x20:
-              return some(actionEntryImportAppend($event.rune))
-            return none(Proposal)
+            return mapPrintableAppend(event, actionEntryImportAppend)
           # Entry modal invite code input: append characters
           # Auto-focus to InviteCode when typing valid invite characters from GameList
           if model.ui.appPhase == AppPhase.Lobby and
               model.ui.entryModal.mode == EntryModalMode.Normal:
             if model.ui.entryModal.focus == EntryModalFocus.InviteCode:
-              if event.rune.int >= 0x20:
-                return some(actionEntryInviteAppend($event.rune))
-              return none(Proposal)
+              return mapPrintableAppend(event, actionEntryInviteAppend)
             elif model.ui.entryModal.focus == EntryModalFocus.GameList:
               # Auto-focus to invite code when typing valid invite characters
               let ch = ($event.rune).toLowerAscii()
@@ -117,9 +164,7 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
           # Lobby input mode: append characters to pubkey/name
           if model.ui.appPhase == AppPhase.Lobby and
               model.ui.lobbyInputMode != LobbyInputMode.None:
-            if event.rune.int >= 0x20:
-              return some(actionLobbyInputAppend($event.rune))
-            return none(Proposal)
+            return mapPrintableAppend(event, actionLobbyInputAppend)
       let ch = $event.rune
       case ch
       of "0":

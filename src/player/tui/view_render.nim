@@ -27,6 +27,7 @@ import ../tui/widget/status_bar
 import ../tui/styles/ec_palette
 import ../tui/widget/modal
 import ../tui/widget/table
+import ../tui/cursor_target
 import ../tui/widget/build_modal
 import ../tui/widget/queue_modal
 import ../tui/widget/fleet_detail_modal
@@ -181,7 +182,7 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
   if not model.ui.expertModeActive:
     return
 
-  let matches = expertMatchesCached(model.ui.expertModeInput)
+  let matches = expertMatchesCached(model.ui.expertModeInput.value())
   if matches.len == 0:
     return
 
@@ -2293,14 +2294,12 @@ proc renderInboxDetailMessages(
     .scrollState(convoScroll)
   convoParagraph.render(convoArea, buf)
 
-  let isComposeFocused = model.ui.inboxFocus ==
-    InboxPaneFocus.Compose
-  if isComposeFocused:
+  if model.ui.messageComposeActive:
     let sepY = area.y + convoHeight
     if sepY < area.bottom:
       discard buf.setString(area.x, sepY,
         "─".repeat(area.width),
-        selectedStyle())
+        modalDimStyle())
 
   let inputWidget = newTextInput()
     .placeholder("Type a message...")
@@ -2395,7 +2394,7 @@ proc renderInboxModal*(canvas: Rect,
   let modalArea = modal.calculateArea(
     canvas, contentHeight)
   let footerText =
-    "[↑↓]Nav [Tab]Focus [C]Compose" &
+    "[↑↓]Nav [←→/H/L/Tab]Focus [C]Compose" &
     " [M]Messages [R]Reports [Esc]Back"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(
@@ -2428,8 +2427,7 @@ proc renderInboxModal*(canvas: Rect,
     else:
       "REPORT"
   let detailFocused =
-    model.ui.inboxFocus == InboxPaneFocus.Detail or
-    model.ui.inboxFocus == InboxPaneFocus.Compose
+    model.ui.inboxFocus == InboxPaneFocus.Detail
   let detailBorder = modalPanelBorderStyle(detailFocused)
   let detailFrame = bordered()
     .title(detailTitle)
@@ -3102,21 +3100,6 @@ proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
   ## Render overlay for editing intel notes.
   if not model.ui.intelNoteEditActive:
     return
-  proc cursorLine(text: string, cursorPos: int): int =
-    let cursor = clamp(cursorPos, 0, text.len)
-    result = 0
-    for i in 0 ..< cursor:
-      if text[i] == '\n':
-        result.inc
-  proc cursorColumn(text: string, cursorPos: int): int =
-    let cursor = clamp(cursorPos, 0, text.len)
-    var start = 0
-    if cursor > 0:
-      for i in countdown(cursor - 1, 0):
-        if text[i] == '\n':
-          start = i + 1
-          break
-    cursor - start
 
   let modal = newModal()
     .title("EDIT INTEL NOTE")
@@ -3142,17 +3125,17 @@ proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
   if textArea.isEmpty:
     return
 
-  let lines = model.ui.intelNoteEditInput.splitLines(keepEol = false)
+  let lines = model.ui.intelNoteEditor.text.splitLines(keepEol = false)
   let lineCount = max(1, lines.len)
   let cursorLineIdx = cursorLine(
-    model.ui.intelNoteEditInput,
-    model.ui.intelNoteCursorPos
+    model.ui.intelNoteEditor.text,
+    model.ui.intelNoteEditor.cursorPos
   )
   let cursorCol = cursorColumn(
-    model.ui.intelNoteEditInput,
-    model.ui.intelNoteCursorPos
+    model.ui.intelNoteEditor.text,
+    model.ui.intelNoteEditor.cursorPos
   )
-  var scrollLine = model.ui.intelNoteScrollOffset
+  var scrollLine = model.ui.intelNoteEditor.scrollLine
   scrollLine = max(0, min(scrollLine, max(0, lineCount - textArea.height)))
   if cursorLineIdx < scrollLine:
     scrollLine = cursorLineIdx
@@ -3166,21 +3149,19 @@ proc renderIntelNoteEditor*(canvas: Rect, buf: var CellBuffer,
     let lineText = if lineIdx < lines.len: lines[lineIdx] else: ""
     var xPos = textArea.x
     var charIdx = 0
+    var lineCursorX = textArea.x
     for ch in lineText.runes:
       if xPos >= textArea.right:
         break
-      let style = if lineIdx == cursorLineIdx and
-          charIdx == cursorCol:
-        selectedStyle()
-      else:
-        normalStyle()
-      let written = buf.put(xPos, textArea.y + row, ch.toUTF8, style)
+      if lineIdx == cursorLineIdx and charIdx == cursorCol:
+        lineCursorX = xPos
+      let written = buf.put(xPos, textArea.y + row, ch.toUTF8, normalStyle())
       xPos += written
       charIdx.inc
-    # If cursor is past end-of-line, draw block there
-    if lineIdx == cursorLineIdx and cursorCol >= charIdx and
-        xPos < textArea.right:
-      discard buf.put(xPos, textArea.y + row, " ", selectedStyle())
+    if lineIdx == cursorLineIdx:
+      if cursorCol >= charIdx:
+        lineCursorX = min(xPos, textArea.right - 1)
+      setCursorTarget(lineCursorX, textArea.y + row)
 
 proc renderListPanel*(
     area: Rect,
@@ -3346,7 +3327,7 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
   result.views = standardViews()
   result.setActiveView(activeViewKey(model.ui.mode))
   result.expertModeActive = model.ui.expertModeActive
-  result.expertModeInput = model.ui.expertModeInput
+  result.expertModeInput = model.ui.expertModeInput.value()
   result.showQuit = true
   if model.ui.expertModeFeedback.len > 0:
     result.feedback = model.ui.expertModeFeedback

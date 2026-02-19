@@ -15,6 +15,7 @@
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
+import ../cursor_target
 
 export ec_palette
 
@@ -323,9 +324,10 @@ proc renderExpertModeIndicator*(area: Rect, buf: var CellBuffer,
     let promptX = area.x + 1
     discard buf.setString(promptX, y, ": ", keyStyle)
     discard buf.setString(promptX + 2, y, input, normalStyle)
-    # Show cursor position
+    # Publish native cursor location for expert input.
     let cursorX = promptX + 2 + input.len
-    discard buf.setString(cursorX, y, "_", keyStyle)
+    if cursorX < area.right:
+      setCursorTarget(cursorX, y)
   else:
     # Show "[: ] Expert Mode"
     let hintStr = "[: ] Expert Mode"

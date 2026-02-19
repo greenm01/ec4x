@@ -47,6 +47,10 @@ proc actionMessageComposeBackspace*(): Proposal =
   ## Backspace in message compose input
   gameActionProposal(ActionKind.messageComposeBackspace, "")
 
+proc actionMessageComposeDelete*(): Proposal =
+  ## Delete character at compose cursor
+  gameActionProposal(ActionKind.messageComposeDelete, "")
+
 proc actionMessageComposeCursorLeft*(): Proposal =
   ## Move compose cursor left
   gameActionProposal(ActionKind.messageComposeCursorLeft, "")
@@ -58,6 +62,10 @@ proc actionMessageComposeCursorRight*(): Proposal =
 proc actionMessageComposeToggle*(): Proposal =
   ## Toggle message compose mode
   gameActionProposal(ActionKind.messageComposeToggle, "")
+
+proc actionMessageComposeStartWithChar*(ch: string): Proposal =
+  ## Enter compose mode and seed first character from detail pane.
+  gameActionProposal(ActionKind.messageComposeStartWithChar, ch)
 
 proc actionMessageSend*(): Proposal =
   ## Send composed message
@@ -314,6 +322,14 @@ proc actionExpertInputAppend*(value: string): Proposal =
 proc actionExpertInputBackspace*(): Proposal =
   ## Remove last character from expert mode buffer
   gameActionProposal(ActionKind.expertInputBackspace, "")
+
+proc actionExpertCursorLeft*(): Proposal =
+  ## Move expert mode cursor left
+  gameActionProposal(ActionKind.expertCursorLeft, "")
+
+proc actionExpertCursorRight*(): Proposal =
+  ## Move expert mode cursor right
+  gameActionProposal(ActionKind.expertCursorRight, "")
 
 proc actionExpertSubmit*(): Proposal =
   ## Submit expert mode command
@@ -602,6 +618,14 @@ proc actionLobbyBackspace*(): Proposal =
     gameActionData: ""
   )
 
+proc actionLobbyDelete*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.lobbyDelete,
+    gameActionData: ""
+  )
+
 proc actionLobbyCursorLeft*(): Proposal =
   Proposal(
     kind: ProposalKind.pkGameAction,
@@ -708,6 +732,15 @@ proc actionEntryImportBackspace*(): Proposal =
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
     actionKind: ActionKind.entryImportBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryDelete*(): Proposal =
+  ## Delete at cursor in entry text inputs
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryDelete,
     gameActionData: ""
   )
 

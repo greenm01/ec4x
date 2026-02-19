@@ -47,6 +47,8 @@ type
     exitExpertMode
     expertInputAppend
     expertInputBackspace
+    expertCursorLeft
+    expertCursorRight
     expertHistoryPrev
     expertHistoryNext
     expertSubmit
@@ -77,6 +79,7 @@ type
     lobbyJoinSubmit
     lobbyJoinPoll
     lobbyBackspace
+    lobbyDelete
     lobbyCursorLeft
     lobbyCursorRight
     lobbyReturn
@@ -94,6 +97,7 @@ type
     entryImportCancel
     entryImportAppend
     entryImportBackspace
+    entryDelete
     entryInviteAppend
     entryInviteBackspace
     entryInviteSubmit
@@ -182,8 +186,10 @@ type
     messageScrollUp
     messageScrollDown
     messageComposeToggle
+    messageComposeStartWithChar
     messageComposeAppend
     messageComposeBackspace
+    messageComposeDelete
     messageComposeCursorLeft
     messageComposeCursorRight
     messageSend

@@ -1321,6 +1321,34 @@ proc initBindings*() =
     priority: 4))
 
   registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageFocusPrev,
+    context: BindingContext.Messages,
+    longLabel: "FOCUS", shortLabel: "←",
+    priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageFocusPrev,
+    context: BindingContext.Messages,
+    longLabel: "FOCUS", shortLabel: "H",
+    priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageFocusNext,
+    context: BindingContext.Messages,
+    longLabel: "FOCUS", shortLabel: "→",
+    priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.messageFocusNext,
+    context: BindingContext.Messages,
+    longLabel: "FOCUS", shortLabel: "L",
+    priority: 4))
+
+  registerBinding(Binding(
     key: KeyCode.KeyC, modifier: KeyModifier.None,
     actionKind: ActionKind.messageComposeToggle,
     context: BindingContext.Messages,
@@ -1574,6 +1602,18 @@ proc initBindings*() =
     context: BindingContext.ExpertMode,
     longLabel: "DELETE", shortLabel: "Del", priority: 30))
 
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.expertCursorLeft,
+    context: BindingContext.ExpertMode,
+    longLabel: "CURSOR", shortLabel: "Cur", priority: 31))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.expertCursorRight,
+    context: BindingContext.ExpertMode,
+    longLabel: "CURSOR", shortLabel: "Cur", priority: 32))
+
 # =============================================================================
 # Action Dispatch
 # =============================================================================
@@ -1653,6 +1693,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionExpertSubmit())
   of ActionKind.expertInputBackspace:
     return some(actionExpertInputBackspace())
+  of ActionKind.expertCursorLeft:
+    return some(actionExpertCursorLeft())
+  of ActionKind.expertCursorRight:
+    return some(actionExpertCursorRight())
   of ActionKind.expertHistoryPrev:
     return some(actionExpertHistoryPrev())
   of ActionKind.expertHistoryNext:
@@ -1725,10 +1769,14 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEntryCursorLeft())
   of ActionKind.entryCursorRight:
     return some(actionEntryCursorRight())
+  of ActionKind.entryDelete:
+    return some(actionEntryDelete())
   of ActionKind.lobbyCursorLeft:
     return some(actionLobbyCursorLeft())
   of ActionKind.lobbyCursorRight:
     return some(actionLobbyCursorRight())
+  of ActionKind.lobbyDelete:
+    return some(actionLobbyDelete())
 
   # Lobby actions (handled separately in mapKeyToAction)
   of ActionKind.lobbyReturn:
@@ -1843,6 +1891,11 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionMessageFocusPrev())
   of ActionKind.messageComposeToggle:
     return some(actionMessageComposeToggle())
+  of ActionKind.messageComposeStartWithChar:
+    # Handled specially with gameActionData payload.
+    return none(Proposal)
+  of ActionKind.messageComposeDelete:
+    return some(actionMessageComposeDelete())
   of ActionKind.messageScrollUp:
     return some(actionMessageScrollUp())
   of ActionKind.messageScrollDown:
@@ -2252,6 +2305,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionLobbyJoinSubmit())
       of KeyCode.KeyBackspace:
         return some(actionLobbyBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionLobbyDelete())
       of KeyCode.KeyLeft:
         return some(actionLobbyCursorLeft())
       of KeyCode.KeyRight:
@@ -2268,6 +2323,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryImportCancel())
       of KeyCode.KeyBackspace:
         return some(actionEntryImportBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionEntryDelete())
       of KeyCode.KeyLeft:
         return some(actionEntryCursorLeft())
       of KeyCode.KeyRight:
@@ -2282,6 +2339,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryRelayConfirm())
       of KeyCode.KeyBackspace:
         return some(actionEntryRelayBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionEntryDelete())
       of KeyCode.KeyLeft:
         return some(actionEntryCursorLeft())
       of KeyCode.KeyRight:
@@ -2310,6 +2369,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionCreateGameConfirm())
       of KeyCode.KeyBackspace:
         return some(actionCreateGameBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionEntryDelete())
       else:
         if modifier != ViewModifier:
           return none(Proposal)
@@ -2344,6 +2405,13 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           return some(actionEntryInviteBackspace())
         elif model.ui.entryModal.focus == EntryModalFocus.RelayUrl:
           return some(actionEntryRelayBackspace())
+        else:
+          return none(Proposal)
+      of KeyCode.KeyDelete:
+        if model.ui.entryModal.focus in {
+            EntryModalFocus.InviteCode,
+            EntryModalFocus.RelayUrl}:
+          return some(actionEntryDelete())
         else:
           return none(Proposal)
       of KeyCode.KeyLeft:

@@ -33,6 +33,7 @@ import ./sync
 import ./input_map
 import ./view_render
 import ./output
+import ./cursor_target
 
 proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
@@ -353,20 +354,20 @@ proc runTui*(gameId: string = "") =
     game.id == "invite" or game.status == "placeholder" or
       game.status == "invite"
 
-  if initialModel.ui.lobbyProfilePubkey.len > 0:
+  if initialModel.ui.lobbyProfilePubkeyInput.value().len > 0:
     # Run migration from old KDL join cache files
-    tuiCache.runMigrations("data", initialModel.ui.lobbyProfilePubkey)
+    tuiCache.runMigrations("data", initialModel.ui.lobbyProfilePubkeyInput.value())
     tuiCache.pruneStaleGames(30)
 
     # Load games from cache instead of daemon's DB
     let cachedGames = tuiCache.listPlayerGames(
-      initialModel.ui.lobbyProfilePubkey
+      initialModel.ui.lobbyProfilePubkeyInput.value()
     )
     for (game, houseId) in cachedGames:
       if isPlaceholderGame(game, houseId):
         if isRemovablePlaceholder(game):
           tuiCache.deletePlayerSlot(game.id,
-            initialModel.ui.lobbyProfilePubkey)
+            initialModel.ui.lobbyProfilePubkeyInput.value())
           tuiCache.deleteGame(game.id)
         continue
       initialModel.view.lobbyActiveGames.add(ActiveGameInfo(
@@ -379,23 +380,23 @@ proc runTui*(gameId: string = "") =
   else:
     let profiles = loadProfiles("data")
     if profiles.len > 0:
-      initialModel.ui.lobbyProfilePubkey = profiles[0]
+      initialModel.ui.lobbyProfilePubkeyInput.setText(profiles[0])
       let profileInfo = loadProfile("data",
-        initialModel.ui.lobbyProfilePubkey)
-      initialModel.ui.lobbyProfileName = profileInfo.name
+        initialModel.ui.lobbyProfilePubkeyInput.value())
+      initialModel.ui.lobbyProfileNameInput.setText(profileInfo.name)
       initialModel.ui.lobbySessionKeyActive = profileInfo.session
 
       # Run migration and load from cache
-      tuiCache.runMigrations("data", initialModel.ui.lobbyProfilePubkey)
+      tuiCache.runMigrations("data", initialModel.ui.lobbyProfilePubkeyInput.value())
       tuiCache.pruneStaleGames(30)
       let cachedGames = tuiCache.listPlayerGames(
-        initialModel.ui.lobbyProfilePubkey
+        initialModel.ui.lobbyProfilePubkeyInput.value()
       )
       for (game, houseId) in cachedGames:
         if isPlaceholderGame(game, houseId):
           if isRemovablePlaceholder(game):
             tuiCache.deletePlayerSlot(game.id,
-              initialModel.ui.lobbyProfilePubkey)
+              initialModel.ui.lobbyProfilePubkeyInput.value())
             tuiCache.deleteGame(game.id)
           continue
         initialModel.view.lobbyActiveGames.add(ActiveGameInfo(
@@ -640,7 +641,7 @@ proc runTui*(gameId: string = "") =
               if gameStatus == GameStatusCancelled or
                   gameStatus == GameStatusRemoved:
                 tuiCache.deletePlayerSlot(gameId,
-                  sam.model.ui.lobbyProfilePubkey)
+                  sam.model.ui.lobbyProfilePubkeyInput.value())
                 tuiCache.deleteGame(gameId)
                 sam.model.view.lobbyActiveGames =
                   sam.model.view.lobbyActiveGames.filterIt(it.id != gameId)
@@ -656,7 +657,7 @@ proc runTui*(gameId: string = "") =
 
               # Check if player has a slot in this game
               let slotOpt = tuiCache.getPlayerSlot(gameId,
-                sam.model.ui.lobbyProfilePubkey)
+                sam.model.ui.lobbyProfilePubkeyInput.value())
               let houseIdFromCache = if slotOpt.isSome:
                 slotOpt.get().houseId else: 0
 
@@ -777,7 +778,7 @@ proc runTui*(gameId: string = "") =
                   writeJoinCache("data", joinPubkey, joinGameId, houseId)
                   if gameName.isSome:
                     saveProfile("data", joinPubkey,
-                      sam.model.ui.lobbyProfileName,
+                      sam.model.ui.lobbyProfileNameInput.value(),
                       sam.model.ui.lobbySessionKeyActive)
 
                   # Update in-memory model from cache
@@ -918,9 +919,19 @@ proc runTui*(gameId: string = "") =
   
   proc doRender() =
     ## Explicit render function - called by main loop, not SAM
+    clearCursorTarget()
     buf.clear()
     renderDashboard(buf, sam.model, playerState)
     outputBuffer(buf)
+    let targetOpt = cursorTarget()
+    if targetOpt.isSome:
+      let target = targetOpt.get()
+      stdout.write(showCursor())
+      stdout.write(setCursorStyle(target.style))
+      stdout.write(moveCursor(target.y + 1, target.x + 1))
+    else:
+      stdout.write(hideCursor())
+    stdout.flushFile()
   
   # Note: We intentionally don't call sam.setRender() - rendering is 
   # controlled by the main loop's frame timing, not triggered by present()

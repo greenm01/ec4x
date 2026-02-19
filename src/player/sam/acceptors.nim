@@ -338,57 +338,9 @@ proc syncIntelListScroll(model: var TuiModel) =
   model.ui.intelScroll.ensureVisible(model.ui.selectedIdx)
   model.ui.intelScroll.clampOffsets()
 
-proc intelCursorColumn(text: string, cursorPos: int): int =
-  let cursor = clamp(cursorPos, 0, text.len)
-  var start = 0
-  if cursor > 0:
-    for i in countdown(cursor - 1, 0):
-      if text[i] == '\n':
-        start = i + 1
-        break
-  cursor - start
-
-proc intelCursorLine(text: string, cursorPos: int): int =
-  let cursor = clamp(cursorPos, 0, text.len)
-  result = 0
-  for i in 0 ..< cursor:
-    if text[i] == '\n':
-      result.inc
-
-proc intelLineStart(text: string, lineIdx: int): int =
-  if lineIdx <= 0:
-    return 0
-  var line = 0
-  for i, ch in text:
-    if ch == '\n':
-      line.inc
-      if line == lineIdx:
-        return i + 1
-  text.len
-
-proc intelLineEnd(text: string, lineStart: int): int =
-  for i in lineStart ..< text.len:
-    if text[i] == '\n':
-      return i
-  text.len
-
-proc intelLineCount(text: string): int =
-  result = 1
-  for ch in text:
-    if ch == '\n':
-      result.inc
-
 proc ensureIntelCursorVisible(model: var TuiModel) =
   let viewportLines = max(1, model.ui.termHeight - 16)
-  let currentLine = intelCursorLine(
-    model.ui.intelNoteEditInput,
-    model.ui.intelNoteCursorPos
-  )
-  if currentLine < model.ui.intelNoteScrollOffset:
-    model.ui.intelNoteScrollOffset = currentLine
-  elif currentLine >= model.ui.intelNoteScrollOffset + viewportLines:
-    model.ui.intelNoteScrollOffset = currentLine - viewportLines + 1
-  model.ui.intelNoteScrollOffset = max(0, model.ui.intelNoteScrollOffset)
+  model.ui.intelNoteEditor.ensureCursorVisibleLines(viewportLines)
 
 proc openSystemPickerForCommand(
     model: var TuiModel,
@@ -465,14 +417,14 @@ proc toggleSortDirection*(
   state.ascending = not state.ascending
 
 proc resetExpertPaletteSelection(model: var TuiModel) =
-  let matches = matchExpertCommands(model.ui.expertModeInput)
+  let matches = matchExpertCommands(model.ui.expertModeInput.value())
   if matches.len == 0:
     model.ui.expertPaletteSelection = -1
   else:
     model.ui.expertPaletteSelection = 0
 
 proc clampExpertPaletteSelection(model: var TuiModel) =
-  let matches = matchExpertCommands(model.ui.expertModeInput)
+  let matches = matchExpertCommands(model.ui.expertModeInput.value())
   if matches.len == 0:
     model.ui.expertPaletteSelection = -1
     return
@@ -1215,136 +1167,55 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         return
       model.ui.intelDetailSystemId = systemId
       model.ui.intelNoteEditActive = true
-      model.ui.intelNoteEditInput = existingNote
-      model.ui.intelNoteCursorPos = existingNote.len
-      model.ui.intelNotePreferredColumn = intelCursorColumn(
-        existingNote,
-        existingNote.len
-      )
-      model.ui.intelNoteScrollOffset = 0
+      model.ui.intelNoteEditor.clear()
+      model.ui.intelNoteEditor.mode = EditorMode.MultiLine
+      model.ui.intelNoteEditor.setText(existingNote)
+      model.ui.intelNoteEditor.updatePreferredColumn()
       model.ensureIntelCursorVisible()
       model.ui.statusMessage = "Editing intel note"
     of ActionKind.intelNoteAppend:
       if not model.ui.intelNoteEditActive:
         return
-      let cursor = clamp(
-        model.ui.intelNoteCursorPos,
-        0,
-        model.ui.intelNoteEditInput.len
-      )
-      model.ui.intelNoteEditInput.insert(proposal.gameActionData, cursor)
-      model.ui.intelNoteCursorPos = cursor + proposal.gameActionData.len
-      model.ui.intelNotePreferredColumn = intelCursorColumn(
-        model.ui.intelNoteEditInput,
-        model.ui.intelNoteCursorPos
-      )
+      discard model.ui.intelNoteEditor.appendText(proposal.gameActionData)
+      model.ui.intelNoteEditor.updatePreferredColumn()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteBackspace:
       if not model.ui.intelNoteEditActive:
         return
-      if model.ui.intelNoteCursorPos > 0 and
-          model.ui.intelNoteEditInput.len > 0:
-        let cursor = clamp(
-          model.ui.intelNoteCursorPos,
-          0,
-          model.ui.intelNoteEditInput.len
-        )
-        model.ui.intelNoteEditInput.delete((cursor - 1) .. (cursor - 1))
-        model.ui.intelNoteCursorPos = cursor - 1
-        model.ui.intelNotePreferredColumn = intelCursorColumn(
-          model.ui.intelNoteEditInput,
-          model.ui.intelNoteCursorPos
-        )
-        model.ensureIntelCursorVisible()
+      model.ui.intelNoteEditor.backspace()
+      model.ui.intelNoteEditor.updatePreferredColumn()
+      model.ensureIntelCursorVisible()
     of ActionKind.intelNoteCursorLeft:
       if not model.ui.intelNoteEditActive:
         return
-      if model.ui.intelNoteCursorPos > 0:
-        model.ui.intelNoteCursorPos.dec
-      model.ui.intelNotePreferredColumn = intelCursorColumn(
-        model.ui.intelNoteEditInput,
-        model.ui.intelNoteCursorPos
-      )
+      model.ui.intelNoteEditor.moveCursorLeft()
+      model.ui.intelNoteEditor.updatePreferredColumn()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteCursorRight:
       if not model.ui.intelNoteEditActive:
         return
-      if model.ui.intelNoteCursorPos < model.ui.intelNoteEditInput.len:
-        model.ui.intelNoteCursorPos.inc
-      model.ui.intelNotePreferredColumn = intelCursorColumn(
-        model.ui.intelNoteEditInput,
-        model.ui.intelNoteCursorPos
-      )
+      model.ui.intelNoteEditor.moveCursorRight()
+      model.ui.intelNoteEditor.updatePreferredColumn()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteCursorUp:
       if not model.ui.intelNoteEditActive:
         return
-      let currentLine = intelCursorLine(
-        model.ui.intelNoteEditInput,
-        model.ui.intelNoteCursorPos
-      )
-      if currentLine > 0:
-        let targetLine = currentLine - 1
-        let targetStart = intelLineStart(
-          model.ui.intelNoteEditInput,
-          targetLine
-        )
-        let targetEnd = intelLineEnd(
-          model.ui.intelNoteEditInput,
-          targetStart
-        )
-        let targetCol = min(
-          model.ui.intelNotePreferredColumn,
-          targetEnd - targetStart
-        )
-        model.ui.intelNoteCursorPos = targetStart + targetCol
+      model.ui.intelNoteEditor.moveCursorUpLine()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteCursorDown:
       if not model.ui.intelNoteEditActive:
         return
-      let currentLine = intelCursorLine(
-        model.ui.intelNoteEditInput,
-        model.ui.intelNoteCursorPos
-      )
-      let totalLines = intelLineCount(model.ui.intelNoteEditInput)
-      if currentLine + 1 < totalLines:
-        let targetLine = currentLine + 1
-        let targetStart = intelLineStart(
-          model.ui.intelNoteEditInput,
-          targetLine
-        )
-        let targetEnd = intelLineEnd(
-          model.ui.intelNoteEditInput,
-          targetStart
-        )
-        let targetCol = min(
-          model.ui.intelNotePreferredColumn,
-          targetEnd - targetStart
-        )
-        model.ui.intelNoteCursorPos = targetStart + targetCol
+      model.ui.intelNoteEditor.moveCursorDownLine()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteDelete:
       if not model.ui.intelNoteEditActive:
         return
-      let cursor = clamp(
-        model.ui.intelNoteCursorPos,
-        0,
-        model.ui.intelNoteEditInput.len
-      )
-      if cursor < model.ui.intelNoteEditInput.len:
-        model.ui.intelNoteEditInput.delete(cursor .. cursor)
+      model.ui.intelNoteEditor.delete()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteInsertNewline:
       if not model.ui.intelNoteEditActive:
         return
-      let cursor = clamp(
-        model.ui.intelNoteCursorPos,
-        0,
-        model.ui.intelNoteEditInput.len
-      )
-      model.ui.intelNoteEditInput.insert("\n", cursor)
-      model.ui.intelNoteCursorPos = cursor + 1
-      model.ui.intelNotePreferredColumn = 0
+      model.ui.intelNoteEditor.insertNewline()
       model.ensureIntelCursorVisible()
     of ActionKind.intelNoteSave:
       if not model.ui.intelNoteEditActive:
@@ -1356,11 +1227,11 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         return
       model.ui.intelNoteSaveRequested = true
       model.ui.intelNoteSaveSystemId = systemId
-      model.ui.intelNoteSaveText = model.ui.intelNoteEditInput
+      model.ui.intelNoteSaveText = model.ui.intelNoteEditor.value()
       for idx, row in model.view.intelRows:
         if row.systemId == systemId:
           model.view.intelRows[idx].notes =
-            model.ui.intelNoteEditInput
+            model.ui.intelNoteEditor.value()
           break
       model.ui.intelNoteEditActive = false
       model.ui.statusMessage = "Intel note saved"
@@ -1368,10 +1239,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if not model.ui.intelNoteEditActive:
         return
       model.ui.intelNoteEditActive = false
-      model.ui.intelNoteEditInput = ""
-      model.ui.intelNoteCursorPos = 0
-      model.ui.intelNotePreferredColumn = 0
-      model.ui.intelNoteScrollOffset = 0
+      model.ui.intelNoteEditor.clear()
       model.ui.statusMessage = "Intel note edit canceled"
     of ActionKind.intelDetailNext:
       # Navigate to next intel system in detail view
@@ -1436,14 +1304,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         case model.ui.inboxFocus
         of InboxPaneFocus.List:
           model.ui.inboxFocus = InboxPaneFocus.Detail
-          model.ui.messageComposeActive = false
         of InboxPaneFocus.Detail:
-          if model.ui.inboxSection == InboxSection.Messages:
-            model.ui.inboxFocus = InboxPaneFocus.Compose
-            model.ui.messageComposeActive = true
-          else:
-            model.ui.inboxFocus = InboxPaneFocus.List
-            model.ui.messageComposeActive = false
+          model.ui.inboxFocus = InboxPaneFocus.List
         of InboxPaneFocus.Compose:
           model.ui.inboxFocus = InboxPaneFocus.List
           model.ui.messageComposeActive = false
@@ -1451,15 +1313,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.mode == ViewMode.Messages:
         case model.ui.inboxFocus
         of InboxPaneFocus.List:
-          if model.ui.inboxSection == InboxSection.Messages:
-            model.ui.inboxFocus = InboxPaneFocus.Compose
-            model.ui.messageComposeActive = true
-          else:
-            model.ui.inboxFocus = InboxPaneFocus.Detail
-            model.ui.messageComposeActive = false
+          model.ui.inboxFocus = InboxPaneFocus.Detail
         of InboxPaneFocus.Detail:
           model.ui.inboxFocus = InboxPaneFocus.List
-          model.ui.messageComposeActive = false
         of InboxPaneFocus.Compose:
           model.ui.inboxFocus = InboxPaneFocus.Detail
           model.ui.messageComposeActive = false
@@ -1492,12 +1348,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             InboxSection.Messages:
           model.ui.messageComposeActive =
             not model.ui.messageComposeActive
-          if model.ui.messageComposeActive:
-            model.ui.inboxFocus =
-              InboxPaneFocus.Compose
-          else:
-            model.ui.inboxFocus =
-              InboxPaneFocus.Detail
+          model.ui.inboxFocus =
+            InboxPaneFocus.Detail
+    of ActionKind.messageComposeStartWithChar:
+      if model.ui.mode == ViewMode.Messages and
+          model.ui.inboxSection == InboxSection.Messages and
+          model.ui.inboxFocus == InboxPaneFocus.Detail and
+          not model.ui.messageComposeActive:
+        model.ui.messageComposeActive = true
+        model.ui.inboxFocus = InboxPaneFocus.Detail
+        if proposal.gameActionData.len > 0:
+          discard model.ui.messageComposeInput.appendChar(
+            proposal.gameActionData[0]
+          )
     of ActionKind.messageComposeAppend:
       if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
         if proposal.gameActionData.len > 0:
@@ -1507,6 +1370,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.messageComposeBackspace:
       if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
         model.ui.messageComposeInput.backspace()
+    of ActionKind.messageComposeDelete:
+      if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
+        model.ui.messageComposeInput.delete()
     of ActionKind.messageComposeCursorLeft:
       if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
         model.ui.messageComposeInput.moveCursorLeft()
@@ -1583,8 +1449,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.lobbyGenerateKey:
       model.ui.lobbySessionKeyActive = true
       model.ui.lobbyWarning = "Session-only key: not saved"
-      model.ui.lobbyProfilePubkey = "session-" & $getTime().toUnix()
-      model.ui.lobbyProfilePubkeyCursor = model.ui.lobbyProfilePubkey.len
+      model.ui.lobbyProfilePubkeyInput.setText(
+        "session-" & $getTime().toUnix()
+      )
       model.ui.statusMessage = "Generated session key (not stored)"
       # Active games populated from Nostr events, not filesystem
     of ActionKind.lobbyJoinRefresh:
@@ -1594,20 +1461,26 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = "Refreshing game list from relay..."
     of ActionKind.lobbyJoinSubmit:
       if model.ui.lobbyInputMode == LobbyInputMode.Pubkey:
-        let normalized = normalizePubkey(model.ui.lobbyProfilePubkey)
+        let normalized = normalizePubkey(
+          model.ui.lobbyProfilePubkeyInput.value()
+        )
         if normalized.isNone:
           model.ui.lobbyJoinError = "Invalid pubkey"
           model.ui.statusMessage = model.ui.lobbyJoinError
         else:
-          model.ui.lobbyProfilePubkey = normalized.get()
+          model.ui.lobbyProfilePubkeyInput.setText(normalized.get())
           model.ui.lobbyInputMode = LobbyInputMode.None
-          saveProfile("data", model.ui.lobbyProfilePubkey,
-            model.ui.lobbyProfileName, model.ui.lobbySessionKeyActive)
+          saveProfile("data",
+            model.ui.lobbyProfilePubkeyInput.value(),
+            model.ui.lobbyProfileNameInput.value(),
+            model.ui.lobbySessionKeyActive)
           # Active games populated from TUI cache, not filesystem
       elif model.ui.lobbyInputMode == LobbyInputMode.Name:
         model.ui.lobbyInputMode = LobbyInputMode.None
-        saveProfile("data", model.ui.lobbyProfilePubkey,
-          model.ui.lobbyProfileName, model.ui.lobbySessionKeyActive)
+        saveProfile("data",
+          model.ui.lobbyProfilePubkeyInput.value(),
+          model.ui.lobbyProfileNameInput.value(),
+          model.ui.lobbySessionKeyActive)
       elif model.ui.lobbyJoinStatus == JoinStatus.SelectingGame:
         if model.ui.lobbyJoinSelectedIdx < model.view.lobbyJoinGames.len:
           let game = model.view.lobbyJoinGames[
@@ -1619,23 +1492,29 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           model.ui.lobbyJoinError = "No game selected"
       elif model.ui.lobbyJoinStatus == JoinStatus.EnteringPubkey:
-        let normalized = normalizePubkey(model.ui.lobbyProfilePubkey)
+        let normalized = normalizePubkey(
+          model.ui.lobbyProfilePubkeyInput.value()
+        )
         if normalized.isNone:
           model.ui.lobbyJoinError = "Invalid pubkey"
           model.ui.statusMessage = model.ui.lobbyJoinError
         else:
-          model.ui.lobbyProfilePubkey = normalized.get()
+          model.ui.lobbyProfilePubkeyInput.setText(normalized.get())
           model.ui.lobbyJoinStatus = JoinStatus.EnteringName
           model.ui.statusMessage = "Enter player name (optional)"
       elif model.ui.lobbyJoinStatus == JoinStatus.EnteringName:
-        let normalized = normalizePubkey(model.ui.lobbyProfilePubkey)
+        let normalized = normalizePubkey(
+          model.ui.lobbyProfilePubkeyInput.value()
+        )
         if normalized.isNone:
           model.ui.lobbyJoinError = "Invalid pubkey"
           model.ui.statusMessage = model.ui.lobbyJoinError
         else:
-          model.ui.lobbyProfilePubkey = normalized.get()
-          saveProfile("data", model.ui.lobbyProfilePubkey,
-            model.ui.lobbyProfileName, model.ui.lobbySessionKeyActive)
+          model.ui.lobbyProfilePubkeyInput.setText(normalized.get())
+          saveProfile("data",
+            model.ui.lobbyProfilePubkeyInput.value(),
+            model.ui.lobbyProfileNameInput.value(),
+            model.ui.lobbySessionKeyActive)
           let inviteCode = invite_code.normalizeInviteCode(
             model.ui.entryModal.inviteCode()
           )
@@ -1652,7 +1531,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.nostrJoinSent = false
             model.ui.nostrJoinInviteCode = inviteCode
             model.ui.nostrJoinGameId = model.ui.lobbyGameId
-            model.ui.nostrJoinPubkey = model.ui.lobbyProfilePubkey
+            model.ui.nostrJoinPubkey =
+              model.ui.lobbyProfilePubkeyInput.value()
             model.ui.lobbyJoinStatus = JoinStatus.WaitingResponse
             model.ui.statusMessage = "Submitting join request"
     of ActionKind.lobbyJoinPoll:
@@ -1664,80 +1544,56 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       # Active games already in model from TUI cache
     of ActionKind.lobbyEditPubkey:
       model.ui.lobbyInputMode = LobbyInputMode.Pubkey
-      model.ui.lobbyProfilePubkeyCursor = model.ui.lobbyProfilePubkey.len
+      model.ui.lobbyProfilePubkeyInput.moveCursorEnd()
       model.ui.statusMessage = "Enter Nostr pubkey"
       # Active games already in model from TUI cache
     of ActionKind.lobbyEditName:
       model.ui.lobbyInputMode = LobbyInputMode.Name
-      model.ui.lobbyProfileNameCursor = model.ui.lobbyProfileName.len
+      model.ui.lobbyProfileNameInput.moveCursorEnd()
       model.ui.statusMessage = "Enter player name"
     of ActionKind.lobbyBackspace:
       case model.ui.lobbyInputMode
       of LobbyInputMode.Pubkey:
-        if model.ui.lobbyProfilePubkeyCursor > 0 and
-            model.ui.lobbyProfilePubkey.len > 0:
-          let cursor = clamp(
-            model.ui.lobbyProfilePubkeyCursor,
-            0,
-            model.ui.lobbyProfilePubkey.len
-          )
-          model.ui.lobbyProfilePubkey.delete((cursor - 1) .. (cursor - 1))
-          model.ui.lobbyProfilePubkeyCursor = cursor - 1
+        model.ui.lobbyProfilePubkeyInput.backspace()
         # Active games filtered by pubkey from TUI cache
       of LobbyInputMode.Name:
-        if model.ui.lobbyProfileNameCursor > 0 and
-            model.ui.lobbyProfileName.len > 0:
-          let cursor = clamp(
-            model.ui.lobbyProfileNameCursor,
-            0,
-            model.ui.lobbyProfileName.len
-          )
-          model.ui.lobbyProfileName.delete((cursor - 1) .. (cursor - 1))
-          model.ui.lobbyProfileNameCursor = cursor - 1
+        model.ui.lobbyProfileNameInput.backspace()
+      else:
+        discard
+    of ActionKind.lobbyDelete:
+      case model.ui.lobbyInputMode
+      of LobbyInputMode.Pubkey:
+        model.ui.lobbyProfilePubkeyInput.delete()
+      of LobbyInputMode.Name:
+        model.ui.lobbyProfileNameInput.delete()
       else:
         discard
     of ActionKind.lobbyCursorLeft:
       case model.ui.lobbyInputMode
       of LobbyInputMode.Pubkey:
-        if model.ui.lobbyProfilePubkeyCursor > 0:
-          model.ui.lobbyProfilePubkeyCursor.dec
+        model.ui.lobbyProfilePubkeyInput.moveCursorLeft()
       of LobbyInputMode.Name:
-        if model.ui.lobbyProfileNameCursor > 0:
-          model.ui.lobbyProfileNameCursor.dec
+        model.ui.lobbyProfileNameInput.moveCursorLeft()
       else:
         discard
     of ActionKind.lobbyCursorRight:
       case model.ui.lobbyInputMode
       of LobbyInputMode.Pubkey:
-        if model.ui.lobbyProfilePubkeyCursor <
-            model.ui.lobbyProfilePubkey.len:
-          model.ui.lobbyProfilePubkeyCursor.inc
+        model.ui.lobbyProfilePubkeyInput.moveCursorRight()
       of LobbyInputMode.Name:
-        if model.ui.lobbyProfileNameCursor <
-            model.ui.lobbyProfileName.len:
-          model.ui.lobbyProfileNameCursor.inc
+        model.ui.lobbyProfileNameInput.moveCursorRight()
       else:
         discard
     of ActionKind.lobbyInputAppend:
       case model.ui.lobbyInputMode
       of LobbyInputMode.Pubkey:
-        let cursor = clamp(
-          model.ui.lobbyProfilePubkeyCursor,
-          0,
-          model.ui.lobbyProfilePubkey.len
+        discard model.ui.lobbyProfilePubkeyInput.appendText(
+          proposal.gameActionData
         )
-        model.ui.lobbyProfilePubkey.insert(proposal.gameActionData, cursor)
-        model.ui.lobbyProfilePubkeyCursor =
-          cursor + proposal.gameActionData.len
       of LobbyInputMode.Name:
-        let cursor = clamp(
-          model.ui.lobbyProfileNameCursor,
-          0,
-          model.ui.lobbyProfileName.len
+        discard model.ui.lobbyProfileNameInput.appendText(
+          proposal.gameActionData
         )
-        model.ui.lobbyProfileName.insert(proposal.gameActionData, cursor)
-        model.ui.lobbyProfileNameCursor =
-          cursor + proposal.gameActionData.len
       else:
         discard
     # Entry modal actions
@@ -1772,6 +1628,22 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           proposal.gameActionData[0])
     of ActionKind.entryImportBackspace:
       model.ui.entryModal.importInput.backspace()
+    of ActionKind.entryDelete:
+      if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+        model.ui.entryModal.importInput.delete()
+      elif model.ui.entryModal.editingRelay:
+        model.ui.entryModal.relayInput.delete()
+      elif model.ui.entryModal.mode == EntryModalMode.CreateGame and
+          model.ui.entryModal.createField == CreateGameField.GameName:
+        model.ui.entryModal.createNameInput.delete()
+      elif model.ui.entryModal.mode == EntryModalMode.Normal:
+        case model.ui.entryModal.focus
+        of EntryModalFocus.InviteCode:
+          model.ui.entryModal.inviteInput.delete()
+        of EntryModalFocus.RelayUrl:
+          model.ui.entryModal.relayInput.delete()
+        else:
+          discard
     of ActionKind.entryCursorLeft:
       if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
         model.ui.entryModal.importInput.moveCursorLeft()
@@ -1940,13 +1812,13 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.exitExpertMode()
       model.ui.statusMessage = ""
     of ActionKind.expertSubmit:
-      let matches = matchExpertCommands(model.ui.expertModeInput)
+      let matches = matchExpertCommands(model.ui.expertModeInput.value())
       if matches.len > 0:
         clampExpertPaletteSelection(model)
         let selection = model.ui.expertPaletteSelection
         if selection >= 0 and selection < matches.len:
           let chosen = matches[selection]
-          let normalized = normalizeExpertInput(model.ui.expertModeInput)
+          let normalized = normalizeExpertInput(model.ui.expertModeInput.value())
           let tokens = normalized.splitWhitespace()
           let commandToken = if tokens.len > 0: tokens[0] else: ""
           if commandToken.toLowerAscii() !=
@@ -1954,18 +1826,18 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             var newInput = chosen.command.name
             if tokens.len > 1:
               newInput.add(" " & tokens[1..^1].join(" "))
-            model.ui.expertModeInput = newInput
+            model.ui.expertModeInput.setText(newInput)
             model.clearExpertFeedback()
             model.ui.expertPaletteSelection = 0
             return
       # Parse and execute expert mode command
-      let result = parseExpertCommand(model.ui.expertModeInput)
+      let result = parseExpertCommand(model.ui.expertModeInput.value())
       if result.success:
         # Handle meta commands first
         case result.metaCommand
         of MetaCommandType.Help:
           model.setExpertFeedback(expertCommandHelpText())
-          model.addToExpertHistory(model.ui.expertModeInput)
+          model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.Clear:
           let count = model.stagedCommandCount()
           model.ui.stagedFleetCommands.clear()
@@ -1975,10 +1847,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedColonyManagement.setLen(0)
           model.ui.turnSubmissionConfirmed = false
           model.setExpertFeedback("Cleared " & $count & " staged commands")
-          model.addToExpertHistory(model.ui.expertModeInput)
+          model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.List:
           model.setExpertFeedback(model.stagedCommandsSummary())
-          model.addToExpertHistory(model.ui.expertModeInput)
+          model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.Drop:
           if result.metaIndex.isNone:
             model.setExpertFeedback("Usage: :drop <index>")
@@ -1994,7 +1866,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
                 model.setExpertFeedback("Dropped command " & $dropIdx)
               else:
                 model.setExpertFeedback("Failed to drop command")
-          model.addToExpertHistory(model.ui.expertModeInput)
+          model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.Submit:
           if model.stagedCommandCount() > 0:
             model.ui.turnSubmissionRequested = true
@@ -2003,7 +1875,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.setExpertFeedback("Submitting " & $count & " commands...")
           else:
             model.setExpertFeedback("No commands to submit")
-          model.addToExpertHistory(model.ui.expertModeInput)
+          model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.None:
           # Regular command - add to staged commands
           if result.fleetCommand.isSome:
@@ -2017,7 +1889,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
               )
               if fcErr.isSome:
                 model.setExpertFeedback(fcErr.get())
-                model.ui.expertModeInput = ""
+                model.ui.expertModeInput.clear()
                 resetExpertPaletteSelection(model)
                 return
             model.stageFleetCommand(fleetCmd)
@@ -2026,13 +1898,13 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
               "Fleet command staged (total: " &
               $model.ui.stagedFleetCommands.len & ")"
             )
-            model.addToExpertHistory(model.ui.expertModeInput)
+            model.addToExpertHistory(model.ui.expertModeInput.value())
           elif result.buildCommand.isSome:
             let buildCmd = result.buildCommand.get()
             let buildErr = validateBuildIncrement(model, buildCmd)
             if buildErr.isSome:
               model.setExpertFeedback(buildErr.get())
-              model.ui.expertModeInput = ""
+              model.ui.expertModeInput.clear()
               resetExpertPaletteSelection(model)
               return
             model.ui.stagedBuildCommands.add(buildCmd)
@@ -2041,22 +1913,27 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
               "Build command staged (total: " &
               $model.ui.stagedBuildCommands.len & ")"
             )
-            model.addToExpertHistory(model.ui.expertModeInput)
+            model.addToExpertHistory(model.ui.expertModeInput.value())
           else:
             model.setExpertFeedback("No command generated")
       else:
         model.setExpertFeedback("Error: " & result.error)
       # Keep expert mode active after submit
-      model.ui.expertModeInput = ""
+      model.ui.expertModeInput.clear()
       resetExpertPaletteSelection(model)
     of ActionKind.expertInputAppend:
       # Append character to expert mode input
-      model.ui.expertModeInput.add(proposal.gameActionData)
+      discard model.ui.expertModeInput.appendText(proposal.gameActionData)
       resetExpertPaletteSelection(model)
     of ActionKind.expertInputBackspace:
       # Remove last character
-      if model.ui.expertModeInput.len > 0:
-        model.ui.expertModeInput.setLen(model.ui.expertModeInput.len - 1)
+      model.ui.expertModeInput.backspace()
+      resetExpertPaletteSelection(model)
+    of ActionKind.expertCursorLeft:
+      model.ui.expertModeInput.moveCursorLeft()
+      resetExpertPaletteSelection(model)
+    of ActionKind.expertCursorRight:
+      model.ui.expertModeInput.moveCursorRight()
       resetExpertPaletteSelection(model)
     of ActionKind.expertHistoryPrev:
       clampExpertPaletteSelection(model)
@@ -2064,7 +1941,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.expertPaletteSelection -= 1
     of ActionKind.expertHistoryNext:
       clampExpertPaletteSelection(model)
-      let matches = matchExpertCommands(model.ui.expertModeInput)
+      let matches = matchExpertCommands(model.ui.expertModeInput.value())
       if matches.len == 0:
         model.ui.expertPaletteSelection = -1
       elif model.ui.expertPaletteSelection < matches.len - 1:

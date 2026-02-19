@@ -166,7 +166,7 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     result.add("+/- = adjust budget or operation quantity")
     result.add("Enter = add selected operation")
   if ctx == HelpContext.Messages:
-    result.add("Tab = cycle focus")
+    result.add("Tab / Left / Right / H / L = switch list/detail panel")
     result.add("M = jump to Messages")
     result.add("R = jump to Reports")
     result.add("C = compose message")

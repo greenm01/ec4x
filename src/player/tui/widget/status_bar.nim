@@ -10,6 +10,8 @@
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
+import ../cursor_target
+import ./text_input
 import ../../sam/bindings
 import ../../sam/tui_model
 
@@ -95,6 +97,7 @@ type
     useArrows*: bool        ## Use powerline arrow separators
     expertModeActive*: bool
     expertModeInput*: string
+    expertModeCursorPos*: int
 
 proc initStatusBarData*(): StatusBarData =
   StatusBarData(
@@ -102,7 +105,8 @@ proc initStatusBarData*(): StatusBarData =
     maxWidth: 80,
     useArrows: true,
     expertModeActive: false,
-    expertModeInput: ""
+    expertModeInput: "",
+    expertModeCursorPos: 0
   )
 
 # =============================================================================
@@ -164,7 +168,8 @@ proc buildStatusBarData*(model: TuiModel, maxWidth: int): StatusBarData =
   result.maxWidth = maxWidth
   result.useArrows = true
   result.expertModeActive = model.ui.expertModeActive
-  result.expertModeInput = model.ui.expertModeInput
+  result.expertModeInput = model.ui.expertModeInput.value()
+  result.expertModeCursorPos = model.ui.expertModeInput.cursorPos
 
   if not model.ui.expertModeActive:
     result.items = fitItemsToWidth(model, maxWidth, useArrows = true)
@@ -193,22 +198,34 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
     # Show ": " prompt with input
     let prompt = ":"
     let input = data.expertModeInput
-    let cursor = "_"
+    let maxInputWidth = max(0, area.width - 1)
+    let cursorPos = clamp(data.expertModeCursorPos, 0, input.len)
+    var scrollStart = 0
+
+    if maxInputWidth > 0 and input.len > maxInputWidth:
+      scrollStart = clamp(
+        cursorPos - maxInputWidth + 1,
+        0,
+        input.len - maxInputWidth
+      )
+    let visibleEnd = min(input.len, scrollStart + maxInputWidth)
 
     # Draw prompt
     discard buf.put(x, y, prompt, barKeyStyle())
     x += 1
 
     # Draw input
-    for ch in input:
-      if x >= area.x + area.width - 1:
+    for idx in scrollStart ..< visibleEnd:
+      if x >= area.x + area.width:
         break
-      discard buf.put(x, y, $ch, barTextStyle())
+      discard buf.put(x, y, $input[idx], barTextStyle())
       x += 1
 
-    # Draw cursor
-    if x < area.x + area.width:
-      discard buf.put(x, y, cursor, barCursorStyle())
+    # Publish native cursor location for expert input.
+    if area.width > 1:
+      let cursorX = area.x + 1 + (cursorPos - scrollStart)
+      if cursorX >= area.x + 1 and cursorX < area.x + area.width:
+        setCursorTarget(cursorX, y)
 
     return
 

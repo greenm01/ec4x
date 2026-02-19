@@ -841,10 +841,8 @@ type
     lobbyPane*: LobbyPane
     lobbyInputMode*: LobbyInputMode
     lobbySelectedIdx*: int
-    lobbyProfilePubkey*: string
-    lobbyProfilePubkeyCursor*: int
-    lobbyProfileName*: string
-    lobbyProfileNameCursor*: int
+    lobbyProfilePubkeyInput*: TextInputState
+    lobbyProfileNameInput*: TextInputState
     lobbySessionKeyActive*: bool
     lobbyWarning*: string
     lobbyJoinSelectedIdx*: int
@@ -872,10 +870,7 @@ type
     intelDetailFleetCount*: int
     intelDetailNoteScrollOffset*: int
     intelNoteEditActive*: bool
-    intelNoteEditInput*: string
-    intelNoteCursorPos*: int
-    intelNotePreferredColumn*: int
-    intelNoteScrollOffset*: int
+    intelNoteEditor*: TextInputState
     intelNoteSaveRequested*: bool
     intelNoteSaveSystemId*: int
     intelNoteSaveText*: string
@@ -906,7 +901,7 @@ type
 
     # Expert mode state
     expertModeActive*: bool
-    expertModeInput*: string
+    expertModeInput*: TextInputState
     expertModeHistory*: seq[string]
     expertModeHistoryIdx*: int
     expertModeFeedback*: string
@@ -1172,10 +1167,8 @@ proc initTuiUiState*(): TuiUiState =
     lobbyPane: LobbyPane.Profile,
     lobbyInputMode: LobbyInputMode.None,
     lobbySelectedIdx: 0,
-    lobbyProfilePubkey: "",
-    lobbyProfilePubkeyCursor: 0,
-    lobbyProfileName: "",
-    lobbyProfileNameCursor: 0,
+    lobbyProfilePubkeyInput: initTextInputState(maxDisplayWidth = 64),
+    lobbyProfileNameInput: initTextInputState(maxDisplayWidth = 32),
     lobbySessionKeyActive: false,
     lobbyWarning: "",
     lobbyJoinSelectedIdx: 0,
@@ -1197,10 +1190,8 @@ proc initTuiUiState*(): TuiUiState =
     intelDetailFleetCount: 0,
     intelDetailNoteScrollOffset: 0,
     intelNoteEditActive: false,
-    intelNoteEditInput: "",
-    intelNoteCursorPos: 0,
-    intelNotePreferredColumn: 0,
-    intelNoteScrollOffset: 0,
+    intelNoteEditor: initTextInputState(
+      mode = EditorMode.MultiLine),
     intelNoteSaveRequested: false,
     intelNoteSaveSystemId: 0,
     intelNoteSaveText: "",
@@ -1225,7 +1216,7 @@ proc initTuiUiState*(): TuiUiState =
     planetsJumpBuffer: "",
     planetsJumpTime: 0.0,
     expertModeActive: false,
-    expertModeInput: "",
+    expertModeInput: initTextInputState(),
     expertModeHistory: @[],
     expertModeHistoryIdx: 0,
     expertModeFeedback: "",
@@ -1886,14 +1877,14 @@ proc clearExpertFeedback*(model: var TuiModel) =
 proc enterExpertMode*(model: var TuiModel) =
   ## Enter expert mode
   model.ui.expertModeActive = true
-  model.ui.expertModeInput = ""
+  model.ui.expertModeInput.clear()
   model.ui.expertPaletteSelection = 0
   model.clearExpertFeedback()
 
 proc exitExpertMode*(model: var TuiModel) =
   ## Exit expert mode
   model.ui.expertModeActive = false
-  model.ui.expertModeInput = ""
+  model.ui.expertModeInput.clear()
   model.ui.expertPaletteSelection = -1
 
 proc setExpertFeedback*(model: var TuiModel, message: string) =
