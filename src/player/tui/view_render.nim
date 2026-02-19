@@ -1449,8 +1449,8 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let contentArea = rect(inner.x, inner.y, inner.width,
       max(1, inner.height - 2))
     let hintLine =
-      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc [C]md " &
-      "[R]OE [Z]TC [V]iew [/]Help"
+      "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc " &
+      "[A-Z0-9]Jump [C]md [R]OE [Z]TC [V]iew [/]Help"
     let footerY = inner.bottom - 1
     discard buf.setString(inner.x, footerY, hintLine,
       canvasDimStyle())
