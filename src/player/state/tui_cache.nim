@@ -25,6 +25,7 @@ import ../../engine/types/player_state
 import ../../engine/types/command
 import ../../common/message_types
 import ../../common/config_sync
+import ./game_name_resolver
 
 const
   SchemaVersion* = 4  # Bumped for authoritative config snapshots
@@ -962,14 +963,16 @@ proc migrateOldJoinCache*(cache: TuiCache, dataDir: string,
       let houseId = node.props["house"].kInt()
       
       # Read optional metadata from children
-      var name = gameId
+      var name = ""
+      var nameFromFile = false
       var turn = 0
       var status = "unknown"
       for child in node.children:
         case child.name
         of "name":
           if child.args.len > 0:
-            name = child.args[0].kString()
+            name = child.args[0].kString().strip()
+            nameFromFile = name.len > 0
         of "turn":
           if child.args.len > 0:
             turn = child.args[0].kInt()
@@ -978,6 +981,20 @@ proc migrateOldJoinCache*(cache: TuiCache, dataDir: string,
             status = child.args[0].kString()
         else:
           discard
+
+      if not nameFromFile:
+        let cachedGameOpt = cache.getGame(gameId)
+        if cachedGameOpt.isSome:
+          let cachedName = cachedGameOpt.get().name.strip()
+          if cachedName.len > 0 and not isLikelyUuid(cachedName):
+            name = cachedName
+            logInfo("TuiCache", "Migration preserved cached name for ", gameId)
+          else:
+            name = gameId
+            logInfo("TuiCache", "Migration fallback name=gameId for ", gameId)
+        else:
+          name = gameId
+          logInfo("TuiCache", "Migration fallback name=gameId for ", gameId)
       
       # Insert into cache
       cache.upsertGame(gameId, name, turn, status)

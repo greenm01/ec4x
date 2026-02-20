@@ -28,6 +28,7 @@ import ../state/msgpack_serializer
 import ../state/msgpack_state
 import ../state/tui_cache
 import ../state/tui_config
+import ../state/game_name_resolver
 import ../../common/message_types
 import ./sync
 import ./input_map
@@ -653,9 +654,19 @@ proc runTui*(gameId: string = "") =
               let nameTag = event.getTagValue(TagName)
               let statusTag = event.getStatus()
               let turnOpt = event.getTurn()
-              let gameNameStr = if nameTag.isSome: nameTag.get() else: gameId
+              let cachedGameOpt = tuiCache.getGame(gameId)
+              let cachedName = if cachedGameOpt.isSome:
+                cachedGameOpt.get().name
+              else:
+                ""
+              let resolvedName = resolveGameName(nameTag, gameId, cachedName)
+              let gameNameStr = resolvedName.name
               let turnNum = if turnOpt.isSome: turnOpt.get() else: 0
               let gameStatus = if statusTag.isSome: statusTag.get() else: "active"
+              logDebug("TUI/Join", "Resolved game name",
+                "gid=", gameId,
+                "src=", resolvedName.source,
+                "name=", gameNameStr)
 
               if gameStatus == GameStatusCancelled or
                   gameStatus == GameStatusRemoved:
@@ -781,12 +792,19 @@ proc runTui*(gameId: string = "") =
                     " game=", joinGameId, " house=", $houseId)
 
                   # Update TUI cache with joined game
-                  let gameNameStr = if gameName.isSome: gameName.get()
-                                    else: joinGameId
+                  let cachedGameOpt = tuiCache.getGame(joinGameId)
+                  let cachedName = if cachedGameOpt.isSome:
+                    cachedGameOpt.get().name
+                  else:
+                    ""
+                  let resolvedName = resolveGameName(
+                    gameName, joinGameId, cachedName)
+                  let gameNameStr = resolvedName.name
                   let turnNum = if turnOpt.isSome: turnOpt.get() else: 0
                   logInfo("JOIN", "Writing to cache: game=", joinGameId,
                     " name=", gameNameStr, " turn=", turnNum,
-                    " relay=", sam.model.ui.nostrRelayUrl)
+                    " relay=", sam.model.ui.nostrRelayUrl,
+                    " src=", resolvedName.source)
                   tuiCache.upsertGame(joinGameId, gameNameStr, turnNum,
                     "active", sam.model.ui.nostrRelayUrl, event.pubkey)
                   tuiCache.insertPlayerSlot(joinGameId, joinPubkey,
@@ -794,7 +812,8 @@ proc runTui*(gameId: string = "") =
                   logInfo("JOIN", "Cache updated successfully")
 
                   # Also write legacy join cache for backward compat
-                  writeJoinCache("data", joinPubkey, joinGameId, houseId)
+                  writeJoinCache("data", joinPubkey, joinGameId,
+                    houseId, gameNameStr)
                   if gameName.isSome:
                     saveProfile("data", joinPubkey,
                       sam.model.ui.lobbyProfileNameInput.value(),
