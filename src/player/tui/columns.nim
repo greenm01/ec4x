@@ -16,21 +16,19 @@ proc planetsColumns*(): seq[TableColumn] =
   ## Column definitions for planets/colony table
   @[
     tableColumn("System", 6, table.Alignment.Center),
-    tableColumn("Colony Name", 0, table.Alignment.Left, 12),
+    tableColumn("Name", 14, table.Alignment.Left),
     tableColumn("Status", 7, table.Alignment.Left),
     tableColumn("Queue", 5, table.Alignment.Right),
     tableColumn("Class", 5, table.Alignment.Center),
     tableColumn("Resource", 8, table.Alignment.Center),
-    tableColumn("Population", 8, table.Alignment.Right),
+    tableColumn("PU", 6, table.Alignment.Right),
     tableColumn("Industry", 8, table.Alignment.Right),
-    tableColumn("Gross", 7, table.Alignment.Right),
-    tableColumn("Net", 7, table.Alignment.Right),
     tableColumn("Growth", 6, table.Alignment.Right),
-    tableColumn("C-Dock", 6, table.Alignment.Right),
-    tableColumn("R-Dock", 6, table.Alignment.Right),
     tableColumn("Fleets", 6, table.Alignment.Right),
     tableColumn("Starbase", 8, table.Alignment.Right),
-    tableColumn("Ground", 6, table.Alignment.Right),
+    tableColumn("C-Dock", 6, table.Alignment.Right),
+    tableColumn("R-Dock", 6, table.Alignment.Right),
+    tableColumn("A+M", 6, table.Alignment.Right),
     tableColumn("Battery", 7, table.Alignment.Right),
     tableColumn("Shield", 6, table.Alignment.Center)
   ]
