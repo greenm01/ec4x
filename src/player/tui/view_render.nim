@@ -358,22 +358,23 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let tableArea = rect(area.x, area.y, area.width, tableHeight)
   let columns = @[
     tableColumn("System", 6, table.Alignment.Center),
-    tableColumn("Name", 14, table.Alignment.Left),
-    tableColumn("Cls", 3, table.Alignment.Center),
-    tableColumn("Res", 3, table.Alignment.Center),
-    tableColumn("Pop", 4, table.Alignment.Center),
-    tableColumn("IU", 4, table.Alignment.Center),
-    tableColumn("GCO", 5, table.Alignment.Center),
-    tableColumn("NCV", 5, table.Alignment.Center),
-    tableColumn("Δ", 5, table.Alignment.Center),
-    tableColumn("CD", 2, table.Alignment.Center),
-    tableColumn("RD", 2, table.Alignment.Center),
-    tableColumn("Flt", 2, table.Alignment.Center),
-    tableColumn("SB", 2, table.Alignment.Center),
-    tableColumn("A+M", 2, table.Alignment.Center),
-    tableColumn("GB", 2, table.Alignment.Center),
-    tableColumn("Sld", 3, table.Alignment.Center),
-    tableColumn("Status", 0, table.Alignment.Center, 4)
+    tableColumn("Colony Name", 0, table.Alignment.Left, 12),
+    tableColumn("Status", 7, table.Alignment.Left),
+    tableColumn("Queue", 5, table.Alignment.Right),
+    tableColumn("Class", 5, table.Alignment.Center),
+    tableColumn("Resource", 8, table.Alignment.Center),
+    tableColumn("Population", 8, table.Alignment.Right),
+    tableColumn("Industry", 8, table.Alignment.Right),
+    tableColumn("Gross", 7, table.Alignment.Right),
+    tableColumn("Net", 7, table.Alignment.Right),
+    tableColumn("Growth", 6, table.Alignment.Right),
+    tableColumn("C-Dock", 6, table.Alignment.Right),
+    tableColumn("R-Dock", 6, table.Alignment.Right),
+    tableColumn("Fleets", 6, table.Alignment.Right),
+    tableColumn("Starbase", 8, table.Alignment.Right),
+    tableColumn("Ground", 6, table.Alignment.Right),
+    tableColumn("Battery", 7, table.Alignment.Right),
+    tableColumn("Shield", 6, table.Alignment.Center)
   ]
 
   var colonyTable = table(columns)
@@ -381,7 +382,7 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     .zebraStripe(true)
     .showBorders(false)
 
-  let statusColumn = columns.len - 1
+  let statusColumn = 2
   for row in model.view.planetsRows:
     let popLabel = if row.pop.isSome: $row.pop.get else: "-"
     let iuLabel = if row.iu.isSome: $row.iu.get else: "-"
@@ -400,6 +401,8 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let dataRow = @[
       row.sectorLabel,
       row.systemName,
+      statusLabel,
+      $row.queueCount,
       row.classLabel,
       row.resourceLabel,
       popLabel,
@@ -413,8 +416,7 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
       $row.starbaseCount,
       $row.groundCount,
       $row.batteryCount,
-      shieldLabel,
-      statusLabel
+      shieldLabel
     ]
 
     colonyTable.addRow(dataRow, statusStyle, statusColumn)
@@ -468,6 +470,8 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
     let dataRow = @[
       row.sectorLabel,
       row.systemName,
+      statusLabel,
+      $row.queueCount,
       row.classLabel,
       row.resourceLabel,
       popLabel,
@@ -481,11 +485,10 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
       $row.starbaseCount,
       $row.groundCount,
       $row.batteryCount,
-      shieldLabel,
-      statusLabel
+      shieldLabel
     ]
 
-    result.addRow(dataRow, statusStyle, 16)
+    result.addRow(dataRow, statusStyle, 2)
 
 proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =

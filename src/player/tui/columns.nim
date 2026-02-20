@@ -16,22 +16,23 @@ proc planetsColumns*(): seq[TableColumn] =
   ## Column definitions for planets/colony table
   @[
     tableColumn("System", 6, table.Alignment.Center),
-    tableColumn("Name", 14, table.Alignment.Left),
-    tableColumn("Cls", 3, table.Alignment.Left),
-    tableColumn("Res", 3, table.Alignment.Left),
-    tableColumn("Pop", 4, table.Alignment.Right),
-    tableColumn("IU", 4, table.Alignment.Right),
-    tableColumn("GCO", 5, table.Alignment.Right),
-    tableColumn("NCV", 5, table.Alignment.Right),
-    tableColumn("Grw", 5, table.Alignment.Right),
-    tableColumn("CD", 2, table.Alignment.Right),
-    tableColumn("RD", 2, table.Alignment.Right),
-    tableColumn("Flt", 2, table.Alignment.Right),
-    tableColumn("SB", 2, table.Alignment.Right),
-    tableColumn("Gnd", 2, table.Alignment.Right),
-    tableColumn("Bat", 2, table.Alignment.Right),
-    tableColumn("Shd", 3, table.Alignment.Center),
-    tableColumn("Status", 4, table.Alignment.Left)
+    tableColumn("Colony Name", 0, table.Alignment.Left, 12),
+    tableColumn("Status", 7, table.Alignment.Left),
+    tableColumn("Queue", 5, table.Alignment.Right),
+    tableColumn("Class", 5, table.Alignment.Center),
+    tableColumn("Resource", 8, table.Alignment.Center),
+    tableColumn("Population", 8, table.Alignment.Right),
+    tableColumn("Industry", 8, table.Alignment.Right),
+    tableColumn("Gross", 7, table.Alignment.Right),
+    tableColumn("Net", 7, table.Alignment.Right),
+    tableColumn("Growth", 6, table.Alignment.Right),
+    tableColumn("C-Dock", 6, table.Alignment.Right),
+    tableColumn("R-Dock", 6, table.Alignment.Right),
+    tableColumn("Fleets", 6, table.Alignment.Right),
+    tableColumn("Starbase", 8, table.Alignment.Right),
+    tableColumn("Ground", 6, table.Alignment.Right),
+    tableColumn("Battery", 7, table.Alignment.Right),
+    tableColumn("Shield", 6, table.Alignment.Center)
   ]
 
 # =============================================================================

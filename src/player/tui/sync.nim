@@ -1344,6 +1344,8 @@ proc buildOwnColonyRow(ps: PlayerState, colony: Colony): PlanetRow =
     batteryCount: batteryCount,
     shieldPresent: shieldPresent,
     statusLabel: buildStatusLabel(colony),
+    queueCount: colony.constructionQueue.len +
+      (if colony.underConstruction.isSome: 1 else: 0),
     isOwned: true,
     isHomeworld: ps.homeworldSystemId == some(colony.systemId),
     ring: ring.int,

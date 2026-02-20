@@ -504,6 +504,7 @@ type
     batteryCount*: int
     shieldPresent*: bool
     statusLabel*: string
+    queueCount*: int
     isOwned*: bool
     isHomeworld*: bool
     ring*: int
