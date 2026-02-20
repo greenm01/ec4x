@@ -14,6 +14,7 @@ import ../layout/rect
 import ../styles/ec_palette
 import ../build_spec
 import ../columns
+import ../table_layout_policy
 import ../../sam/tui_model
 import ../../../engine/types/[core, production]
 import ../../../engine/types/[ship, ground_unit, facilities]
@@ -415,10 +416,13 @@ proc render*(
     .zebraStripe(true)
 
   let totalRows = buildRowCount(state.category)
-  let tableHeight = tableView.renderHeight(totalRows)
-  let maxTableHeight = max(1, viewport.height - 6)
-  let clampedTableHeight = min(tableHeight, maxTableHeight)
-  let contentHeight = clampedTableHeight + 5
+  let visibleRows = clampedVisibleRows(
+    totalRows,
+    viewport.height,
+    TableChromeRows + 5
+  )
+  let tableHeight = tableView.renderHeight(visibleRows)
+  let contentHeight = tableHeight + 5
   let maxTableWidth = viewport.width - 4
   let tableWidth = tableWidthFromColumns(
     columns, maxTableWidth, showBorders = true

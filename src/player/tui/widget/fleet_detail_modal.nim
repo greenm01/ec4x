@@ -11,6 +11,7 @@ import ./text/text_pkg
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
+import ../table_layout_policy
 import ../../sam/tui_model
 import ../adapters
 import ../../../engine/types/fleet
@@ -75,8 +76,11 @@ proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
   ## Shared rendering for picker sub-modals (Command, ROE, ZTC).
   ## Handles scroll offset calculation, selection, and table rendering.
   ## Footer hint is rendered by the modal frame via renderWithFooter.
-  let tableBaseHeight = 4  # top border + header + separator + bottom border
-  let maxVisibleRows = max(1, area.height - tableBaseHeight)
+  let maxVisibleRows = clampedVisibleRows(
+    itemCount,
+    area.height,
+    TableChromeRows
+  )
 
   # Calculate scroll offset to keep selected item visible
   var scrollOffset = 0
@@ -129,8 +133,8 @@ proc measuredTableContentHeight(
     rowCount: int,
     footerHeight: int = 2
 ): int =
-  let tableBaseHeight = 4
-  max(1, rowCount) + tableBaseHeight + footerHeight
+  let visibleRows = min(max(1, rowCount), DefaultTableRowCap)
+  visibleRows + TableChromeRows + footerHeight
 
 proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
                         buf: var CellBuffer) =

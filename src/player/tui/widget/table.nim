@@ -168,6 +168,11 @@ proc selectedStyle*(t: Table, style: CellStyle): Table =
   result = t
   result.selectedStyle = style
 
+proc separatorStyle*(t: Table, style: CellStyle): Table =
+  ## Set border and separator style.
+  result = t
+  result.separatorStyle = style
+
 proc showHeader*(t: Table, show: bool): Table =
   ## Toggle header row visibility.
   result = t

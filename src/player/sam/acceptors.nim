@@ -14,6 +14,7 @@ import ./command_parser
 import ./client_limits
 import ../tui/widget/scroll_state
 import ../tui/build_spec
+import ../tui/table_layout_policy
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
@@ -33,6 +34,21 @@ const ResearchAdjustStep = 5
 const ResearchAdjustFineStep = 1
 const ResearchDigitBufferTimeout = 1.5
 const EspionageBudgetStep = 1
+
+proc fleetConsoleViewportRows(model: TuiModel): int =
+  var maxFleetCount = 0
+  for fleets in model.ui.fleetConsoleFleetsBySystem.values:
+    if fleets.len > maxFleetCount:
+      maxFleetCount = fleets.len
+  let contentRows = max(
+    model.ui.fleetConsoleSystems.len,
+    maxFleetCount
+  )
+  clampedVisibleRows(
+    contentRows,
+    model.ui.termHeight,
+    PanelFrameRows + TableChromeRows + ModalFooterRows
+  )
 
 proc viewModeFromInt(value: int): Option[ViewMode] =
   case value
@@ -656,7 +672,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       of FleetConsoleFocus.SystemsPane:
         model.ui.fleetConsoleFocus = FleetConsoleFocus.FleetsPane
       of FleetConsoleFocus.FleetsPane:
-        model.ui.fleetConsoleFocus = FleetConsoleFocus.ShipsPane
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.SystemsPane
       of FleetConsoleFocus.ShipsPane:
         model.ui.fleetConsoleFocus = FleetConsoleFocus.SystemsPane
   
@@ -665,7 +681,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.ui.fleetViewMode == FleetViewMode.SystemView:
       case model.ui.fleetConsoleFocus
       of FleetConsoleFocus.SystemsPane:
-        model.ui.fleetConsoleFocus = FleetConsoleFocus.ShipsPane
+        model.ui.fleetConsoleFocus = FleetConsoleFocus.FleetsPane
       of FleetConsoleFocus.FleetsPane:
         model.ui.fleetConsoleFocus = FleetConsoleFocus.SystemsPane
       of FleetConsoleFocus.ShipsPane:
@@ -814,7 +830,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if model.ui.fleetConsoleSystemIdx > 0:
           model.ui.fleetConsoleSystemIdx -= 1
           # Update scroll state to keep selection visible
-          let viewportHeight = 15  # Reasonable default viewport
+          let viewportHeight = model.fleetConsoleViewportRows()
           model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
           model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
           model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
@@ -828,7 +844,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
             let systemId = model.ui.fleetConsoleSystems[sysIdx].systemId
             if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
               let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
-              let viewportHeight = 15
+              let viewportHeight = model.fleetConsoleViewportRows()
               model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
               model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
               model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
@@ -924,7 +940,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if model.ui.fleetConsoleSystemIdx < maxIdx:
           model.ui.fleetConsoleSystemIdx += 1
           # Update scroll state to keep selection visible
-          let viewportHeight = 15
+          let viewportHeight = model.fleetConsoleViewportRows()
           model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
           model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
           model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
@@ -940,7 +956,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
             if model.ui.fleetConsoleFleetIdx < maxIdx:
               model.ui.fleetConsoleFleetIdx += 1
               # Update scroll state
-              let viewportHeight = 15
+              let viewportHeight = model.fleetConsoleViewportRows()
               model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
               model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
               model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)

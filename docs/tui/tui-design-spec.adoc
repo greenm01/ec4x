@@ -60,6 +60,26 @@ Example (narrow terminal):
 
 == Shared Systems
 
+=== Shared Table Layout Policy
+All table views in Player TUI follow one sizing and scrolling contract.
+
+Sizing rules:
+* Max visible rows per table: 20 (`DefaultTableRowCap`)
+* Max table height budget: 75% of viewport height
+* Minimum visible rows: 1
+* Table chrome overhead: 4 rows (top border, header, separator, bottom border)
+* Modal footer overhead: 2 rows (separator + footer hint row)
+* Panel frame overhead: 2 rows
+
+Behavior rules:
+* Visible row count is clamped by content size, row cap, and viewport budget.
+* When content exceeds visible rows, vertical scrolling is required.
+* Scroll offsets must be clamped against content length and viewport length.
+* Multi-pane table layouts (for example Fleet Command Systems/Fleets) use the
+  same computed visible-row budget so both panes render at equal vertical size.
+* Table sizing logic must use shared helpers in
+  `src/player/tui/table_layout_policy.nim` rather than ad-hoc formulas.
+
 === Intel Freshness (LTU)
 LTU tracks intel freshness for the player view (fog-of-war), not authoritative
 game state.

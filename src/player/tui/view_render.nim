@@ -38,6 +38,7 @@ import ../tui/columns
 import ../tui/hex_labels
 import ../tui/help_registry
 import ../tui/data/research_projection
+import ../tui/table_layout_policy
 import ./sync
 import ../../common/message_types
 
@@ -627,10 +628,11 @@ proc renderFleetList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let tableWidth = tableWidthFromColumns(columns, maxTableWidth,
     showBorders = true)
 
-  var baseTable = buildFleetListTable(model, ScrollState())
-  let baseHeight = baseTable.renderHeight(0)
-  let maxVisibleRows = max(1, area.height - baseHeight)
-  let visibleRows = min(fleets.len, maxVisibleRows)
+  let visibleRows = clampedVisibleRows(
+    fleets.len,
+    area.height,
+    TableChromeRows
+  )
 
   var localScroll = model.ui.fleetsScroll
   localScroll.contentLength = fleets.len
@@ -667,7 +669,6 @@ proc renderFleetConsoleSystems(
   
   var systemsTable = table(columns)
     .showBorders(true)
-    .fillHeight(true)
     .scrollOffset(scrollOffset)
   
   # Only show selection if this pane has focus
@@ -700,7 +701,6 @@ proc renderFleetConsoleFleets(
   
   var fleetsTable = table(columns)
     .showBorders(true)
-    .fillHeight(true)
     .scrollOffset(scrollOffset)
   
   # Only show selection if this pane has focus
@@ -736,7 +736,7 @@ proc renderFleetConsoleFleets(
 proc renderFleetConsole*(
   area: Rect,
   buf: var CellBuffer,
-  model: TuiModel,
+  model: var TuiModel,
   ps: ps_types.PlayerState
 ) =
   ## Render 2-pane fleet console (SystemView mode)
@@ -771,16 +771,61 @@ proc renderFleetConsole*(
     if stdtables.hasKey(model.ui.fleetConsoleFleetsBySystem, selectedSystemId):
       fleets = model.ui.fleetConsoleFleetsBySystem[selectedSystemId]
   
+  let effectiveFocus = if model.ui.fleetConsoleFocus == FleetConsoleFocus.ShipsPane:
+      FleetConsoleFocus.FleetsPane
+    else:
+      model.ui.fleetConsoleFocus
+
+  let systemsFocused = effectiveFocus == FleetConsoleFocus.SystemsPane
+  let fleetsFocused = effectiveFocus == FleetConsoleFocus.FleetsPane
+
+  let systemsFrame = bordered()
+    .title("SYSTEMS")
+    .borderType(BorderType.Rounded)
+    .borderStyle(modalPanelBorderStyle(systemsFocused))
+  systemsFrame.render(systemsPane, buf)
+  let systemsInner = systemsFrame.inner(systemsPane)
+
+  let fleetsFrame = bordered()
+    .title("FLEETS")
+    .borderType(BorderType.Rounded)
+    .borderStyle(modalPanelBorderStyle(fleetsFocused))
+  fleetsFrame.render(fleetsPane, buf)
+  let fleetsInner = fleetsFrame.inner(fleetsPane)
+
+  # Keep pane scroll viewports synchronized with actual rendered table rows.
+  let systemsViewportRows = max(
+    1, systemsInner.height - TableChromeRows
+  )
+  model.ui.fleetConsoleSystemScroll.contentLength = systems.len
+  model.ui.fleetConsoleSystemScroll.viewportLength = systemsViewportRows
+  model.ui.fleetConsoleSystemScroll.verticalOffset = clampScrollOffset(
+    model.ui.fleetConsoleSystemScroll.verticalOffset,
+    systems.len,
+    systemsViewportRows
+  )
+
+  let fleetsViewportRows = max(
+    1, fleetsInner.height - TableChromeRows
+  )
+  model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
+  model.ui.fleetConsoleFleetScroll.viewportLength = fleetsViewportRows
+  model.ui.fleetConsoleFleetScroll.verticalOffset = clampScrollOffset(
+    model.ui.fleetConsoleFleetScroll.verticalOffset,
+    fleets.len,
+    fleetsViewportRows
+  )
+
   # Render systems pane
-  renderFleetConsoleSystems(systemsPane, buf, systems, systemIdx,
-    model.ui.fleetConsoleFocus == FleetConsoleFocus.SystemsPane,
+  renderFleetConsoleSystems(systemsInner, buf, systems, systemIdx,
+    effectiveFocus == FleetConsoleFocus.SystemsPane,
     model.ui.fleetConsoleSystemScroll.verticalOffset)
   
   # Render fleets pane
   let fleetIdx = clamp(model.ui.fleetConsoleFleetIdx, 0,
     max(0, fleets.len - 1))
-  renderFleetConsoleFleets(fleetsPane, buf, fleets, fleetIdx,
-    model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane,
+  renderFleetConsoleFleets(fleetsInner, buf, fleets, fleetIdx,
+    effectiveFocus == FleetConsoleFocus.FleetsPane,
     model.ui.stagedFleetCommands,
     model.ui.selectedFleetIds,
     model.ui.fleetConsoleFleetScroll.verticalOffset)
@@ -1391,15 +1436,19 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   
   # Calculate visible rows and height
   let totalRows = model.view.planetsRows.len
-  var baseTable = buildPlanetsTable(model, ScrollState())
-  let baseHeight = baseTable.renderHeight(0)
-  let maxVisibleRows = max(1, canvas.height - baseHeight - 6)
-  let visibleRows = min(totalRows, maxVisibleRows)
+  let visibleRows = clampedVisibleRows(
+    totalRows,
+    canvas.height,
+    TableChromeRows + ModalFooterRows
+  )
   
   # Create scroll state
   var localScroll = scroll
   localScroll.contentLength = totalRows
   localScroll.viewportLength = visibleRows
+  localScroll.verticalOffset = clampScrollOffset(
+    localScroll.verticalOffset, totalRows, visibleRows
+  )
   localScroll.clampOffsets()
   
   let table = buildPlanetsTable(model, localScroll)
@@ -1426,7 +1475,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   table.render(contentArea, buf)
 
 proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
-                        model: TuiModel, ps: ps_types.PlayerState,
+                        model: var TuiModel, ps: ps_types.PlayerState,
                         scroll: ScrollState) =
   ## Render fleets view as centered floating modal
   ## Dispatches between ListView and SystemView based on fleetViewMode
@@ -1439,13 +1488,17 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let tableWidth = tableWidthFromColumns(columns, maxTableWidth,
       showBorders = true)
     let fleets = model.filteredFleets()
-    var baseTable = buildFleetListTable(model, ScrollState())
-    let baseHeight = baseTable.renderHeight(0)
-    let maxVisibleRows = max(1, canvas.height - baseHeight - 6)
-    let visibleRows = min(fleets.len, maxVisibleRows)
+    let visibleRows = clampedVisibleRows(
+      fleets.len,
+      canvas.height,
+      TableChromeRows + ModalFooterRows
+    )
     var localScroll = model.ui.fleetsScroll
     localScroll.contentLength = fleets.len
     localScroll.viewportLength = visibleRows
+    localScroll.verticalOffset = clampScrollOffset(
+      localScroll.verticalOffset, fleets.len, visibleRows
+    )
     localScroll.clampOffsets()
     let table = buildFleetListTable(model, localScroll)
     let tableHeight = table.renderHeight(visibleRows)
@@ -1490,18 +1543,16 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
         let fleets = model.ui.fleetConsoleFleetsBySystem[sys.systemId]
         maxFleetCount = max(maxFleetCount, fleets.len)
     
-    # Table height = borders + header + separator + rows
-    let systemsRowCount = systems.len
-    let fleetsRowCount = maxFleetCount
-    let tableOverhead = 4  # borders + header + separator
-    let maxRows = max(systemsRowCount, fleetsRowCount)
-    let desiredHeight = tableOverhead + maxRows
-    
-    # Apply constraints: min 8, max 75% of screen height
-    let minHeight = 8
-    let maxHeight = (canvas.height * 75) div 100
-    # +2 for footer separator + text
-    let contentHeight = clamp(desiredHeight, minHeight, maxHeight) + 2
+    let paneRows = clampedVisibleRows(
+      max(systems.len, maxFleetCount),
+      canvas.height,
+      PanelFrameRows + TableChromeRows + ModalFooterRows
+    )
+    # Content area includes pane frame + table internals, plus modal footer rows.
+    let contentHeight = contentHeightFromVisibleRows(
+      paneRows,
+      PanelFrameRows + TableChromeRows + ModalFooterRows
+    )
     
     let modal = newModal()
       .title("FLEET COMMAND")
@@ -1842,8 +1893,11 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     progTable = progTable.selectedIdx(selectedLevel)
 
     let availableHeight = max(1, detailInner.bottom - dy)
-    let maxRows = max(1, availableHeight - progTable.renderHeight(0))
-    let visibleRows = min(maxLevelInt, maxRows)
+    let visibleRows = clampedVisibleRows(
+      maxLevelInt,
+      availableHeight,
+      TableChromeRows
+    )
     let tableHeight = progTable.renderHeight(visibleRows)
     let tableArea = rect(detailInner.x, dy, detailInner.width, tableHeight)
     progTable.render(tableArea, buf)
@@ -2102,7 +2156,11 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   else:
     -1
   opsTable = opsTable.selectedIdx(selectedRow)
-  let visibleRows = max(1, oInner.height - opsTable.renderHeight(0))
+  let visibleRows = clampedVisibleRows(
+    operations.len,
+    oInner.height,
+    TableChromeRows
+  )
   let startIdx = if operations.len > visibleRows and opIdx >= visibleRows:
     clamp(opIdx - visibleRows + 1, 0, max(0, operations.len - visibleRows))
   else:
@@ -2533,15 +2591,20 @@ proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
   let tableWidth = tableWidthFromColumns(columns, maxTableWidth,
     showBorders = true)
   let totalRows = model.view.intelRows.len
-  let baseHeight = 4
-  let maxVisibleRows = max(1, canvas.height - baseHeight - 6)
-  let visibleRows = min(totalRows, maxVisibleRows)
+  let visibleRows = clampedVisibleRows(
+    totalRows,
+    canvas.height,
+    TableChromeRows + ModalFooterRows
+  )
   var localScroll = model.ui.intelScroll
   localScroll.contentLength = totalRows
   localScroll.viewportLength = visibleRows
+  localScroll.verticalOffset = clampScrollOffset(
+    localScroll.verticalOffset, totalRows, visibleRows
+  )
   localScroll.clampOffsets()
   model.ui.intelScroll = localScroll
-  let tableHeight = baseHeight + visibleRows
+  let tableHeight = contentHeightFromVisibleRows(visibleRows, TableChromeRows)
 
   let modal = newModal()
     .title("INTEL DATABASE")
@@ -3077,13 +3140,13 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     contentWidth = min(maxTableWidth, contentWidth)
 
     let maxContentHeight = max(10, canvas.height - 8)
-    var visibleRows = shipTable.rows.len
-    var tableHeight = shipTable.renderHeight(visibleRows)
-    var bodyHeight = headerLines.len + tableHeight + 1
-    while bodyHeight + 2 > maxContentHeight and visibleRows > 1:
-      visibleRows.dec
-      tableHeight = shipTable.renderHeight(visibleRows)
-      bodyHeight = headerLines.len + tableHeight + 1
+    let visibleRows = clampedVisibleRows(
+      shipTable.rows.len,
+      maxContentHeight,
+      headerLines.len + 5
+    )
+    let tableHeight = shipTable.renderHeight(visibleRows)
+    let bodyHeight = headerLines.len + tableHeight + 1
 
     let detailModal = newModal()
       .title("FLEET INTEL")

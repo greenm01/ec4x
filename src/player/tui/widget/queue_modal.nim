@@ -12,6 +12,7 @@ import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
 import ../build_spec
+import ../table_layout_policy
 import ../../sam/tui_model
 import ../../../engine/types/[core, production, ship, ground_unit, facilities]
 import ../columns
@@ -126,9 +127,11 @@ proc render*(
     .showBorders(true)
     .zebraStripe(true)
 
-  let baseHeight = tableView.renderHeight(0)
-  let maxVisibleRows = max(1, viewport.height - baseHeight - 6)
-  let visibleRows = min(rows.len, maxVisibleRows)
+  let visibleRows = clampedVisibleRows(
+    rows.len,
+    viewport.height,
+    TableChromeRows + ModalFooterRows
+  )
   let tableHeight = tableView.renderHeight(visibleRows)
 
   let modalArea = widget.modal.calculateArea(
@@ -149,8 +152,12 @@ proc render*(
   var scroll = state.scroll
   scroll.contentLength = rows.len
   scroll.viewportLength = contentRows
+  scroll.verticalOffset = clampScrollOffset(
+    scroll.verticalOffset,
+    rows.len,
+    contentRows
+  )
   scroll.ensureVisible(state.selectedIdx)
-  scroll.clampOffsets()
 
   tableView = tableView
     .selectedIdx(state.selectedIdx)
