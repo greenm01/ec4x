@@ -1606,7 +1606,7 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     maxFighterDoctrine,
     maxAdvancedCarrierOps
   ])
-  let desiredContentHeight = max(26, maxLevelCap + 13)
+  let desiredContentHeight = max(23, maxLevelCap + 10)
   let maxContentHeight = max(12, canvas.height - 4)
   let contentHeight = min(desiredContentHeight, maxContentHeight) + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
@@ -1690,38 +1690,9 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       technology: initTable[TechField, int32]()
     )
 
-  let totalAllocated = researchAllocatedTotal(model.ui.researchAllocation)
-  let remaining = max(0, model.view.treasury - totalAllocated)
-
-  let headerLine = "Treasury: " & formatNumber(model.view.treasury) &
-    " PP   Allocated: " & formatNumber(totalAllocated) &
-    " PP   Remaining: " & formatNumber(remaining) & " PP"
-
-  let rows = vertical()
-    .constraints(length(3), fill())
-    .split(area)
-
-  let treasuryArea = rows[0]
-  let treasuryFrame = bordered()
-    .borderType(BorderType.Plain)
-    .borderStyle(modalBorderStyle())
-    .padding(padding(1, 0))
-  treasuryFrame.render(treasuryArea, buf)
-  let treasuryInner = treasuryFrame.inner(treasuryArea)
-  renderLine(
-    treasuryInner,
-    buf,
-    treasuryInner.x,
-    treasuryInner.y,
-    headerLine,
-    modalDimStyle()
-  )
-
-  let contentArea = rows[1]
-
   let columns = horizontal()
     .constraints(percentage(55), fill())
-    .split(contentArea)
+    .split(area)
   let listArea = columns[0]
   let detailArea = columns[1]
 
@@ -1784,7 +1755,27 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
   if items.len > 0 and selectedRowIdx >= 0:
     listTable = listTable.selectedIdx(selectedRowIdx)
-  listTable.render(listInner, buf)
+
+  let tableFullH = listTable.renderHeight(listTable.rows.len)
+  let tableArea = rect(
+    listInner.x, listInner.y,
+    listInner.width,
+    min(tableFullH, listInner.height)
+  )
+  listTable.render(tableArea, buf)
+
+  let totalAllocated = researchAllocatedTotal(
+    model.ui.researchAllocation
+  )
+  let allocLine = "Allocated: " &
+    formatNumber(totalAllocated) & " PP"
+  let summaryY = listInner.y + tableArea.height
+  if summaryY < listArea.bottom - 1:
+    renderLine(
+      listArea, buf,
+      listInner.x, summaryY,
+      allocLine, modalDimStyle()
+    )
 
   if detailArea.isEmpty:
     return
@@ -1906,9 +1897,13 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let visibleRows = clampedVisibleRows(
       maxLevelInt,
       availableHeight,
-      TableChromeRows
+      TableChromeRows,
+      maxHeightPercent = 100
     )
-    let tableHeight = progTable.renderHeight(visibleRows)
+    let tableHeight = min(
+      progTable.renderHeight(visibleRows),
+      availableHeight
+    )
     let tableArea = rect(detailInner.x, dy, detailInner.width, tableHeight)
     progTable.render(tableArea, buf)
 
