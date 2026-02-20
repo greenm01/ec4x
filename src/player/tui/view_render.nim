@@ -46,6 +46,7 @@ const
   ExpertPaletteMaxRows = 8
   ExpertPaletteMinWidth = 40
   ExpertPaletteMaxWidth = 80
+  IntelNotesPreviewMaxRunes = 80
 
 var
   cachedExpertInput = ""
@@ -514,7 +515,7 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
     tableColumn("Owner", 10, table.Alignment.Left),
     tableColumn("Intel", 6, table.Alignment.Left),
     tableColumn("LTU", 4, table.Alignment.Right),
-    tableColumn("Notes", 0, table.Alignment.Left)
+    tableColumn("Notes", IntelNotesPreviewMaxRunes, table.Alignment.Left)
   ]
 
   let startIdx = scroll.verticalOffset
@@ -537,9 +538,18 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
 
   for i in startIdx ..< endIdx:
     let row = model.view.intelRows[i]
-    let notePreview = row.notes
+    var notePreview = row.notes
       .replace("\n", " ↵ ")
       .replace("\t", " ")
+    if notePreview.runeLen > IntelNotesPreviewMaxRunes:
+      var clipped = ""
+      var runeCount = 0
+      for rune in notePreview.runes:
+        if runeCount >= IntelNotesPreviewMaxRunes - 3:
+          break
+        clipped.add(rune.toUTF8)
+        runeCount.inc
+      notePreview = clipped & "..."
     let dataRow = @[
       row.sectorLabel,
       row.systemName,
@@ -2585,7 +2595,7 @@ proc renderIntelDbModal*(canvas: Rect, buf: var CellBuffer,
     tableColumn("Owner", 10, table.Alignment.Left),
     tableColumn("Intel", 6, table.Alignment.Left),
     tableColumn("LTU", 4, table.Alignment.Right),
-    tableColumn("Notes", 0, table.Alignment.Left)
+    tableColumn("Notes", IntelNotesPreviewMaxRunes, table.Alignment.Left)
   ]
   let maxTableWidth = canvas.width - 4
   let tableWidth = tableWidthFromColumns(columns, maxTableWidth,

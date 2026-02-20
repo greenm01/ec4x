@@ -2335,38 +2335,9 @@ proc needsTargetSystem*(cmdType: int): bool =
               CmdReserve, CmdMothball, CmdView]
 
 proc buildCommandPickerList*(model: TuiModel): seq[FleetCommandType] =
-  result = @[]
-  let commands = allFleetCommands()
-
-  if model.ui.selectedFleetIds.len > 0:
-    var selectedFleets: seq[FleetInfo]
-    for fleet in model.view.fleets:
-      if fleet.id in model.ui.selectedFleetIds:
-        selectedFleets.add(fleet)
-    for cmdType in commands:
-      if cmdType == FleetCommandType.JoinFleet:
-        continue
-      var validForAll = true
-      for fleet in selectedFleets:
-        if validateFleetCommand(fleet, cmdType).len > 0:
-          validForAll = false
-          break
-      if validForAll:
-        result.add(cmdType)
-    return
-
-  var currentFleet: Option[FleetInfo]
-  for fleet in model.view.fleets:
-    if fleet.id == model.ui.fleetDetailModal.fleetId:
-      currentFleet = some(fleet)
-      break
-  if currentFleet.isNone:
-    result = commands
-    return
-  let current = currentFleet.get()
-  for cmdType in commands:
-    if validateFleetCommand(current, cmdType).len == 0:
-      result.add(cmdType)
+  ## Always show full 00-19 command set in picker.
+  ## Applicability is validated at selection/stage time.
+  allFleetCommands()
 
 # =============================================================================
 # System Picker Helpers

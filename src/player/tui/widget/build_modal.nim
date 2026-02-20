@@ -8,6 +8,7 @@ import std/[options, strutils, unicode]
 import ./modal
 import ./text/text_pkg
 import ./table
+import ./tabs
 import ./scroll_state
 import ../buffer
 import ../layout/rect
@@ -74,6 +75,12 @@ proc columnsForCategory(category: BuildCategory): seq[TableColumn] =
       tableColumn("Qty", 4, table.Alignment.Right)
     ]
 
+proc fillRow(area: Rect, buf: var CellBuffer, style: CellStyle) =
+  if area.isEmpty:
+    return
+  for x in area.x ..< area.right:
+    discard buf.put(x, area.y, " ", style)
+
 proc renderCategoryTabs(
     state: BuildModalState, area: Rect, buf: var CellBuffer
 ) =
@@ -81,29 +88,24 @@ proc renderCategoryTabs(
   if area.isEmpty:
     return
 
-  var x = area.x
-  let y = area.y
-
-  # Tab labels
-  let tabs = [
-    ("Ships", BuildCategory.Ships),
-    ("Facilities", BuildCategory.Facilities),
-    ("Ground", BuildCategory.Ground)
-  ]
-
-  for (label, category) in tabs:
-    let isSelected = state.category == category
-    let style = if isSelected:
-      canvasHeaderStyle()
-    else:
-      modalBgStyle()
-
-    let tabText =
-      if isSelected: "[" & label & "]" else: " " & label & " "
-    for i, ch in tabText:
-      if x + i < area.right:
-        discard buf.put(x + i, y, $ch, style)
-    x += tabText.len + 1
+  fillRow(area, buf, modalBgStyle())
+  let activeTabIdx = case state.category
+    of BuildCategory.Ships:
+      0
+    of BuildCategory.Facilities:
+      1
+    of BuildCategory.Ground:
+      2
+  var tabBar = tabs(["Ships", "Facilities", "Ground"], activeTabIdx)
+    .inactiveStyle(modalBgStyle())
+    .activeStyle(CellStyle(
+      fg: color(SelectedBgColor),
+      bg: color(TrueBlackColor),
+      attrs: {StyleAttr.Bold}
+    ))
+    .disabledStyle(modalDimStyle())
+  tabBar.bracketStyle = modalDimStyle()
+  tabBar.render(area, buf)
 
 proc pendingDockUse(state: BuildModalState): int
 proc pendingPpCost(state: BuildModalState): int
@@ -115,6 +117,7 @@ proc renderDockSummary(
   ## Render dock capacity summary
   if area.isEmpty:
     return
+  fillRow(area, buf, modalBgStyle())
 
   let docks = state.dockSummary
   let pendingUsed = pendingDockUse(state)
@@ -137,7 +140,7 @@ proc renderDockSummary(
 
   for i, ch in text:
     if area.x + i < area.right:
-      discard buf.put(area.x + i, area.y, $ch, canvasDimStyle())
+      discard buf.put(area.x + i, area.y, $ch, modalDimStyle())
 
 proc stagedQty(state: BuildModalState, key: BuildRowKey): int =
   var total = 0
@@ -446,12 +449,12 @@ proc render*(
   # Draw separator line after header
   let glyphs = widget.modal.separatorGlyphs()
   discard buf.put(modalArea.x, separatorY, glyphs.left,
-    modalBorderStyle())
+    outerBorderStyle())
   for x in (modalArea.x + 1)..<(modalArea.right - 1):
     discard buf.put(x, separatorY, glyphs.horizontal,
-      modalBorderStyle())
+      outerBorderStyle())
   discard buf.put(modalArea.right - 1, separatorY, glyphs.right,
-    modalBorderStyle())
+    outerBorderStyle())
 
   # Content area (single table)
   let contentArea = rect(

@@ -79,7 +79,9 @@ proc renderPickerTable(t: var Table, area: Rect, buf: var CellBuffer,
   let maxVisibleRows = clampedVisibleRows(
     itemCount,
     area.height,
-    TableChromeRows
+    TableChromeRows,
+    rowCap = itemCount,
+    maxHeightPercent = 100
   )
 
   # Calculate scroll offset to keep selected item visible
@@ -131,9 +133,13 @@ proc measuredTableInnerWidth(
 
 proc measuredTableContentHeight(
     rowCount: int,
-    footerHeight: int = 2
+    footerHeight: int = 2,
+    rowCap: int = DefaultTableRowCap
 ): int =
-  let visibleRows = min(max(1, rowCount), DefaultTableRowCap)
+  let visibleRows = if rowCap > 0:
+      min(max(1, rowCount), rowCap)
+    else:
+      max(1, rowCount)
   visibleRows + TableChromeRows + footerHeight
 
 proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
@@ -635,7 +641,10 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   # Calculate content height based on active sub-modal
   let contentHeight = case state.subModal
     of FleetSubModal.CommandPicker:
-      measuredTableContentHeight(state.commandPickerCommands.len)
+      measuredTableContentHeight(
+        state.commandPickerCommands.len,
+        rowCap = 0
+      )
     of FleetSubModal.ROEPicker:
       measuredTableContentHeight(11)
     of FleetSubModal.ConfirmPrompt:

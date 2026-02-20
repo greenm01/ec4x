@@ -98,7 +98,7 @@ proc intelDbColumns*(): seq[TableColumn] =
     tableColumn("Owner", 10, table.Alignment.Left),
     tableColumn("Intel", 8, table.Alignment.Left),
     tableColumn("LTU", 4, table.Alignment.Center),
-    tableColumn("Notes", 0, table.Alignment.Left, 20)
+    tableColumn("Notes", 80, table.Alignment.Left, 20)
   ]
 
 # =============================================================================
