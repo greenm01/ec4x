@@ -92,7 +92,6 @@ proc standardViews*(): seq[ViewTab] =
     ViewTab(key: "F4", label: "Tech", isActive: false),
     ViewTab(key: "F5", label: "Espionage", isActive: false),
     ViewTab(key: "F6", label: "General", isActive: false),
-    ViewTab(key: "F8", label: "Settings", isActive: false),
     ViewTab(key: "^N", label: "Inbox", isActive: false),
   ]
 
@@ -198,15 +197,6 @@ proc economyContextActions*(): seq[ContextAction] =
     ContextAction(key: "Enter", label: "Confirm", enabled: true),
     ContextAction(key: "I", label: "Industrial investment", enabled: true),
     ContextAction(key: "G", label: "Guild transfer", enabled: true),
-  ]
-
-proc settingsContextActions*(): seq[ContextAction] =
-  ## Context actions for Settings (View 9)
-  @[
-    ContextAction(key: "Space", label: "Toggle", enabled: true),
-    ContextAction(key: "Enter", label: "Change value", enabled: true),
-    ContextAction(key: "R", label: "Reset to defaults", enabled: true),
-    ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 
 # =============================================================================

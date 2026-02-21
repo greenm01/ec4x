@@ -45,7 +45,6 @@ type
     Economy       ## Economy view
     IntelDb       ## Intel database list
     IntelDetail   ## Intel system detail
-    Settings      ## Settings view
     Messages      ## Messages view
     Lobby         ## Entry screen / lobby
     ExpertMode    ## Expert command mode
@@ -245,7 +244,6 @@ proc viewModeToContext*(mode: ViewMode): BindingContext =
   of ViewMode.Economy: BindingContext.Economy
   of ViewMode.IntelDb: BindingContext.IntelDb
   of ViewMode.IntelDetail: BindingContext.IntelDetail
-  of ViewMode.Settings: BindingContext.Settings
   of ViewMode.Messages: BindingContext.Messages
   of ViewMode.PlanetDetail: BindingContext.PlanetDetail
   of ViewMode.FleetDetail: BindingContext.FleetDetail
@@ -261,7 +259,6 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.Economy: some(ViewMode.Economy)
   of BindingContext.IntelDb: some(ViewMode.IntelDb)
   of BindingContext.IntelDetail: some(ViewMode.IntelDetail)
-  of BindingContext.Settings: some(ViewMode.Settings)
   of BindingContext.Messages: some(ViewMode.Messages)
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
@@ -415,12 +412,6 @@ proc initBindings*() =
     actionKind: ActionKind.switchView,
     context: BindingContext.Global,
     longLabel: "|ntel", shortLabel: "|nt", priority: 9))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyK, modifier: ViewModifier,
-    actionKind: ActionKind.switchView,
-    context: BindingContext.Global,
-    longLabel: "twea|s", shortLabel: "tw|", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyX, modifier: ViewModifier,
@@ -1291,58 +1282,6 @@ proc initBindings*() =
     longLabel: "BACK", shortLabel: "Back", priority: 90))
 
   # =========================================================================
-  # Settings Context
-  # =========================================================================
-
-  registerBinding(Binding(
-    key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.listUp,
-    context: BindingContext.Settings,
-    longLabel: "NAV", shortLabel: "Nav", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyK, modifier: KeyModifier.None,
-    actionKind: ActionKind.listUp,
-    context: BindingContext.Settings,
-    longLabel: "NAV", shortLabel: "K", priority: 1))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.listDown,
-    context: BindingContext.Settings,
-    longLabel: "NAV", shortLabel: "Nav", priority: 2))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyJ, modifier: KeyModifier.None,
-    actionKind: ActionKind.listDown,
-    context: BindingContext.Settings,
-    longLabel: "NAV", shortLabel: "J", priority: 2))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.listPageUp,
-    context: BindingContext.Settings,
-    longLabel: "PAGE UP", shortLabel: "PgUp", priority: 3))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyPageDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.listPageDown,
-    context: BindingContext.Settings,
-    longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 4))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.settingsToggle,
-    context: BindingContext.Settings,
-    longLabel: "TOGGLE", shortLabel: "OK", priority: 10))
-
-  registerBinding(Binding(
-    key: KeyCode.KeyE, modifier: KeyModifier.None,
-    actionKind: ActionKind.settingsRelayEdit,
-    context: BindingContext.Settings,
-    longLabel: "EDIT RELAY", shortLabel: "E", priority: 11))
-
-  # =========================================================================
   # Messages Context (Unified Inbox)
   # =========================================================================
 
@@ -1697,7 +1636,6 @@ proc dispatchAction*(b: Binding, model: TuiModel,
       of KeyCode.KeyE: 5   # Espionage
       of KeyCode.KeyG: 6   # General (Economy)
       of KeyCode.KeyI: 8   # Intel db
-      of KeyCode.KeyK: 9   # Settings
       of KeyCode.KeyN: 10  # Messages
       else: 0
     if viewNum > 0:
@@ -2024,16 +1962,6 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEconomyTaxFineDec())
   of ActionKind.economyDiplomacyAction:
     return some(actionEconomyDiplomacyAction())
-
-  # Settings actions
-  of ActionKind.settingsToggle:
-    return some(actionSettingsToggle())
-  of ActionKind.settingsRelayEdit:
-    return some(actionSettingsRelayEdit())
-  of ActionKind.settingsRelayConfirm:
-    return some(actionSettingsRelayConfirm())
-  of ActionKind.settingsRelayCancel:
-    return some(actionSettingsRelayCancel())
 
   else:
     discard
@@ -2621,7 +2549,6 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
         of KeyCode.KeyI:
           model.ui.mode in {ViewMode.IntelDb, ViewMode.IntelDetail}
         of KeyCode.KeyN: model.ui.mode == ViewMode.Messages
-        of KeyCode.KeyK: model.ui.mode == ViewMode.Settings
         else: false
 
       let mode = if isSelected: BarItemMode.Selected

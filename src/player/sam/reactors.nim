@@ -125,10 +125,6 @@ proc statusMessageReactor*(model: var TuiModel) =
     of ViewMode.Messages:
       model.ui.statusMessage = "Inbox"
 
-
-    of ViewMode.Settings:
-      model.ui.statusMessage = "Game Settings"
-    
     of ViewMode.PlanetDetail:
       model.ui.statusMessage = "Planet Details"
     

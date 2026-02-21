@@ -39,7 +39,6 @@ type
     Espionage
     Economy
     IntelDb
-    Settings
     Messages
 
 const HelpItems* = {

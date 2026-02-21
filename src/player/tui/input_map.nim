@@ -105,22 +105,6 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   if model.ui.intelNoteEditActive:
     return mapIntelNoteInput(event)
 
-  # Settings relay URL editing captures text input directly.
-  if model.ui.mode == ViewMode.Settings and model.ui.settingsRelayEditing:
-    case event.key
-    of Key.Rune:
-      if event.rune.int >= 0x20:
-        return some(actionSettingsRelayAppend($event.rune))
-      return none(Proposal)
-    of Key.Backspace:
-      return some(actionSettingsRelayBackspace())
-    of Key.Enter, Key.CtrlJ:
-      return some(actionSettingsRelayConfirm())
-    of Key.Escape:
-      return some(actionSettingsRelayCancel())
-    else:
-      return none(Proposal)
-
   # Message compose mode captures text input directly.
   if model.ui.mode == ViewMode.Messages and model.ui.messageComposeActive:
     return mapSingleLineInput(

@@ -78,8 +78,6 @@ proc helpContextFor(model: TuiModel): HelpContext =
     HelpContext.IntelDb
   of ViewMode.IntelDetail:
     HelpContext.IntelDb
-  of ViewMode.Settings:
-    HelpContext.Settings
   of ViewMode.Messages:
     HelpContext.Messages
 
@@ -1150,35 +1148,6 @@ proc renderPlanetDefenseTab*(
       "Armies: " & $data.armies & "  Marines: " & $data.marines
     discard buf.setString(right.x, rightY, garrisonLine, normalStyle())
     rightY += 1
-
-proc renderPlanetSettingsTab*(
-  area: Rect,
-  buf: var CellBuffer,
-  data: PlanetDetailData
-) =
-  if area.isEmpty:
-    return
-
-  var y = area.y
-  discard buf.setString(area.x, y, "COLONY AUTOMATION",
-    canvasHeaderStyle())
-  y += 1
-  if y >= area.bottom:
-    return
-
-  let repairLabel = if data.autoRepair: "ON" else: "OFF"
-  let marinesLabel = if data.autoLoadMarines: "ON" else: "OFF"
-  let fightersLabel = if data.autoLoadFighters: "ON" else: "OFF"
-  let repairLine = "Auto-Repair Ships: " & repairLabel
-  discard buf.setString(area.x, y, repairLine, normalStyle())
-  y += 1
-  if y < area.bottom:
-    let marinesLine = "Auto-Load Marines: " & marinesLabel
-    discard buf.setString(area.x, y, marinesLine, normalStyle())
-    y += 1
-  if y < area.bottom:
-    let fightersLine = "Auto-Load Fighters: " & fightersLabel
-    discard buf.setString(area.x, y, fightersLine, normalStyle())
 
 proc buildColonyStatusChips(data: PlanetDetailData): string =
   var parts: seq[string] = @[]
@@ -2369,105 +2338,6 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
     discard buf.setString(ai.x, ai.y,
       "[M] Export Starmap SVG", actStyle)
 
-proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
-                          model: TuiModel, scroll: ScrollState) =
-  ## Render settings modal: display options + relay URL
-  type SettingItem = object
-    label: string
-    value: string
-    isToggle: bool
-    toggleOn: bool
-
-  let items = @[
-    SettingItem(
-      label: "Table borders",
-      value: if model.ui.showTableBorders: "ON" else: "OFF",
-      isToggle: true,
-      toggleOn: model.ui.showTableBorders
-    ),
-    SettingItem(
-      label: "Zebra striping",
-      value: if model.ui.showZebraStripe: "ON" else: "OFF",
-      isToggle: true,
-      toggleOn: model.ui.showZebraStripe
-    ),
-    SettingItem(
-      label: "Status bar arrows",
-      value: if model.ui.showStatusArrows: "ON" else: "OFF",
-      isToggle: true,
-      toggleOn: model.ui.showStatusArrows
-    ),
-    SettingItem(
-      label: "Compact mode",
-      value: if model.ui.compactMode: "ON" else: "OFF",
-      isToggle: true,
-      toggleOn: model.ui.compactMode
-    ),
-    SettingItem(
-      label: "Default relay URL",
-      value: if model.ui.nostrRelayUrl.len > 0:
-               model.ui.nostrRelayUrl
-             else:
-               "(not set)",
-      isToggle: false,
-      toggleOn: false
-    )
-  ]
-
-  let contentHeight = items.len + 4  # border + header row + items + footer
-  let footerText = if model.ui.settingsRelayEditing:
-    "[Enter] Confirm  [Esc] Cancel"
-  else:
-    "[↑↓] Navigate  [Enter] Toggle/Edit  [E] Edit relay"
-  let modal = newModal()
-    .title("SETTINGS")
-    .maxWidth(64)
-    .minWidth(48)
-    .borderStyle(outerBorderStyle())
-    .bgStyle(modalBgStyle())
-  let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf, footerText)
-  let contentArea = modal.contentArea(modalArea, hasFooter = true)
-  if contentArea.height <= 0 or contentArea.width <= 0:
-    return
-
-  let idx = model.ui.settingsIdx
-  for i, item in items:
-    let y = contentArea.y + i
-    if y >= contentArea.bottom:
-      break
-    let isSelected = i == idx
-    let isRelayEditing = i == 4 and model.ui.settingsRelayEditing
-    ## Fill row background
-    var rowPad = ""
-    for _ in 0 ..< contentArea.width:
-      rowPad.add(' ')
-    let rowStyle = if isSelected: selectedStyle() else: normalStyle()
-    discard buf.setString(contentArea.x, y, rowPad, rowStyle)
-    ## Label on the left
-    let labelStyle = if isSelected: selectedStyle() else: normalStyle()
-    discard buf.setString(contentArea.x, y, item.label, labelStyle)
-    ## Value / editor on the right
-    if isRelayEditing:
-      let inputWidget = newTextInput()
-        .style(selectedStyle())
-        .cursorStyle(alertStyle())
-      let inputArea = rect(
-        contentArea.x + item.label.len + 2,
-        y,
-        max(1, contentArea.width - item.label.len - 2),
-        1
-      )
-      inputWidget.render(model.ui.settingsRelayInput,
-        inputArea, buf, true)
-    else:
-      let valStyle = if isSelected: selectedStyle()
-        elif item.isToggle and item.toggleOn: canvasStyle()
-        else: dimStyle()
-      let valX = contentArea.right - item.value.len
-      if valX > contentArea.x + item.label.len:
-        discard buf.setString(valX, y, item.value, valStyle)
-
 proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
                           model: var TuiModel) =
   ## Render the left panel: flat list of houses + turn buckets
@@ -3511,7 +3381,6 @@ proc renderListPanel*(
     of ViewMode.Economy: "General Policy"
     of ViewMode.IntelDb: "Intel Database"
     of ViewMode.IntelDetail: "Intel System"
-    of ViewMode.Settings: "Game Settings"
     of ViewMode.Messages: "Inbox"
     of ViewMode.PlanetDetail: "Planet Info"
     of ViewMode.FleetDetail: "Fleet Info"
@@ -3557,9 +3426,6 @@ proc renderListPanel*(
   of ViewMode.IntelDetail:
     discard buf.setString(inner.x, inner.y,
       "Intel detail view", dimStyle())
-  of ViewMode.Settings:
-    discard buf.setString(inner.x, inner.y,
-      "Settings view (TODO)", dimStyle())
   of ViewMode.PlanetDetail:
     renderPlanetDetail(inner, buf, model, state, viewingHouse)
   of ViewMode.FleetDetail:
@@ -3641,8 +3507,6 @@ proc activeViewKey*(mode: ViewMode): string =
     return "F5"
   of ViewMode.Economy:
     return "F6"
-  of ViewMode.Settings:
-    return "F8"
   of ViewMode.Messages:
     return "^N"
   of ViewMode.IntelDb:
@@ -3685,8 +3549,6 @@ proc buildCommandDockData*(model: TuiModel): CommandDockData =
     result.contextActions = @[]
   of ViewMode.IntelDetail:
     result.contextActions = @[]
-  of ViewMode.Settings:
-    result.contextActions = settingsContextActions()
   of ViewMode.PlanetDetail:
     result.contextActions = planetDetailContextActions()
   of ViewMode.FleetDetail:
@@ -3774,8 +3636,6 @@ proc renderDashboard*(
       renderInboxModal(canvasArea, buf, model)
     of ViewMode.IntelDb:
       renderIntelDbModal(canvasArea, buf, model)
-    of ViewMode.Settings:
-      renderSettingsModal(canvasArea, buf, model, model.ui.settingsScroll)
     of ViewMode.PlanetDetail:
       renderPlanetDetailModal(canvasArea, buf, model, playerState)
     of ViewMode.FleetDetail:

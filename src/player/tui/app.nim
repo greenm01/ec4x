@@ -345,19 +345,11 @@ proc runTui*(gameId: string = "") =
 
   # Create initial model
   var initialModel = initTuiModel()
-  # Load persisted display settings from cache
-  let sbVal = tuiCache.getSetting("ui.showTableBorders")
-  if sbVal.len > 0:
-    initialModel.ui.showTableBorders = sbVal != "false"
-  let szVal = tuiCache.getSetting("ui.showZebraStripe")
-  if szVal.len > 0:
-    initialModel.ui.showZebraStripe = szVal != "false"
-  let saVal = tuiCache.getSetting("ui.showStatusArrows")
-  if saVal.len > 0:
-    initialModel.ui.showStatusArrows = saVal != "false"
-  let cmVal = tuiCache.getSetting("ui.compactMode")
-  if cmVal.len > 0:
-    initialModel.ui.compactMode = cmVal == "true"
+  # Load display settings from config.kdl
+  initialModel.ui.showTableBorders = tuiConfig.showTableBorders
+  initialModel.ui.showZebraStripe = tuiConfig.showZebraStripe
+  initialModel.ui.showStatusArrows = tuiConfig.showStatusArrows
+  initialModel.ui.compactMode = tuiConfig.compactMode
   initialModel.ui.termWidth = termWidth
   initialModel.ui.termHeight = termHeight
   initialModel.view.viewingHouse = int(viewingHouse)
@@ -1511,8 +1503,13 @@ proc runTui*(gameId: string = "") =
       if activeGameId.len > 0 and sam.model.view.playerStateLoaded:
         try:
           let svgContent = generateStarmapFromPlayerState(playerState)
+          let cachedGame = tuiCache.getGame(activeGameId)
+          let gameName =
+            if cachedGame.isSome: cachedGame.get().name.toLowerAscii()
+            else: "unknown"
           let outPath = exportSvg(
-            svgContent, activeGameId, sam.model.view.turn)
+            svgContent, gameName, sam.model.view.turn,
+            tuiConfig.mapExportDir)
           sam.model.ui.statusMessage = "Map saved: " & outPath
           if sam.model.ui.openMapRequested:
             discard openInViewer(outPath)
@@ -1540,25 +1537,6 @@ proc runTui*(gameId: string = "") =
       else:
         sam.model.ui.statusMessage = "Intel note not saved (game not loaded)"
       sam.model.ui.intelNoteSaveRequested = false
-      needsRender = true
-
-    # Persist display settings changes to cache
-    if sam.model.ui.settingsDirty:
-      tuiCache.setSetting(
-        "ui.showTableBorders",
-        if sam.model.ui.showTableBorders: "true" else: "false")
-      tuiCache.setSetting(
-        "ui.showZebraStripe",
-        if sam.model.ui.showZebraStripe: "true" else: "false")
-      tuiCache.setSetting(
-        "ui.showStatusArrows",
-        if sam.model.ui.showStatusArrows: "true" else: "false")
-      tuiCache.setSetting(
-        "ui.compactMode",
-        if sam.model.ui.compactMode: "true" else: "false")
-      tuiConfig.defaultRelay = sam.model.ui.nostrRelayUrl
-      saveTuiConfig(tuiConfig)
-      sam.model.ui.settingsDirty = false
       needsRender = true
 
     # Handle turn submission (expert :submit)

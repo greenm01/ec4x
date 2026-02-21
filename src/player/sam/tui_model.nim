@@ -14,7 +14,6 @@
 ##   F5 Espionage  - EBP/CIP budget, intel operations
 ##   F6 General    - Diplomacy, tax, empire policy
 ##   F7 (unused)   - Reserved
-##   F8 Settings   - Display options, automation defaults
 ##   Ctrl+N Inbox  - Player messages + turn reports
 
 import std/[options, tables, algorithm, strutils, sequtils, sets, heapqueue]
@@ -411,7 +410,6 @@ type
     Espionage = 5     ## Intel operations
     Economy = 6       ## General (tax/diplomacy)
     IntelDb = 8       ## Intel database (Starmap)
-    Settings = 9      ## Game settings
     Messages = 10     ## Player messages
     # Sub-views (not directly accessible via primary hotkeys)
     PlanetDetail = 20 ## Planet detail (Summary/Economy/Construction/etc.)
@@ -990,7 +988,6 @@ type
     economyScroll*: ScrollState
     intelScroll*: ScrollState
     messagesScroll*: ScrollState
-    settingsScroll*: ScrollState
 
     # Research state
     researchAllocation*: ResearchAllocation
@@ -1014,14 +1011,10 @@ type
     stagedDiplomaticCommands*: seq[DiplomaticCommand]
 
     # Settings state
-    settingsIdx*: int
     showTableBorders*: bool
     showZebraStripe*: bool
     showStatusArrows*: bool
     compactMode*: bool
-    settingsDirty*: bool
-    settingsRelayInput*: TextInputState
-    settingsRelayEditing*: bool
 
     # Inbox state (unified messages + reports)
     inboxFocus*: InboxPaneFocus
@@ -1319,7 +1312,6 @@ proc initTuiUiState*(): TuiUiState =
     economyScroll: initScrollState(),
     intelScroll: initScrollState(),
     messagesScroll: initScrollState(),
-    settingsScroll: initScrollState(),
     researchAllocation: ResearchAllocation(
       economic: 0,
       science: 0,
@@ -1339,14 +1331,10 @@ proc initTuiUiState*(): TuiUiState =
     economyHouseIdx: 0,
     stagedTaxRate: none(int),
     stagedDiplomaticCommands: @[],
-    settingsIdx: 0,
     showTableBorders: true,
     showZebraStripe: true,
     showStatusArrows: true,
     compactMode: false,
-    settingsDirty: false,
-    settingsRelayInput: initTextInputState(maxDisplayWidth = 48),
-    settingsRelayEditing: false,
     inboxFocus: InboxPaneFocus.List,
     inboxSection: InboxSection.Messages,
     inboxListIdx: 0,
@@ -1607,7 +1595,6 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.IntelDb: model.view.intelRows.len
-  of ViewMode.Settings: 5  # 4 toggles + relay URL
   of ViewMode.Messages: model.view.inboxItems.len
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
@@ -1743,7 +1730,6 @@ proc viewModeLabel*(mode: ViewMode): string =
   of ViewMode.Espionage: "Espionage"
   of ViewMode.Economy: "General"
   of ViewMode.IntelDb: "Intel"
-  of ViewMode.Settings: "Settings"
   of ViewMode.Messages: "Inbox"
   of ViewMode.PlanetDetail: "Colony"
   of ViewMode.FleetDetail: "Fleet"
@@ -1753,7 +1739,7 @@ proc isPrimaryView*(mode: ViewMode): bool =
   ## Check if mode is a primary view (F-keys)
   mode in {ViewMode.Overview, ViewMode.Planets, ViewMode.Fleets,
            ViewMode.Research, ViewMode.Espionage, ViewMode.Economy,
-           ViewMode.IntelDb, ViewMode.Settings,
+           ViewMode.IntelDb,
            ViewMode.Messages}
 
 proc isDetailView*(mode: ViewMode): bool =

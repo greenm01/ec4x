@@ -223,12 +223,6 @@ type
     economyTaxFineInc
     economyTaxFineDec
     economyDiplomacyAction
-    settingsToggle
-    settingsRelayEdit
-    settingsRelayAppend
-    settingsRelayBackspace
-    settingsRelayConfirm
-    settingsRelayCancel
 
   # ============================================================================
   # Core SAM Types

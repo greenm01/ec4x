@@ -138,12 +138,6 @@ proc messagesBreadcrumb*(): BreadcrumbData =
   result.add("Home", 1)
   result.add("Intel DB", 8)
 
-proc settingsBreadcrumb*(): BreadcrumbData =
-  ## Breadcrumb for Settings (View 9)
-  result = initBreadcrumbData()
-  result.add("Home", 1)
-  result.add("Settings", 9)
-
 # =============================================================================
 # Breadcrumb Rendering
 # =============================================================================

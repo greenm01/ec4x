@@ -26,7 +26,12 @@ const
 type
   TuiConfig* = object
     defaultRelay*: string
+    mapExportDir*: string
     relayAliases*: Table[string, string]
+    showTableBorders*: bool
+    showZebraStripe*: bool
+    showStatusArrows*: bool
+    compactMode*: bool
 
 # =============================================================================
 # Config Path
@@ -50,7 +55,12 @@ proc loadTuiConfig*(): TuiConfig =
   ## Returns default config if file doesn't exist or is invalid
   result = TuiConfig(
     defaultRelay: "",
-    relayAliases: initTable[string, string]()
+    mapExportDir: "",
+    relayAliases: initTable[string, string](),
+    showTableBorders: true,
+    showZebraStripe: true,
+    showStatusArrows: true,
+    compactMode: false
   )
   
   let configPath = getConfigPath()
@@ -70,6 +80,21 @@ proc loadTuiConfig*(): TuiConfig =
         of "default-relay":
           if child.args.len > 0:
             result.defaultRelay = child.args[0].kString()
+        of "map-export-dir":
+          if child.args.len > 0:
+            result.mapExportDir = child.args[0].kString()
+        of "show-table-borders":
+          if child.args.len > 0:
+            result.showTableBorders = child.args[0].kBool()
+        of "show-zebra-stripe":
+          if child.args.len > 0:
+            result.showZebraStripe = child.args[0].kBool()
+        of "show-status-arrows":
+          if child.args.len > 0:
+            result.showStatusArrows = child.args[0].kBool()
+        of "compact-mode":
+          if child.args.len > 0:
+            result.compactMode = child.args[0].kBool()
         of "relay-aliases":
           for aliasNode in child.children:
             if aliasNode.args.len > 0:
@@ -88,6 +113,18 @@ proc saveTuiConfig*(config: TuiConfig) =
   
   if config.defaultRelay.len > 0:
     content.add("  default-relay \"" & config.defaultRelay & "\"\n")
+  
+  if config.mapExportDir.len > 0:
+    content.add("  map-export-dir \"" & config.mapExportDir & "\"\n")
+  
+  content.add("  show-table-borders " &
+    (if config.showTableBorders: "true" else: "false") & "\n")
+  content.add("  show-zebra-stripe " &
+    (if config.showZebraStripe: "true" else: "false") & "\n")
+  content.add("  show-status-arrows " &
+    (if config.showStatusArrows: "true" else: "false") & "\n")
+  content.add("  compact-mode " &
+    (if config.compactMode: "true" else: "false") & "\n")
   
   if config.relayAliases.len > 0:
     content.add("  \n")

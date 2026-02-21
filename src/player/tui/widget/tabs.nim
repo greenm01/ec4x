@@ -225,8 +225,7 @@ proc planetDetailTabs*(activeIdx: int = 0): Tabs =
     tabItem("Summary"),
     tabItem("Economy"),
     tabItem("Construction"),
-    tabItem("Defense"),
-    tabItem("Settings")
+    tabItem("Defense")
   ], activeIdx)
 
 proc fleetDetailTabs*(activeIdx: int = 0): Tabs =

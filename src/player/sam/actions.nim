@@ -432,24 +432,6 @@ proc actionEconomyTaxFineDec*(): Proposal =
 proc actionEconomyDiplomacyAction*(): Proposal =
   gameActionProposal(ActionKind.economyDiplomacyAction, "")
 
-proc actionSettingsToggle*(): Proposal =
-  gameActionProposal(ActionKind.settingsToggle, "")
-
-proc actionSettingsRelayEdit*(): Proposal =
-  gameActionProposal(ActionKind.settingsRelayEdit, "")
-
-proc actionSettingsRelayConfirm*(): Proposal =
-  gameActionProposal(ActionKind.settingsRelayConfirm, "")
-
-proc actionSettingsRelayCancel*(): Proposal =
-  gameActionProposal(ActionKind.settingsRelayCancel, "")
-
-proc actionSettingsRelayAppend*(ch: string): Proposal =
-  gameActionProposal(ActionKind.settingsRelayAppend, ch)
-
-proc actionSettingsRelayBackspace*(): Proposal =
-  gameActionProposal(ActionKind.settingsRelayBackspace, "")
-
 # ============================================================================
 # Fleet List Actions
 # ============================================================================

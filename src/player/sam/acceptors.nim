@@ -67,8 +67,6 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
     some(ViewMode.Economy)
   of 8:
     some(ViewMode.IntelDb)
-  of 9:
-    some(ViewMode.Settings)
   of 10:
     some(ViewMode.Messages)
   of 20:
@@ -719,7 +717,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = proposal.selectIdx
     of ViewMode.Planets, ViewMode.Fleets, ViewMode.Research,
        ViewMode.Espionage, ViewMode.Economy,
-       ViewMode.Settings, ViewMode.PlanetDetail,
+       ViewMode.PlanetDetail,
        ViewMode.FleetDetail,
        ViewMode.IntelDb, ViewMode.IntelDetail:
       # Select current list item (idx is already set)
@@ -889,11 +887,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.economyHouseIdx.dec
           else:
             model.ui.economyHouseIdx = targets.len - 1
-    elif model.ui.mode == ViewMode.Settings:
-      if model.ui.settingsIdx > 0:
-        model.ui.settingsIdx.dec
-      else:
-        model.ui.settingsIdx = max(0, model.currentListLength() - 1)
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -1033,12 +1026,6 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.economyHouseIdx.inc
           else:
             model.ui.economyHouseIdx = 0
-    elif model.ui.mode == ViewMode.Settings:
-      let maxIdx = max(0, model.currentListLength() - 1)
-      if model.ui.settingsIdx < maxIdx:
-        model.ui.settingsIdx.inc
-      else:
-        model.ui.settingsIdx = 0
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -1409,76 +1396,6 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.economyFocus == EconomyFocus.Actions:
         # Export map action
         model.ui.exportMapRequested = true
-
-    of ActionKind.settingsToggle:
-      if model.ui.mode != ViewMode.Settings:
-        return
-      if model.ui.settingsRelayEditing:
-        return
-      case model.ui.settingsIdx
-      of 0:
-        model.ui.showTableBorders = not model.ui.showTableBorders
-        model.ui.statusMessage =
-          "Table borders: " &
-            (if model.ui.showTableBorders: "on" else: "off")
-      of 1:
-        model.ui.showZebraStripe = not model.ui.showZebraStripe
-        model.ui.statusMessage =
-          "Zebra stripe: " &
-            (if model.ui.showZebraStripe: "on" else: "off")
-      of 2:
-        model.ui.showStatusArrows = not model.ui.showStatusArrows
-        model.ui.statusMessage =
-          "Status bar arrows: " &
-            (if model.ui.showStatusArrows: "on" else: "off")
-      of 3:
-        model.ui.compactMode = not model.ui.compactMode
-        model.ui.statusMessage =
-          "Compact mode: " &
-            (if model.ui.compactMode: "on" else: "off")
-      else:
-        discard
-      model.ui.settingsDirty = true
-
-    of ActionKind.settingsRelayEdit:
-      if model.ui.mode != ViewMode.Settings:
-        return
-      model.ui.settingsRelayEditing = true
-      model.ui.settingsRelayInput = initTextInputState(maxDisplayWidth = 48)
-      discard model.ui.settingsRelayInput.appendText(model.ui.nostrRelayUrl)
-      model.ui.settingsRelayInput.cursorPos =
-        model.ui.settingsRelayInput.text.len
-      model.ui.statusMessage =
-        "Editing relay URL — Enter to confirm, Esc to cancel"
-
-    of ActionKind.settingsRelayConfirm:
-      if model.ui.mode != ViewMode.Settings:
-        return
-      model.ui.nostrRelayUrl = model.ui.settingsRelayInput.text
-      model.ui.settingsRelayEditing = false
-      model.ui.settingsDirty = true
-      model.ui.statusMessage = "Relay URL saved"
-
-    of ActionKind.settingsRelayCancel:
-      if model.ui.mode != ViewMode.Settings:
-        return
-      model.ui.settingsRelayEditing = false
-      model.ui.statusMessage = "Relay edit cancelled"
-
-    of ActionKind.settingsRelayAppend:
-      if model.ui.mode != ViewMode.Settings:
-        return
-      if not model.ui.settingsRelayEditing:
-        return
-      discard model.ui.settingsRelayInput.appendText(
-        proposal.gameActionData)
-
-    of ActionKind.settingsRelayBackspace:
-      if model.ui.mode != ViewMode.Settings:
-        return
-      if not model.ui.settingsRelayEditing:
-        return
-      model.ui.settingsRelayInput.backspace()
 
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
