@@ -871,6 +871,11 @@ proc syncPlayerStateToModel*(
   model.view.houseNames = initTable[int, string]()
   for houseId, name in ps.houseNames.pairs:
     model.view.houseNames[int(houseId)] = name
+  model.view.diplomaticRelations =
+    initTable[(int, int), DiplomaticState]()
+  for pair, dipState in ps.diplomaticRelations.pairs:
+    model.view.diplomaticRelations[
+      (int(pair[0]), int(pair[1]))] = dipState
   if ps.treasuryBalance.isSome:
     model.view.treasury = ps.treasuryBalance.get().int
   else:

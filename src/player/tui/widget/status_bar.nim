@@ -166,13 +166,14 @@ proc buildStatusBarData*(model: TuiModel, maxWidth: int): StatusBarData =
   ## Build status bar data from model state
   result = initStatusBarData()
   result.maxWidth = maxWidth
-  result.useArrows = true
+  result.useArrows = model.ui.showStatusArrows
   result.expertModeActive = model.ui.expertModeActive
   result.expertModeInput = model.ui.expertModeInput.value()
   result.expertModeCursorPos = model.ui.expertModeInput.cursorPos
 
   if not model.ui.expertModeActive:
-    result.items = fitItemsToWidth(model, maxWidth, useArrows = true)
+    result.items = fitItemsToWidth(
+      model, maxWidth, useArrows = model.ui.showStatusArrows)
 
 # =============================================================================
 # Rendering

@@ -35,6 +35,8 @@ import ./input_map
 import ./view_render
 import ./output
 import ./cursor_target
+import ../svg/starmap_export
+import ../svg/file_export
 
 proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
@@ -343,6 +345,19 @@ proc runTui*(gameId: string = "") =
 
   # Create initial model
   var initialModel = initTuiModel()
+  # Load persisted display settings from cache
+  let sbVal = tuiCache.getSetting("ui.showTableBorders")
+  if sbVal.len > 0:
+    initialModel.ui.showTableBorders = sbVal != "false"
+  let szVal = tuiCache.getSetting("ui.showZebraStripe")
+  if szVal.len > 0:
+    initialModel.ui.showZebraStripe = szVal != "false"
+  let saVal = tuiCache.getSetting("ui.showStatusArrows")
+  if saVal.len > 0:
+    initialModel.ui.showStatusArrows = saVal != "false"
+  let cmVal = tuiCache.getSetting("ui.compactMode")
+  if cmVal.len > 0:
+    initialModel.ui.compactMode = cmVal == "true"
   initialModel.ui.termWidth = termWidth
   initialModel.ui.termHeight = termHeight
   initialModel.view.viewingHouse = int(viewingHouse)
@@ -1491,9 +1506,21 @@ proc runTui*(gameId: string = "") =
 
       needsRender = true  # Game state changed
 
-    # Handle map export requests (disabled - requires full GameState)
+    # Handle map export requests
     if sam.model.ui.exportMapRequested:
-      sam.model.ui.statusMessage = "Map export requires local game (not available in Nostr mode)"
+      if activeGameId.len > 0 and sam.model.view.playerStateLoaded:
+        try:
+          let svgContent = generateStarmapFromPlayerState(playerState)
+          let outPath = exportSvg(
+            svgContent, activeGameId, sam.model.view.turn)
+          sam.model.ui.statusMessage = "Map saved: " & outPath
+          if sam.model.ui.openMapRequested:
+            discard openInViewer(outPath)
+        except CatchableError as e:
+          sam.model.ui.statusMessage = "Map export failed: " & e.msg
+      else:
+        sam.model.ui.statusMessage =
+          "Map export unavailable (no game loaded)"
       sam.model.ui.exportMapRequested = false
       sam.model.ui.openMapRequested = false
       needsRender = true
@@ -1513,6 +1540,25 @@ proc runTui*(gameId: string = "") =
       else:
         sam.model.ui.statusMessage = "Intel note not saved (game not loaded)"
       sam.model.ui.intelNoteSaveRequested = false
+      needsRender = true
+
+    # Persist display settings changes to cache
+    if sam.model.ui.settingsDirty:
+      tuiCache.setSetting(
+        "ui.showTableBorders",
+        if sam.model.ui.showTableBorders: "true" else: "false")
+      tuiCache.setSetting(
+        "ui.showZebraStripe",
+        if sam.model.ui.showZebraStripe: "true" else: "false")
+      tuiCache.setSetting(
+        "ui.showStatusArrows",
+        if sam.model.ui.showStatusArrows: "true" else: "false")
+      tuiCache.setSetting(
+        "ui.compactMode",
+        if sam.model.ui.compactMode: "true" else: "false")
+      tuiConfig.defaultRelay = sam.model.ui.nostrRelayUrl
+      saveTuiConfig(tuiConfig)
+      sam.model.ui.settingsDirty = false
       needsRender = true
 
     # Handle turn submission (expert :submit)
@@ -1546,6 +1592,8 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.stagedScrapCommands.setLen(0)
           sam.model.ui.stagedColonyManagement.setLen(0)
           sam.model.ui.stagedEspionageActions.setLen(0)
+          sam.model.ui.stagedDiplomaticCommands.setLen(0)
+          sam.model.ui.stagedTaxRate = none(int)
           sam.model.ui.stagedEbpInvestment = 0
           sam.model.ui.stagedCipInvestment = 0
           if activeGameId.len > 0:

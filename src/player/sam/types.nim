@@ -217,6 +217,18 @@ type
     espionageQueueAdd
     espionageQueueDelete
     espionageClearBudget
+    economyFocusNext
+    economyTaxInc
+    economyTaxDec
+    economyTaxFineInc
+    economyTaxFineDec
+    economyDiplomacyAction
+    settingsToggle
+    settingsRelayEdit
+    settingsRelayAppend
+    settingsRelayBackspace
+    settingsRelayConfirm
+    settingsRelayCancel
 
   # ============================================================================
   # Core SAM Types

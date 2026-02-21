@@ -411,6 +411,46 @@ proc actionEspionageClearBudget*(): Proposal =
   gameActionProposal(ActionKind.espionageClearBudget, "")
 
 # ============================================================================
+# Economy Actions
+# ============================================================================
+
+proc actionEconomyFocusNext*(): Proposal =
+  gameActionProposal(ActionKind.economyFocusNext, "")
+
+proc actionEconomyTaxInc*(): Proposal =
+  gameActionProposal(ActionKind.economyTaxInc, "")
+
+proc actionEconomyTaxDec*(): Proposal =
+  gameActionProposal(ActionKind.economyTaxDec, "")
+
+proc actionEconomyTaxFineInc*(): Proposal =
+  gameActionProposal(ActionKind.economyTaxFineInc, "")
+
+proc actionEconomyTaxFineDec*(): Proposal =
+  gameActionProposal(ActionKind.economyTaxFineDec, "")
+
+proc actionEconomyDiplomacyAction*(): Proposal =
+  gameActionProposal(ActionKind.economyDiplomacyAction, "")
+
+proc actionSettingsToggle*(): Proposal =
+  gameActionProposal(ActionKind.settingsToggle, "")
+
+proc actionSettingsRelayEdit*(): Proposal =
+  gameActionProposal(ActionKind.settingsRelayEdit, "")
+
+proc actionSettingsRelayConfirm*(): Proposal =
+  gameActionProposal(ActionKind.settingsRelayConfirm, "")
+
+proc actionSettingsRelayCancel*(): Proposal =
+  gameActionProposal(ActionKind.settingsRelayCancel, "")
+
+proc actionSettingsRelayAppend*(ch: string): Proposal =
+  gameActionProposal(ActionKind.settingsRelayAppend, ch)
+
+proc actionSettingsRelayBackspace*(): Proposal =
+  gameActionProposal(ActionKind.settingsRelayBackspace, "")
+
+# ============================================================================
 # Fleet List Actions
 # ============================================================================
 

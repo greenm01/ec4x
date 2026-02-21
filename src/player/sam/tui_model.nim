@@ -26,7 +26,7 @@ import ../tui/widget/text_input
 import ../../common/message_types
 import ../../engine/globals
 import ../../engine/types/[core, colony, fleet, production, command, tech,
-  ship, combat, facilities, ground_unit, zero_turn, espionage]
+  ship, combat, facilities, ground_unit, zero_turn, espionage, diplomacy]
 import ../../engine/systems/espionage/engine
 
 export entry_modal
@@ -583,6 +583,11 @@ type
     Targets
     Operations
 
+  EconomyFocus* {.pure.} = enum
+    TaxRate
+    Diplomacy
+    Actions
+
   EspionageBudgetChannel* {.pure.} = enum
     Ebp
     Cip
@@ -1002,6 +1007,22 @@ type
     stagedCipInvestment*: int32
     stagedEspionageActions*: seq[EspionageAttempt]
 
+    # Economy/General Policy state
+    economyFocus*: EconomyFocus
+    economyHouseIdx*: int
+    stagedTaxRate*: Option[int]
+    stagedDiplomaticCommands*: seq[DiplomaticCommand]
+
+    # Settings state
+    settingsIdx*: int
+    showTableBorders*: bool
+    showZebraStripe*: bool
+    showStatusArrows*: bool
+    compactMode*: bool
+    settingsDirty*: bool
+    settingsRelayInput*: TextInputState
+    settingsRelayEditing*: bool
+
     # Inbox state (unified messages + reports)
     inboxFocus*: InboxPaneFocus
     inboxSection*: InboxSection
@@ -1054,6 +1075,7 @@ type
 
     # Collections for display
     houseNames*: Table[int, string]
+    diplomaticRelations*: Table[(int, int), DiplomaticState]
     systems*: Table[HexCoord, SystemInfo]
     colonies*: seq[ColonyInfo]
     planetsRows*: seq[PlanetRow]
@@ -1313,6 +1335,18 @@ proc initTuiUiState*(): TuiUiState =
     stagedEbpInvestment: 0,
     stagedCipInvestment: 0,
     stagedEspionageActions: @[],
+    economyFocus: EconomyFocus.TaxRate,
+    economyHouseIdx: 0,
+    stagedTaxRate: none(int),
+    stagedDiplomaticCommands: @[],
+    settingsIdx: 0,
+    showTableBorders: true,
+    showZebraStripe: true,
+    showStatusArrows: true,
+    compactMode: false,
+    settingsDirty: false,
+    settingsRelayInput: initTextInputState(maxDisplayWidth = 48),
+    settingsRelayEditing: false,
     inboxFocus: InboxPaneFocus.List,
     inboxSection: InboxSection.Messages,
     inboxListIdx: 0,
@@ -1405,6 +1439,7 @@ proc initTuiViewState*(): TuiViewState =
     techLevels: none(TechLevel),
     researchPoints: none(ResearchPoints),
     houseNames: initTable[int, string](),
+    diplomaticRelations: initTable[(int, int), DiplomaticState](),
     systems: initTable[HexCoord, SystemInfo](),
     colonies: @[],
     planetsRows: @[],
@@ -1572,7 +1607,7 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Espionage: 0  # Espionage operations list (TODO)
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.IntelDb: model.view.intelRows.len
-  of ViewMode.Settings: 0  # TODO: settings list
+  of ViewMode.Settings: 5  # 4 toggles + relay URL
   of ViewMode.Messages: model.view.inboxItems.len
   of ViewMode.PlanetDetail: 0
   of ViewMode.FleetDetail: 0
@@ -2113,6 +2148,9 @@ proc stagedCommandCount*(model: TuiModel): int =
   if model.ui.stagedCipInvestment > 0:
     count.inc
   count += model.ui.stagedEspionageActions.len
+  count += model.ui.stagedDiplomaticCommands.len
+  if model.ui.stagedTaxRate.isSome:
+    count.inc
   count
 
 proc espionageQueuedQty*(
@@ -2765,7 +2803,30 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
                          houseId: HouseId): CommandPacket =
   ## Build CommandPacket from staged commands
   ## Used by main loop to submit turn to engine/Nostr
-  
+
+  # Merge staged tax rate into colony management commands.
+  # House-wide tax rate creates one ColonyManagementCommand per owned colony,
+  # merged with any existing per-colony overrides.
+  var colonyMgmt = model.ui.stagedColonyManagement
+  if model.ui.stagedTaxRate.isSome:
+    let rate = int32(model.ui.stagedTaxRate.get())
+    for systemId, colony in model.view.ownColoniesBySystem.pairs:
+      let colId = colony.id
+      var found = false
+      for i in 0 ..< colonyMgmt.len:
+        if colonyMgmt[i].colonyId == colId:
+          colonyMgmt[i].taxRate = some(rate)
+          found = true
+          break
+      if not found:
+        colonyMgmt.add(ColonyManagementCommand(
+          colonyId: colId,
+          autoRepair: colony.autoRepair,
+          autoLoadFighters: colony.autoLoadFighters,
+          autoLoadMarines: colony.autoLoadMarines,
+          taxRate: some(rate)
+        ))
+
   CommandPacket(
     houseId: houseId,
     turn: turn,
@@ -2774,12 +2835,11 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
     buildCommands: model.ui.stagedBuildCommands,
     repairCommands: model.ui.stagedRepairCommands,
     scrapCommands: model.ui.stagedScrapCommands,
-    # Empty/default values for other command types (Phase 2+)
     researchAllocation: model.ui.researchAllocation,
-    diplomaticCommand: @[],
+    diplomaticCommand: model.ui.stagedDiplomaticCommands,
     populationTransfers: @[],
     terraformCommands: @[],
-    colonyManagement: model.ui.stagedColonyManagement,
+    colonyManagement: colonyMgmt,
     espionageActions: model.ui.stagedEspionageActions,
     ebpInvestment: model.ui.stagedEbpInvestment,
     cipInvestment: model.ui.stagedCipInvestment

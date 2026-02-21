@@ -440,6 +440,12 @@ proc initBindings*() =
     context: BindingContext.Global,
     longLabel: "expert", shortLabel: "", priority: 100))
 
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.Ctrl,
+    actionKind: ActionKind.submitTurn,
+    context: BindingContext.Global,
+    longLabel: "SUBMIT", shortLabel: "GO", priority: 99))
+
 
 
   # =========================================================================
@@ -1097,34 +1103,82 @@ proc initBindings*() =
   # =========================================================================
 
   registerBinding(Binding(
-    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyFocusNext,
     context: BindingContext.Economy,
-    longLabel: "TAX-", shortLabel: "-", priority: 10))
+    longLabel: "NEXT PANEL", shortLabel: "Tab", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Economy,
+    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.listUp,
+    context: BindingContext.Economy,
+    longLabel: "NAV", shortLabel: "K", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Economy,
+    longLabel: "NAV", shortLabel: "Nav", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.listDown,
+    context: BindingContext.Economy,
+    longLabel: "NAV", shortLabel: "J", priority: 5))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyTaxDec,
+    context: BindingContext.Economy,
+    longLabel: "TAX-", shortLabel: "◀", priority: 10))
 
   registerBinding(Binding(
     key: KeyCode.KeyH, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.economyTaxDec,
     context: BindingContext.Economy,
-    longLabel: "TAX-", shortLabel: "H", priority: 10))
+    longLabel: "TAX-", shortLabel: "H", priority: 11))
 
   registerBinding(Binding(
     key: KeyCode.KeyRight, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.economyTaxInc,
     context: BindingContext.Economy,
-    longLabel: "TAX+", shortLabel: "+", priority: 20))
+    longLabel: "TAX+", shortLabel: "▶", priority: 20))
 
   registerBinding(Binding(
     key: KeyCode.KeyL, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.economyTaxInc,
     context: BindingContext.Economy,
-    longLabel: "TAX+", shortLabel: "L", priority: 20))
+    longLabel: "TAX+", shortLabel: "L", priority: 21))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyTaxFineDec,
+    context: BindingContext.Economy,
+    longLabel: "TAX-1%", shortLabel: "-", priority: 12))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyTaxFineInc,
+    context: BindingContext.Economy,
+    longLabel: "TAX+1%", shortLabel: "+", priority: 22))
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.economyDiplomacyAction,
     context: BindingContext.Economy,
-    longLabel: "CONFIRM", shortLabel: "OK", priority: 30))
+    longLabel: "ACTION", shortLabel: "OK", priority: 30))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyM, modifier: KeyModifier.None,
+    actionKind: ActionKind.exportMap,
+    context: BindingContext.Economy,
+    longLabel: "EXPORT MAP", shortLabel: "M", priority: 40))
 
   # =========================================================================
   # Intel DB Context
@@ -1278,15 +1332,15 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    actionKind: ActionKind.settingsToggle,
     context: BindingContext.Settings,
-    longLabel: "CHANGE", shortLabel: "Chg", priority: 10))
+    longLabel: "TOGGLE", shortLabel: "OK", priority: 10))
 
   registerBinding(Binding(
-    key: KeyCode.KeyR, modifier: KeyModifier.None,
-    actionKind: ActionKind.select,
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
+    actionKind: ActionKind.settingsRelayEdit,
     context: BindingContext.Settings,
-    longLabel: "RESET", shortLabel: "Rst", priority: 20))
+    longLabel: "EDIT RELAY", shortLabel: "E", priority: 11))
 
   # =========================================================================
   # Messages Context (Unified Inbox)
@@ -1956,6 +2010,30 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEspionageQueueDelete())
   of ActionKind.espionageClearBudget:
     return some(actionEspionageClearBudget())
+
+  # Economy actions
+  of ActionKind.economyFocusNext:
+    return some(actionEconomyFocusNext())
+  of ActionKind.economyTaxInc:
+    return some(actionEconomyTaxInc())
+  of ActionKind.economyTaxDec:
+    return some(actionEconomyTaxDec())
+  of ActionKind.economyTaxFineInc:
+    return some(actionEconomyTaxFineInc())
+  of ActionKind.economyTaxFineDec:
+    return some(actionEconomyTaxFineDec())
+  of ActionKind.economyDiplomacyAction:
+    return some(actionEconomyDiplomacyAction())
+
+  # Settings actions
+  of ActionKind.settingsToggle:
+    return some(actionSettingsToggle())
+  of ActionKind.settingsRelayEdit:
+    return some(actionSettingsRelayEdit())
+  of ActionKind.settingsRelayConfirm:
+    return some(actionSettingsRelayConfirm())
+  of ActionKind.settingsRelayCancel:
+    return some(actionSettingsRelayCancel())
 
   else:
     discard

@@ -352,3 +352,114 @@ proc generateStarmap*(state: GameState, houseId: HouseId,
   renderLegend(builder, width, height, houseNames)
   
   builder.build()
+
+proc generateStarmapFromPlayerState*(
+    ps: PlayerState,
+    width: int = DefaultWidth,
+    height: int = DefaultHeight
+): string =
+  ## Generate complete SVG starmap from a PlayerState (Nostr mode)
+  ##
+  ## Uses fog-of-war filtered visible systems from PlayerState so no
+  ## full GameState is needed. Suitable for client-only (Nostr) mode.
+
+  # Determine map extent for scale calculation
+  var maxRing = 0
+  for _, visSys in ps.visibleSystems.pairs:
+    if visSys.coordinates.isSome:
+      let (q, r) = (visSys.coordinates.get().q.int,
+                    visSys.coordinates.get().r.int)
+      let ring = max(abs(q), max(abs(r), abs(-q - r)))
+      if ring > maxRing:
+        maxRing = ring
+  if maxRing == 0:
+    maxRing = 5
+
+  let scale = calculateScale(
+    maxRing, float(min(width, height)), DefaultPadding)
+  let center = point(float(width) / 2.0, float(height) / 2.0)
+
+  # Build system nodes from visible systems
+  var systems: seq[SystemNode] = @[]
+  var posLookup = initTable[int, Point]()
+
+  for systemId, visSys in ps.visibleSystems.pairs:
+    if visSys.coordinates.isNone:
+      continue
+    let coords = visSys.coordinates.get()
+    let q = int(coords.q)
+    let r = int(coords.r)
+    let pos = hexToPixel(q, r, scale, center.x, center.y)
+    let label = coordLabel(q, r)
+
+    var nodeType = NodeType.Neutral
+    var ownerHouse = none(int)
+    var isHomeworld = false
+    let planetClass = int(visSys.planetClass)
+    let resourceRating = int(visSys.resourceRating)
+
+    case visSys.visibility
+    of VisibilityLevel.Owned:
+      nodeType = NodeType.OwnColony
+      ownerHouse = some(int(ps.viewingHouse))
+      if ps.homeworldSystemId.isSome and
+          ps.homeworldSystemId.get() == systemId:
+        isHomeworld = true
+    of VisibilityLevel.Occupied, VisibilityLevel.Scouted:
+      for visCol in ps.visibleColonies:
+        if visCol.systemId == systemId:
+          nodeType = NodeType.EnemyColony
+          ownerHouse = some(int(visCol.owner))
+          break
+    of VisibilityLevel.Adjacent, VisibilityLevel.None:
+      discard
+
+    let sysId = int(systemId)
+    posLookup[sysId] = pos
+    systems.add(SystemNode(
+      id: sysId,
+      name: visSys.name,
+      coordLabel: label,
+      q: q,
+      r: r,
+      position: pos,
+      nodeType: nodeType,
+      isHomeworld: isHomeworld,
+      ownerHouseId: ownerHouse,
+      planetClass: planetClass,
+      resourceRating: resourceRating
+    ))
+
+  # Build lanes from PlayerState jump lanes
+  var lanes: seq[LaneEdge] = @[]
+  var seen = initTable[(int, int), bool]()
+  for lane in ps.jumpLanes:
+    let fromId = int(lane.source)
+    let toId = int(lane.destination)
+    if not posLookup.hasKey(fromId) or not posLookup.hasKey(toId):
+      continue
+    let key = if fromId < toId: (fromId, toId) else: (toId, fromId)
+    if seen.hasKey(key):
+      continue
+    seen[key] = true
+    lanes.add(LaneEdge(
+      fromId: fromId,
+      toId: toId,
+      fromPos: posLookup[fromId],
+      toPos: posLookup[toId],
+      laneType: ord(lane.laneType)
+    ))
+
+  # Collect house names for legend
+  var houseNames: seq[tuple[id: int, name: string]] = @[]
+  for houseId, name in ps.houseNames.pairs:
+    houseNames.add((id: int(houseId), name: name))
+
+  # Build SVG
+  var builder = initSvgBuilder(width, height)
+  renderLanes(builder, lanes)
+  renderNodes(builder, systems)
+  renderLabels(builder, systems)
+  renderLegend(builder, width, height, houseNames)
+
+  builder.build()

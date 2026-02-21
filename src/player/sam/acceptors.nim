@@ -18,6 +18,7 @@ import ../tui/table_layout_policy
 import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
+import ../../engine/types/diplomacy
 import ../../common/logger
 import ../../engine/globals
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
@@ -880,6 +881,19 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.espionageOperationIdx.dec
         elif ops.len > 0:
           model.ui.espionageOperationIdx = maxIdx
+    elif model.ui.mode == ViewMode.Economy:
+      if model.ui.economyFocus == EconomyFocus.Diplomacy:
+        let targets = model.espionageTargetHouses()
+        if targets.len > 0:
+          if model.ui.economyHouseIdx > 0:
+            model.ui.economyHouseIdx.dec
+          else:
+            model.ui.economyHouseIdx = targets.len - 1
+    elif model.ui.mode == ViewMode.Settings:
+      if model.ui.settingsIdx > 0:
+        model.ui.settingsIdx.dec
+      else:
+        model.ui.settingsIdx = max(0, model.currentListLength() - 1)
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -1011,6 +1025,20 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.espionageOperationIdx.inc
         elif ops.len > 0:
           model.ui.espionageOperationIdx = 0
+    elif model.ui.mode == ViewMode.Economy:
+      if model.ui.economyFocus == EconomyFocus.Diplomacy:
+        let targets = model.espionageTargetHouses()
+        if targets.len > 0:
+          if model.ui.economyHouseIdx < targets.len - 1:
+            model.ui.economyHouseIdx.inc
+          else:
+            model.ui.economyHouseIdx = 0
+    elif model.ui.mode == ViewMode.Settings:
+      let maxIdx = max(0, model.currentListLength() - 1)
+      if model.ui.settingsIdx < maxIdx:
+        model.ui.settingsIdx.inc
+      else:
+        model.ui.settingsIdx = 0
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
@@ -1268,6 +1296,190 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "Reduced EBP; removed " & $removed &
             " queued operation(s)"
         model.ui.turnSubmissionConfirmed = false
+
+    of ActionKind.economyFocusNext:
+      if model.ui.mode == ViewMode.Economy:
+        case model.ui.economyFocus
+        of EconomyFocus.TaxRate:
+          model.ui.economyFocus = EconomyFocus.Diplomacy
+        of EconomyFocus.Diplomacy:
+          model.ui.economyFocus = EconomyFocus.Actions
+        of EconomyFocus.Actions:
+          model.ui.economyFocus = EconomyFocus.TaxRate
+
+    of ActionKind.economyTaxInc:
+      if model.ui.mode == ViewMode.Economy and
+          model.ui.economyFocus == EconomyFocus.TaxRate:
+        let current = model.ui.stagedTaxRate.get(
+          model.view.houseTaxRate)
+        let next = min(100, current + 10)
+        if next != model.view.houseTaxRate:
+          model.ui.stagedTaxRate = some(next)
+        else:
+          model.ui.stagedTaxRate = none(int)
+        model.ui.turnSubmissionConfirmed = false
+
+    of ActionKind.economyTaxDec:
+      if model.ui.mode == ViewMode.Economy and
+          model.ui.economyFocus == EconomyFocus.TaxRate:
+        let current = model.ui.stagedTaxRate.get(
+          model.view.houseTaxRate)
+        let next = max(0, current - 10)
+        if next != model.view.houseTaxRate:
+          model.ui.stagedTaxRate = some(next)
+        else:
+          model.ui.stagedTaxRate = none(int)
+        model.ui.turnSubmissionConfirmed = false
+
+    of ActionKind.economyTaxFineInc:
+      if model.ui.mode == ViewMode.Economy and
+          model.ui.economyFocus == EconomyFocus.TaxRate:
+        let current = model.ui.stagedTaxRate.get(
+          model.view.houseTaxRate)
+        let next = min(100, current + 1)
+        if next != model.view.houseTaxRate:
+          model.ui.stagedTaxRate = some(next)
+        else:
+          model.ui.stagedTaxRate = none(int)
+        model.ui.turnSubmissionConfirmed = false
+
+    of ActionKind.economyTaxFineDec:
+      if model.ui.mode == ViewMode.Economy and
+          model.ui.economyFocus == EconomyFocus.TaxRate:
+        let current = model.ui.stagedTaxRate.get(
+          model.view.houseTaxRate)
+        let next = max(0, current - 1)
+        if next != model.view.houseTaxRate:
+          model.ui.stagedTaxRate = some(next)
+        else:
+          model.ui.stagedTaxRate = none(int)
+        model.ui.turnSubmissionConfirmed = false
+
+    of ActionKind.economyDiplomacyAction:
+      if model.ui.mode == ViewMode.Economy and
+          model.ui.economyFocus == EconomyFocus.Diplomacy:
+        let targets = model.espionageTargetHouses()
+        if targets.len == 0:
+          return
+        let idx = clamp(
+          model.ui.economyHouseIdx, 0, targets.len - 1)
+        let targetId = targets[idx].id
+        let myId = model.view.viewingHouse
+        let key = (myId, targetId)
+        let current = model.view.diplomaticRelations.getOrDefault(
+          key, DiplomaticState.Neutral)
+        # Escalate: Neutral → Hostile → Enemy
+        let nextState = case current
+          of DiplomaticState.Neutral: DiplomaticState.Hostile
+          of DiplomaticState.Hostile: DiplomaticState.Enemy
+          of DiplomaticState.Enemy: DiplomaticState.Neutral
+        let actionType = case nextState
+          of DiplomaticState.Hostile:
+            DiplomaticActionType.DeclareHostile
+          of DiplomaticState.Enemy:
+            DiplomaticActionType.DeclareEnemy
+          of DiplomaticState.Neutral:
+            DiplomaticActionType.SetNeutral
+        # Remove any existing staged command for this target
+        var newCmds: seq[DiplomaticCommand] = @[]
+        for cmd in model.ui.stagedDiplomaticCommands:
+          if int(cmd.targetHouse) != targetId:
+            newCmds.add(cmd)
+        # Stage the new command
+        newCmds.add(DiplomaticCommand(
+          houseId: HouseId(myId),
+          targetHouse: HouseId(targetId),
+          actionType: actionType,
+          proposalId: none(ProposalId),
+          proposalType: none(ProposalType),
+          message: none(string)
+        ))
+        model.ui.stagedDiplomaticCommands = newCmds
+        model.ui.turnSubmissionConfirmed = false
+        let tgtName = model.view.houseNames.getOrDefault(
+          targetId, "House " & $targetId)
+        let stateLabel = case nextState
+          of DiplomaticState.Neutral: "Neutral"
+          of DiplomaticState.Hostile: "Hostile"
+          of DiplomaticState.Enemy: "Enemy"
+        model.ui.statusMessage =
+          "Staged: " & tgtName & " → " & stateLabel
+
+      elif model.ui.mode == ViewMode.Economy and
+          model.ui.economyFocus == EconomyFocus.Actions:
+        # Export map action
+        model.ui.exportMapRequested = true
+
+    of ActionKind.settingsToggle:
+      if model.ui.mode != ViewMode.Settings:
+        return
+      if model.ui.settingsRelayEditing:
+        return
+      case model.ui.settingsIdx
+      of 0:
+        model.ui.showTableBorders = not model.ui.showTableBorders
+        model.ui.statusMessage =
+          "Table borders: " &
+            (if model.ui.showTableBorders: "on" else: "off")
+      of 1:
+        model.ui.showZebraStripe = not model.ui.showZebraStripe
+        model.ui.statusMessage =
+          "Zebra stripe: " &
+            (if model.ui.showZebraStripe: "on" else: "off")
+      of 2:
+        model.ui.showStatusArrows = not model.ui.showStatusArrows
+        model.ui.statusMessage =
+          "Status bar arrows: " &
+            (if model.ui.showStatusArrows: "on" else: "off")
+      of 3:
+        model.ui.compactMode = not model.ui.compactMode
+        model.ui.statusMessage =
+          "Compact mode: " &
+            (if model.ui.compactMode: "on" else: "off")
+      else:
+        discard
+      model.ui.settingsDirty = true
+
+    of ActionKind.settingsRelayEdit:
+      if model.ui.mode != ViewMode.Settings:
+        return
+      model.ui.settingsRelayEditing = true
+      model.ui.settingsRelayInput = initTextInputState(maxDisplayWidth = 48)
+      discard model.ui.settingsRelayInput.appendText(model.ui.nostrRelayUrl)
+      model.ui.settingsRelayInput.cursorPos =
+        model.ui.settingsRelayInput.text.len
+      model.ui.statusMessage =
+        "Editing relay URL — Enter to confirm, Esc to cancel"
+
+    of ActionKind.settingsRelayConfirm:
+      if model.ui.mode != ViewMode.Settings:
+        return
+      model.ui.nostrRelayUrl = model.ui.settingsRelayInput.text
+      model.ui.settingsRelayEditing = false
+      model.ui.settingsDirty = true
+      model.ui.statusMessage = "Relay URL saved"
+
+    of ActionKind.settingsRelayCancel:
+      if model.ui.mode != ViewMode.Settings:
+        return
+      model.ui.settingsRelayEditing = false
+      model.ui.statusMessage = "Relay edit cancelled"
+
+    of ActionKind.settingsRelayAppend:
+      if model.ui.mode != ViewMode.Settings:
+        return
+      if not model.ui.settingsRelayEditing:
+        return
+      discard model.ui.settingsRelayInput.appendText(
+        proposal.gameActionData)
+
+    of ActionKind.settingsRelayBackspace:
+      if model.ui.mode != ViewMode.Settings:
+        return
+      if not model.ui.settingsRelayEditing:
+        return
+      model.ui.settingsRelayInput.backspace()
+
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
        ActionKind.toggleAutoLoadFighters:

@@ -6,7 +6,7 @@ import std/[options, unicode, strutils, tables]
 import std/tables as stdtables
 
 import ../../engine/types/[core, player_state as ps_types, fleet, colony,
-  ground_unit, facilities, ship, tech]
+  ground_unit, facilities, ship, tech, diplomacy]
 import ../../engine/state/engine
 import ../../engine/globals
 import ../../engine/systems/tech/[advancement, costs]
@@ -27,6 +27,7 @@ import ../tui/widget/status_bar
 import ../tui/styles/ec_palette
 import ../tui/widget/modal
 import ../tui/widget/table
+import ../tui/widget/leaderboard
 import ../tui/cursor_target
 import ../tui/widget/build_modal
 import ../tui/widget/queue_modal
@@ -386,10 +387,12 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     tableColumn("Shield", 6, table.Alignment.Center)
   ]
 
+  let effZebra = model.ui.showZebraStripe and not model.ui.compactMode
+  let effBorders = model.ui.showTableBorders and not model.ui.compactMode
   var colonyTable = table(columns)
     .selectedIdx(model.ui.selectedIdx)
-    .zebraStripe(true)
-    .showBorders(false)
+    .zebraStripe(effZebra)
+    .showBorders(effBorders)
 
   let statusColumn = 2
   for row in model.view.planetsRows:
@@ -458,10 +461,12 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
     else:
       -1
 
+  let effZebra = model.ui.showZebraStripe and not model.ui.compactMode
+  let effBorders = model.ui.showTableBorders and not model.ui.compactMode
   result = table(columns)
     .selectedIdx(selectedIdx)
-    .zebraStripe(true)
-    .showBorders(true)
+    .zebraStripe(effZebra)
+    .showBorders(effBorders)
 
   if startIdx >= endIdx:
     return
@@ -528,9 +533,10 @@ proc renderIntelDbTable*(area: Rect, buf: var CellBuffer,
     else:
       -1
 
+  let effZebra = model.ui.showZebraStripe and not model.ui.compactMode
   var intelTable = table(columns)
     .selectedIdx(selectedIdx)
-    .zebraStripe(true)
+    .zebraStripe(effZebra)
 
   if startIdx >= endIdx:
     intelTable.render(area, buf)
@@ -589,10 +595,12 @@ proc buildFleetListTable*(model: TuiModel,
     else:
       -1
 
+  let effZebra = model.ui.showZebraStripe and not model.ui.compactMode
+  let effBorders = model.ui.showTableBorders and not model.ui.compactMode
   result = table(columns)
     .selectedIdx(selectedIdx)
-    .zebraStripe(true)
-    .showBorders(true)
+    .zebraStripe(effZebra)
+    .showBorders(effBorders)
     .sortColumn(
       model.ui.fleetListState.sortState.columnIdx,
       model.ui.fleetListState.sortState.ascending)
@@ -668,6 +676,7 @@ proc renderFleetConsoleSystems(
   systems: seq[FleetConsoleSystem],
   selectedIdx: int,
   hasFocus: bool,
+  showBordersVal: bool,
   scrollOffset: int = 0
 ) =
   ## Render systems pane as table (systems with fleets)
@@ -678,7 +687,7 @@ proc renderFleetConsoleSystems(
   let columns = fleetConsoleSystemsColumns()
   
   var systemsTable = table(columns)
-    .showBorders(true)
+    .showBorders(showBordersVal)
     .scrollOffset(scrollOffset)
   
   # Only show selection if this pane has focus
@@ -700,6 +709,7 @@ proc renderFleetConsoleFleets(
   hasFocus: bool,
   stagedCommands: stdtables.Table[int, FleetCommand],
   selectedFleetIds: seq[int],
+  showBordersVal: bool,
   scrollOffset: int = 0
 ) =
   ## Render fleets pane as table (fleets at selected system)
@@ -710,7 +720,7 @@ proc renderFleetConsoleFleets(
   let columns = fleetConsoleFleetsColumns()
   
   var fleetsTable = table(columns)
-    .showBorders(true)
+    .showBorders(showBordersVal)
     .scrollOffset(scrollOffset)
   
   # Only show selection if this pane has focus
@@ -826,9 +836,13 @@ proc renderFleetConsole*(
     fleetsViewportRows
   )
 
+  let effBorders =
+    model.ui.showTableBorders and not model.ui.compactMode
+
   # Render systems pane
   renderFleetConsoleSystems(systemsInner, buf, systems, systemIdx,
     effectiveFocus == FleetConsoleFocus.SystemsPane,
+    effBorders,
     model.ui.fleetConsoleSystemScroll.verticalOffset)
   
   # Render fleets pane
@@ -838,6 +852,7 @@ proc renderFleetConsole*(
     effectiveFocus == FleetConsoleFocus.FleetsPane,
     model.ui.stagedFleetCommands,
     model.ui.selectedFleetIds,
+    effBorders,
     model.ui.fleetConsoleFleetScroll.verticalOffset)
 
 proc renderPlanetSummaryTab*(
@@ -1713,8 +1728,9 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     tableColumn("Alloc (PP)", 10, table.Alignment.Right)
   ]
 
+  let effBorders = model.ui.showTableBorders and not model.ui.compactMode
   var listTable = table(listColumns)
-    .showBorders(true)
+    .showBorders(effBorders)
     .rowStyle(normalStyle())
     .selectedStyle(if listFocused: selectedStyle() else: normalStyle())
 
@@ -1879,8 +1895,9 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       tableColumn("Effect", 0, table.Alignment.Left, 16)
     ]
 
+    let effBorders = model.ui.showTableBorders and not model.ui.compactMode
     var progTable = table(progColumns)
-      .showBorders(true)
+      .showBorders(effBorders)
       .rowStyle(modalDimStyle())
       .selectedStyle(selectedStyle())
 
@@ -2153,8 +2170,9 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     HouseId(targets[targetIdx].id.uint32)
   else:
     HouseId(0'u32)
+  let effBorders = model.ui.showTableBorders and not model.ui.compactMode
   var opsTable = table(opColumns)
-    .showBorders(true)
+    .showBorders(effBorders)
     .rowStyle(normalStyle())
     .selectedStyle(selectedStyle())
   let selectedRow = if model.ui.espionageFocus == EspionageFocus.Operations:
@@ -2184,39 +2202,271 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
 
 proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
                          model: TuiModel, scroll: ScrollState) =
-  ## Render general view as centered floating modal
+  ## Render general policy modal: tax rate, diplomacy, actions
+  let targets = model.espionageTargetHouses()
+  let targetIdx = clamp(model.ui.economyHouseIdx, 0,
+    max(0, targets.len - 1))
+
+  ## Convert DiplomaticState → DiplomaticStatus for display helpers
+  proc toDisplayStatus(s: DiplomaticState): DiplomaticStatus =
+    case s
+    of DiplomaticState.Neutral: DiplomaticStatus.Neutral
+    of DiplomaticState.Hostile: DiplomaticStatus.Hostile
+    of DiplomaticState.Enemy:   DiplomaticStatus.Enemy
+
+  ## Effective (display) tax rate: staged or current
+  let currentTax = model.view.houseTaxRate
+  let effectiveTax = model.ui.stagedTaxRate.get(currentTax)
+
+  ## Compute prestige penalty per spec (03-economy.md)
+  ## penalty = -floor(0.01 × (rate - 50)²) when rate > 50
+  proc taxPenalty(rate: int): int =
+    if rate > 50:
+      int(float(rate - 50) * float(rate - 50) * 0.01)
+    else:
+      0
+
+  ## Compute growth bonus tier label
+  proc growthTier(rate: int): string =
+    if rate <= 10: "×1.20 growth"
+    elif rate <= 20: "×1.15 growth"
+    elif rate <= 30: "×1.10 growth"
+    elif rate <= 40: "×1.05 growth"
+    else: "no growth bonus"
+
+  ## Compute prestige bonus tier label
+  proc prestigeTier(rate: int): string =
+    if rate <= 10: "+3 prestige/colony"
+    elif rate <= 20: "+2 prestige/colony"
+    elif rate <= 30: "+1 prestige/colony"
+    else: "no prestige bonus"
+
+  let taxPanelH = 6   # border (2) + 4 content rows
+  let dipPanelH = max(4, targets.len + 2) # border + entries
+  let actPanelH = 3   # border (2) + 1 content row
+  let contentHeight = taxPanelH + dipPanelH + actPanelH + 2
   let modal = newModal()
     .title("GENERAL POLICY")
-    .maxWidth(120)
-    .minWidth(80)
+    .maxWidth(72)
+    .minWidth(56)
     .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
-  # +2 for footer (1 separator + 1 text line)
-  let contentHeight = 12 + 2
+  let footerText = case model.ui.economyFocus
+    of EconomyFocus.TaxRate:
+      "[◀▶] ±10%  [+/-] ±1%  [Tab] Next"
+    of EconomyFocus.Diplomacy:
+      "[↑↓] Navigate  [Enter] Cycle  [Tab] Next"
+    of EconomyFocus.Actions:
+      "[M] Export SVG  [Tab] Next"
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf,
-    "[↑↓] Navigate  [Enter] Select  [/]Help")
+  modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
-  discard buf.setString(contentArea.x, contentArea.y,
-    "General view (TODO)", dimStyle())
+  if contentArea.height <= 0 or contentArea.width <= 0:
+    return
+
+  let rows = vertical()
+    .constraints(length(taxPanelH), length(dipPanelH), fill())
+    .split(contentArea)
+  let taxArea = rows[0]
+  let dipArea = rows[1]
+  let actArea = rows[2]
+
+  ## ── TAX RATE panel ─────────────────────────────────────────
+  bordered().title("TAX RATE").borderStyle(
+    modalPanelBorderStyle(
+      model.ui.economyFocus == EconomyFocus.TaxRate)
+  ).render(taxArea, buf)
+  let ti = bordered().inner(taxArea)
+  if not ti.isEmpty:
+    let hasStagedTax = model.ui.stagedTaxRate.isSome
+    let taxLine = if hasStagedTax:
+      "Current: " & $currentTax & "%  →  Staged: " &
+        $effectiveTax & "%"
+    else:
+      "Current: " & $currentTax & "%"
+    let taxStyle = if hasStagedTax: alertStyle() else: normalStyle()
+    discard buf.setString(ti.x, ti.y, taxLine, taxStyle)
+    let penalty = taxPenalty(effectiveTax)
+    if penalty > 0:
+      let penLine = "Prestige penalty: -" & $penalty &
+        "/colony (tax > 50%)"
+      discard buf.setString(ti.x, ti.y + 1, penLine, alertStyle())
+    else:
+      discard buf.setString(ti.x, ti.y + 1,
+        "No prestige penalty", dimStyle())
+    discard buf.setString(ti.x, ti.y + 2,
+      growthTier(effectiveTax), dimStyle())
+    discard buf.setString(ti.x, ti.y + 3,
+      prestigeTier(effectiveTax), dimStyle())
+
+  ## ── DIPLOMACY panel ────────────────────────────────────────
+  bordered().title("DIPLOMACY").borderStyle(
+    modalPanelBorderStyle(
+      model.ui.economyFocus == EconomyFocus.Diplomacy)
+  ).render(dipArea, buf)
+  let di = bordered().inner(dipArea)
+  if not di.isEmpty:
+    if targets.len == 0:
+      discard buf.setString(di.x, di.y,
+        "No other houses known", dimStyle())
+    else:
+      for i, tgt in targets:
+        let y = di.y + i
+        if y >= di.bottom:
+          break
+        let myId = model.view.viewingHouse
+        let key = (myId, tgt.id)
+        let baseState = model.view.diplomaticRelations.getOrDefault(
+          key, DiplomaticState.Neutral)
+        ## Check for a staged command overriding this target
+        var displayState = baseState
+        for cmd in model.ui.stagedDiplomaticCommands:
+          if int(cmd.targetHouse) == tgt.id:
+            displayState = case cmd.actionType
+              of DiplomaticActionType.DeclareHostile:
+                DiplomaticState.Hostile
+              of DiplomaticActionType.DeclareEnemy:
+                DiplomaticState.Enemy
+              of DiplomaticActionType.SetNeutral:
+                DiplomaticState.Neutral
+              else: baseState
+        let isStaged = displayState != baseState
+        let dispStatus = toDisplayStatus(displayState)
+        let glyph = statusGlyph(dispStatus)
+        let lbl = statusLabel(dispStatus)
+        let sty = statusStyle(dispStatus)
+        let isSelected = i == targetIdx and
+          model.ui.economyFocus == EconomyFocus.Diplomacy
+        let rowStyle = if isSelected: selectedStyle() else: normalStyle()
+        ## Fill the whole row first
+        var rowLine = ""
+        for _ in 0 ..< di.width:
+          rowLine.add(' ')
+        discard buf.setString(di.x, y, rowLine, rowStyle)
+        ## glyph + house name
+        let nameField = " " & glyph & " " & tgt.name
+        discard buf.setString(di.x, y, nameField,
+          if isSelected: selectedStyle() else: sty)
+        ## status label right-aligned (5 chars + possible *)
+        let stagedMark = if isStaged: "*" else: " "
+        let statusField = lbl & stagedMark
+        let fieldX = di.right - statusField.len
+        if fieldX > di.x + nameField.len:
+          discard buf.setString(fieldX, y, statusField,
+            if isSelected: selectedStyle() else: sty)
+
+  ## ── ACTIONS panel ──────────────────────────────────────────
+  bordered().title("ACTIONS").borderStyle(
+    modalPanelBorderStyle(
+      model.ui.economyFocus == EconomyFocus.Actions)
+  ).render(actArea, buf)
+  let ai = bordered().inner(actArea)
+  if not ai.isEmpty:
+    let actStyle = if model.ui.economyFocus == EconomyFocus.Actions:
+      normalStyle()
+    else:
+      dimStyle()
+    discard buf.setString(ai.x, ai.y,
+      "[M] Export Starmap SVG", actStyle)
 
 proc renderSettingsModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
-  ## Render settings view as centered floating modal
+  ## Render settings modal: display options + relay URL
+  type SettingItem = object
+    label: string
+    value: string
+    isToggle: bool
+    toggleOn: bool
+
+  let items = @[
+    SettingItem(
+      label: "Table borders",
+      value: if model.ui.showTableBorders: "ON" else: "OFF",
+      isToggle: true,
+      toggleOn: model.ui.showTableBorders
+    ),
+    SettingItem(
+      label: "Zebra striping",
+      value: if model.ui.showZebraStripe: "ON" else: "OFF",
+      isToggle: true,
+      toggleOn: model.ui.showZebraStripe
+    ),
+    SettingItem(
+      label: "Status bar arrows",
+      value: if model.ui.showStatusArrows: "ON" else: "OFF",
+      isToggle: true,
+      toggleOn: model.ui.showStatusArrows
+    ),
+    SettingItem(
+      label: "Compact mode",
+      value: if model.ui.compactMode: "ON" else: "OFF",
+      isToggle: true,
+      toggleOn: model.ui.compactMode
+    ),
+    SettingItem(
+      label: "Default relay URL",
+      value: if model.ui.nostrRelayUrl.len > 0:
+               model.ui.nostrRelayUrl
+             else:
+               "(not set)",
+      isToggle: false,
+      toggleOn: false
+    )
+  ]
+
+  let contentHeight = items.len + 4  # border + header row + items + footer
+  let footerText = if model.ui.settingsRelayEditing:
+    "[Enter] Confirm  [Esc] Cancel"
+  else:
+    "[↑↓] Navigate  [Enter] Toggle/Edit  [E] Edit relay"
   let modal = newModal()
-    .title("GAME SETTINGS")
-    .maxWidth(120)
-    .minWidth(80)
+    .title("SETTINGS")
+    .maxWidth(64)
+    .minWidth(48)
     .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
-  # +2 for footer (1 separator + 1 text line)
-  let contentHeight = 10 + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
-  modal.renderWithFooter(modalArea, buf,
-    "[↑↓] Navigate  [Enter] Select  [/]Help")
+  modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
-  discard buf.setString(contentArea.x, contentArea.y,
-    "Settings view (TODO)", dimStyle())
+  if contentArea.height <= 0 or contentArea.width <= 0:
+    return
+
+  let idx = model.ui.settingsIdx
+  for i, item in items:
+    let y = contentArea.y + i
+    if y >= contentArea.bottom:
+      break
+    let isSelected = i == idx
+    let isRelayEditing = i == 4 and model.ui.settingsRelayEditing
+    ## Fill row background
+    var rowPad = ""
+    for _ in 0 ..< contentArea.width:
+      rowPad.add(' ')
+    let rowStyle = if isSelected: selectedStyle() else: normalStyle()
+    discard buf.setString(contentArea.x, y, rowPad, rowStyle)
+    ## Label on the left
+    let labelStyle = if isSelected: selectedStyle() else: normalStyle()
+    discard buf.setString(contentArea.x, y, item.label, labelStyle)
+    ## Value / editor on the right
+    if isRelayEditing:
+      let inputWidget = newTextInput()
+        .style(selectedStyle())
+        .cursorStyle(alertStyle())
+      let inputArea = rect(
+        contentArea.x + item.label.len + 2,
+        y,
+        max(1, contentArea.width - item.label.len - 2),
+        1
+      )
+      inputWidget.render(model.ui.settingsRelayInput,
+        inputArea, buf, true)
+    else:
+      let valStyle = if isSelected: selectedStyle()
+        elif item.isToggle and item.toggleOn: canvasStyle()
+        else: dimStyle()
+      let valX = contentArea.right - item.value.len
+      if valX > contentArea.x + item.label.len:
+        discard buf.setString(valX, y, item.value, valStyle)
 
 proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
                           model: var TuiModel) =
