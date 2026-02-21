@@ -833,27 +833,33 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetViewMode == FleetViewMode.SystemView:
       case model.ui.fleetConsoleFocus
       of FleetConsoleFocus.SystemsPane:
+        let maxIdx = max(0, model.ui.fleetConsoleSystems.len - 1)
         if model.ui.fleetConsoleSystemIdx > 0:
           model.ui.fleetConsoleSystemIdx -= 1
-          # Update scroll state to keep selection visible
-          let viewportHeight = model.fleetConsoleViewportRows()
-          model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
-          model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
-          model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
+        else:
+          model.ui.fleetConsoleSystemIdx = maxIdx
+        # Update scroll state to keep selection visible
+        let viewportHeight = model.fleetConsoleViewportRows()
+        model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
+        model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
+        model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
       of FleetConsoleFocus.FleetsPane:
-        if model.ui.fleetConsoleFleetIdx > 0:
-          model.ui.fleetConsoleFleetIdx -= 1
-          # Update scroll state
-          if model.ui.fleetConsoleSystems.len > 0:
-            let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, 
-              model.ui.fleetConsoleSystems.len - 1)
-            let systemId = model.ui.fleetConsoleSystems[sysIdx].systemId
-            if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
-              let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
-              let viewportHeight = model.fleetConsoleViewportRows()
-              model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
-              model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
-              model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
+        if model.ui.fleetConsoleSystems.len > 0:
+          let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0,
+            model.ui.fleetConsoleSystems.len - 1)
+          let systemId = model.ui.fleetConsoleSystems[sysIdx].systemId
+          if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+            let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+            let maxIdx = max(0, fleets.len - 1)
+            if model.ui.fleetConsoleFleetIdx > 0:
+              model.ui.fleetConsoleFleetIdx -= 1
+            else:
+              model.ui.fleetConsoleFleetIdx = maxIdx
+            # Update scroll state
+            let viewportHeight = model.fleetConsoleViewportRows()
+            model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
+            model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
+            model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
       of FleetConsoleFocus.ShipsPane:
         if model.ui.fleetConsoleShipIdx > 0:
           model.ui.fleetConsoleShipIdx -= 1
@@ -865,19 +871,23 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let targets = model.espionageTargetHouses()
         if model.ui.espionageTargetIdx > 0 and targets.len > 0:
           model.ui.espionageTargetIdx.dec
-        else:
-          model.ui.espionageFocus = EspionageFocus.Budget
+        elif targets.len > 0:
+          model.ui.espionageTargetIdx = targets.len - 1
       of EspionageFocus.Operations:
         let ops = espionageActions()
+        let maxIdx = max(0, ops.len - 1)
         if model.ui.espionageOperationIdx > 0 and ops.len > 0:
           model.ui.espionageOperationIdx.dec
+        elif ops.len > 0:
+          model.ui.espionageOperationIdx = maxIdx
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
-      model.ui.intelDetailFleetSelectedIdx = max(
-        0,
-        model.ui.intelDetailFleetSelectedIdx - 1
-      )
+      let maxIdx = max(0, model.ui.intelDetailFleetCount - 1)
+      if model.ui.intelDetailFleetSelectedIdx > 0:
+        model.ui.intelDetailFleetSelectedIdx -= 1
+      else:
+        model.ui.intelDetailFleetSelectedIdx = maxIdx
     elif model.ui.mode == ViewMode.Messages:
       if model.ui.inboxFocus == InboxPaneFocus.List:
         if model.ui.inboxTurnExpanded and
@@ -928,14 +938,21 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Research:
       if model.ui.researchFocus == ResearchFocus.Detail:
         model.ui.researchFocus = ResearchFocus.List
-      elif model.ui.selectedIdx > 0:
-        model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
+      else:
+        let maxIdx = max(0, model.currentListLength() - 1)
+        if model.ui.selectedIdx > 0:
+          model.ui.selectedIdx -= 1
+        else:
+          model.ui.selectedIdx = maxIdx
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     else:
       # Default list navigation
+      let maxIdx = max(0, model.currentListLength() - 1)
       if model.ui.selectedIdx > 0:
-        model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
+        model.ui.selectedIdx -= 1
+      else:
+        model.ui.selectedIdx = maxIdx
       if model.ui.mode == ViewMode.IntelDb:
         model.syncIntelListScroll()
   
@@ -949,11 +966,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let maxIdx = max(0, model.ui.fleetConsoleSystems.len - 1)
         if model.ui.fleetConsoleSystemIdx < maxIdx:
           model.ui.fleetConsoleSystemIdx += 1
-          # Update scroll state to keep selection visible
-          let viewportHeight = model.fleetConsoleViewportRows()
-          model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
-          model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
-          model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
+        else:
+          model.ui.fleetConsoleSystemIdx = 0
+        # Update scroll state to keep selection visible
+        let viewportHeight = model.fleetConsoleViewportRows()
+        model.ui.fleetConsoleSystemScroll.contentLength = model.ui.fleetConsoleSystems.len
+        model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
+        model.ui.fleetConsoleSystemScroll.ensureVisible(model.ui.fleetConsoleSystemIdx)
       of FleetConsoleFocus.FleetsPane:
         # Get fleets for current system to check bounds
         if model.ui.fleetConsoleSystems.len > 0:
@@ -965,11 +984,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
             let maxIdx = max(0, fleets.len - 1)
             if model.ui.fleetConsoleFleetIdx < maxIdx:
               model.ui.fleetConsoleFleetIdx += 1
-              # Update scroll state
-              let viewportHeight = model.fleetConsoleViewportRows()
-              model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
-              model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
-              model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
+            else:
+              model.ui.fleetConsoleFleetIdx = 0
+            # Update scroll state
+            let viewportHeight = model.fleetConsoleViewportRows()
+            model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
+            model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
+            model.ui.fleetConsoleFleetScroll.ensureVisible(model.ui.fleetConsoleFleetIdx)
       of FleetConsoleFocus.ShipsPane:
         model.ui.fleetConsoleShipIdx += 1  # Ships bounds checked at render
     elif model.ui.mode == ViewMode.Espionage:
@@ -981,18 +1002,23 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let maxIdx = max(0, targets.len - 1)
         if targets.len > 0 and model.ui.espionageTargetIdx < maxIdx:
           model.ui.espionageTargetIdx.inc
+        elif targets.len > 0:
+          model.ui.espionageTargetIdx = 0
       of EspionageFocus.Operations:
         let ops = espionageActions()
         let maxIdx = max(0, ops.len - 1)
         if ops.len > 0 and model.ui.espionageOperationIdx < maxIdx:
           model.ui.espionageOperationIdx.inc
+        elif ops.len > 0:
+          model.ui.espionageOperationIdx = 0
     elif model.ui.mode == ViewMode.IntelDetail:
       if model.ui.intelDetailFleetPopupActive:
         return
-      model.ui.intelDetailFleetSelectedIdx = min(
-        model.ui.intelDetailFleetSelectedIdx + 1,
-        max(0, model.ui.intelDetailFleetCount - 1)
-      )
+      let maxIdx = max(0, model.ui.intelDetailFleetCount - 1)
+      if model.ui.intelDetailFleetSelectedIdx < maxIdx:
+        model.ui.intelDetailFleetSelectedIdx += 1
+      else:
+        model.ui.intelDetailFleetSelectedIdx = 0
     elif model.ui.mode == ViewMode.Messages:
       if model.ui.inboxFocus == InboxPaneFocus.List:
         if model.ui.inboxTurnExpanded and
@@ -1050,18 +1076,20 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.researchFocus == ResearchFocus.Detail:
         discard  # down does nothing in detail pane (no scrollable content)
       else:
-        let maxIdx = model.currentListLength() - 1
+        let maxIdx = max(0, model.currentListLength() - 1)
         if model.ui.selectedIdx < maxIdx:
-          model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
-        elif model.ui.selectedIdx >= maxIdx:
-          model.ui.researchFocus = ResearchFocus.Detail
+          model.ui.selectedIdx += 1
+        else:
+          model.ui.selectedIdx = 0
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     else:
       # Default list navigation
-      let maxIdx = model.currentListLength() - 1
+      let maxIdx = max(0, model.currentListLength() - 1)
       if model.ui.selectedIdx < maxIdx:
         model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+      else:
+        model.ui.selectedIdx = 0
       if model.ui.mode == ViewMode.IntelDb:
         model.syncIntelListScroll()
   of ActionKind.listPageUp:
@@ -2541,15 +2569,22 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     # Note: availableOptions will be refreshed by reactor
   of ActionKind.buildListUp:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      let maxIdx = max(0, buildRowCountForCategory(
+        model.ui.buildModal.category
+      ) - 1)
       if model.ui.buildModal.selectedBuildIdx > 0:
         model.ui.buildModal.selectedBuildIdx -= 1
+      else:
+        model.ui.buildModal.selectedBuildIdx = maxIdx
   of ActionKind.buildListDown:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
-      let maxIdx = buildRowCountForCategory(
+      let maxIdx = max(0, buildRowCountForCategory(
         model.ui.buildModal.category
-      ) - 1
+      ) - 1)
       if model.ui.buildModal.selectedBuildIdx < maxIdx:
         model.ui.buildModal.selectedBuildIdx += 1
+      else:
+        model.ui.buildModal.selectedBuildIdx = 0
   of ActionKind.buildQueueUp:
     discard
   of ActionKind.buildQueueDown:
@@ -2639,12 +2674,16 @@ proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       return
     if model.ui.queueModal.selectedIdx > 0:
       model.ui.queueModal.selectedIdx -= 1
+    else:
+      model.ui.queueModal.selectedIdx = indices.len - 1
   of ActionKind.queueListDown:
     let indices = model.queueStagedIndices()
     if indices.len == 0:
       return
     if model.ui.queueModal.selectedIdx < indices.len - 1:
       model.ui.queueModal.selectedIdx += 1
+    else:
+      model.ui.queueModal.selectedIdx = 0
   of ActionKind.queueListPageUp:
     let indices = model.queueStagedIndices()
     if indices.len == 0:
@@ -2780,22 +2819,42 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   of ActionKind.fleetDetailListUp:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Navigate filtered command list
+      let maxIdx = max(0,
+        model.ui.fleetDetailModal.commandPickerCommands.len - 1)
       if model.ui.fleetDetailModal.commandIdx > 0:
         model.ui.fleetDetailModal.commandIdx -= 1
-        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
+      else:
+        model.ui.fleetDetailModal.commandIdx = maxIdx
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue > 0:
         model.ui.fleetDetailModal.roeValue -= 1  # Up decreases value (moves toward 0)
-        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
+      else:
+        model.ui.fleetDetailModal.roeValue = 10  # Wrap to max
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
+      let maxIdx = max(0,
+        model.ui.fleetDetailModal.ztcPickerCommands.len - 1)
       if model.ui.fleetDetailModal.ztcIdx > 0:
         model.ui.fleetDetailModal.ztcIdx -= 1
+      else:
+        model.ui.fleetDetailModal.ztcIdx = maxIdx
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ShipSelector:
+      let maxIdx = max(0,
+        model.ui.fleetDetailModal.shipSelectorShipIds.len - 1)
       if model.ui.fleetDetailModal.shipSelectorIdx > 0:
         model.ui.fleetDetailModal.shipSelectorIdx -= 1
+      else:
+        model.ui.fleetDetailModal.shipSelectorIdx = maxIdx
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
+      let maxIdx = max(0,
+        model.ui.fleetDetailModal.fleetPickerCandidates.len - 1)
       if model.ui.fleetDetailModal.fleetPickerIdx > 0:
         model.ui.fleetDetailModal.fleetPickerIdx -= 1
+      else:
+        model.ui.fleetDetailModal.fleetPickerIdx = maxIdx
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
       discard
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
@@ -2807,8 +2866,12 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         for ch in $(current - 1):
           discard model.ui.fleetDetailModal.fighterQuantityInput.appendChar(ch)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
+      let maxIdx = max(0,
+        model.ui.fleetDetailModal.systemPickerSystems.len - 1)
       if model.ui.fleetDetailModal.systemPickerIdx > 0:
         model.ui.fleetDetailModal.systemPickerIdx -= 1
+      else:
+        model.ui.fleetDetailModal.systemPickerIdx = maxIdx
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       discard model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll
@@ -2822,25 +2885,37 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if maxIdx >= 0 and
           model.ui.fleetDetailModal.commandIdx < maxIdx:
         model.ui.fleetDetailModal.commandIdx += 1
-        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
+      elif maxIdx >= 0:
+        model.ui.fleetDetailModal.commandIdx = 0
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       if model.ui.fleetDetailModal.roeValue < 10:
         model.ui.fleetDetailModal.roeValue += 1  # Down increases value (moves toward 10)
-        model.ui.fleetDetailModal.commandDigitBuffer = ""  # Clear digit buffer on navigation
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
+      else:
+        model.ui.fleetDetailModal.roeValue = 0  # Wrap to min
+        model.ui.fleetDetailModal.commandDigitBuffer = ""
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker:
       let maxZtc =
         model.ui.fleetDetailModal.ztcPickerCommands.len - 1
       if model.ui.fleetDetailModal.ztcIdx < maxZtc:
         model.ui.fleetDetailModal.ztcIdx += 1
+      elif maxZtc >= 0:
+        model.ui.fleetDetailModal.ztcIdx = 0
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.ShipSelector:
       let maxIdx =
         model.ui.fleetDetailModal.shipSelectorShipIds.len - 1
       if model.ui.fleetDetailModal.shipSelectorIdx < maxIdx:
         model.ui.fleetDetailModal.shipSelectorIdx += 1
+      elif maxIdx >= 0:
+        model.ui.fleetDetailModal.shipSelectorIdx = 0
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:
       let maxIdx = model.ui.fleetDetailModal.fleetPickerCandidates.len - 1
       if model.ui.fleetDetailModal.fleetPickerIdx < maxIdx:
         model.ui.fleetDetailModal.fleetPickerIdx += 1
+      elif maxIdx >= 0:
+        model.ui.fleetDetailModal.fleetPickerIdx = 0
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
       discard
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
@@ -2854,6 +2929,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let maxIdx = model.ui.fleetDetailModal.systemPickerSystems.len - 1
       if model.ui.fleetDetailModal.systemPickerIdx < maxIdx:
         model.ui.fleetDetailModal.systemPickerIdx += 1
+      elif maxIdx >= 0:
+        model.ui.fleetDetailModal.systemPickerIdx = 0
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.None:
       let (_, maxOffset) = model.updateFleetDetailScroll()
       let scroll = model.ui.fleetDetailModal.shipScroll

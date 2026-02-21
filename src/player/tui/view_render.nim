@@ -2005,7 +2005,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     drawTextLine(outBuf, x, y, width, prefix & align(value, valueWidth), style)
 
   let modal = newModal()
-    .title("INTEL OPERATIONS")
+    .title("ESPIONAGE")
     .maxWidth(112)
     .minWidth(64)
     .borderStyle(outerBorderStyle())
