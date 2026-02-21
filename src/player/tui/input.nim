@@ -184,12 +184,25 @@ proc parseCSIu(p: var InputParser): Event =
       p.reset()
       return newKeyEvent(ctrlKey)
 
-  if codepoint == 9:
+  # Handle legacy special codepoints reported as CSI-u under KKP.
+  # These arrive as e.g. CSI 27;1u (ESC), CSI 13;1u (Enter),
+  # CSI 9;1u (Tab), CSI 127;1u (Backspace).
+  case codepoint
+  of 9:
     p.reset()
     return newKeyEvent(Key.Tab, Rune(0), mods)
-
-  p.reset()
-  return newKeyEvent(Key.Rune, r, mods)
+  of 13:
+    p.reset()
+    return newKeyEvent(Key.Enter, Rune(0), mods)
+  of 27:
+    p.reset()
+    return newKeyEvent(Key.Escape, Rune(0), mods)
+  of 127:
+    p.reset()
+    return newKeyEvent(Key.Backspace, Rune(0), mods)
+  else:
+    p.reset()
+    return newKeyEvent(Key.Rune, r, mods)
 
 proc parseCSI(p: var InputParser): Event =
   ## Parse accumulated csi sequence (esc [ ...).
@@ -203,23 +216,40 @@ proc parseCSI(p: var InputParser): Event =
   if final == 'u':
     return p.parseCSIu()
   
-  # Extract parameter (if present)
-  var param = 0
+  # Extract param1 and param2 (split on ';')
+  # Handles both plain sequences (ESC [ A) and KKP-enhanced
+  # cursor key sequences (ESC [ 1 ; mod A).
+  var param1 = 0
+  var param2 = 0
+  var foundSemi = false
   if p.buf.len >= 2:
-    # Simple number parsing (only handles single param)
     for i in 0..<(p.buf.len - 1):
       let c = char(p.buf[i])
       if c >= '0' and c <= '9':
-        param = param * 10 + (ord(c) - ord('0'))
+        if foundSemi:
+          param2 = param2 * 10 + (ord(c) - ord('0'))
+        else:
+          param1 = param1 * 10 + (ord(c) - ord('0'))
+      elif c == ';':
+        foundSemi = true
       else:
-        break  # Stop on non-digit (modifier chars, etc.)
-  
+        break
+
+  # For letter-terminated cursor keys under KKP: CSI 1;mod X
+  # param1==1 means "default" (same as no param); modifier in param2
+  let lookupParam =
+    if final != '~' and param1 == 1: 0
+    else: param1
+  let extraMods =
+    if foundSemi and param2 > 1: parseCsiMods(param2)
+    else: ModNone
+
   # Look up in table
-  if csiKeyMap.hasKey((final, param)):
-    let (key, mods) = csiKeyMap[(final, param)]
+  if csiKeyMap.hasKey((final, lookupParam)):
+    let (key, baseMods) = csiKeyMap[(final, lookupParam)]
     p.reset()
-    return newKeyEvent(key, Rune(0), mods)
-  
+    return newKeyEvent(key, Rune(0), extraMods or baseMods)
+
   # Unknown sequence - return Escape
   p.reset()
   return newKeyEvent(Key.Escape)

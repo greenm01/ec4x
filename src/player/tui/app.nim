@@ -977,6 +977,7 @@ proc runTui*(gameId: string = "") =
   # Enter alternate screen before initial render
   stdout.write(altScreen())
   stdout.write(hideCursor())
+  stdout.write(enableKittyKeys())
   stdout.flushFile()
 
   # Set initial state (no longer triggers render - we control that)
@@ -1687,6 +1688,7 @@ proc runTui*(gameId: string = "") =
   # =========================================================================
 
   stdout.write(showCursor())
+  stdout.write(disableKittyKeys())
   stdout.write(exitAltScreen())
   stdout.flushFile()
   discard tty.stop()

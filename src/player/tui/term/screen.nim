@@ -194,6 +194,16 @@ proc exitAltScreen*(): string =
   ## Exit alternate screen buffer (restores main screen).
   ExitAltScreenSeq
 
+proc enableKittyKeys*(): string =
+  ## Request kitty keyboard protocol (level 1).
+  ## Disambiguates ctrl-i from Tab, ctrl-m from Enter, etc.
+  ## Terminals that don't support KKP silently ignore this.
+  "\x1b[>1u"
+
+proc disableKittyKeys*(): string =
+  ## Pop kitty keyboard protocol mode stack (restore terminal defaults).
+  "\x1b[<u"
+
 proc saveScreen*(): string =
   ## Save screen content (legacy).
   SaveScreenSeq

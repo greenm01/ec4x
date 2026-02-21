@@ -2500,7 +2500,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Context-specific bindings based on current view mode
   let ctx = viewModeToContext(model.ui.mode)
-  let ctxResult = lookupAndDispatch(key, KeyModifier.None, ctx, model)
+  let ctxResult = lookupAndDispatch(key, modifier, ctx, model)
   if ctxResult.isSome:
     return ctxResult
 

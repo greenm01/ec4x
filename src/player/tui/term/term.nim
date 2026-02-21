@@ -94,6 +94,7 @@ export screenmod.setScrollRegion, screenmod.resetScrollRegion
 export screenmod.insertLines, screenmod.deleteLines
 export screenmod.insertChars, screenmod.deleteChars
 export screenmod.altScreen, screenmod.exitAltScreen
+export screenmod.enableKittyKeys, screenmod.disableKittyKeys
 export screenmod.saveScreen, screenmod.restoreScreen
 export screenmod.enableMousePress, screenmod.disableMousePress
 export screenmod.enableMouse, screenmod.disableMouse

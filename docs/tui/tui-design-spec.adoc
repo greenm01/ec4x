@@ -1097,6 +1097,77 @@ Within views, single-letter hotkeys trigger actions on the *selected item*:
 | `r` | Proposals | Reject proposal
 |===
 
+=== Kitty Keyboard Protocol (KKP)
+
+The TUI enables **Kitty Keyboard Protocol level 1** at startup and disables it
+on exit. This is the standard for all terminal input in this codebase.
+
+==== Motivation
+
+Legacy terminals multiplex several distinct key presses onto the same byte
+sequences, making them ambiguous at the application level:
+
+* `Ctrl+I` and `Tab` both produce `0x09`
+* `Ctrl+M` and `Enter` both produce `0x0D`
+* A bare `ESC` and the start of any escape sequence both produce `0x1B`
+
+KKP disambiguates these by having the terminal send unique CSI-u sequences
+for every key press.
+
+==== Protocol details
+
+[%header,cols="2,2,3"]
+|===
+| Operation | Sequence | When
+| Enable level 1 | `\x1b[>1u` | After entering alternate screen
+| Pop / disable | `\x1b[<u`  | Before exiting alternate screen
+|===
+
+Level 1 is the minimum level. It reports only the keys that were ambiguous
+under legacy encoding. Arrow keys and function keys continue to use the
+traditional xterm CSI format (`ESC [ A`, `ESC [ 11~`, etc.) unless a higher
+level is requested (it is not, currently).
+
+==== CSI-u format
+
+KKP key events arrive as:
+
+----
+ESC [ <codepoint> ; <modifier> u
+----
+
+where `<modifier>` uses 1-based CSI modifier encoding:
+`1`=none, `2`=shift, `3`=alt, `4`=shift+alt, `5`=ctrl, `6`=shift+ctrl,
+`7`=alt+ctrl, `8`=shift+alt+ctrl.
+
+==== Special codepoints handled in `parseCSIu`
+
+[%header,cols="1,2,2"]
+|===
+| Codepoint | Key | Notes
+| 9   | `Key.Tab`       | Also `CSI 9;5u` → `Key.CtrlI` via `ctrlKeyFromRune`
+| 13  | `Key.Enter`     |
+| 27  | `Key.Escape`    | Bare ESC press — not the start of an escape sequence
+| 127 | `Key.Backspace` |
+| 65–90 / 97–122 + Ctrl mod | Dedicated `Key.Ctrl*` | Via `ctrlKeyFromRune`
+|===
+
+==== Arrow keys under KKP
+
+KKP level 1 may send arrow keys as `CSI 1;<modifier>A/B/C/D` instead of the
+bare `ESC [ A`. The parser handles this in `parseCSI`: when the first
+parameter is `1` and the final byte is a cursor-key letter, the lookup uses
+`(final, 0)` (plain cursor key) and the modifier is decoded from the second
+parameter via `parseCsiMods`.
+
+==== Source locations
+
+* `src/player/tui/term/screen.nim` — `enableKittyKeys()` / `disableKittyKeys()`
+* `src/player/tui/term/term.nim` — re-exports both procs
+* `src/player/tui/app.nim` — sends enable after `altScreen()`, disable before exit
+* `src/player/tui/input.nim` — `parseCSIu` (CSI-u sequences) and `parseCSI`
+  (enhanced cursor-key sequences)
+
 === Expert Mode
 Typing `:` enters command mode in the status bar. The input appears in the
 bottom status bar line, with a helix-style completion palette floating above.

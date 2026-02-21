@@ -229,6 +229,15 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
 
     return
 
+  # Render "Ctrl+" prefix before global view-tab items
+  if not data.expertModeActive and data.items.len > 0:
+    let prefix = "Ctrl+ "
+    for ch in prefix:
+      if x >= area.x + area.width:
+        break
+      discard buf.put(x, y, $ch, barTextStyle())
+      x += 1
+
   # Render each item
   var isFirst = true
   for item in data.items:
@@ -248,11 +257,8 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
       of BarItemMode.Disabled:
         (barDisabledStyle(), barDisabledStyle(), barDisabledStyle())
 
-    # Draw leading separator (powerline arrow from previous segment)
-    if not isFirst and data.useArrows:
-      discard buf.put(x, y, ArrowSeparator, sepStyle)
-      x += 1
-    elif not isFirst:
+    # Draw single space between items
+    if not isFirst:
       discard buf.put(x, y, " ", barBgStyle())
       x += 1
 
