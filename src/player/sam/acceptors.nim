@@ -155,6 +155,8 @@ proc adjustResearchAllocation(
 ) =
   if model.ui.mode != ViewMode.Research:
     return
+  if model.ui.researchFocus != ResearchFocus.List:
+    return
   let items = researchItems()
   if items.len == 0:
     return
@@ -182,6 +184,8 @@ proc applyResearchDigitInput(
     digit: char
 ) =
   if model.ui.mode != ViewMode.Research:
+    return
+  if model.ui.researchFocus != ResearchFocus.List:
     return
   let now = epochTime()
   let buffer = model.ui.researchDigitBuffer
@@ -594,6 +598,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = 0
         model.ui.researchDigitBuffer = ""
         model.ui.researchDigitTime = 0.0
+        model.ui.researchFocus = ResearchFocus.List
   of ActionKind.switchView:
     # Primary view switch
     let newMode = viewModeFromInt(proposal.navMode)
@@ -608,6 +613,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = 0
         model.ui.researchDigitBuffer = ""
         model.ui.researchDigitTime = 0.0
+        model.ui.researchFocus = ResearchFocus.List
       if selectedMode == ViewMode.Messages:
         model.ui.inboxFocus = InboxPaneFocus.List
         model.ui.inboxSection = InboxSection.Messages
@@ -854,11 +860,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Espionage:
       case model.ui.espionageFocus
       of EspionageFocus.Budget:
-        discard
+        model.ui.espionageFocus = EspionageFocus.Targets
       of EspionageFocus.Targets:
         let targets = model.espionageTargetHouses()
         if model.ui.espionageTargetIdx > 0 and targets.len > 0:
           model.ui.espionageTargetIdx.dec
+        else:
+          model.ui.espionageFocus = EspionageFocus.Budget
       of EspionageFocus.Operations:
         let ops = espionageActions()
         if model.ui.espionageOperationIdx > 0 and ops.len > 0:
@@ -918,7 +926,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
     elif model.ui.mode == ViewMode.Research:
-      if model.ui.selectedIdx > 0:
+      if model.ui.researchFocus == ResearchFocus.Detail:
+        model.ui.researchFocus = ResearchFocus.List
+      elif model.ui.selectedIdx > 0:
         model.ui.selectedIdx = max(0, model.ui.selectedIdx - 1)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
@@ -965,7 +975,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Espionage:
       case model.ui.espionageFocus
       of EspionageFocus.Budget:
-        discard
+        model.ui.espionageFocus = EspionageFocus.Targets
       of EspionageFocus.Targets:
         let targets = model.espionageTargetHouses()
         let maxIdx = max(0, targets.len - 1)
@@ -1037,9 +1047,14 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
     elif model.ui.mode == ViewMode.Research:
-      let maxIdx = model.currentListLength() - 1
-      if model.ui.selectedIdx < maxIdx:
-        model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+      if model.ui.researchFocus == ResearchFocus.Detail:
+        discard  # down does nothing in detail pane (no scrollable content)
+      else:
+        let maxIdx = model.currentListLength() - 1
+        if model.ui.selectedIdx < maxIdx:
+          model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + 1)
+        elif model.ui.selectedIdx >= maxIdx:
+          model.ui.researchFocus = ResearchFocus.Detail
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     else:

@@ -574,6 +574,10 @@ type
     SystemView    ## Grouped by location
     ListView      ## Flat list with multi-select
 
+  ResearchFocus* {.pure.} = enum
+    List
+    Detail
+
   EspionageFocus* {.pure.} = enum
     Budget
     Targets
@@ -987,6 +991,7 @@ type
     researchAllocation*: ResearchAllocation
     researchDigitBuffer*: string
     researchDigitTime*: float
+    researchFocus*: ResearchFocus
 
     # Espionage state
     espionageFocus*: EspionageFocus
@@ -1300,6 +1305,7 @@ proc initTuiUiState*(): TuiUiState =
     ),
     researchDigitBuffer: "",
     researchDigitTime: 0.0,
+    researchFocus: ResearchFocus.List,
     espionageFocus: EspionageFocus.Budget,
     espionageBudgetChannel: EspionageBudgetChannel.Ebp,
     espionageTargetIdx: 0,

@@ -1696,10 +1696,11 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let listArea = columns[0]
   let detailArea = columns[1]
 
+  let listFocused = model.ui.researchFocus == ResearchFocus.List
   let listFrame = bordered()
     .title("RESEARCH PROJECTS")
     .borderType(BorderType.Rounded)
-    .borderStyle(modalBorderStyle())
+    .borderStyle(panelBorderStyle(listFocused))
     .padding(1)
   listFrame.render(listArea, buf)
   let listInner = listFrame.inner(listArea)
@@ -1715,7 +1716,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   var listTable = table(listColumns)
     .showBorders(true)
     .rowStyle(normalStyle())
-    .selectedStyle(selectedStyle())
+    .selectedStyle(if listFocused: selectedStyle() else: normalStyle())
 
   var lastPool = ""
   var rowIdx = 0
@@ -1788,7 +1789,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let detailFrame = bordered()
     .title(detailTitle)
     .borderType(BorderType.Rounded)
-    .borderStyle(modalBorderStyle())
+    .borderStyle(panelBorderStyle(not listFocused))
     .padding(1)
   detailFrame.render(detailArea, buf)
   let detailInner = detailFrame.inner(detailArea)
@@ -2161,11 +2162,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   else:
     -1
   opsTable = opsTable.selectedIdx(selectedRow)
-  let visibleRows = clampedVisibleRows(
-    operations.len,
-    oInner.height,
-    TableChromeRows
-  )
+  let visibleRows = max(1, oInner.height - TableChromeRows)
   let startIdx = if operations.len > visibleRows and opIdx >= visibleRows:
     clamp(opIdx - visibleRows + 1, 0, max(0, operations.len - visibleRows))
   else:
