@@ -2218,7 +2218,47 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     if jumpChar != '\0':
       return some(actionFleetDigitJump(jumpChar))
 
-  # IntelDb jump: type 2-char sector label (e.g. A01, B03) to jump
+  # Fleet console SystemView jump: type 2-char label to jump to
+  # system (Systems pane) or fleet (Fleets pane).
+  # Reserved in Fleets context: J/K (up/down), H/L (pane nav),
+  # S (sort), V (view), X (select), C (cmd), R (ROE), Z (ZTC)
+  if model.ui.mode == ViewMode.Fleets and
+      model.ui.fleetViewMode == FleetViewMode.SystemView and
+      not model.ui.expertModeActive and
+      modifier == KeyModifier.None:
+    let jumpChar = case key
+      of KeyCode.Key0: '0'
+      of KeyCode.Key1: '1'
+      of KeyCode.Key2: '2'
+      of KeyCode.Key3: '3'
+      of KeyCode.Key4: '4'
+      of KeyCode.Key5: '5'
+      of KeyCode.Key6: '6'
+      of KeyCode.Key7: '7'
+      of KeyCode.Key8: '8'
+      of KeyCode.Key9: '9'
+      of KeyCode.KeyA: 'A'
+      of KeyCode.KeyB: 'B'
+      of KeyCode.KeyD: 'D'
+      of KeyCode.KeyE: 'E'
+      of KeyCode.KeyF: 'F'
+      of KeyCode.KeyG: 'G'
+      of KeyCode.KeyI: 'I'
+      of KeyCode.KeyM: 'M'
+      of KeyCode.KeyN: 'N'
+      of KeyCode.KeyO: 'O'
+      of KeyCode.KeyP: 'P'
+      of KeyCode.KeyQ: 'Q'
+      of KeyCode.KeyT: 'T'
+      of KeyCode.KeyU: 'U'
+      of KeyCode.KeyW: 'W'
+      of KeyCode.KeyY: 'Y'
+      else: '\0'
+    if jumpChar != '\0':
+      if model.ui.fleetConsoleFocus == FleetConsoleFocus.SystemsPane:
+        return some(actionFleetConsoleSystemJump(jumpChar))
+      elif model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane:
+        return some(actionFleetConsoleFleetJump(jumpChar))
   # Excludes N (note editing)
   if model.ui.mode == ViewMode.IntelDb and
       not model.ui.expertModeActive and

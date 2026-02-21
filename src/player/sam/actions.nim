@@ -430,6 +430,14 @@ proc actionColonyDigitJump*(digit: char): Proposal =
   ## Jump to colony by digit input
   gameActionProposal(ActionKind.colonyDigitJump, $digit)
 
+proc actionFleetConsoleSystemJump*(digit: char): Proposal =
+  ## Jump to system in fleet console SystemView by coordinate prefix
+  gameActionProposal(ActionKind.fleetConsoleSystemJump, $digit)
+
+proc actionFleetConsoleFleetJump*(digit: char): Proposal =
+  ## Jump to fleet in fleet console SystemView by label prefix
+  gameActionProposal(ActionKind.fleetConsoleFleetJump, $digit)
+
 proc actionFleetBatchCommand*(): Proposal =
   ## Open batch command picker for selected fleets
   gameActionProposal(ActionKind.fleetBatchCommand, "")

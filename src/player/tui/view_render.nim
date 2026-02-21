@@ -1575,8 +1575,8 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     # Use content-aware sizing
     let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
     modal.renderWithFooter(modalArea, buf,
-      "[↑↓]Nav  [Tab/→/L]Next  [←/H]Prev  [Enter]Details  [X]Select  " &
-      "[C]md  [R]OE  [Z]eroTurn  [V]iew  [/]Help")
+      "[Arrows]Nav  [Tab]Pane  [Enter]Details  [X]Select  " &
+      "[A-Z0-9]Jump  [C]md  [R]OE  [Z]eroTurn  [V]iew  [/]Help")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 

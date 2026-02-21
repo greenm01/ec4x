@@ -904,6 +904,10 @@ type
     fleetConsoleSystemScroll*: ScrollState
     fleetConsoleFleetScroll*: ScrollState
     fleetConsoleShipScroll*: ScrollState
+    fleetConsoleSystemJumpBuffer*: string
+    fleetConsoleSystemJumpTime*: float
+    fleetConsoleFleetJumpBuffer*: string
+    fleetConsoleFleetJumpTime*: float
     
     # Fleet console cached data (synced from PlayerState)
     fleetConsoleSystems*: seq[FleetConsoleSystem]
@@ -1227,6 +1231,10 @@ proc initTuiUiState*(): TuiUiState =
     fleetConsoleSystemScroll: initScrollState(),
     fleetConsoleFleetScroll: initScrollState(),
     fleetConsoleShipScroll: initScrollState(),
+    fleetConsoleSystemJumpBuffer: "",
+    fleetConsoleSystemJumpTime: 0.0,
+    fleetConsoleFleetJumpBuffer: "",
+    fleetConsoleFleetJumpTime: 0.0,
     fleetConsoleSystems: @[],
     fleetConsoleFleetsBySystem: initTable[int, seq[FleetConsoleFleet]](),
     fleetListState: FleetListState(

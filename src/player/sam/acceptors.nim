@@ -3920,19 +3920,21 @@ proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
       let lastTime = model.ui.intelJumpTime
       # Build 2-char sector label buffer (e.g. "A" then "0" -> "A0")
       var nextBuffer = ""
-      if buffer.len > 0 and (now - lastTime) < DigitBufferTimeout:
+      if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
         nextBuffer = buffer & $ch
       else:
         nextBuffer = $ch
       model.ui.intelJumpBuffer = nextBuffer
       model.ui.intelJumpTime = now
-      # Search on every keystroke (match prefix)
-      let upperFilter = nextBuffer.toUpperAscii()
-      for idx, row in model.view.intelRows:
-        if row.sectorLabel.toUpperAscii().startsWith(upperFilter):
-          model.ui.selectedIdx = idx
-          model.syncIntelListScroll()
-          break
+      # Only search when we have a full 2-char label
+      if nextBuffer.len >= 2:
+        let upperFilter = nextBuffer.toUpperAscii()
+        for idx, row in model.view.intelRows:
+          if row.sectorLabel.toUpperAscii().startsWith(upperFilter):
+            model.ui.selectedIdx = idx
+            model.syncIntelListScroll()
+            break
+        model.ui.intelJumpBuffer = ""
   of ActionKind.colonyDigitJump:
     if model.ui.mode == ViewMode.Planets and
         proposal.gameActionData.len > 0:
@@ -3942,18 +3944,101 @@ proc fleetListInputAcceptor*(model: var TuiModel, proposal: Proposal) =
       let lastTime = model.ui.planetsJumpTime
       # Build 2-char sector label buffer (e.g. "A" then "0" -> "A0")
       var nextBuffer = ""
-      if buffer.len > 0 and (now - lastTime) < DigitBufferTimeout:
+      if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
         nextBuffer = buffer & $ch
       else:
         nextBuffer = $ch
       model.ui.planetsJumpBuffer = nextBuffer
       model.ui.planetsJumpTime = now
-      # Search on every keystroke (match prefix)
-      let upperFilter = nextBuffer.toUpperAscii()
-      for idx, row in model.view.planetsRows:
-        if row.sectorLabel.toUpperAscii().startsWith(upperFilter):
-          model.ui.selectedIdx = idx
-          break
+      # Only search when we have a full 2-char label
+      if nextBuffer.len >= 2:
+        let upperFilter = nextBuffer.toUpperAscii()
+        var foundIdx = -1
+        for idx, row in model.view.planetsRows:
+          if row.sectorLabel.toUpperAscii().startsWith(upperFilter):
+            foundIdx = idx
+            break
+        if foundIdx >= 0:
+          model.ui.selectedIdx = foundIdx
+          var localScroll = model.ui.planetsScroll
+          localScroll.contentLength = model.view.planetsRows.len
+          let maxVisibleRows = max(1, model.ui.termHeight - 10)
+          localScroll.viewportLength = maxVisibleRows
+          localScroll.ensureVisible(foundIdx)
+          model.ui.planetsScroll = localScroll
+        model.ui.planetsJumpBuffer = ""
+  of ActionKind.fleetConsoleSystemJump:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.SystemView and
+        proposal.gameActionData.len > 0:
+      let ch = proposal.gameActionData[0]
+      let now = epochTime()
+      let buffer = model.ui.fleetConsoleSystemJumpBuffer
+      let lastTime = model.ui.fleetConsoleSystemJumpTime
+      # Build 2-char coordinate label buffer (e.g. "D" then "1" -> "D1")
+      var nextBuffer = ""
+      if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
+        nextBuffer = buffer & $ch
+      else:
+        nextBuffer = $ch
+      model.ui.fleetConsoleSystemJumpBuffer = nextBuffer
+      model.ui.fleetConsoleSystemJumpTime = now
+      # Only search when we have a full 2-char label
+      if nextBuffer.len >= 2:
+        let target = nextBuffer.toUpperAscii()
+        var foundIdx = -1
+        for idx, sys in model.ui.fleetConsoleSystems:
+          if sys.sectorLabel.toUpperAscii().startsWith(target):
+            foundIdx = idx
+            break
+        if foundIdx >= 0:
+          model.ui.fleetConsoleSystemIdx = foundIdx
+          let viewportHeight = model.fleetConsoleViewportRows()
+          model.ui.fleetConsoleSystemScroll.contentLength =
+            model.ui.fleetConsoleSystems.len
+          model.ui.fleetConsoleSystemScroll.viewportLength = viewportHeight
+          model.ui.fleetConsoleSystemScroll.ensureVisible(foundIdx)
+        model.ui.fleetConsoleSystemJumpBuffer = ""
+  of ActionKind.fleetConsoleFleetJump:
+    if model.ui.mode == ViewMode.Fleets and
+        model.ui.fleetViewMode == FleetViewMode.SystemView and
+        proposal.gameActionData.len > 0:
+      let ch = proposal.gameActionData[0]
+      let now = epochTime()
+      let buffer = model.ui.fleetConsoleFleetJumpBuffer
+      let lastTime = model.ui.fleetConsoleFleetJumpTime
+      # Build 2-char fleet label buffer (e.g. "A" then "1" -> "A1")
+      var nextBuffer = ""
+      if buffer.len == 1 and (now - lastTime) < DigitBufferTimeout:
+        nextBuffer = buffer & $ch
+      else:
+        nextBuffer = $ch
+      model.ui.fleetConsoleFleetJumpBuffer = nextBuffer
+      model.ui.fleetConsoleFleetJumpTime = now
+      # Only search when we have a full 2-char label
+      if nextBuffer.len >= 2:
+        let target = nextBuffer.toUpperAscii()
+        if model.ui.fleetConsoleSystems.len > 0:
+          let sysIdx = clamp(
+            model.ui.fleetConsoleSystemIdx,
+            0,
+            model.ui.fleetConsoleSystems.len - 1
+          )
+          let systemId = model.ui.fleetConsoleSystems[sysIdx].systemId
+          if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
+            let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+            var foundIdx = -1
+            for idx, fleet in fleets:
+              if fleet.name.toUpperAscii().startsWith(target):
+                foundIdx = idx
+                break
+            if foundIdx >= 0:
+              model.ui.fleetConsoleFleetIdx = foundIdx
+              let viewportHeight = model.fleetConsoleViewportRows()
+              model.ui.fleetConsoleFleetScroll.contentLength = fleets.len
+              model.ui.fleetConsoleFleetScroll.viewportLength = viewportHeight
+              model.ui.fleetConsoleFleetScroll.ensureVisible(foundIdx)
+        model.ui.fleetConsoleFleetJumpBuffer = ""
   else:
     discard
 

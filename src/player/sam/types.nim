@@ -60,6 +60,8 @@ type
     fleetDigitJump
     intelDigitJump
     colonyDigitJump
+    fleetConsoleSystemJump
+    fleetConsoleFleetJump
     fleetBatchCommand
     fleetBatchROE
     fleetBatchZeroTurn
