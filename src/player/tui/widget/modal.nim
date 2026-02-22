@@ -9,7 +9,7 @@
 ## - Optional title bar with centered title
 ## - Calculates max width as min(termWidth - 4, maxWidth)
 
-import std/options
+import std/[options, unicode]
 import ./frame
 import ./borders
 import ./text/text_pkg
@@ -228,9 +228,30 @@ proc renderWithFooter*(m: Modal, area: Rect, buf: var CellBuffer,
   ## renders the footer text in the bottom section
   m.renderWithSeparator(area, buf, 2)
   let inner = m.inner(area)
-  var clipped = footerText
-  if clipped.len > inner.width:
-    clipped = clipped[0 ..< inner.width]
+  # Truncate rune-aware: string.len is bytes, inner.width is display cells
+  var clipped = ""
+  var used = 0
+  for r in footerText.runes:
+    let c = int(r)
+    let w =
+      if c < 0x1100: 1
+      elif (c >= 0x1100 and c <= 0x115F) or
+           (c >= 0x2329 and c <= 0x232A) or
+           (c >= 0x2E80 and c <= 0x303E) or
+           (c >= 0x3040 and c <= 0xA4CF) or
+           (c >= 0xAC00 and c <= 0xD7A3) or
+           (c >= 0xF900 and c <= 0xFAFF) or
+           (c >= 0xFE10 and c <= 0xFE19) or
+           (c >= 0xFE30 and c <= 0xFE6F) or
+           (c >= 0xFF00 and c <= 0xFF60) or
+           (c >= 0xFFE0 and c <= 0xFFE6) or
+           (c >= 0x1F000 and c <= 0x1FFFF) or
+           (c >= 0x20000 and c <= 0x3FFFF): 2
+      else: 1
+    if used + w > inner.width:
+      break
+    clipped.add(r.toUTF8)
+    used += w
   discard buf.setString(inner.x, inner.bottom - 1, clipped, canvasDimStyle())
 
 proc contentArea*(m: Modal, area: Rect, hasFooter: bool): Rect =

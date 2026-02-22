@@ -376,5 +376,10 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
   for key, relation in state.diplomaticRelation:
     result.diplomaticRelations[key] = relation.state
 
+  # Pending proposals visible to this house (proposer or target)
+  for proposal in state.pendingProposals:
+    if proposal.proposer == houseId or proposal.target == houseId:
+      result.pendingProposals.add(proposal)
+
   # === Starmap Topology (Universal Knowledge) ===
   result.jumpLanes = state.starMap.lanes.data

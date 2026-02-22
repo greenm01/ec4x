@@ -803,6 +803,9 @@ proc syncPlayerStateToOverview*(
       result.empireStatus.hostileHouses.inc
     of DiplomaticState.Enemy:
       result.empireStatus.enemyHouses.inc
+  for proposal in ps.pendingProposals:
+    if proposal.status == ProposalStatus.Pending:
+      result.empireStatus.pendingProposals.inc
 
   # === Action Queue - detect idle fleets ===
   var idleFleets: seq[Fleet] = @[]
@@ -876,6 +879,7 @@ proc syncPlayerStateToModel*(
   for pair, dipState in ps.diplomaticRelations.pairs:
     model.view.diplomaticRelations[
       (int(pair[0]), int(pair[1]))] = dipState
+  model.view.pendingProposals = ps.pendingProposals
   if ps.treasuryBalance.isSome:
     model.view.treasury = ps.treasuryBalance.get().int
   else:

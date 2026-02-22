@@ -6,7 +6,7 @@
 import std/[options, tables]
 import msgpack4nim
 import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_state,
-  progression, capacity, tech]
+  progression, capacity, tech, diplomacy]
 import ../../../engine/types/game_state
 import ../../../engine/state/fog_of_war
 import ../../../engine/globals
@@ -58,6 +58,7 @@ type
     houseColonyCounts*: EntityDelta[HouseCount]
     houseNames*: EntityDelta[HouseNameEntry]
     diplomaticRelations*: EntityDelta[RelationSnapshot]
+    pendingProposals*: EntityDelta[PendingProposal]
     eliminatedHouses*: EntityDelta[HouseId]
     actProgressionChanged*: bool
     actProgression*: Option[ActProgressionState]
@@ -283,6 +284,18 @@ proc diffRelations(
     proc(a: RelationSnapshot, b: RelationSnapshot): bool = a.state == b.state
   )
 
+proc diffProposals(
+  oldItems: seq[PendingProposal],
+  newItems: seq[PendingProposal]
+): EntityDelta[PendingProposal] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: PendingProposal): ProposalId = item.id,
+    proc(id: ProposalId): uint32 = id.uint32,
+    proc(a: PendingProposal, b: PendingProposal): bool = a == b
+  )
+
 proc diffHouseIds(
   oldItems: seq[HouseId],
   newItems: seq[HouseId]
@@ -374,6 +387,7 @@ proc diffPlayerState*(
     result.houseColonyCounts.added = current.houseColonyCounts
     result.houseNames.added = current.houseNames
     result.diplomaticRelations.added = current.diplomaticRelations
+    result.pendingProposals.added = current.pendingProposals
     result.eliminatedHouses.added = current.eliminatedHouses
     result.actProgressionChanged = true
     result.actProgression = some(current.actProgression)
@@ -442,6 +456,10 @@ proc diffPlayerState*(
   result.diplomaticRelations = diffRelations(
     oldSnapshot.diplomaticRelations,
     current.diplomaticRelations
+  )
+  result.pendingProposals = diffProposals(
+    oldSnapshot.pendingProposals,
+    current.pendingProposals
   )
   result.eliminatedHouses = diffHouseIds(
     oldSnapshot.eliminatedHouses,

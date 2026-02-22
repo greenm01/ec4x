@@ -223,6 +223,9 @@ type
     economyTaxFineInc
     economyTaxFineDec
     economyDiplomacyAction
+    economyDiplomacyPropose
+    economyDiplomacyAccept
+    economyDiplomacyReject
     submitConfirm
     submitCancel
 

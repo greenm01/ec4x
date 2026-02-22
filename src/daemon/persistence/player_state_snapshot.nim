@@ -69,6 +69,7 @@ type
     houseColonyCounts*: seq[HouseCount]
     houseNames*: seq[HouseNameEntry]
     diplomaticRelations*: seq[RelationSnapshot]
+    pendingProposals*: seq[PendingProposal]
     eliminatedHouses*: seq[HouseId]
     actProgression*: ActProgressionState
 
@@ -113,6 +114,7 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
       targetHouse: key[1],
       state: relation,
     ))
+  result.pendingProposals = ps.pendingProposals
   result.eliminatedHouses = ps.eliminatedHouses
   result.actProgression = ps.actProgression
 

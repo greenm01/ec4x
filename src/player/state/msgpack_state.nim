@@ -315,7 +315,34 @@ proc applyDeltaToPlayerState*(
     let sourceId = HouseId(removedId shr 16)
     let targetId = HouseId(removedId and 0xFFFF'u32)
     state.diplomaticRelations.del((sourceId, targetId))
-  
+
+  # Apply pendingProposals delta (add/update by id, remove by ProposalId)
+  for proposal in delta.pendingProposals.added:
+    var found = false
+    for i, existing in state.pendingProposals:
+      if existing.id == proposal.id:
+        state.pendingProposals[i] = proposal
+        found = true
+        break
+    if not found:
+      state.pendingProposals.add(proposal)
+
+  for proposal in delta.pendingProposals.updated:
+    for i, existing in state.pendingProposals:
+      if existing.id == proposal.id:
+        state.pendingProposals[i] = proposal
+        break
+
+  for removedId in delta.pendingProposals.removed:
+    let pid = ProposalId(removedId)
+    var idx = -1
+    for i, existing in state.pendingProposals:
+      if existing.id == pid:
+        idx = i
+        break
+    if idx >= 0:
+      state.pendingProposals.delete(idx)
+
   # Apply eliminatedHouses delta
   for houseId in delta.eliminatedHouses.added:
     if houseId notin state.eliminatedHouses:

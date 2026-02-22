@@ -1166,6 +1166,24 @@ proc initBindings*() =
     longLabel: "ACTION", shortLabel: "OK", priority: 30))
 
   registerBinding(Binding(
+    key: KeyCode.KeyP, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyDiplomacyPropose,
+    context: BindingContext.Economy,
+    longLabel: "PROPOSE", shortLabel: "P", priority: 31))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyA, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyDiplomacyAccept,
+    context: BindingContext.Economy,
+    longLabel: "ACCEPT", shortLabel: "A", priority: 32))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionKind: ActionKind.economyDiplomacyReject,
+    context: BindingContext.Economy,
+    longLabel: "REJECT", shortLabel: "R", priority: 33))
+
+  registerBinding(Binding(
     key: KeyCode.KeyM, modifier: KeyModifier.None,
     actionKind: ActionKind.exportMap,
     context: BindingContext.Economy,
@@ -1962,6 +1980,12 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEconomyTaxFineDec())
   of ActionKind.economyDiplomacyAction:
     return some(actionEconomyDiplomacyAction())
+  of ActionKind.economyDiplomacyPropose:
+    return some(actionEconomyDiplomacyPropose())
+  of ActionKind.economyDiplomacyAccept:
+    return some(actionEconomyDiplomacyAccept())
+  of ActionKind.economyDiplomacyReject:
+    return some(actionEconomyDiplomacyReject())
 
   else:
     discard

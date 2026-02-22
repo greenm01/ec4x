@@ -1070,6 +1070,7 @@ type
     # Collections for display
     houseNames*: Table[int, string]
     diplomaticRelations*: Table[(int, int), DiplomaticState]
+    pendingProposals*: seq[PendingProposal]
     systems*: Table[HexCoord, SystemInfo]
     colonies*: seq[ColonyInfo]
     planetsRows*: seq[PlanetRow]
@@ -1430,6 +1431,7 @@ proc initTuiViewState*(): TuiViewState =
     researchPoints: none(ResearchPoints),
     houseNames: initTable[int, string](),
     diplomaticRelations: initTable[(int, int), DiplomaticState](),
+    pendingProposals: @[],
     systems: initTable[HexCoord, SystemInfo](),
     colonies: @[],
     planetsRows: @[],

@@ -432,6 +432,15 @@ proc actionEconomyTaxFineDec*(): Proposal =
 proc actionEconomyDiplomacyAction*(): Proposal =
   gameActionProposal(ActionKind.economyDiplomacyAction, "")
 
+proc actionEconomyDiplomacyPropose*(): Proposal =
+  gameActionProposal(ActionKind.economyDiplomacyPropose, "")
+
+proc actionEconomyDiplomacyAccept*(): Proposal =
+  gameActionProposal(ActionKind.economyDiplomacyAccept, "")
+
+proc actionEconomyDiplomacyReject*(): Proposal =
+  gameActionProposal(ActionKind.economyDiplomacyReject, "")
+
 proc actionSubmitConfirm*(): Proposal =
   ## Confirm turn submission (from confirmation dialog)
   gameActionProposal(ActionKind.submitConfirm, "")

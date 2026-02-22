@@ -19,6 +19,7 @@ import ../state/join_flow
 import ../state/lobby_profile
 import ../../common/invite_code
 import ../../engine/types/diplomacy
+import ../../engine/systems/diplomacy/proposals as dip_proposals
 import ../../common/logger
 import ../../engine/globals
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
@@ -1353,8 +1354,20 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let targetId = targets[idx].id
         let myId = model.view.viewingHouse
         let key = (myId, targetId)
-        let current = model.view.diplomaticRelations.getOrDefault(
+        # Read base state from server ground truth
+        var current = model.view.diplomaticRelations.getOrDefault(
           key, DiplomaticState.Neutral)
+        # Apply staged override so repeated presses cycle from staged state
+        for cmd in model.ui.stagedDiplomaticCommands:
+          if int(cmd.targetHouse) == targetId:
+            current = case cmd.actionType
+              of DiplomaticActionType.DeclareHostile:
+                DiplomaticState.Hostile
+              of DiplomaticActionType.DeclareEnemy:
+                DiplomaticState.Enemy
+              of DiplomaticActionType.SetNeutral:
+                DiplomaticState.Neutral
+              else: current
         # Escalate: Neutral → Hostile → Enemy
         let nextState = case current
           of DiplomaticState.Neutral: DiplomaticState.Hostile
@@ -1396,6 +1409,155 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.economyFocus == EconomyFocus.Actions:
         # Export map action
         model.ui.exportMapRequested = true
+
+    of ActionKind.economyDiplomacyPropose:
+      if model.ui.mode != ViewMode.Economy or
+          model.ui.economyFocus != EconomyFocus.Diplomacy:
+        return
+      let targets = model.espionageTargetHouses()
+      if targets.len == 0:
+        return
+      let idx = clamp(
+        model.ui.economyHouseIdx, 0, targets.len - 1)
+      let targetId = targets[idx].id
+      let myId = model.view.viewingHouse
+      let key = (myId, targetId)
+      let currentState = model.view.diplomaticRelations.getOrDefault(
+        key, DiplomaticState.Neutral)
+      # Determine de-escalation target: propose one step down
+      let propTarget = case currentState
+        of DiplomaticState.Enemy: DiplomaticState.Hostile
+        of DiplomaticState.Hostile: DiplomaticState.Neutral
+        of DiplomaticState.Neutral:
+          model.ui.statusMessage =
+            "Already Neutral - cannot de-escalate further"
+          return
+      if not dip_proposals.canProposeDeescalation(
+          currentState, propTarget):
+        model.ui.statusMessage = "Cannot propose de-escalation"
+        return
+      let propType = case propTarget
+        of DiplomaticState.Neutral:
+          ProposalType.DeescalateToNeutral
+        of DiplomaticState.Hostile:
+          ProposalType.DeescalateToHostile
+        of DiplomaticState.Enemy:
+          return  # unreachable
+      # Remove any existing staged propose command for this target
+      var newCmds: seq[DiplomaticCommand] = @[]
+      for cmd in model.ui.stagedDiplomaticCommands:
+        if int(cmd.targetHouse) == targetId and
+            cmd.actionType == DiplomaticActionType.ProposeDeescalation:
+          continue
+        newCmds.add(cmd)
+      newCmds.add(DiplomaticCommand(
+        houseId: HouseId(myId),
+        targetHouse: HouseId(targetId),
+        actionType: DiplomaticActionType.ProposeDeescalation,
+        proposalId: none(ProposalId),
+        proposalType: some(propType),
+        message: none(string)
+      ))
+      model.ui.stagedDiplomaticCommands = newCmds
+      model.ui.modifiedSinceSubmit = true
+      let tgtName = model.view.houseNames.getOrDefault(
+        targetId, "House " & $targetId)
+      let stateLabel = case propTarget
+        of DiplomaticState.Neutral: "Neutral"
+        of DiplomaticState.Hostile: "Hostile"
+        of DiplomaticState.Enemy: "Enemy"
+      model.ui.statusMessage =
+        "Staged proposal to " & tgtName & " → " & stateLabel
+
+    of ActionKind.economyDiplomacyAccept:
+      if model.ui.mode != ViewMode.Economy or
+          model.ui.economyFocus != EconomyFocus.Diplomacy:
+        return
+      let targets = model.espionageTargetHouses()
+      if targets.len == 0:
+        return
+      let idx = clamp(
+        model.ui.economyHouseIdx, 0, targets.len - 1)
+      let targetId = targets[idx].id
+      let myId = model.view.viewingHouse
+      # Find first incoming Pending proposal from this target
+      var foundId: Option[ProposalId] = none(ProposalId)
+      for prop in model.view.pendingProposals:
+        if prop.status == ProposalStatus.Pending and
+            int(prop.proposer) == targetId and
+            int(prop.target) == myId:
+          foundId = some(prop.id)
+          break
+      if foundId.isNone:
+        model.ui.statusMessage = "No incoming proposal to accept"
+        return
+      # Remove any existing staged accept/reject for this proposal
+      var newCmds: seq[DiplomaticCommand] = @[]
+      for cmd in model.ui.stagedDiplomaticCommands:
+        if cmd.actionType in {DiplomaticActionType.AcceptProposal,
+            DiplomaticActionType.RejectProposal} and
+            cmd.proposalId == foundId:
+          continue
+        newCmds.add(cmd)
+      newCmds.add(DiplomaticCommand(
+        houseId: HouseId(myId),
+        targetHouse: HouseId(targetId),
+        actionType: DiplomaticActionType.AcceptProposal,
+        proposalId: foundId,
+        proposalType: none(ProposalType),
+        message: none(string)
+      ))
+      model.ui.stagedDiplomaticCommands = newCmds
+      model.ui.modifiedSinceSubmit = true
+      let tgtName = model.view.houseNames.getOrDefault(
+        targetId, "House " & $targetId)
+      model.ui.statusMessage =
+        "Staged: Accept proposal from " & tgtName
+
+    of ActionKind.economyDiplomacyReject:
+      if model.ui.mode != ViewMode.Economy or
+          model.ui.economyFocus != EconomyFocus.Diplomacy:
+        return
+      let targets = model.espionageTargetHouses()
+      if targets.len == 0:
+        return
+      let idx = clamp(
+        model.ui.economyHouseIdx, 0, targets.len - 1)
+      let targetId = targets[idx].id
+      let myId = model.view.viewingHouse
+      # Find first incoming Pending proposal from this target
+      var foundId: Option[ProposalId] = none(ProposalId)
+      for prop in model.view.pendingProposals:
+        if prop.status == ProposalStatus.Pending and
+            int(prop.proposer) == targetId and
+            int(prop.target) == myId:
+          foundId = some(prop.id)
+          break
+      if foundId.isNone:
+        model.ui.statusMessage = "No incoming proposal to reject"
+        return
+      # Remove any existing staged accept/reject for this proposal
+      var newCmds: seq[DiplomaticCommand] = @[]
+      for cmd in model.ui.stagedDiplomaticCommands:
+        if cmd.actionType in {DiplomaticActionType.AcceptProposal,
+            DiplomaticActionType.RejectProposal} and
+            cmd.proposalId == foundId:
+          continue
+        newCmds.add(cmd)
+      newCmds.add(DiplomaticCommand(
+        houseId: HouseId(myId),
+        targetHouse: HouseId(targetId),
+        actionType: DiplomaticActionType.RejectProposal,
+        proposalId: foundId,
+        proposalType: none(ProposalType),
+        message: none(string)
+      ))
+      model.ui.stagedDiplomaticCommands = newCmds
+      model.ui.modifiedSinceSubmit = true
+      let tgtName = model.view.houseNames.getOrDefault(
+        targetId, "House " & $targetId)
+      model.ui.statusMessage =
+        "Staged: Reject proposal from " & tgtName
 
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,

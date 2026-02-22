@@ -2303,17 +2303,30 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   let dipPanelH = max(4, targets.len + 2) # border + entries
   let actPanelH = 3   # border (2) + 1 content row
   let contentHeight = taxPanelH + dipPanelH + actPanelH + 2
+  # Dynamic width: content-driven with absolute min/max.
+  # Fixed floor: "Prestige penalty: -XX/colony (tax > 50%)" = 42 content
+  # + 2 inner border padding + 2 outer modal border = 46.
+  # Footer floor: "[↑↓] Navigate  [Enter] Cycle  [Tab] Next" = 41 + 4 = 45.
+  # Diplomacy rows: " G HouseName  LBL*  DIR" = 4 + nameLen + 5 + 5 content,
+  # + 4 panel border/padding + 2 modal border.
+  const kDipRowOverhead = 16  # 4 glyph/space/status + 5 proposal + 4+2+1
+  var dipRowMinWidth = 44  # sensible minimum when no targets
+  for tgt in targets:
+    let rowW = tgt.name.len + kDipRowOverhead
+    if rowW > dipRowMinWidth:
+      dipRowMinWidth = rowW
+  let minW = max(44, dipRowMinWidth)
   let modal = newModal()
-    .title("GENERAL POLICY")
-    .maxWidth(72)
-    .minWidth(56)
+    .title("GENERAL")
+    .maxWidth(80)
+    .minWidth(minW)
     .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
   let footerText = case model.ui.economyFocus
     of EconomyFocus.TaxRate:
       "[◀▶] ±10%  [+/-] ±1%  [Tab] Next"
     of EconomyFocus.Diplomacy:
-      "[↑↓] Navigate  [Enter] Cycle  [Tab] Next"
+      "[↑↓] Nav  [Enter] Cycle  [P]ropose  [A]ccept  [R]eject  [Tab] Next"
     of EconomyFocus.Actions:
       "[M] Export SVG  [Tab] Next"
   let modalArea = modal.calculateArea(canvas, contentHeight)
@@ -2368,15 +2381,26 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
       discard buf.setString(di.x, di.y,
         "No other houses known", dimStyle())
     else:
-      for i, tgt in targets:
-        let y = di.y + i
-        if y >= di.bottom:
-          break
-        let myId = model.view.viewingHouse
+      let dipFocused =
+        model.ui.economyFocus == EconomyFocus.Diplomacy
+      let myId = model.view.viewingHouse
+      let dipColumns = [
+        tableColumn("House", 0, table.Alignment.Left),
+        tableColumn("Status", 5, table.Alignment.Right),
+        tableColumn("Proposal", 4, table.Alignment.Right)
+      ]
+      var dipTable = table(dipColumns)
+        .showBorders(false)
+        .showHeader(false)
+        .showSeparator(false)
+        .cellPadding(0)
+        .rowStyle(normalStyle())
+        .selectedStyle(if dipFocused: selectedStyle() else: normalStyle())
+        .selectedIdx(if dipFocused: targetIdx else: -1)
+      for tgt in targets:
         let key = (myId, tgt.id)
         let baseState = model.view.diplomaticRelations.getOrDefault(
           key, DiplomaticState.Neutral)
-        ## Check for a staged command overriding this target
         var displayState = baseState
         for cmd in model.ui.stagedDiplomaticCommands:
           if int(cmd.targetHouse) == tgt.id:
@@ -2393,25 +2417,32 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
         let glyph = statusGlyph(dispStatus)
         let lbl = statusLabel(dispStatus)
         let sty = statusStyle(dispStatus)
-        let isSelected = i == targetIdx and
-          model.ui.economyFocus == EconomyFocus.Diplomacy
-        let rowStyle = if isSelected: selectedStyle() else: normalStyle()
-        ## Fill the whole row first
-        var rowLine = ""
-        for _ in 0 ..< di.width:
-          rowLine.add(' ')
-        discard buf.setString(di.x, y, rowLine, rowStyle)
-        ## glyph + house name
-        let nameField = " " & glyph & " " & tgt.name
-        discard buf.setString(di.x, y, nameField,
-          if isSelected: selectedStyle() else: sty)
-        ## status label right-aligned (5 chars + possible *)
         let stagedMark = if isStaged: "*" else: " "
-        let statusField = lbl & stagedMark
-        let fieldX = di.right - statusField.len
-        if fieldX > di.x + nameField.len:
-          discard buf.setString(fieldX, y, statusField,
-            if isSelected: selectedStyle() else: sty)
+        let nameCell = glyph & " " & tgt.name
+        let statusCell = lbl & stagedMark
+        # Build proposal cell: direction + abbreviated target state
+        var proposalCell = "    "  # 4-char blank when no proposal
+        for prop in model.view.pendingProposals:
+          if prop.status != ProposalStatus.Pending:
+            continue
+          let isOut = int(prop.proposer) == myId and
+            int(prop.target) == tgt.id
+          let isIn = int(prop.target) == myId and
+            int(prop.proposer) == tgt.id
+          if not isOut and not isIn:
+            continue
+          let dir = if isOut: "→" else: "←"
+          let abbr = case prop.proposalType
+            of ProposalType.DeescalateToNeutral: "NEU"
+            of ProposalType.DeescalateToHostile: "HOS"
+          proposalCell = dir & abbr
+          break
+        dipTable.addRow(TableRow(
+          cells: @[nameCell, statusCell, proposalCell],
+          cellStyles: @[some(sty), some(sty), some(dimStyle())],
+          kind: TableRowKind.Normal
+        ))
+      dipTable.render(di, buf)
 
   ## ── ACTIONS panel ──────────────────────────────────────────
   bordered().title("ACTIONS").borderStyle(

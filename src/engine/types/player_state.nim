@@ -231,6 +231,7 @@ type
     houseColonyCounts*: Table[HouseId, int32]
     houseNames*: Table[HouseId, string]
     diplomaticRelations*: Table[(HouseId, HouseId), DiplomaticState]
+    pendingProposals*: seq[PendingProposal]
     eliminatedHouses*: seq[HouseId]
     actProgression*: ActProgressionState
 
