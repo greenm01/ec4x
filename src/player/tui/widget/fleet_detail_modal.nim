@@ -169,7 +169,6 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
     .showHeader(true)
     .showSeparator(true)
     .cellPadding(1)
-    .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
@@ -201,7 +200,6 @@ proc renderROEPicker(state: FleetDetailModalState, area: Rect,
     .showHeader(true)
     .showSeparator(true)
     .cellPadding(1)
-    .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
@@ -294,7 +292,6 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
     .showHeader(true)
     .showSeparator(true)
     .cellPadding(1)
-    .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
@@ -333,7 +330,6 @@ proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
     .showHeader(true)
     .showSeparator(true)
     .cellPadding(1)
-    .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
@@ -370,7 +366,6 @@ proc renderSystemPicker(state: FleetDetailModalState,
     .showHeader(true)
     .showSeparator(true)
     .cellPadding(1)
-    .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
 
@@ -419,7 +414,6 @@ proc renderShipSelector(state: FleetDetailModalState, area: Rect,
     .showHeader(true)
     .showSeparator(true)
     .cellPadding(1)
-    .headerStyle(canvasHeaderStyle())
     .rowStyle(canvasStyle())
     .selectedStyle(selectedStyle())
   for row in rows:
@@ -692,7 +686,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       FleetSubModal.FighterParams}:
       "ZERO TURN COMMANDS"
     else:
-      "FLEET DETAIL"
+      "FLEET COMMANDS"
   let (hasFooter, footerText) = case state.subModal
     of FleetSubModal.None:
       (true, "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close")

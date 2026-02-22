@@ -256,15 +256,14 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
   let y = (model.ui.termHeight - height) div 2
   let modalArea = rect(x, y, width, height)
 
-  buf.fillArea(modalArea, " ", modalBgStyle())
-
-  let frame = bordered()
-    .title("Confirm Quit")
-    .borderType(BorderType.Plain)
-    .borderStyle(modalBorderStyle())
-    .style(modalBgStyle())
-  frame.render(modalArea, buf)
-  let inner = frame.inner(modalArea)
+  let m = newModal()
+    .title("CONFIRM QUIT")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+  m.render(modalArea, buf)
+  let inner = m.inner(modalArea)
   if inner.isEmpty:
     return
 
@@ -345,6 +344,96 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
     discard buf.setString(x, currentY, "Stay", stayStyle)
     x += 4
     discard buf.setString(x, currentY, stayMarkerRight, stayStyle)
+
+proc renderSubmitConfirmation*(buf: var CellBuffer, model: TuiModel) =
+  ## Render submit turn confirmation modal with command category table.
+  if not model.ui.submitConfirmActive:
+    return
+  if model.ui.termWidth < 36 or model.ui.termHeight < 8:
+    return
+
+  let rows = model.stagedCommandCategorySummary()
+  let total = model.stagedCommandCount()
+
+  # Table: 2 columns — label (left) and value (right)
+  # Width: longest label + 4 padding + value column (6)
+  var maxLabelLen = 5  # "Total"
+  for row in rows:
+    if row.label.len > maxLabelLen:
+      maxLabelLen = row.label.len
+  let colSep = 2
+  let valueColW = 8
+  let tableW = maxLabelLen + colSep + valueColW
+
+  # Modal content lines:
+  #   1 blank + N rows + 1 separator + 1 total + 1 blank
+  #   + optional revision line + 1 blank
+  let revN = model.ui.turnSubmissionRevision
+  let revLines = if revN > 0: 1 else: 0
+  let contentH = 2 + rows.len + 2 + revLines + 1
+
+  let m = newModal()
+    .title("Submit Turn " & $model.view.turn)
+    .maxWidth(tableW + 6)
+    .minWidth(36)
+    .minHeight(contentH + 4)
+    .showBackdrop(true)
+
+  let viewport = rect(0, 0, model.ui.termWidth, model.ui.termHeight)
+  let modalArea = m.calculateArea(viewport, contentH)
+  let footerText = "[Enter] Submit   [Esc] Cancel"
+  m.renderWithFooter(modalArea, buf, footerText)
+  let content = m.contentArea(modalArea, true)
+
+  let labelStyle = modalDimStyle()
+  let valueStyle = modalBgStyle()
+  let sepStyle = modalDimStyle()
+  let totalStyle = CellStyle(
+    fg: color(CanvasFgColor),
+    bg: color(TrueBlackColor),
+    attrs: {StyleAttr.Bold}
+  )
+  let revStyle = CellStyle(
+    fg: color(WarningColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+  var y = content.y + 1
+  let labelX = content.x + 1
+  let valueX = content.x + content.width - valueColW - 1
+
+  # Category rows
+  for row in rows:
+    if y >= content.bottom:
+      break
+    discard buf.setString(labelX, y, row.label, labelStyle)
+    let vStr = row.value
+    let vX = max(valueX, labelX + maxLabelLen + 1)
+    discard buf.setString(vX, y, vStr, valueStyle)
+    y += 1
+
+  # Separator
+  if y < content.bottom:
+    let sepW = min(tableW + 2, content.width - 2)
+    for sx in labelX ..< (labelX + sepW):
+      discard buf.put(sx, y, "\u2500", sepStyle)
+    y += 1
+
+  # Total line
+  if y < content.bottom:
+    discard buf.setString(labelX, y, "Total", totalStyle)
+    let tStr = $total
+    let vX = max(valueX, labelX + maxLabelLen + 1)
+    discard buf.setString(vX, y, tStr, totalStyle)
+    y += 1
+
+  # Revision line
+  if revN > 0 and y + 1 < content.bottom:
+    y += 1
+    let revText = "Resubmission (Rev " & $revN & " -> Rev " &
+      $(revN + 1) & ")"
+    discard buf.setString(labelX, y, revText, revStyle)
 
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
@@ -3462,6 +3551,8 @@ proc buildHudData*(model: TuiModel): HudData =
     commandMax: model.view.commandMax,
     alertCount: model.view.alertCount,
     unreadMessages: model.view.unreadMessages,
+    submissionRevision: model.ui.turnSubmissionRevision,
+    modifiedSinceSubmit: model.ui.modifiedSinceSubmit,
   )
 
 proc buildBreadcrumbData*(model: TuiModel): BreadcrumbData =
@@ -3711,3 +3802,6 @@ proc renderDashboard*(
 
   if model.ui.quitConfirmationActive:
     renderQuitConfirmation(buf, model)
+
+  if model.ui.submitConfirmActive:
+    renderSubmitConfirmation(buf, model)

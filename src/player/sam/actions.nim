@@ -432,6 +432,14 @@ proc actionEconomyTaxFineDec*(): Proposal =
 proc actionEconomyDiplomacyAction*(): Proposal =
   gameActionProposal(ActionKind.economyDiplomacyAction, "")
 
+proc actionSubmitConfirm*(): Proposal =
+  ## Confirm turn submission (from confirmation dialog)
+  gameActionProposal(ActionKind.submitConfirm, "")
+
+proc actionSubmitCancel*(): Proposal =
+  ## Cancel turn submission (from confirmation dialog)
+  gameActionProposal(ActionKind.submitCancel, "")
+
 # ============================================================================
 # Fleet List Actions
 # ============================================================================

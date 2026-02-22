@@ -32,9 +32,9 @@ const
   TableBorderColor* = RgbColor(r: 115, g: 122, b: 162) ## #737aa2
   InnerBorderColor* = SecondaryBorderColor
   PanelTitleColor* = CanvasFgColor
-  ModalTitleColor* = CanvasFgColor
+  ModalTitleColor* = RgbColor(r: 187, g: 154, b: 247) ## #bb9af7
   TableGridColor* = TableBorderColor
-  TableHeaderColor* = CanvasFgColor
+  TableHeaderColor* = RgbColor(r: 130, g: 170, b: 255) ## #82aaff (= SelectedBgColor)
 
 # Status Colors
 const

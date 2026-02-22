@@ -68,6 +68,8 @@ proc runTui*(gameId: string = "") =
   var authoritativeConfigSchema = 0'i32
   var authoritativeConfigError = ""
   var lastDraftFingerprint = ""
+  var nostrSubmitFuture: Future[bool] = nil  # Pending turn submission
+  var nostrSubmitStartTime: float = 0.0  # When submit started
 
   var nostrHandlers = PlayerNostrHandlers()
 
@@ -185,7 +187,7 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedEbpInvestment = normalized.ebpInvestment
     model.ui.stagedCipInvestment = normalized.cipInvestment
     model.ui.researchAllocation = normalized.researchAllocation
-    model.ui.turnSubmissionConfirmed = false
+    model.ui.modifiedSinceSubmit = false
 
   # Initialize terminal
   var tty = openTty()
@@ -568,6 +570,11 @@ proc runTui*(gameId: string = "") =
             viewingHouse = playerState.viewingHouse
             sam.model.view.viewingHouse = int(viewingHouse)
             sam.model.view.turn = int(playerState.turn)
+            # Reset submission tracking for the new turn
+            sam.model.ui.turnSubmissionRevision = 0
+            sam.model.ui.modifiedSinceSubmit = false
+            nostrSubmitFuture = nil
+            nostrSubmitStartTime = 0.0
             sam.model.ui.statusMessage = "Full state received"
             if sam.model.ui.nostrEnabled:
               sam.model.ui.nostrStatus = "connected"
@@ -1011,6 +1018,7 @@ proc runTui*(gameId: string = "") =
   var nostrPublishStartTime: float = 0.0  # When publish started
   const NostrConnectTimeoutSec = 3.0  # Max time to wait for connection
   const NostrPublishTimeoutSec = 3.0  # Max time to wait for publish
+  const NostrSubmitTimeoutSec = 10.0  # Max time to wait for submit
 
   proc processNostr() =
     ## Process Nostr connection state machine - NON-BLOCKING.
@@ -1272,6 +1280,41 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.statusMessage = sam.model.ui.lobbyJoinError
         sam.model.ui.nostrJoinRequested = false
         sam.model.ui.nostrJoinSent = false
+        needsRender = true
+
+    # -----------------------------------------------------------------------
+    # Check pending submit result (non-blocking)
+    # -----------------------------------------------------------------------
+    if nostrSubmitFuture != nil:
+      if nostrSubmitFuture.finished:
+        let published = nostrSubmitFuture.read()
+        nostrSubmitFuture = nil
+        nostrSubmitStartTime = 0.0
+        if published:
+          sam.model.ui.turnSubmissionRevision += 1
+          sam.model.ui.modifiedSinceSubmit = false
+          let rev = sam.model.ui.turnSubmissionRevision
+          let turn = sam.model.view.turn
+          sam.model.ui.statusMessage =
+            "Turn " & $turn & " submitted (Rev " & $rev & ")"
+          logInfo("TUI Player SAM",
+            "Turn ", $turn, " submitted (Rev ", $rev, ")")
+          if activeGameId.len > 0:
+            let postSubmit = sam.model.buildCommandPacket(
+              playerState.turn, viewingHouse)
+            lastDraftFingerprint = packetFingerprint(postSubmit)
+        else:
+          sam.model.ui.statusMessage =
+            "Submit failed - check relay connection"
+          logWarn("TUI Player SAM", "Turn submission publish failed")
+        needsRender = true
+      elif nostrSubmitStartTime > 0 and
+           epochTime() - nostrSubmitStartTime > NostrSubmitTimeoutSec:
+        logWarn("TUI Player SAM",
+          "Submit timed out after ", $NostrSubmitTimeoutSec, "s")
+        nostrSubmitFuture = nil
+        nostrSubmitStartTime = 0.0
+        sam.model.ui.statusMessage = "Submit timed out - check relay"
         needsRender = true
 
   # =========================================================================
@@ -1539,7 +1582,7 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.intelNoteSaveRequested = false
       needsRender = true
 
-    # Handle turn submission (expert :submit)
+    # Handle turn submission
     if sam.model.ui.turnSubmissionPending:
       let buildErrors = validateStagedBuildLimits(sam.model)
       let fleetErrors = validateStagedFleetLimits(sam.model)
@@ -1554,37 +1597,22 @@ proc runTui*(gameId: string = "") =
           playerState.turn,
           viewingHouse
         )
-
         # Send via Nostr (only supported transport)
         if sam.model.ui.nostrEnabled and nostrClient != nil and
             nostrClient.isConnected():
-          let msgpack = serializeCommandPacket(packet)
-          asyncCheck nostrClient.submitCommands(msgpack, sam.model.view.turn)
-          sam.model.ui.statusMessage = "Turn submitted"
-          logInfo("TUI Player SAM", "Turn submitted via Nostr")
-          # Clear staged commands on successful submission
-          sam.model.ui.stagedFleetCommands.clear()
-          sam.model.ui.stagedZeroTurnCommands.setLen(0)
-          sam.model.ui.stagedBuildCommands.setLen(0)
-          sam.model.ui.stagedRepairCommands.setLen(0)
-          sam.model.ui.stagedScrapCommands.setLen(0)
-          sam.model.ui.stagedColonyManagement.setLen(0)
-          sam.model.ui.stagedEspionageActions.setLen(0)
-          sam.model.ui.stagedDiplomaticCommands.setLen(0)
-          sam.model.ui.stagedTaxRate = none(int)
-          sam.model.ui.stagedEbpInvestment = 0
-          sam.model.ui.stagedCipInvestment = 0
-          if activeGameId.len > 0:
-            tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
-          let postSubmit = sam.model.buildCommandPacket(
-            playerState.turn,
-            viewingHouse
-          )
-          lastDraftFingerprint = packetFingerprint(postSubmit)
+          if nostrSubmitFuture == nil:
+            let msgpack = serializeCommandPacket(packet)
+            nostrSubmitFuture = nostrClient.submitCommands(
+              msgpack, sam.model.view.turn)
+            nostrSubmitStartTime = epochTime()
+            sam.model.ui.statusMessage = "Submitting turn..."
+            logInfo("TUI Player SAM",
+              "Turn submission started (Rev ",
+              $(sam.model.ui.turnSubmissionRevision + 1), ")")
+          # Staged commands are preserved - result handled in processNostr()
         else:
           sam.model.ui.statusMessage =
             "Cannot submit: not connected to relay"
-
       sam.model.ui.turnSubmissionPending = false
       needsRender = true
 

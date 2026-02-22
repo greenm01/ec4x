@@ -157,21 +157,11 @@ proc contextDataReactor*(model: var TuiModel) =
 # ============================================================================
 
 proc turnSubmissionReactor*(model: var TuiModel) =
-  ## Handle turn submission flag set by acceptor
-  ## Requires confirmation before setting turnSubmissionPending
-  if model.ui.turnSubmissionRequested:
-    # Check if already confirmed (via :submit command or second submit)
-    if model.ui.turnSubmissionConfirmed:
-      model.ui.turnSubmissionPending = true
-      model.ui.turnSubmissionRequested = false
-      model.ui.turnSubmissionConfirmed = false
-    else:
-      # First press - ask for confirmation
-      let count = model.stagedCommandCount()
-      model.ui.statusMessage = "Type :submit again to confirm submitting " &
-        $count & " commands, or :clear to cancel"
-      model.ui.turnSubmissionConfirmed = true
-      model.ui.turnSubmissionRequested = false
+  ## No-op: submission flow is now handled directly by acceptors.
+  ## turnSubmissionPending is set by submitConfirm acceptor or
+  ## expert :submit bypass. The main loop in app.nim handles the
+  ## actual async publish when turnSubmissionPending is true.
+  discard
 
 proc inboxDataReactor*(model: var TuiModel) =
   ## Rebuild inbox derived data (turn buckets, flat list)

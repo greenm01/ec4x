@@ -235,7 +235,7 @@ proc reconcileEspionageQueueToAvailableEbp(
     result.inc
 
   if result > 0:
-    model.ui.turnSubmissionConfirmed = false
+    model.ui.modifiedSinceSubmit = true
 
 proc adjustEspionageBudget(
     model: var TuiModel,
@@ -281,7 +281,7 @@ proc adjustEspionageBudget(
     if removed > 0:
       model.ui.statusMessage = "Reduced EBP; removed " & $removed &
         " queued operation(s)"
-  model.ui.turnSubmissionConfirmed = false
+  model.ui.modifiedSinceSubmit = true
 
 proc stageSelectedEspionageOperation(model: var TuiModel): bool =
   let targets = model.espionageTargetHouses()
@@ -304,7 +304,7 @@ proc stageSelectedEspionageOperation(model: var TuiModel): bool =
     action: ops[opIdx],
     targetSystem: none(SystemId)
   ))
-  model.ui.turnSubmissionConfirmed = false
+  model.ui.modifiedSinceSubmit = true
   result = true
 
 proc removeSelectedEspionageOperation(model: var TuiModel): bool =
@@ -320,7 +320,7 @@ proc removeSelectedEspionageOperation(model: var TuiModel): bool =
     let attempt = model.ui.stagedEspionageActions[idx]
     if attempt.target == targetHouse and attempt.action == selectedAction:
       model.ui.stagedEspionageActions.delete(idx)
-      model.ui.turnSubmissionConfirmed = false
+      model.ui.modifiedSinceSubmit = true
       return true
   false
 
@@ -448,7 +448,7 @@ proc stageZeroTurnCommand(
     statusMessage: string,
 ) =
   model.ui.stagedZeroTurnCommands.add(cmd)
-  model.ui.turnSubmissionConfirmed = false
+  model.ui.modifiedSinceSubmit = true
   model.ui.statusMessage = statusMessage
   model.ztcCloseToFleets()
 
@@ -1273,7 +1273,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.stagedEspionageActions.delete(
           model.ui.stagedEspionageActions.len - 1
         )
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
     of ActionKind.espionageClearBudget:
       if model.ui.mode == ViewMode.Espionage:
         model.ui.stagedEbpInvestment = 0
@@ -1282,7 +1282,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if removed > 0:
           model.ui.statusMessage = "Reduced EBP; removed " & $removed &
             " queued operation(s)"
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
 
     of ActionKind.economyFocusNext:
       if model.ui.mode == ViewMode.Economy:
@@ -1304,7 +1304,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedTaxRate = some(next)
         else:
           model.ui.stagedTaxRate = none(int)
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
 
     of ActionKind.economyTaxDec:
       if model.ui.mode == ViewMode.Economy and
@@ -1316,7 +1316,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedTaxRate = some(next)
         else:
           model.ui.stagedTaxRate = none(int)
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
 
     of ActionKind.economyTaxFineInc:
       if model.ui.mode == ViewMode.Economy and
@@ -1328,7 +1328,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedTaxRate = some(next)
         else:
           model.ui.stagedTaxRate = none(int)
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
 
     of ActionKind.economyTaxFineDec:
       if model.ui.mode == ViewMode.Economy and
@@ -1340,7 +1340,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedTaxRate = some(next)
         else:
           model.ui.stagedTaxRate = none(int)
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
 
     of ActionKind.economyDiplomacyAction:
       if model.ui.mode == ViewMode.Economy and
@@ -1382,7 +1382,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           message: none(string)
         ))
         model.ui.stagedDiplomaticCommands = newCmds
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
         let tgtName = model.view.houseNames.getOrDefault(
           targetId, "House " & $targetId)
         let stateLabel = case nextState
@@ -1456,7 +1456,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedColonyManagement[existingIdx] = cmd
         else:
           model.ui.stagedColonyManagement.add(cmd)
-        model.ui.turnSubmissionConfirmed = false
+        model.ui.modifiedSinceSubmit = true
     of ActionKind.intelEditNote:
       var systemId = model.ui.intelDetailSystemId
       var existingNote = ""
@@ -2153,7 +2153,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.stagedRepairCommands.setLen(0)
           model.ui.stagedScrapCommands.setLen(0)
           model.ui.stagedColonyManagement.setLen(0)
-          model.ui.turnSubmissionConfirmed = false
+          model.ui.modifiedSinceSubmit = true
           model.setExpertFeedback("Cleared " & $count & " staged commands")
           model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.List:
@@ -2170,15 +2170,14 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             else:
               let entry = entries[dropIdx - 1]
               if model.dropStagedCommand(entry):
-                model.ui.turnSubmissionConfirmed = false
+                model.ui.modifiedSinceSubmit = true
                 model.setExpertFeedback("Dropped command " & $dropIdx)
               else:
                 model.setExpertFeedback("Failed to drop command")
           model.addToExpertHistory(model.ui.expertModeInput.value())
         of MetaCommandType.Submit:
           if model.stagedCommandCount() > 0:
-            model.ui.turnSubmissionRequested = true
-            model.ui.turnSubmissionConfirmed = true  # Bypass confirmation
+            model.ui.turnSubmissionPending = true  # Bypass confirmation dialog
             let count = model.stagedCommandCount()
             model.setExpertFeedback("Submitting " & $count & " commands...")
           else:
@@ -2201,7 +2200,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
                 resetExpertPaletteSelection(model)
                 return
             model.stageFleetCommand(fleetCmd)
-            model.ui.turnSubmissionConfirmed = false
+            model.ui.modifiedSinceSubmit = true
             model.setExpertFeedback(
               "Fleet command staged (total: " &
               $model.ui.stagedFleetCommands.len & ")"
@@ -2216,7 +2215,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
               resetExpertPaletteSelection(model)
               return
             model.ui.stagedBuildCommands.add(buildCmd)
-            model.ui.turnSubmissionConfirmed = false
+            model.ui.modifiedSinceSubmit = true
             model.setExpertFeedback(
               "Build command staged (total: " &
               $model.ui.stagedBuildCommands.len & ")"
@@ -2255,12 +2254,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       elif model.ui.expertPaletteSelection < matches.len - 1:
         model.ui.expertPaletteSelection += 1
     of ActionKind.submitTurn:
-      # Set flag for reactor/main loop to handle
+      # Open confirmation modal (if commands are staged)
       if model.stagedCommandCount() > 0:
-        model.ui.turnSubmissionRequested = true
+        model.ui.submitConfirmActive = true
       else:
         model.ui.statusMessage = "No commands staged - nothing to submit"
-        model.ui.turnSubmissionConfirmed = false
+    of ActionKind.submitConfirm:
+      # User confirmed in the dialog - trigger submission
+      model.ui.submitConfirmActive = false
+      model.ui.turnSubmissionPending = true
+    of ActionKind.submitCancel:
+      # User cancelled the dialog
+      model.ui.submitConfirmActive = false
+      model.ui.statusMessage = "Submission cancelled"
     of ActionKind.quitConfirm:
       model.ui.running = false
       model.ui.quitConfirmationActive = false
@@ -3325,7 +3331,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               newFleetId: none(FleetId),
             )
             model.ui.stagedZeroTurnCommands.add(cmd)
-          model.ui.turnSubmissionConfirmed = false
+          model.ui.modifiedSinceSubmit = true
           model.ui.statusMessage = "Staged Reactivate for " &
             $sourceFleetIds.len & " fleet(s)"
           model.ztcCloseToFleets()
@@ -3550,7 +3556,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         ))
       for cmd in pending:
         model.ui.stagedZeroTurnCommands.add(cmd)
-      model.ui.turnSubmissionConfirmed = false
+      model.ui.modifiedSinceSubmit = true
       model.ui.statusMessage = "Staged " & $ztcType & " for " &
         $pending.len & " fleet(s)"
       model.ztcCloseToFleets()

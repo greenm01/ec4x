@@ -37,6 +37,8 @@ type
     commandMax*: int        ## Maximum command capacity
     alertCount*: int        ## Number of alerts/warnings
     unreadMessages*: int    ## Unread messages/reports
+    submissionRevision*: int  ## Current submission revision (0 = none)
+    modifiedSinceSubmit*: bool ## True if staged cmds changed post-submit
 
   CommandCapacityStatus* {.pure.} = enum
     ## C2 capacity status
@@ -145,8 +147,26 @@ proc renderHudStrip*(area: Rect, buf: var CellBuffer, data: HudData) =
   x += 8
   
   discard buf.setString(x, contentY, $data.turn, hudBold)
-  x += ($data.turn).len + 3
-  
+  x += ($data.turn).len + 1
+
+  # Revision indicator: "  Rev 2" or "  Rev 2*" if modified
+  if data.submissionRevision > 0:
+    let revStr =
+      if data.modifiedSinceSubmit:
+        "Rev " & $data.submissionRevision & "*"
+      else:
+        "Rev " & $data.submissionRevision
+    let revStyle = CellStyle(
+      fg: color(WarningColor),
+      bg: color(HudBgColor),
+      attrs: {}
+    )
+    x += 1
+    discard buf.setString(x, contentY, revStr, revStyle)
+    x += revStr.len + 2
+  else:
+    x += 2
+
   # === CENTER-LEFT: Prestige + Tax ===
   # "Prestige: 487  Tax: 50%"
 
@@ -279,8 +299,25 @@ proc renderHudStripCompact*(area: Rect, buf: var CellBuffer, data: HudData) =
   discard buf.setString(x, contentY, GlyphTurnMarker & "T", hudDim)
   x += 2
   discard buf.setString(x, contentY, $data.turn, hudBold)
-  x += ($data.turn).len + 2
-  
+  x += ($data.turn).len + 1
+
+  # Compact revision indicator: "R2" or "R2*"
+  if data.submissionRevision > 0:
+    let revStr =
+      if data.modifiedSinceSubmit:
+        "R" & $data.submissionRevision & "*"
+      else:
+        "R" & $data.submissionRevision
+    let revStyle = CellStyle(
+      fg: color(WarningColor),
+      bg: color(HudBgColor),
+      attrs: {}
+    )
+    discard buf.setString(x, contentY, revStr, revStyle)
+    x += revStr.len + 1
+  else:
+    x += 1
+
   # Prestige (compact)
   discard buf.setString(x, contentY, "Prestige:", hudDim)
   x += 9

@@ -946,9 +946,10 @@ type
     stagedRepairCommands*: seq[RepairCommand]
     stagedScrapCommands*: seq[ScrapCommand]
     stagedColonyManagement*: seq[ColonyManagementCommand]
-    turnSubmissionRequested*: bool
     turnSubmissionPending*: bool
-    turnSubmissionConfirmed*: bool
+    submitConfirmActive*: bool
+    turnSubmissionRevision*: int
+    modifiedSinceSubmit*: bool
 
     # Terminal dimensions
     termWidth*: int
@@ -1280,9 +1281,10 @@ proc initTuiUiState*(): TuiUiState =
     stagedRepairCommands: @[],
     stagedScrapCommands: @[],
     stagedColonyManagement: @[],
-    turnSubmissionRequested: false,
     turnSubmissionPending: false,
-    turnSubmissionConfirmed: false,
+    submitConfirmActive: false,
+    turnSubmissionRevision: 0,
+    modifiedSinceSubmit: false,
     termWidth: 80,
     termHeight: 24,
     running: true,
@@ -2138,6 +2140,45 @@ proc stagedCommandCount*(model: TuiModel): int =
   if model.ui.stagedTaxRate.isSome:
     count.inc
   count
+
+proc stagedCommandCategorySummary*(
+    model: TuiModel
+): seq[tuple[label: string, value: string]] =
+  ## Return category-level rows for the submit confirmation dialog.
+  ## Only includes categories with at least one command.
+  result = @[]
+  let fleetN = model.ui.stagedFleetCommands.len
+  if fleetN > 0:
+    result.add(("Fleet orders", $fleetN))
+  let zeroN = model.ui.stagedZeroTurnCommands.len
+  if zeroN > 0:
+    result.add(("Zero-turn orders", $zeroN))
+  let buildN = model.ui.stagedBuildCommands.len
+  if buildN > 0:
+    result.add(("Build orders", $buildN))
+  let repairN = model.ui.stagedRepairCommands.len
+  if repairN > 0:
+    result.add(("Repair orders", $repairN))
+  let scrapN = model.ui.stagedScrapCommands.len
+  if scrapN > 0:
+    result.add(("Scrap orders", $scrapN))
+  let colonyN = model.ui.stagedColonyManagement.len
+  if colonyN > 0:
+    result.add(("Colony management", $colonyN))
+  if model.ui.stagedTaxRate.isSome:
+    result.add(("Tax rate", $model.ui.stagedTaxRate.get() & "%"))
+  let dipN = model.ui.stagedDiplomaticCommands.len
+  if dipN > 0:
+    result.add(("Diplomacy", $dipN))
+  let espN = model.ui.stagedEspionageActions.len
+  if espN > 0:
+    result.add(("Espionage actions", $espN))
+  if model.ui.stagedEbpInvestment > 0:
+    result.add(("EBP investment",
+      $model.ui.stagedEbpInvestment & " credits"))
+  if model.ui.stagedCipInvestment > 0:
+    result.add(("CIP investment",
+      $model.ui.stagedCipInvestment & " credits"))
 
 proc espionageQueuedQty*(
     model: TuiModel,

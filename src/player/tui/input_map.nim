@@ -147,7 +147,8 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     else:
       # Allow meta+key to pass through to global bindings
       if modifier != KeyModifier.Alt:
-          if not model.ui.quitConfirmationActive:
+          if not model.ui.quitConfirmationActive and
+              not model.ui.submitConfirmActive:
             if model.ui.expertModeActive:
               return mapPrintableAppend(event, actionExpertInputAppend)
           # Entry modal import mode: append characters to nsec buffer

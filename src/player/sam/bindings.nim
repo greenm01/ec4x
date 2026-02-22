@@ -1985,6 +1985,8 @@ proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
 
 proc backActionForState(model: TuiModel): Option[Proposal] =
   ## Return the layered back action for current state
+  if model.ui.submitConfirmActive:
+    return some(actionSubmitCancel())
   if model.ui.quitConfirmationActive:
     return some(actionQuitCancel())
   if model.ui.intelNoteEditActive:
@@ -2059,6 +2061,14 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return some(actionQuitCancel())
     else:
       return none(Proposal)
+
+  # Submit confirmation modal - takes precedence over most bindings
+  if model.ui.submitConfirmActive:
+    case key
+    of KeyCode.KeyEnter:
+      return some(actionSubmitConfirm())
+    else:
+      return none(Proposal)  # Swallow all other input
 
   if model.ui.queueModal.active and modifier == KeyModifier.None:
     if key != KeyCode.KeyEscape:

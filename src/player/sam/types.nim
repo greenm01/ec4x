@@ -223,6 +223,8 @@ type
     economyTaxFineInc
     economyTaxFineDec
     economyDiplomacyAction
+    submitConfirm
+    submitCancel
 
   # ============================================================================
   # Core SAM Types
