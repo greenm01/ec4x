@@ -120,6 +120,15 @@ proc statusLabel*(status: DiplomaticStatus): string =
   of DiplomaticStatus.Enemy: "ENM"
   of DiplomaticStatus.Eliminated: "ELIM"
 
+proc statusFullLabel*(status: DiplomaticStatus): string =
+  ## Get the full-length label for diplomatic status
+  case status
+  of DiplomaticStatus.Self: "You"
+  of DiplomaticStatus.Neutral: "Neutral"
+  of DiplomaticStatus.Hostile: "Hostile"
+  of DiplomaticStatus.Enemy: "Enemy"
+  of DiplomaticStatus.Eliminated: "Eliminated"
+
 proc statusStyle*(status: DiplomaticStatus): CellStyle =
   ## Get the style for diplomatic status
   case status

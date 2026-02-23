@@ -1101,9 +1101,9 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
-    actionKind: ActionKind.listUp,
+    actionKind: ActionKind.economyFocusPrev,
     context: BindingContext.Economy,
-    longLabel: "NAV", shortLabel: "Nav", priority: 2))
+    longLabel: "PREV PANEL", shortLabel: "↑", priority: 2))
 
   registerBinding(Binding(
     key: KeyCode.KeyK, modifier: KeyModifier.None,
@@ -1113,9 +1113,9 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
-    actionKind: ActionKind.listDown,
+    actionKind: ActionKind.economyFocusNext,
     context: BindingContext.Economy,
-    longLabel: "NAV", shortLabel: "Nav", priority: 4))
+    longLabel: "NEXT PANEL", shortLabel: "↓", priority: 4))
 
   registerBinding(Binding(
     key: KeyCode.KeyJ, modifier: KeyModifier.None,
@@ -1970,6 +1970,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   # Economy actions
   of ActionKind.economyFocusNext:
     return some(actionEconomyFocusNext())
+  of ActionKind.economyFocusPrev:
+    return some(actionEconomyFocusPrev())
   of ActionKind.economyTaxInc:
     return some(actionEconomyTaxInc())
   of ActionKind.economyTaxDec:
@@ -1980,6 +1982,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEconomyTaxFineDec())
   of ActionKind.economyDiplomacyAction:
     return some(actionEconomyDiplomacyAction())
+  of ActionKind.exportMap:
+    return some(actionExportMap())
   of ActionKind.economyDiplomacyPropose:
     return some(actionEconomyDiplomacyPropose())
   of ActionKind.economyDiplomacyAccept:

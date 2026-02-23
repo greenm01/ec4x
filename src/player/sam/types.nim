@@ -219,6 +219,7 @@ type
     espionageQueueDelete
     espionageClearBudget
     economyFocusNext
+    economyFocusPrev
     economyTaxInc
     economyTaxDec
     economyTaxFineInc

@@ -2344,30 +2344,27 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   let contentHeight = taxPanelH + dipPanelH + actPanelH + 2
   # Footer texts for each focus panel.
   const kFooterTaxRate =
-    "[←→] ±10%  [+/-] ±1%  [Tab] Next"
+    "[←→] ±10%  [+/-] ±1%  [↑↓/Tab] Panel"
   const kFooterDiplomacy =
-    "[↑↓] Nav  [E]scalate  [P]ropose  [A]ccept  [R]eject  [Tab] Next"
+    "[J/K] Nav  [E]scalate  [P]ropose  [A]ccept  [R]eject  [↑↓/Tab] Panel"
   const kFooterActions =
-    "[M] Export SVG  [Tab] Next"
+    "[M] Export SVG  [↑↓/Tab] Panel"
   let footerText = case model.ui.economyFocus
     of EconomyFocus.TaxRate: kFooterTaxRate
     of EconomyFocus.Diplomacy: kFooterDiplomacy
     of EconomyFocus.Actions: kFooterActions
-  # Stable modal width: use the longest footer across ALL panels so the
-  # modal does not jump when tabbing between TaxRate / Diplomacy / Actions.
-  const kMaxFooterLen = max(kFooterTaxRate.len,
-    max(kFooterDiplomacy.len, kFooterActions.len))
-  # Dynamic width: widest of diplomacy rows, footer, and absolute floor.
-  # Diplomacy rows: " G HouseName  LBL*  DIR" = 4 + nameLen + 5 + 5 content,
-  # + 4 panel border/padding + 2 modal border.
-  const kDipRowOverhead = 16  # 4 glyph/space/status + 5 proposal + 4+2+1
+  # Dynamic width: widest of diplomacy rows and absolute floor.
+  # Footer is allowed to truncate via renderWithFooter.
+  # Diplomacy rows: glyph(1) + space(1) + name + Status(9) + gap(1) +
+  # Proposal(9) + panel border/padding(4) + modal border(2)
+  const kDipRowOverhead = 27  # 2 + 9 + 1 + 9 + 4 + 2
   var dipRowMinWidth = 44  # sensible minimum when no targets
   for tgt in targets:
     let rowW = tgt.name.len + kDipRowOverhead
     if rowW > dipRowMinWidth:
       dipRowMinWidth = rowW
-  # +4 = 2 modal border + 2 inner padding; floor at 44
-  let minW = max(44, max(dipRowMinWidth, kMaxFooterLen + 4))
+  # floor at 44 to fit tax panel and actions panel content
+  let minW = max(44, dipRowMinWidth)
   let modal = newModal()
     .title("GENERAL")
     .maxWidth(80)
@@ -2431,8 +2428,8 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
       let myId = model.view.viewingHouse
       let dipColumns = [
         tableColumn("House", 0, table.Alignment.Left),
-        tableColumn("Status", 5, table.Alignment.Right),
-        tableColumn("Proposal", 4, table.Alignment.Right)
+        tableColumn("Status", 9, table.Alignment.Right),
+        tableColumn("Proposal", 9, table.Alignment.Right)
       ]
       var dipTable = table(dipColumns)
         .showBorders(false)
@@ -2460,7 +2457,7 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
         let isStaged = displayState != baseState
         let dispStatus = toDisplayStatus(displayState)
         let glyph = statusGlyph(dispStatus)
-        let lbl = statusLabel(dispStatus)
+        let lbl = statusFullLabel(dispStatus)
         let sty = statusStyle(dispStatus)
         let stagedMark = if isStaged: "*" else: " "
         let nameCell = glyph & " " & tgt.name
@@ -2478,8 +2475,8 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
             continue
           let dir = if isOut: "→" else: "←"
           let abbr = case prop.proposalType
-            of ProposalType.DeescalateToNeutral: "NEU"
-            of ProposalType.DeescalateToHostile: "HOS"
+            of ProposalType.DeescalateToNeutral: "Neutral"
+            of ProposalType.DeescalateToHostile: "Hostile"
           proposalCell = dir & abbr
           break
         dipTable.addRow(TableRow(

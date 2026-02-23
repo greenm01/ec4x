@@ -421,6 +421,9 @@ proc actionEspionageClearBudget*(): Proposal =
 proc actionEconomyFocusNext*(): Proposal =
   gameActionProposal(ActionKind.economyFocusNext, "")
 
+proc actionEconomyFocusPrev*(): Proposal =
+  gameActionProposal(ActionKind.economyFocusPrev, "")
+
 proc actionEconomyTaxInc*(): Proposal =
   gameActionProposal(ActionKind.economyTaxInc, "")
 

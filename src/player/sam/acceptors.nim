@@ -1295,6 +1295,16 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         of EconomyFocus.Actions:
           model.ui.economyFocus = EconomyFocus.TaxRate
 
+    of ActionKind.economyFocusPrev:
+      if model.ui.mode == ViewMode.Economy:
+        case model.ui.economyFocus
+        of EconomyFocus.TaxRate:
+          model.ui.economyFocus = EconomyFocus.Actions
+        of EconomyFocus.Diplomacy:
+          model.ui.economyFocus = EconomyFocus.TaxRate
+        of EconomyFocus.Actions:
+          model.ui.economyFocus = EconomyFocus.Diplomacy
+
     of ActionKind.economyTaxInc:
       if model.ui.mode == ViewMode.Economy and
           model.ui.economyFocus == EconomyFocus.TaxRate:
@@ -1404,11 +1414,6 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           of DiplomaticState.Enemy: "Enemy"
         model.ui.statusMessage =
           "Staged: " & tgtName & " → " & stateLabel
-
-      elif model.ui.mode == ViewMode.Economy and
-          model.ui.economyFocus == EconomyFocus.Actions:
-        # Export map action
-        model.ui.exportMapRequested = true
 
     of ActionKind.economyDiplomacyPropose:
       if model.ui.mode != ViewMode.Economy or
@@ -1561,6 +1566,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
 
     of ActionKind.dismissExportConfirm:
       model.ui.exportConfirmActive = false
+
+    of ActionKind.exportMap:
+      if model.ui.mode == ViewMode.Economy:
+        model.ui.exportMapRequested = true
 
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
