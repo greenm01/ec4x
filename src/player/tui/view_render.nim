@@ -405,11 +405,11 @@ proc renderSubmitConfirmation*(buf: var CellBuffer, model: TuiModel) =
   let tableW = maxLabelLen + colSep + valueColW
 
   # Modal content lines:
-  #   1 blank + N rows + 1 separator + 1 total + 1 blank
-  #   + optional revision line + 1 blank
+  #   1 blank + N rows + 1 separator + 1 total
+  #   + optional revision line
   let revN = model.ui.turnSubmissionRevision
   let revLines = if revN > 0: 1 else: 0
-  let contentH = 2 + rows.len + 2 + revLines + 1
+  let contentH = 2 + rows.len + 2 + revLines
 
   let m = newModal()
     .title("Submit Turn " & $model.view.turn)
@@ -468,8 +468,7 @@ proc renderSubmitConfirmation*(buf: var CellBuffer, model: TuiModel) =
     y += 1
 
   # Revision line
-  if revN > 0 and y + 1 < content.bottom:
-    y += 1
+  if revN > 0 and y < content.bottom:
     let revText = "Resubmission (Rev " & $revN & " -> Rev " &
       $(revN + 1) & ")"
     discard buf.setString(labelX, y, revText, revStyle)

@@ -301,6 +301,9 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
   of Key.CtrlT:
     keyCode = KeyCode.KeyT
     modifier = KeyModifier.Ctrl
+  of Key.CtrlU:
+    keyCode = KeyCode.KeyU
+    modifier = KeyModifier.Ctrl
   of Key.CtrlE:
     keyCode = KeyCode.KeyE
     modifier = KeyModifier.Ctrl

@@ -60,6 +60,7 @@ type
     context*: BindingContext
     priority*: int            ## Display order (lower = first)
     enabledCheck*: string     ## Name of condition check (empty = always)
+    hidden*: bool             ## Hide from UI (still active)
 
   BarItemMode* {.pure.} = enum
     Unselected
@@ -111,7 +112,7 @@ proc registerBinding*(b: Binding) =
 proc registerBinding*(key: actions.KeyCode,
     modifier: KeyModifier = KeyModifier.None, actionKind: ActionKind,
     context: BindingContext, longLabel: string, shortLabel: string = "",
-    priority: int = 0, enabledCheck: string = "") =
+    priority: int = 0, enabledCheck: string = "", hidden: bool = false) =
   ## Register a new binding using enum actionKind (new signature)
   gBindings.add(Binding(
     key: key,
@@ -121,7 +122,8 @@ proc registerBinding*(key: actions.KeyCode,
     shortLabel: shortLabel,
     context: context,
     priority: priority,
-    enabledCheck: enabledCheck
+    enabledCheck: enabledCheck,
+    hidden: hidden
   ))
 
 
@@ -432,10 +434,24 @@ proc initBindings*() =
     longLabel: "expert", shortLabel: "", priority: 100))
 
   registerBinding(Binding(
+    key: KeyCode.KeyU, modifier: KeyModifier.Ctrl,
+    actionKind: ActionKind.submitTurn,
+    context: BindingContext.Global,
+    longLabel: "s|bmit", shortLabel: "s|b", priority: 99))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyF5, modifier: KeyModifier.None,
+    actionKind: ActionKind.submitTurn,
+    context: BindingContext.Global,
+    longLabel: "SUBMIT", shortLabel: "GO", priority: 99,
+    hidden: true))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEnter, modifier: KeyModifier.Ctrl,
     actionKind: ActionKind.submitTurn,
     context: BindingContext.Global,
-    longLabel: "SUBMIT", shortLabel: "GO", priority: 99))
+    longLabel: "SUBMIT", shortLabel: "GO", priority: 99,
+    hidden: true))
 
 
 
@@ -2575,6 +2591,8 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
     let globalBindings = getGlobalBindings()
     var idx = 0
     for b in globalBindings:
+      if b.hidden:
+        continue
       let labelRaw = if useShortLabels: b.shortLabel else: b.longLabel
       let labelParts = labelRaw.split("|", maxsplit = 1)
       let hasPipe = labelParts.len > 1
@@ -2624,6 +2642,8 @@ proc buildBarItems*(model: TuiModel, useShortLabels: bool): seq[BarItem] =
 
     var idx = 0
     for b in bindings:
+      if b.hidden:
+        continue
       # Skip duplicate nav keys - combine ↑↓ and ←→
       if b.key == KeyCode.KeyDown and seenNavUp:
         continue
