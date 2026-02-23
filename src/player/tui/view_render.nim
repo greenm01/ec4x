@@ -345,6 +345,45 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
     x += 4
     discard buf.setString(x, currentY, stayMarkerRight, stayStyle)
 
+proc renderExportConfirm*(buf: var CellBuffer, model: TuiModel) =
+  ## Render SVG export confirmation popup showing the saved file path.
+  if not model.ui.exportConfirmActive:
+    return
+  if model.ui.termWidth < 30 or model.ui.termHeight < 7:
+    return
+
+  let path = model.ui.lastExportPath
+  # Clamp path display to terminal width minus modal chrome.
+  let maxPathW = max(20, model.ui.termWidth - 8)
+  let displayPath =
+    if path.len > maxPathW: "..." & path[path.len - (maxPathW - 3)..^1]
+    else: path
+  let innerW = max(30, displayPath.len + 4)
+  let width = min(innerW + 2, model.ui.termWidth - 4)
+  let height = 6
+  let x = (model.ui.termWidth - width) div 2
+  let y = (model.ui.termHeight - height) div 2
+  let modalArea = rect(x, y, width, height)
+
+  let m = newModal()
+    .title("MAP EXPORTED")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+  m.render(modalArea, buf)
+  let inner = m.inner(modalArea)
+  if inner.isEmpty:
+    return
+
+  let cx = inner.x + 2
+  discard buf.setString(cx, inner.y + 1, "Saved to:", modalDimStyle())
+  discard buf.setString(
+    cx, inner.y + 2, displayPath, modalBgStyle())
+  let hint = "[Any key] Dismiss"
+  let hintX = inner.x + max(0, (inner.width - hint.len) div 2)
+  discard buf.setString(hintX, inner.y + 3, hint, modalDimStyle())
+
 proc renderSubmitConfirmation*(buf: var CellBuffer, model: TuiModel) =
   ## Render submit turn confirmation modal with command category table.
   if not model.ui.submitConfirmActive:
@@ -2303,10 +2342,22 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   let dipPanelH = max(4, targets.len + 2) # border + entries
   let actPanelH = 3   # border (2) + 1 content row
   let contentHeight = taxPanelH + dipPanelH + actPanelH + 2
-  # Dynamic width: content-driven with absolute min/max.
-  # Fixed floor: "Prestige penalty: -XX/colony (tax > 50%)" = 42 content
-  # + 2 inner border padding + 2 outer modal border = 46.
-  # Footer floor: "[↑↓] Navigate  [Enter] Cycle  [Tab] Next" = 41 + 4 = 45.
+  # Footer texts for each focus panel.
+  const kFooterTaxRate =
+    "[←→] ±10%  [+/-] ±1%  [Tab] Next"
+  const kFooterDiplomacy =
+    "[↑↓] Nav  [E]scalate  [P]ropose  [A]ccept  [R]eject  [Tab] Next"
+  const kFooterActions =
+    "[M] Export SVG  [Tab] Next"
+  let footerText = case model.ui.economyFocus
+    of EconomyFocus.TaxRate: kFooterTaxRate
+    of EconomyFocus.Diplomacy: kFooterDiplomacy
+    of EconomyFocus.Actions: kFooterActions
+  # Stable modal width: use the longest footer across ALL panels so the
+  # modal does not jump when tabbing between TaxRate / Diplomacy / Actions.
+  const kMaxFooterLen = max(kFooterTaxRate.len,
+    max(kFooterDiplomacy.len, kFooterActions.len))
+  # Dynamic width: widest of diplomacy rows, footer, and absolute floor.
   # Diplomacy rows: " G HouseName  LBL*  DIR" = 4 + nameLen + 5 + 5 content,
   # + 4 panel border/padding + 2 modal border.
   const kDipRowOverhead = 16  # 4 glyph/space/status + 5 proposal + 4+2+1
@@ -2315,21 +2366,15 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
     let rowW = tgt.name.len + kDipRowOverhead
     if rowW > dipRowMinWidth:
       dipRowMinWidth = rowW
-  let minW = max(44, dipRowMinWidth)
+  # +4 = 2 modal border + 2 inner padding; floor at 44
+  let minW = max(44, max(dipRowMinWidth, kMaxFooterLen + 4))
   let modal = newModal()
     .title("GENERAL")
     .maxWidth(80)
     .minWidth(minW)
     .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
-  let footerText = case model.ui.economyFocus
-    of EconomyFocus.TaxRate:
-      "[◀▶] ±10%  [+/-] ±1%  [Tab] Next"
-    of EconomyFocus.Diplomacy:
-      "[↑↓] Nav  [Enter] Cycle  [P]ropose  [A]ccept  [R]eject  [Tab] Next"
-    of EconomyFocus.Actions:
-      "[M] Export SVG  [Tab] Next"
-  let modalArea = modal.calculateArea(canvas, contentHeight)
+  let modalArea = modal.calculateArea(canvas, minW, contentHeight)
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   if contentArea.height <= 0 or contentArea.width <= 0:
@@ -2421,7 +2466,7 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
         let nameCell = glyph & " " & tgt.name
         let statusCell = lbl & stagedMark
         # Build proposal cell: direction + abbreviated target state
-        var proposalCell = "    "  # 4-char blank when no proposal
+        var proposalCell = " - "  # placeholder when no proposal
         for prop in model.view.pendingProposals:
           if prop.status != ProposalStatus.Pending:
             continue
@@ -3836,3 +3881,6 @@ proc renderDashboard*(
 
   if model.ui.submitConfirmActive:
     renderSubmitConfirmation(buf, model)
+
+  if model.ui.exportConfirmActive:
+    renderExportConfirm(buf, model)

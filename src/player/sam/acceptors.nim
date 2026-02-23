@@ -1559,6 +1559,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage =
         "Staged: Reject proposal from " & tgtName
 
+    of ActionKind.dismissExportConfirm:
+      model.ui.exportConfirmActive = false
+
     of ActionKind.toggleAutoRepair,
        ActionKind.toggleAutoLoadMarines,
        ActionKind.toggleAutoLoadFighters:

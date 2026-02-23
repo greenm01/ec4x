@@ -299,6 +299,10 @@ proc actionExportMap*(): Proposal =
   ## Export SVG starmap to file
   gameActionProposal(ActionKind.exportMap, "")
 
+proc actionDismissExportConfirm*(): Proposal =
+  ## Dismiss the SVG export confirmation popup
+  gameActionProposal(ActionKind.dismissExportConfirm, "")
+
 proc actionOpenMap*(): Proposal =
   ## Export SVG starmap and open in viewer
   gameActionProposal(ActionKind.openMap, "")

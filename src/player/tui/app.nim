@@ -1553,6 +1553,8 @@ proc runTui*(gameId: string = "") =
           let outPath = exportSvg(
             svgContent, gameName, sam.model.view.turn,
             tuiConfig.mapExportDir)
+          sam.model.ui.lastExportPath = outPath
+          sam.model.ui.exportConfirmActive = true
           sam.model.ui.statusMessage = "Map saved: " & outPath
           if sam.model.ui.openMapRequested:
             discard openInViewer(outPath)

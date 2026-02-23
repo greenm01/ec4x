@@ -1160,10 +1160,10 @@ proc initBindings*() =
     longLabel: "TAX+1%", shortLabel: "+", priority: 22))
 
   registerBinding(Binding(
-    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
     actionKind: ActionKind.economyDiplomacyAction,
     context: BindingContext.Economy,
-    longLabel: "ACTION", shortLabel: "OK", priority: 30))
+    longLabel: "ESCALATE", shortLabel: "E", priority: 30))
 
   registerBinding(Binding(
     key: KeyCode.KeyP, modifier: KeyModifier.None,
@@ -2093,6 +2093,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return some(actionSubmitConfirm())
     else:
       return none(Proposal)  # Swallow all other input
+
+  # Export confirmation popup - any key dismisses it
+  if model.ui.exportConfirmActive:
+    return some(actionDismissExportConfirm())
 
   if model.ui.queueModal.active and modifier == KeyModifier.None:
     if key != KeyCode.KeyEscape:

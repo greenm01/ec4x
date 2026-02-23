@@ -43,6 +43,7 @@ type
     resize
     exportMap
     openMap
+    dismissExportConfirm
     enterExpertMode
     exitExpertMode
     expertInputAppend

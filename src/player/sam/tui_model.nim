@@ -967,6 +967,7 @@ type
     exportMapRequested*: bool
     openMapRequested*: bool
     lastExportPath*: string
+    exportConfirmActive*: bool
 
     # Nostr sync UI
     nostrEnabled*: bool
@@ -1297,6 +1298,7 @@ proc initTuiUiState*(): TuiUiState =
     exportMapRequested: false,
     openMapRequested: false,
     lastExportPath: "",
+    exportConfirmActive: false,
     nostrEnabled: false,
     nostrRelayUrl: "",
     nostrLastError: "",
