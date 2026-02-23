@@ -32,7 +32,6 @@ Building the infrastructure to actually play the game:
 
 1. **Player client** - Human interface for viewing state and submitting commands
 2. **Playtesting** - Run actual games to validate mechanics and balance
-3. **TUI theme docs** - Create color-theme docs in `docs/tui`
 
 Once we can play real games, we'll know what needs adjustment.
 

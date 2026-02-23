@@ -2283,7 +2283,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         if model.ui.entryModal.createNameInput.isEmpty():
           model.ui.entryModal.setCreateError("Game name is required")
         else:
-          # TODO: Send kind 30400 event to create game
+          # TODO: implement game creation protocol (or remove if handled entirely via CLI)
           model.ui.statusMessage = "Creating game: " &
             model.ui.entryModal.createGameName() &
             " (" & $model.ui.entryModal.createPlayerCount & " players)"

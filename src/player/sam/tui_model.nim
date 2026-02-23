@@ -1598,7 +1598,7 @@ proc currentListLength*(model: TuiModel): int =
     else:
       model.view.fleets.len
   of ViewMode.Research: researchSelectableCount()
-  of ViewMode.Espionage: 0  # Espionage operations list (TODO)
+  of ViewMode.Espionage: 0  # Espionage uses its own target/operation indices
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.IntelDb: model.view.intelRows.len
   of ViewMode.Messages: model.view.inboxItems.len

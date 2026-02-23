@@ -29,6 +29,7 @@ type
   DetailPanelData* = object
     ## Data for the detail panel
     system*: Option[SystemInfo]
+    ownerName*: Option[string]
     jumpLanes*: seq[JumpLaneInfo]
     fleets*: seq[FleetInfo]
 
@@ -132,7 +133,8 @@ proc renderDetailPanel*(area: Rect, buf: var CellBuffer,
   
   # Owner
   if sys.owner.isSome:
-    let ownerStr = fmt"House {sys.owner.get()}"  # TODO: Get house name
+    let ownerStr = if data.ownerName.isSome: data.ownerName.get()
+                   else: fmt"House {sys.owner.get()}"
     y = renderLabelValue(buf, x, y, width, "Owner", ownerStr, labelStyle, valueStyle)
   else:
     y = renderLabelValue(buf, x, y, width, "Owner", "Uncolonized", 

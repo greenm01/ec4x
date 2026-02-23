@@ -40,11 +40,11 @@ The Terminal User Interface (TUI) for EC4X is built and ready for integration wi
 - **Conversion utilities** - Axial ↔ ring+position
 - **Files:** `src/player/tui/hex_labels.nim`
 
-### Phase 6: SVG Starmap Export 🚧 IN PROGRESS
+### Phase 6: SVG Starmap Export ✅
 - **Specification complete** - See `SVG_STARMAP_SPEC.md`
 - **Coordinate system** - Ring+position labels implemented
 - **TUI integration** - Detail panel shows labels
-- **TODO:** SVG generation, file export, command integration
+- **File export** - SVG generation and command integration complete
 
 ### Adapter Layer ✅
 - **Type conversions** - Engine → Widget types

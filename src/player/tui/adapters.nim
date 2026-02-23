@@ -144,8 +144,9 @@ proc getJumpLanes*(systemId: SystemId, state: GameState): seq[JumpLaneInfo] =
 
 proc toFleetInfo*(fleet: Fleet, state: GameState, viewingHouse: HouseId): FleetInfo =
   ## Convert engine Fleet to widget FleetInfo
+  let fleetName = if fleet.name.len > 0: fleet.name else: "Fleet " & $fleet.id
   FleetInfo(
-    name: "Fleet " & $fleet.id,  # TODO: Add fleet naming system
+    name: fleetName,
     shipCount: fleet.ships.len,
     isOwned: fleet.houseId == viewingHouse
   )
@@ -184,6 +185,7 @@ proc toDetailPanelData*(systemCoord: HexCoord, state: GameState,
   if systemOpt.isNone:
     return DetailPanelData(
       system: none(SystemInfo),
+      ownerName: none(string),
       jumpLanes: @[],
       fleets: @[]
     )
@@ -193,8 +195,15 @@ proc toDetailPanelData*(systemCoord: HexCoord, state: GameState,
   let jumpLanes = getJumpLanes(system.id, state)
   let fleets = getFleetsInSystem(system.id, state, viewingHouse)
   
+  var ownerName = none(string)
+  if systemInfo.owner.isSome:
+    let houseOpt = state.house(HouseId(systemInfo.owner.get()))
+    if houseOpt.isSome:
+      ownerName = some(houseOpt.get().name)
+  
   DetailPanelData(
     system: some(systemInfo),
+    ownerName: ownerName,
     jumpLanes: jumpLanes,
     fleets: fleets
   )
@@ -373,6 +382,7 @@ proc toFogOfWarDetailPanelData*(
   if not found:
     return DetailPanelData(
       system: none(SystemInfo),
+      ownerName: none(string),
       jumpLanes: @[],
       fleets: @[]
     )
@@ -380,6 +390,12 @@ proc toFogOfWarDetailPanelData*(
   let visibleSys = playerState.visibleSystems[systemId]
   let systemInfo = toSystemInfoFromPlayerState(visibleSys, playerState, state)
   
+  var ownerName = none(string)
+  if systemInfo.owner.isSome:
+    let houseOpt = state.house(HouseId(systemInfo.owner.get()))
+    if houseOpt.isSome:
+      ownerName = some(houseOpt.get().name)
+
   # Get jump lanes
   var jumpLanes: seq[JumpLaneInfo] = @[]
   for neighborId in visibleSys.jumpLaneIds:
@@ -400,8 +416,9 @@ proc toFogOfWarDetailPanelData*(
   # Our own fleets (always visible)
   for fleet in playerState.ownFleets:
     if fleet.location == systemId:
+      let fleetName = if fleet.name.len > 0: fleet.name else: "Fleet " & $fleet.id
       fleets.add(FleetInfo(
-        name: "Fleet " & $fleet.id,
+        name: fleetName,
         shipCount: fleet.ships.len,
         isOwned: true
       ))
@@ -409,14 +426,17 @@ proc toFogOfWarDetailPanelData*(
   # Enemy fleets (only if detected)
   for visFleet in playerState.visibleFleets:
     if visFleet.location == systemId:
+      let houseOpt = state.house(visFleet.owner)
+      let ownerName = if houseOpt.isSome: houseOpt.get().name else: "Enemy"
       fleets.add(FleetInfo(
-        name: "Enemy Fleet",
+        name: ownerName & " Fleet",
         shipCount: visFleet.estimatedShipCount.get(0),
         isOwned: false
       ))
   
   DetailPanelData(
     system: some(systemInfo),
+    ownerName: ownerName,
     jumpLanes: jumpLanes,
     fleets: fleets
   )
@@ -1507,55 +1527,4 @@ proc fleetHasStagedCommand*(fleetId: int, stagedCommands: seq[FleetCommand]): bo
       return true
   false
 
-proc isFleetCommandAvailable*(
-  cmdType: FleetCommandType,
-  fleet: ref Fleet,
-  ps: PlayerState
-): bool =
-  ## Check if a fleet command is available for the given fleet
-  ## Phase 1: Simple checks, Phase 2 will add composition filtering
-  
-  # All movement commands are always available
-  if cmdType in {FleetCommandType.Hold, FleetCommandType.Move,
-                FleetCommandType.SeekHome, FleetCommandType.Patrol}:
-    return true
-  
-  # Status commands are always available
-  if cmdType in {FleetCommandType.Reserve, FleetCommandType.Mothball}:
-    return true
-  
-  # Fleet ops are always available
-  if cmdType in {FleetCommandType.JoinFleet, FleetCommandType.Rendezvous,
-                FleetCommandType.Salvage}:
-    return true
-  
-  # Intel commands - View is always available, others need scouts (TODO Phase 2)
-  if cmdType == FleetCommandType.View:
-    return true
-  
-  if cmdType in {FleetCommandType.ScoutColony, FleetCommandType.ScoutSystem,
-                FleetCommandType.HackStarbase}:
-    # Phase 2: check for scout/EW ships
-    return true
-  
-  # Defense commands - need combat ships (TODO Phase 2)
-  if cmdType in {FleetCommandType.GuardStarbase, FleetCommandType.GuardColony,
-                FleetCommandType.Blockade}:
-    # Phase 2: check for combat ships
-    return true
-  
-  # Combat commands
-  if cmdType == FleetCommandType.Bombard:
-    # Phase 2: check for combat ships
-    return true
-  
-  if cmdType in {FleetCommandType.Invade, FleetCommandType.Blitz}:
-    # Phase 2: check for TroopTransports with marines
-    return true
-  
-  # Colonial commands
-  if cmdType == FleetCommandType.Colonize:
-    # Phase 2: check for ColonyShip
-    return true
-  
-  false
+
