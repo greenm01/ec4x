@@ -3617,7 +3617,7 @@ proc buildHudData*(model: TuiModel): HudData =
     prestige: model.view.prestige,
     prestigeRank: model.view.prestigeRank,
     totalHouses: model.view.totalHouses,
-    taxRate: model.view.houseTaxRate,
+    taxRate: model.ui.stagedTaxRate.get(model.view.houseTaxRate),
     treasury: optimisticPp,
     production: model.view.production,
     commandUsed: optimisticC2,

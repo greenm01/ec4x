@@ -1365,8 +1365,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         let myId = model.view.viewingHouse
         let key = (myId, targetId)
         # Read base state from server ground truth
-        var current = model.view.diplomaticRelations.getOrDefault(
+        let baseState = model.view.diplomaticRelations.getOrDefault(
           key, DiplomaticState.Neutral)
+        var current = baseState
         # Apply staged override so repeated presses cycle from staged state
         for cmd in model.ui.stagedDiplomaticCommands:
           if int(cmd.targetHouse) == targetId:
@@ -1378,42 +1379,55 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
               of DiplomaticActionType.SetNeutral:
                 DiplomaticState.Neutral
               else: current
-        # Escalate: Neutral → Hostile → Enemy
+        
+        if baseState == DiplomaticState.Enemy and current == DiplomaticState.Enemy:
+          model.ui.statusMessage = "Already at Enemy status - cannot escalate further"
+          return
+
+        # Escalate: Neutral → Hostile → Enemy → back to baseState
         let nextState = case current
           of DiplomaticState.Neutral: DiplomaticState.Hostile
           of DiplomaticState.Hostile: DiplomaticState.Enemy
-          of DiplomaticState.Enemy: DiplomaticState.Neutral
-        let actionType = case nextState
-          of DiplomaticState.Hostile:
-            DiplomaticActionType.DeclareHostile
-          of DiplomaticState.Enemy:
-            DiplomaticActionType.DeclareEnemy
-          of DiplomaticState.Neutral:
-            DiplomaticActionType.SetNeutral
+          of DiplomaticState.Enemy: baseState
+        
         # Remove any existing staged command for this target
         var newCmds: seq[DiplomaticCommand] = @[]
         for cmd in model.ui.stagedDiplomaticCommands:
           if int(cmd.targetHouse) != targetId:
             newCmds.add(cmd)
-        # Stage the new command
-        newCmds.add(DiplomaticCommand(
-          houseId: HouseId(myId),
-          targetHouse: HouseId(targetId),
-          actionType: actionType,
-          proposalId: none(ProposalId),
-          proposalType: none(ProposalType),
-          message: none(string)
-        ))
+        
         model.ui.stagedDiplomaticCommands = newCmds
         model.ui.modifiedSinceSubmit = true
-        let tgtName = model.view.houseNames.getOrDefault(
-          targetId, "House " & $targetId)
-        let stateLabel = case nextState
-          of DiplomaticState.Neutral: "Neutral"
-          of DiplomaticState.Hostile: "Hostile"
-          of DiplomaticState.Enemy: "Enemy"
-        model.ui.statusMessage =
-          "Staged: " & tgtName & " → " & stateLabel
+        
+        if nextState == baseState:
+          model.ui.statusMessage = "Escalation cancelled"
+        else:
+          let actionType = case nextState
+            of DiplomaticState.Hostile:
+              DiplomaticActionType.DeclareHostile
+            of DiplomaticState.Enemy:
+              DiplomaticActionType.DeclareEnemy
+            of DiplomaticState.Neutral:
+              DiplomaticActionType.SetNeutral # Unreachable, as nextState != baseState and nextState can only be Hostile or Enemy if it's greater than baseState
+          
+          # Stage the new command
+          model.ui.stagedDiplomaticCommands.add(DiplomaticCommand(
+            houseId: HouseId(myId),
+            targetHouse: HouseId(targetId),
+            actionType: actionType,
+            proposalId: none(ProposalId),
+            proposalType: none(ProposalType),
+            message: none(string)
+          ))
+          
+          let tgtName = model.view.houseNames.getOrDefault(
+            targetId, "House " & $targetId)
+          let stateLabel = case nextState
+            of DiplomaticState.Neutral: "Neutral"
+            of DiplomaticState.Hostile: "Hostile"
+            of DiplomaticState.Enemy: "Enemy"
+          model.ui.statusMessage =
+            "Staged: " & tgtName & " → " & stateLabel
 
     of ActionKind.economyDiplomacyPropose:
       if model.ui.mode != ViewMode.Economy or

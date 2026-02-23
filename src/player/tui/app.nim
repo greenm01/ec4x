@@ -176,6 +176,7 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedEspionageActions = @[]
     model.ui.stagedEbpInvestment = 0
     model.ui.stagedCipInvestment = 0
+    model.ui.stagedTaxRate = none(int)
     model.ui.stagedZeroTurnCommands = normalized.zeroTurnCommands
     for cmd in normalized.fleetCommands:
       model.stageFleetCommand(cmd)
@@ -187,6 +188,10 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedEbpInvestment = normalized.ebpInvestment
     model.ui.stagedCipInvestment = normalized.cipInvestment
     model.ui.researchAllocation = normalized.researchAllocation
+    for cmd in model.ui.stagedColonyManagement:
+      if cmd.taxRate.isSome:
+        model.ui.stagedTaxRate = some(int(cmd.taxRate.get()))
+        break
     model.ui.modifiedSinceSubmit = false
 
   # Initialize terminal
