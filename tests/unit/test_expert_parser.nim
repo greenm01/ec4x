@@ -54,6 +54,22 @@ suite "Expert Mode Parser":
     check cmd.noteSystem == "Nova"
     check cmd.noteText == "Heavily defended"
 
+  test "Meta command: drop":
+    let cmd = parseExpertCommand(":drop 5")
+    check cmd.kind == ExpertCommandKind.MetaDrop
+    check cmd.dropIndex == 5
+
+  test "Meta command: list":
+    let cmd = parseExpertCommand(":ls")
+    check cmd.kind == ExpertCommandKind.MetaList
+
+  test "Colony command: auto":
+    let cmd = parseExpertCommand(":c Sol auto rep on")
+    check cmd.kind == ExpertCommandKind.ColonyAuto
+    check cmd.autoColony == "Sol"
+    check cmd.autoSystem == "rep"
+    check cmd.autoState == "on"
+
   test "Parse Error: missing arguments":
     let cmd = parseExpertCommand(":f 1st move")
     check cmd.kind == ExpertCommandKind.ParseError
