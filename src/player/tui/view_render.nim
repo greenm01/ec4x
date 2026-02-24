@@ -12,7 +12,7 @@ import ../../engine/globals
 import ../../engine/systems/tech/[advancement, costs]
 import ../sam/sam_pkg
 import ../sam/client_limits
-import ../sam/command_parser
+import ../tui/expert_autocomplete
 import ../tui/buffer
 import ../tui/layout/layout_pkg
 import ../tui/widget/[widget_pkg, frame, paragraph]
@@ -51,7 +51,7 @@ const
 
 var
   cachedExpertInput = ""
-  cachedExpertMatches: seq[ExpertCommandMatch] = @[]
+  cachedExpertMatches: seq[ExpertSuggestion] = @[]
 
 proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel)
 
@@ -125,10 +125,10 @@ proc renderHelpOverlay(area: Rect, buf: var CellBuffer, model: TuiModel) =
       line = line[0 ..< contentArea.width]
     discard buf.setString(contentArea.x, rowY, line, canvasStyle())
 
-proc expertMatchesCached(input: string): seq[ExpertCommandMatch] =
+proc expertMatchesCached(input: string, model: TuiModel): seq[ExpertSuggestion] =
   if input != cachedExpertInput:
     cachedExpertInput = input
-    cachedExpertMatches = matchExpertCommands(input)
+    cachedExpertMatches = getAutocompleteSuggestions(model, input)
   cachedExpertMatches
 
 proc dimStyle*(): CellStyle =
@@ -183,7 +183,7 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
   if not model.ui.expertModeActive:
     return
 
-  let matches = expertMatchesCached(model.ui.expertModeInput.value())
+  let matches = expertMatchesCached(model.ui.expertModeInput.value(), model)
   if matches.len == 0:
     return
 
@@ -219,13 +219,13 @@ proc renderExpertPalette*(buf: var CellBuffer, canvasArea: Rect,
   var items: seq[ListItem] = @[]
   for match in matches:
     let labelSpans = buildMatchSpans(
-      match.label,
+      match.text,
       match.matchIndices,
       normalStyle,
       matchStyle
     )
     var lineSpans = labelSpans
-    let hint = expertCommandHint(match.command)
+    let hint = match.hint
     if hint.len > 0:
       lineSpans.add(span("  ", dimStyle))
       lineSpans.add(span(hint, dimStyle))

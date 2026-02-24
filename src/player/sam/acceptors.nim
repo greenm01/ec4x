@@ -10,7 +10,9 @@ import std/[options, times, strutils, tables, sets]
 import ./types
 import ./tui_model
 import ./actions
-import ./command_parser
+import ./expert_parser
+import ./expert_executor
+import ../tui/expert_autocomplete
 import ./client_limits
 import ../tui/widget/scroll_state
 import ../tui/build_spec
@@ -557,14 +559,14 @@ proc toggleSortDirection*(
   state.ascending = not state.ascending
 
 proc resetExpertPaletteSelection(model: var TuiModel) =
-  let matches = matchExpertCommands(model.ui.expertModeInput.value())
+  let matches = getAutocompleteSuggestions(model, model.ui.expertModeInput.value())
   if matches.len == 0:
     model.ui.expertPaletteSelection = -1
   else:
     model.ui.expertPaletteSelection = 0
 
 proc clampExpertPaletteSelection(model: var TuiModel) =
-  let matches = matchExpertCommands(model.ui.expertModeInput.value())
+  let matches = getAutocompleteSuggestions(model, model.ui.expertModeInput.value())
   if matches.len == 0:
     model.ui.expertPaletteSelection = -1
     return
@@ -2308,111 +2310,81 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.exitExpertMode()
       model.ui.statusMessage = ""
     of ActionKind.expertSubmit:
-      let matches = matchExpertCommands(model.ui.expertModeInput.value())
+      let inputStr = model.ui.expertModeInput.value()
+      let matches = getAutocompleteSuggestions(model, inputStr)
       if matches.len > 0:
         clampExpertPaletteSelection(model)
         let selection = model.ui.expertPaletteSelection
         if selection >= 0 and selection < matches.len:
           let chosen = matches[selection]
-          let normalized = normalizeExpertInput(model.ui.expertModeInput.value())
-          let tokens = normalized.splitWhitespace()
-          let commandToken = if tokens.len > 0: tokens[0] else: ""
-          if commandToken.toLowerAscii() !=
-              chosen.command.name.toLowerAscii():
-            var newInput = chosen.command.name
-            if tokens.len > 1:
-              newInput.add(" " & tokens[1..^1].join(" "))
-            model.ui.expertModeInput.setText(newInput)
+          
+          # Basic auto-complete insertion
+          let tokens = tokenize(inputStr)
+          if tokens.len > 0:
+            var targetToken = tokens[^1]
+            if inputStr.endsWith(" "): targetToken = ""
+            
+            var newInput = inputStr
+            if targetToken.len > 0:
+              newInput = inputStr[0 ..< inputStr.len - targetToken.len]
+            
+            let appendText = if chosen.text.contains(" "): "\"" & chosen.text & "\"" else: chosen.text
+            model.ui.expertModeInput.setText(newInput & appendText & " ")
             model.clearExpertFeedback()
             model.ui.expertPaletteSelection = 0
             return
+
       # Parse and execute expert mode command
-      let result = parseExpertCommand(model.ui.expertModeInput.value())
-      if result.success:
-        # Handle meta commands first
-        case result.metaCommand
-        of MetaCommandType.Help:
-          model.setExpertFeedback(expertCommandHelpText())
-          model.addToExpertHistory(model.ui.expertModeInput.value())
-        of MetaCommandType.Clear:
+      let cmdAst = parseExpertCommand(inputStr)
+      
+      case cmdAst.kind
+      of ExpertCommandKind.ParseError:
+        model.setExpertFeedback("Error: " & cmdAst.errorMessage)
+      of ExpertCommandKind.MetaHelp:
+        model.setExpertFeedback("Commands: fleet, colony, tech, spy, gov, map | Meta: clear, list, drop, submit")
+        model.addToExpertHistory(inputStr)
+      of ExpertCommandKind.MetaClear:
+        let count = model.stagedCommandCount()
+        model.ui.stagedFleetCommands.clear()
+        model.ui.stagedBuildCommands.setLen(0)
+        model.ui.stagedRepairCommands.setLen(0)
+        model.ui.stagedScrapCommands.setLen(0)
+        model.ui.stagedColonyManagement.setLen(0)
+        model.ui.modifiedSinceSubmit = true
+        model.setExpertFeedback("Cleared " & $count & " staged commands")
+        model.addToExpertHistory(inputStr)
+      of ExpertCommandKind.MetaList:
+        model.setExpertFeedback(model.stagedCommandsSummary())
+        model.addToExpertHistory(inputStr)
+      of ExpertCommandKind.MetaDrop:
+        let dropIdx = cmdAst.dropIndex
+        let entries = model.stagedCommandEntries()
+        if dropIdx <= 0 or dropIdx > entries.len:
+          model.setExpertFeedback("Invalid command index")
+        else:
+          let entry = entries[dropIdx - 1]
+          if model.dropStagedCommand(entry):
+            model.ui.modifiedSinceSubmit = true
+            model.setExpertFeedback("Dropped command " & $dropIdx)
+          else:
+            model.setExpertFeedback("Failed to drop command")
+        model.addToExpertHistory(inputStr)
+      of ExpertCommandKind.MetaSubmit:
+        if model.stagedCommandCount() > 0:
+          model.ui.turnSubmissionPending = true
           let count = model.stagedCommandCount()
-          model.ui.stagedFleetCommands.clear()
-          model.ui.stagedBuildCommands.setLen(0)
-          model.ui.stagedRepairCommands.setLen(0)
-          model.ui.stagedScrapCommands.setLen(0)
-          model.ui.stagedColonyManagement.setLen(0)
-          model.ui.modifiedSinceSubmit = true
-          model.setExpertFeedback("Cleared " & $count & " staged commands")
-          model.addToExpertHistory(model.ui.expertModeInput.value())
-        of MetaCommandType.List:
-          model.setExpertFeedback(model.stagedCommandsSummary())
-          model.addToExpertHistory(model.ui.expertModeInput.value())
-        of MetaCommandType.Drop:
-          if result.metaIndex.isNone:
-            model.setExpertFeedback("Usage: :drop <index>")
-          else:
-            let dropIdx = result.metaIndex.get()
-            let entries = model.stagedCommandEntries()
-            if dropIdx <= 0 or dropIdx > entries.len:
-              model.setExpertFeedback("Invalid command index")
-            else:
-              let entry = entries[dropIdx - 1]
-              if model.dropStagedCommand(entry):
-                model.ui.modifiedSinceSubmit = true
-                model.setExpertFeedback("Dropped command " & $dropIdx)
-              else:
-                model.setExpertFeedback("Failed to drop command")
-          model.addToExpertHistory(model.ui.expertModeInput.value())
-        of MetaCommandType.Submit:
-          if model.stagedCommandCount() > 0:
-            model.ui.turnSubmissionPending = true  # Bypass confirmation dialog
-            let count = model.stagedCommandCount()
-            model.setExpertFeedback("Submitting " & $count & " commands...")
-          else:
-            model.setExpertFeedback("No commands to submit")
-          model.addToExpertHistory(model.ui.expertModeInput.value())
-        of MetaCommandType.None:
-          # Regular command - add to staged commands
-          if result.fleetCommand.isSome:
-            let fleetCmd = result.fleetCommand.get()
-            if fleetCmd.commandType == FleetCommandType.JoinFleet and
-                fleetCmd.targetFleet.isSome:
-              let fcErr = validateJoinFleetFc(
-                model,
-                int(fleetCmd.fleetId),
-                int(fleetCmd.targetFleet.get()),
-              )
-              if fcErr.isSome:
-                model.setExpertFeedback(fcErr.get())
-                model.ui.expertModeInput.clear()
-                resetExpertPaletteSelection(model)
-                return
-            model.stageFleetCommand(fleetCmd)
-            model.ui.modifiedSinceSubmit = true
-            model.setExpertFeedback(
-              "Fleet command staged (total: " &
-              $model.ui.stagedFleetCommands.len & ")"
-            )
-            model.addToExpertHistory(model.ui.expertModeInput.value())
-          elif result.buildCommand.isSome:
-            let buildCmd = result.buildCommand.get()
-            let buildErr = validateBuildIncrement(model, buildCmd)
-            if buildErr.isSome:
-              model.setExpertFeedback(buildErr.get())
-              model.ui.expertModeInput.clear()
-              resetExpertPaletteSelection(model)
-              return
-            model.ui.stagedBuildCommands.add(buildCmd)
-            model.ui.modifiedSinceSubmit = true
-            model.setExpertFeedback(
-              "Build command staged (total: " &
-              $model.ui.stagedBuildCommands.len & ")"
-            )
-            model.addToExpertHistory(model.ui.expertModeInput.value())
-          else:
-            model.setExpertFeedback("No command generated")
+          model.setExpertFeedback("Submitting " & $count & " commands...")
+        else:
+          model.setExpertFeedback("No commands to submit")
+        model.addToExpertHistory(inputStr)
       else:
-        model.setExpertFeedback("Error: " & result.error)
+        let execResult = executeExpertCommand(model, cmdAst)
+        if execResult.success:
+          model.setExpertFeedback(execResult.message)
+        else:
+          model.setExpertFeedback("Error: " & execResult.message)
+        model.addToExpertHistory(inputStr)
+
       # Keep expert mode active after submit
       model.ui.expertModeInput.clear()
       resetExpertPaletteSelection(model)
@@ -2436,7 +2408,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.expertPaletteSelection -= 1
     of ActionKind.expertHistoryNext:
       clampExpertPaletteSelection(model)
-      let matches = matchExpertCommands(model.ui.expertModeInput.value())
+      let matches = getAutocompleteSuggestions(model, model.ui.expertModeInput.value())
       if matches.len == 0:
         model.ui.expertPaletteSelection = -1
       elif model.ui.expertPaletteSelection < matches.len - 1:
