@@ -920,6 +920,13 @@ type
     fleetConsoleSystems*: seq[FleetConsoleSystem]
     fleetConsoleFleetsBySystem*: Table[int, seq[FleetConsoleFleet]]  # systemId -> fleets
 
+    # Pristine fleet view caches (set at sync time, never mutated by staging).
+    # Used as the reset baseline when rebuilding optimistic UI state after
+    # a command is dropped or reordered.
+    pristineFleets*: seq[FleetInfo]
+    pristineFleetConsoleFleetsBySystem*:
+      Table[int, seq[FleetConsoleFleet]]
+
     # Fleet list state (ListView mode)
     fleetListState*: FleetListState
 
@@ -1260,6 +1267,9 @@ proc initTuiUiState*(): TuiUiState =
     fleetConsoleFleetJumpTime: 0.0,
     fleetConsoleSystems: @[],
     fleetConsoleFleetsBySystem: initTable[int, seq[FleetConsoleFleet]](),
+    pristineFleets: @[],
+    pristineFleetConsoleFleetsBySystem:
+      initTable[int, seq[FleetConsoleFleet]](),
     fleetListState: FleetListState(
       sortState: initTableSortState(12),
       searchActive: false,
@@ -2358,16 +2368,22 @@ proc stagedCommandsSummary*(model: TuiModel): string =
     lines.add("  " & $(idx + 1) & ". " & label)
   lines.join(" | ")
 
+# Forward declaration — defined after applyZeroTurnCommandOptimistically
+# and updateFleetInfoFromStagedCommand which it depends on.
+proc reapplyAllOptimisticUpdates*(model: var TuiModel)
+
 proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   ## Remove staged command by entry
   case entry.kind
   of StagedCommandKind.Fleet:
     if entry.index in model.ui.stagedFleetCommands:
       model.ui.stagedFleetCommands.del(entry.index)
+      model.reapplyAllOptimisticUpdates()
       return true
   of StagedCommandKind.ZeroTurn:
     if entry.index < model.ui.stagedZeroTurnCommands.len:
       model.ui.stagedZeroTurnCommands.delete(entry.index)
+      model.reapplyAllOptimisticUpdates()
       return true
   of StagedCommandKind.Build:
     if entry.index < model.ui.stagedBuildCommands.len:
@@ -2947,6 +2963,22 @@ proc applyZeroTurnCommandOptimistically*(
     # TransferFighters: FleetInfo has no marine/fighter count fields.
     # No optimistic update possible until model is extended.
     discard
+
+proc reapplyAllOptimisticUpdates*(model: var TuiModel) =
+  ## Restore pristine fleet views and replay every staged command in
+  ## engine-execution order (ZTCs first, then FleetCommands).
+  ##
+  ## Call this whenever a staged command is dropped or reordered so the
+  ## UI tables reflect exactly what the engine will produce come CMD5.
+  model.view.fleets = model.ui.pristineFleets
+  model.ui.fleetConsoleFleetsBySystem =
+    model.ui.pristineFleetConsoleFleetsBySystem
+  # ZTCs execute first during CMD5
+  for cmd in model.ui.stagedZeroTurnCommands:
+    model.applyZeroTurnCommandOptimistically(cmd)
+  # Fleet commands (movement/ROE) apply after ZTCs
+  for _, cmd in model.ui.stagedFleetCommands.pairs:
+    model.updateFleetInfoFromStagedCommand(cmd)
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
   ## Stage a fleet command and optimistically update fleet display data.

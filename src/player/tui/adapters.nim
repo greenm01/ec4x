@@ -783,10 +783,38 @@ proc dockSummary(state: GameState, colonyId: ColonyId): DockSummary =
     repairTotal: repairTotal,
   )
 
+proc buildCommandToQueueItem(cmd: BuildCommand): QueueItem =
+  ## Convert a staged BuildCommand to a QueueItem for display
+  var name = "Unknown"
+  case cmd.buildType
+  of BuildType.Ship:
+    if cmd.shipClass.isSome:
+      name = humanizeEnum($cmd.shipClass.get())
+  of BuildType.Facility:
+    if cmd.facilityClass.isSome:
+      name = humanizeEnum($cmd.facilityClass.get())
+  of BuildType.Ground:
+    if cmd.groundClass.isSome:
+      name = humanizeEnum($cmd.groundClass.get())
+  of BuildType.Industrial:
+    name = "Industrial Units"
+  of BuildType.Infrastructure:
+    name = "Infrastructure"
+  let displayName =
+    if cmd.quantity > 1: name & " x" & $cmd.quantity
+    else: name
+  QueueItem(
+    kind: QueueKind.Construction,
+    name: displayName,
+    cost: 0,
+    status: "Staged"
+  )
+
 proc colonyToDetailData*(
   state: GameState,
   colonyId: ColonyId,
-  houseId: HouseId
+  houseId: HouseId,
+  stagedBuilds: seq[BuildCommand] = @[]
 ): PlanetDetailData =
   ## Convert engine Colony to PlanetDetailData for TUI rendering
   let colonyOpt = state.colony(colonyId)
@@ -928,6 +956,10 @@ proc colonyToDetailData*(
       cost: int(repair.cost),
       status: "Repairing"
     ))
+
+  for cmd in stagedBuilds:
+    if cmd.colonyId == colonyId:
+      queue.add(buildCommandToQueueItem(cmd))
 
   var buildOptions: seq[BuildOption] = @[]
   let hasSpaceport =
@@ -1201,7 +1233,11 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
     auxShips: ""
   )
 
-proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetailData =
+proc colonyToDetailDataFromPS*(
+  ps: PlayerState,
+  colonyId: ColonyId,
+  stagedBuilds: seq[BuildCommand] = @[]
+): PlanetDetailData =
   ## Build PlanetDetailData from PlayerState only
   ## Limited data compared to full GameState version (no build options, etc.)
   for colony in ps.ownColonies:
@@ -1320,7 +1356,12 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
         marines: marines,
         batteries: batteries,
         shields: shields,
-        queue: @[],  # Construction queue not fully detailed in PlayerState
+        queue: block:
+          var q: seq[QueueItem] = @[]
+          for cmd in stagedBuilds:
+            if cmd.colonyId == colonyId:
+              q.add(buildCommandToQueueItem(cmd))
+          q,  # Staged builds only; server queue unavailable from PS
         buildOptions: @[],  # Would need full GameState to compute
         autoRepair: colony.autoRepair,
         autoLoadMarines: colony.autoLoadMarines,

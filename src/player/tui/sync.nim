@@ -1225,6 +1225,13 @@ proc syncPlayerStateToModel*(
         needsAttentionByFleet,
       )
 
+  # Snapshot pristine fleet views immediately after a clean server sync.
+  # These are the reset baselines used by reapplyAllOptimisticUpdates when
+  # a staged command is dropped and the UI needs to be rebuilt from scratch.
+  model.ui.pristineFleets = model.view.fleets
+  model.ui.pristineFleetConsoleFleetsBySystem =
+    model.ui.fleetConsoleFleetsBySystem
+
 # =============================================================================
 # Planets Table Sync (PlayerState-only)
 # =============================================================================

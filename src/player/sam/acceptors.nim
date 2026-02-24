@@ -513,6 +513,21 @@ proc openShipSelectorForZtc(
     model.ui.statusMessage = "Source fleet not found"
     return
   let sourceFleet = model.view.ownFleetsById[sourceFleetId]
+
+  # Build set of ships already committed to leave this fleet via a
+  # previously staged TransferShips or DetachShips.  These must not
+  # appear as selectable candidates — the engine will reject a second
+  # command that references ships no longer in the source fleet.
+  var alreadyStagedShips = initHashSet[ShipId]()
+  for staged in model.ui.stagedZeroTurnCommands:
+    if staged.commandType in {
+        ZeroTurnCommandType.TransferShips,
+        ZeroTurnCommandType.DetachShips} and
+        staged.sourceFleetId.isSome and
+        int(staged.sourceFleetId.get()) == sourceFleetId:
+      for sid in staged.shipIds:
+        alreadyStagedShips.incl(sid)
+
   model.ui.fleetDetailModal.ztcType = some(ztcType)
   model.ui.fleetDetailModal.shipSelectorShipIds = @[]
   model.ui.fleetDetailModal.shipSelectorRows = @[]
@@ -523,6 +538,8 @@ proc openShipSelectorForZtc(
       continue
     let ship = model.view.ownShipsById[int(shipId)]
     if ship.state == CombatState.Destroyed:
+      continue
+    if shipId in alreadyStagedShips:
       continue
     model.ui.fleetDetailModal.shipSelectorShipIds.add(shipId)
     model.ui.fleetDetailModal.shipSelectorRows.add(ShipSelectorRow(

@@ -1496,7 +1496,8 @@ proc renderPlanetDetail*(
   var planetData = colonyToDetailData(
     state,
     ColonyId(model.ui.selectedColonyId),
-    viewingHouse
+    viewingHouse,
+    model.ui.stagedBuildCommands
   )
   for cmd in model.ui.stagedColonyManagement:
     if int(cmd.colonyId) == planetData.colonyId:
@@ -1524,7 +1525,11 @@ proc renderPlanetDetailFromPS*(
     return
 
   var planetData =
-    colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
+    colonyToDetailDataFromPS(
+      ps,
+      ColonyId(model.ui.selectedColonyId),
+      model.ui.stagedBuildCommands
+    )
   for cmd in model.ui.stagedColonyManagement:
     if int(cmd.colonyId) == planetData.colonyId:
       planetData.autoRepair = cmd.autoRepair
