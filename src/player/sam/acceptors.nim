@@ -453,6 +453,7 @@ proc stageZeroTurnCommand(
   model.ui.stagedZeroTurnCommands.add(cmd)
   model.ui.modifiedSinceSubmit = true
   model.ui.statusMessage = statusMessage
+  model.applyZeroTurnCommandOptimistically(cmd)
   model.ztcCloseToFleets()
 
 proc parseInputQuantity(input: TextInputState): int =
@@ -3490,11 +3491,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               targetCarrierShipId: none(ShipId),
               newFleetId: none(FleetId),
             )
-            model.ui.stagedZeroTurnCommands.add(cmd)
-          model.ui.modifiedSinceSubmit = true
-          model.ui.statusMessage = "Staged Reactivate for " &
-            $sourceFleetIds.len & " fleet(s)"
-          model.ztcCloseToFleets()
+            model.stageZeroTurnCommand(
+              cmd,
+              "Staged Reactivate for " & $sourceFleetIds.len & " fleet(s)",
+            )
         of ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips:
           if sourceFleetIds.len != 1:
             model.ui.statusMessage = "Select exactly one source fleet"

@@ -83,33 +83,41 @@ client submit game-123 turn_42_house_1.kdl
 
 **5. Zero-Turn Command Flow**
 
-Zero-turn commands are administrative operations that execute during command submission, not during turn resolution. They allow players to reorganize fleets and manage cargo before committing operational commands.
+Zero-turn commands are administrative operations that execute during **CMD5 of the Command Phase** within turn resolution (see `docs/engine/ec4x_canonical_turn_cycle.md`). They allow players to reorganize fleets and manage cargo before operational orders are processed in the same turn.
 
 ### Execution Timeline
 
 ```
-Command Submission Flow:
+Turn Resolution (resolveTurnDeterministic):
   ↓
-Parse CommandPacket
+Income Phase
   ↓
-Extract zero-turn commands
+Command Phase
   ↓
-Execute zero-turn commands sequentially
-  - Validate each command
-  - Modify GameState immediately
-  - Return ZeroTurnResult per command
+  CMD5: processPlayerSubmissions
+    ↓
+    Parse CommandPacket
+      ↓
+    Execute zero-turn commands sequentially
+      - Validate each command
+      - Modify GameState immediately
+      - Collect ZeroTurnResult per command
+      ↓
+    Queue operational commands for later phases
   ↓
-Queue operational commands for turn resolution
+Conflict Phase
+  ↓
+Maintenance Phase
 ```
 
 ### Client/Server Interaction
 
 **Client Workflow:**
 1. Load `PlayerState` from SQLite (or receive from server)
-2. Player builds zero-turn commands (UI preview optional)
+2. Player builds zero-turn commands (UI preview via optimistic updates)
 3. Submit `CommandPacket` containing zero-turn commands + operational orders
-4. Receive `ZeroTurnResult`s for immediate feedback
-5. Updated `PlayerState` saved to SQLite after processing
+4. Await next turn resolution (kind 30403 delta event)
+5. Receive authoritative `ZeroTurnResult`s after turn resolves
 
 **Draft Workflow (Player TUI):**
 1. Stage commands/research in UI
@@ -121,16 +129,17 @@ Queue operational commands for turn resolution
 5. Clear draft after successful turn submission
 
 **Server Workflow:**
-1. Receive `CommandPacket` from client
-2. Extract zero-turn commands
-3. Execute via `submitZeroTurnCommand(state, cmd, events)`
+1. Receive `CommandPacket` from client; save to commands table
+2. At turn resolution, load all submitted `CommandPacket`s
+3. During CMD5: execute zero-turn commands via
+   `submitZeroTurnCommand(state, cmd, events)` for each house
 4. Emit `GameEvent`s for telemetry
-5. Queue remaining operational commands
-6. Save updated `PlayerState` to SQLite for player retrieval
+5. Continue with operational commands in same resolution pass
+6. After full resolution, generate `PlayerState` deltas per player
 
 ### PlayerState Persistence
 
-After zero-turn command execution, the server generates `PlayerState` for each house:
+After turn resolution, the server generates `PlayerState` for each house:
 - Full entity data for owned assets (colonies, fleets, ships)
 - Fog-of-war filtered intel for visible enemy assets
 - Saved to SQLite `player_states` table
@@ -156,14 +165,16 @@ After zero-turn command execution, the server generates `PlayerState` for each h
 **Status Changes (requires colony):**
 - Reactivate - Return Reserve/Mothballed fleet to Active
 
-**Key characteristic:** Execute during command submission, not during turn resolution. State changes take effect immediately—operational commands submitted in same batch see the updated state.
+**Key characteristic:** Execute during CMD5 of turn resolution. State changes take effect within the same turn—operational commands processed in the same resolution pass see the updated state.
 
 **Example:** Player submits:
-1. LoadCargo (marines onto fleet) — executes immediately
-2. MergeFleets (combine two fleets) — executes immediately
-3. Invade command — queued for turn resolution
+1. LoadCargo (marines onto fleet) — executes during CMD5
+2. MergeFleets (combine two fleets) — executes during CMD5
+3. Invade command — processed later in same turn resolution
 
-When turn resolves, invasion fleet already has marines loaded and merged composition.
+When the Conflict Phase runs, the invasion fleet already has marines loaded and merged composition.
+
+**Note:** Because ZTC results are only available after full turn resolution, the Player TUI applies optimistic updates locally when commands are staged, then re-syncs on the turn delta.
 
 **See:** [docs/engine/zero_turn.md](../engine/zero_turn.md) for complete API reference and location requirements.
 

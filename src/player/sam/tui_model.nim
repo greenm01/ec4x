@@ -2742,6 +2742,212 @@ proc updateFleetInfoFromStagedCommand(model: var TuiModel, cmd: FleetCommand) =
           )
         return
 
+proc shipStatsForIds(
+    model: TuiModel,
+    shipIds: seq[ShipId],
+): tuple[attack: int, defense: int, count: int,
+    hasCombat: bool, hasSupport: bool,
+    hasScouts: bool, hasTroops: bool, hasEtacs: bool] =
+  ## Compute aggregate stats for a set of ship IDs from ownShipsById.
+  for shipId in shipIds:
+    let sid = int(shipId)
+    if sid notin model.view.ownShipsById:
+      continue
+    let ship = model.view.ownShipsById[sid]
+    if ship.state == CombatState.Destroyed:
+      continue
+    result.attack += ship.stats.attackStrength
+    result.defense += ship.stats.defenseStrength
+    result.count += 1
+    case ship.shipClass
+    of ShipClass.ETAC:
+      result.hasSupport = true
+      result.hasEtacs = true
+    of ShipClass.TroopTransport:
+      result.hasSupport = true
+      result.hasTroops = true
+    of ShipClass.Scout:
+      result.hasScouts = true
+    else:
+      result.hasCombat = true
+
+proc fleetStatsFromOwn(
+    model: TuiModel,
+    fleetId: int,
+): tuple[attack: int, defense: int, count: int,
+    hasCombat: bool, hasSupport: bool,
+    hasScouts: bool, hasTroops: bool, hasEtacs: bool] =
+  ## Compute aggregate stats for a fleet from ownFleetsById + ownShipsById.
+  if fleetId notin model.view.ownFleetsById:
+    return
+  let fleet = model.view.ownFleetsById[fleetId]
+  result = model.shipStatsForIds(fleet.ships)
+
+proc removeFleetFromViews(model: var TuiModel, fleetId: int) =
+  ## Remove a fleet entry from model.view.fleets and
+  ## model.ui.fleetConsoleFleetsBySystem.
+  model.view.fleets.keepItIf(it.id != fleetId)
+  for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+    fleets.keepItIf(it.fleetId != fleetId)
+
+proc applyZeroTurnCommandOptimistically*(
+    model: var TuiModel,
+    cmd: ZeroTurnCommand,
+) =
+  ## Optimistically update FleetInfo (ListView) and FleetConsoleFleet
+  ## (SystemView) to immediately reflect a staged ZeroTurnCommand.
+  ## Mirrors updateFleetInfoFromStagedCommand for FleetCommands.
+  ##
+  ## Supported commands:
+  ##   Reactivate   - statusLabel → "Active", commandLabel → "Hold"
+  ##   MergeFleets  - add source stats to target; remove source fleet
+  ##   TransferShips- move selected ship stats src→target;
+  ##                  remove source if empty
+  ##   DetachShips  - decrement source ship count/stats only
+  ##                  (no new fleet created until engine resolves)
+  case cmd.commandType
+  of ZeroTurnCommandType.Reactivate:
+    if cmd.sourceFleetId.isNone:
+      return
+    let fid = int(cmd.sourceFleetId.get())
+    for fleet in model.view.fleets.mitems:
+      if fleet.id == fid:
+        fleet.statusLabel = "Active"
+        fleet.commandLabel = "Hold"
+        fleet.command = 0
+        fleet.isIdle = true
+        break
+    for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+      for flt in fleets.mitems:
+        if flt.fleetId == fid:
+          flt.status = "Active"
+          flt.commandLabel = "Hold"
+          return
+
+  of ZeroTurnCommandType.MergeFleets:
+    if cmd.sourceFleetId.isNone or cmd.targetFleetId.isNone:
+      return
+    let srcId = int(cmd.sourceFleetId.get())
+    let tgtId = int(cmd.targetFleetId.get())
+    let srcStats = model.fleetStatsFromOwn(srcId)
+    # Update target FleetInfo
+    for fleet in model.view.fleets.mitems:
+      if fleet.id == tgtId:
+        fleet.shipCount += srcStats.count
+        fleet.attackStrength += srcStats.attack
+        fleet.defenseStrength += srcStats.defense
+        fleet.hasCombatShips = fleet.hasCombatShips or srcStats.hasCombat
+        fleet.hasSupportShips = fleet.hasSupportShips or srcStats.hasSupport
+        fleet.hasScouts = fleet.hasScouts or srcStats.hasScouts
+        fleet.hasTroopTransports = fleet.hasTroopTransports or srcStats.hasTroops
+        fleet.hasEtacs = fleet.hasEtacs or srcStats.hasEtacs
+        fleet.isScoutOnly = fleet.hasScouts and
+          not fleet.hasCombatShips and not fleet.hasSupportShips
+        break
+    for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+      for flt in fleets.mitems:
+        if flt.fleetId == tgtId:
+          flt.shipCount += srcStats.count
+          flt.attackStrength += srcStats.attack
+          flt.defenseStrength += srcStats.defense
+          break
+    model.removeFleetFromViews(srcId)
+
+  of ZeroTurnCommandType.TransferShips:
+    if cmd.sourceFleetId.isNone or cmd.targetFleetId.isNone:
+      return
+    if cmd.shipIds.len == 0:
+      return
+    let srcId = int(cmd.sourceFleetId.get())
+    let tgtId = int(cmd.targetFleetId.get())
+    let xferStats = model.shipStatsForIds(cmd.shipIds)
+    # Update source FleetInfo
+    var srcShipCount = 0
+    for fleet in model.view.fleets.mitems:
+      if fleet.id == srcId:
+        fleet.shipCount -= xferStats.count
+        fleet.attackStrength -= xferStats.attack
+        fleet.defenseStrength -= xferStats.defense
+        # Recompute composition flags from remaining ships
+        let remaining = model.fleetStatsFromOwn(srcId)
+        fleet.hasCombatShips = remaining.hasCombat
+        fleet.hasSupportShips = remaining.hasSupport
+        fleet.hasScouts = remaining.hasScouts
+        fleet.hasTroopTransports = remaining.hasTroops
+        fleet.hasEtacs = remaining.hasEtacs
+        fleet.isScoutOnly = remaining.hasScouts and
+          not remaining.hasCombat and not remaining.hasSupport
+        srcShipCount = fleet.shipCount
+        break
+    for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+      for flt in fleets.mitems:
+        if flt.fleetId == srcId:
+          flt.shipCount -= xferStats.count
+          flt.attackStrength -= xferStats.attack
+          flt.defenseStrength -= xferStats.defense
+          break
+    # Update target FleetInfo
+    for fleet in model.view.fleets.mitems:
+      if fleet.id == tgtId:
+        fleet.shipCount += xferStats.count
+        fleet.attackStrength += xferStats.attack
+        fleet.defenseStrength += xferStats.defense
+        fleet.hasCombatShips = fleet.hasCombatShips or xferStats.hasCombat
+        fleet.hasSupportShips = fleet.hasSupportShips or xferStats.hasSupport
+        fleet.hasScouts = fleet.hasScouts or xferStats.hasScouts
+        fleet.hasTroopTransports = fleet.hasTroopTransports or xferStats.hasTroops
+        fleet.hasEtacs = fleet.hasEtacs or xferStats.hasEtacs
+        fleet.isScoutOnly = fleet.hasScouts and
+          not fleet.hasCombatShips and not fleet.hasSupportShips
+        break
+    for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+      for flt in fleets.mitems:
+        if flt.fleetId == tgtId:
+          flt.shipCount += xferStats.count
+          flt.attackStrength += xferStats.attack
+          flt.defenseStrength += xferStats.defense
+          break
+    # Remove source fleet if it now has no ships
+    if srcShipCount <= 0:
+      model.removeFleetFromViews(srcId)
+
+  of ZeroTurnCommandType.DetachShips:
+    # Partial optimistic update: decrement source stats only.
+    # No new fleet entry created — engine assigns real FleetId at CMD5.
+    if cmd.sourceFleetId.isNone:
+      return
+    if cmd.shipIds.len == 0:
+      return
+    let srcId = int(cmd.sourceFleetId.get())
+    let detachStats = model.shipStatsForIds(cmd.shipIds)
+    for fleet in model.view.fleets.mitems:
+      if fleet.id == srcId:
+        fleet.shipCount -= detachStats.count
+        fleet.attackStrength -= detachStats.attack
+        fleet.defenseStrength -= detachStats.defense
+        let remaining = model.fleetStatsFromOwn(srcId)
+        fleet.hasCombatShips = remaining.hasCombat
+        fleet.hasSupportShips = remaining.hasSupport
+        fleet.hasScouts = remaining.hasScouts
+        fleet.hasTroopTransports = remaining.hasTroops
+        fleet.hasEtacs = remaining.hasEtacs
+        fleet.isScoutOnly = remaining.hasScouts and
+          not remaining.hasCombat and not remaining.hasSupport
+        break
+    for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+      for flt in fleets.mitems:
+        if flt.fleetId == srcId:
+          flt.shipCount -= detachStats.count
+          flt.attackStrength -= detachStats.attack
+          flt.defenseStrength -= detachStats.defense
+          break
+
+  else:
+    # LoadCargo, UnloadCargo, LoadFighters, UnloadFighters,
+    # TransferFighters: FleetInfo has no marine/fighter count fields.
+    # No optimistic update possible until model is extended.
+    discard
+
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
   ## Stage a fleet command and optimistically update fleet display data.
   ## Single entry point — all fleet command staging goes through here.

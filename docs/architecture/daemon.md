@@ -169,7 +169,11 @@ BEGIN TRANSACTION;
 
 4. Run game engine resolution (4 phases)
    a. Income Phase: Calculate production, prestige
-   b. Command Phase: Execute commands (movement, colonization)
+   b. Command Phase: Execute commands
+      - CMD5: Execute zero-turn commands (DetachShips, MergeFleets,
+        TransferShips, Reactivate, cargo/fighter ops) sequentially
+        per house, modifying GameState immediately within this phase
+      - Process operational fleet orders (movement, colonization)
    c. Conflict Phase: Resolve combat
    d. Maintenance Phase: Construction, research, upkeep
 

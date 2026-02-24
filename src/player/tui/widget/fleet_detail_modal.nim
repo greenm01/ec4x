@@ -3,7 +3,7 @@
 ## A modal popup for viewing fleet composition and issuing commands via
 ## categorized command picker and ROE picker sub-modals.
 
-import std/[sets, strutils]
+import std/[options, sets, strutils]
 import ./modal
 import ./table
 import ./scroll_state
@@ -161,9 +161,12 @@ proc renderCommandPicker(state: FleetDetailModalState, area: Rect,
 
   # Build table structure
   var commandTable = table([
-    tableColumn("No", width = widths[0], align = table.Alignment.Left),
-    tableColumn("Mission", width = widths[1], align = table.Alignment.Left),
-    tableColumn("Requirements", width = widths[2], align = table.Alignment.Left)
+    tableColumn("No", width = widths[0],
+      minWidth = widths[0], align = table.Alignment.Left),
+    tableColumn("Mission", width = widths[1],
+      minWidth = widths[1], align = table.Alignment.Left),
+    tableColumn("Requirements", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -192,9 +195,12 @@ proc renderROEPicker(state: FleetDetailModalState, area: Rect,
   let widths = measuredColumnWidths(headers, rows, @[3, 8, 8])
 
   var roeTable = table([
-    tableColumn("ROE", width = widths[0], align = table.Alignment.Right),
-    tableColumn("Meaning", width = widths[1], align = table.Alignment.Left),
-    tableColumn("Use Case", width = widths[2], align = table.Alignment.Left)
+    tableColumn("ROE", width = widths[0],
+      minWidth = widths[0], align = table.Alignment.Right),
+    tableColumn("Meaning", width = widths[1],
+      minWidth = widths[1], align = table.Alignment.Left),
+    tableColumn("Use Case", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -284,9 +290,12 @@ proc renderZTCPicker(state: FleetDetailModalState, area: Rect,
   let widths = measuredColumnWidths(headers, rows, @[2, 8, 12])
 
   var ztcTable = table([
-    tableColumn("No", width = widths[0], align = table.Alignment.Right),
-    tableColumn("Command", width = widths[1], align = table.Alignment.Left),
-    tableColumn("Description", width = widths[2], align = table.Alignment.Left)
+    tableColumn("No", width = widths[0],
+      minWidth = widths[0], align = table.Alignment.Right),
+    tableColumn("Command", width = widths[1],
+      minWidth = widths[1], align = table.Alignment.Left),
+    tableColumn("Description", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -321,10 +330,14 @@ proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
   let widths = measuredColumnWidths(headers, rows, @[5, 5, 2, 2])
 
   var fleetTable = table([
-    tableColumn("Fleet", width = widths[0], align = table.Alignment.Left),
-    tableColumn("Ships", width = widths[1], align = table.Alignment.Right),
-    tableColumn("AS", width = widths[2], align = table.Alignment.Right),
-    tableColumn("DS", width = widths[3], align = table.Alignment.Right)
+    tableColumn("Fleet", width = widths[0],
+      minWidth = widths[0], align = table.Alignment.Left),
+    tableColumn("Ships", width = widths[1],
+      minWidth = widths[1], align = table.Alignment.Right),
+    tableColumn("AS", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Right),
+    tableColumn("DS", width = widths[3],
+      minWidth = widths[3], align = table.Alignment.Right)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -358,9 +371,9 @@ proc renderSystemPicker(state: FleetDetailModalState,
 
   var sysTable = table([
     tableColumn("Coord", width = widths[0],
-      align = table.Alignment.Left),
+      minWidth = widths[0], align = table.Alignment.Left),
     tableColumn("System", width = widths[1],
-      align = table.Alignment.Left)
+      minWidth = widths[1], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -401,14 +414,22 @@ proc renderShipSelector(state: FleetDetailModalState, area: Rect,
     @[2, 3, 14, 6, 3, 2, 2, 10]
   )
   var shipTable = table([
-    tableColumn("No", width = widths[0], align = table.Alignment.Right),
-    tableColumn("Sel", width = widths[1], align = table.Alignment.Left),
-    tableColumn("Class", width = widths[2], align = table.Alignment.Left),
-    tableColumn("ShipId", width = widths[3], align = table.Alignment.Right),
-    tableColumn("Wep", width = widths[4], align = table.Alignment.Right),
-    tableColumn("AS", width = widths[5], align = table.Alignment.Right),
-    tableColumn("DS", width = widths[6], align = table.Alignment.Right),
-    tableColumn("Status", width = widths[7], align = table.Alignment.Left)
+    tableColumn("No", width = widths[0],
+      minWidth = widths[0], align = table.Alignment.Right),
+    tableColumn("Sel", width = widths[1],
+      minWidth = widths[1], align = table.Alignment.Left),
+    tableColumn("Class", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Left),
+    tableColumn("ShipId", width = widths[3],
+      minWidth = widths[3], align = table.Alignment.Right),
+    tableColumn("Wep", width = widths[4],
+      minWidth = widths[4], align = table.Alignment.Right),
+    tableColumn("AS", width = widths[5],
+      minWidth = widths[5], align = table.Alignment.Right),
+    tableColumn("DS", width = widths[6],
+      minWidth = widths[6], align = table.Alignment.Right),
+    tableColumn("Status", width = widths[7],
+      minWidth = widths[7], align = table.Alignment.Left)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -680,13 +701,16 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
 
   # Render modal frame with title
   # Determine footer text per sub-modal (pickers get bordered footers too)
-  let title = if state.subModal in {FleetSubModal.ZTCPicker,
+  # Title reflects ZTC context even for shared sub-modals like FleetPicker
+  let isZtcContext = state.ztcType.isSome or
+    state.subModal in {
+      FleetSubModal.ZTCPicker,
       FleetSubModal.ShipSelector,
       FleetSubModal.CargoParams,
-      FleetSubModal.FighterParams}:
-      "ZERO TURN COMMANDS"
-    else:
-      "FLEET COMMANDS"
+      FleetSubModal.FighterParams
+    }
+  let title = if isZtcContext: "ZERO TURN COMMANDS"
+    else: "FLEET COMMANDS"
   let (hasFooter, footerText) = case state.subModal
     of FleetSubModal.None:
       (true, "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close")
