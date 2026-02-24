@@ -1016,7 +1016,6 @@ proc renderPlanetSummaryTab*(
   let growthLabel = formatGrowthLabel(data.populationGrowthPu)
   let economyLine =
     "GCO: " & $data.gco & "  NCV: " & $data.ncv &
-    "  Tax: " & $data.taxRate & "%" &
     "  Growth: " & growthLabel
   discard buf.setString(area.x, y, economyLine, normalStyle())
   y += 1
@@ -1109,8 +1108,7 @@ proc renderPlanetEconomyTab*(
     return
 
   let headline =
-    "GCO: " & $data.gco & "  NCV: " & $data.ncv &
-    "  Tax: " & $data.taxRate & "%"
+    "GCO: " & $data.gco & "  NCV: " & $data.ncv
   discard buf.setString(area.x, y, headline, normalStyle())
   y += 1
   if y >= area.bottom:
@@ -1331,7 +1329,6 @@ proc renderPlanetUnifiedView*(
     let economyLine =
       "GCO: " & $data.gco &
       "  NCV: " & $data.ncv &
-      "  Tax: " & $data.taxRate & "%" &
       "  Growth: " & growthLabel &
       "  Bonus: " & $data.starbaseBonusPct & "%"
     discard buf.setString(headerArea.x, y, economyLine, normalStyle())
