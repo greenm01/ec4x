@@ -14,6 +14,9 @@ type
     industrial*: IndustrialUnits
     production*: int32
     grossOutput*: int32
+    netValue*: int32           ## NCV cached after turn resolution
+    populationOutput*: int32   ## PU contribution to GCO
+    industrialOutput*: int32   ## IU contribution to GCO
     taxRate*: int32
     infrastructureDamage*: float32
     underConstruction*: Option[ConstructionProjectId]
@@ -68,8 +71,10 @@ type
     houseId*: HouseId
     populationUnits*: int32
     grossOutput*: int32
-    taxRate*: int32
     netValue*: int32
+    populationOutput*: int32   ## PU contribution to GCO
+    industrialOutput*: int32   ## IU contribution to GCO
+    taxRate*: int32
     populationGrowth*: float32
     prestigeBonus*: int32
 

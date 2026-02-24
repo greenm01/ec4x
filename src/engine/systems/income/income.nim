@@ -102,8 +102,10 @@ proc calculateColonyIncome*(
     houseId: colony.owner,
     populationUnits: colony.populationUnits,
     grossOutput: output.grossOutput,
-    taxRate: int32(taxRate),
     netValue: output.netValue,
+    populationOutput: output.populationProduction,
+    industrialOutput: output.industrialProduction,
+    taxRate: int32(taxRate),
     populationGrowth: 0.0, # Calculated later
     prestigeBonus: 0, # Calculated at house level
   )

@@ -289,6 +289,10 @@ proc collectResources(
       if colonyOpt.isSome:
         var colony = colonyOpt.get()
         colony.production = colonyReport.grossOutput
+        colony.grossOutput = colonyReport.grossOutput
+        colony.netValue = colonyReport.netValue
+        colony.populationOutput = colonyReport.populationOutput
+        colony.industrialOutput = colonyReport.industrialOutput
         state.updateColony(colonyReport.colonyId, colony)
 
   logInfo("Economy", "[INC8] Complete")

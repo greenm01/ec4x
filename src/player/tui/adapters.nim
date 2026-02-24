@@ -843,18 +843,6 @@ proc colonyToDetailData*(
         system.resourceRating][system.planetClass]
 
   let starbaseBonus = state.starbaseGrowthBonus(colony)
-  let elMod = production_engine.economicLevelModifier(techLevels.el)
-  let cstMod = 1.0 + (float32(techLevels.cst - 1) * 0.10)
-  let prodGrowth = production_engine.productivityGrowth(taxRate)
-  let populationOutput = int32(float32(colony.populationUnits) * rawIdx)
-  let industrialOutput = int32(
-    float32(colony.industrial.units) * elMod * cstMod *
-      (1.0 + prodGrowth + starbaseBonus)
-  )
-  var gco = populationOutput + industrialOutput
-  if colony.blockaded:
-    gco = int32(float32(gco) * 0.4)
-  let ncv = production_engine.calculateNetValue(gco, taxRate)
   let starbaseBonusPct = int(starbaseBonus * 100.0)
 
   let dockInfo = dockSummary(state, colonyId)
@@ -1030,10 +1018,10 @@ proc colonyToDetailData*(
     rawIndex: rawIdx,
     populationUnits: colony.populationUnits.int,
     industrialUnits: colony.industrial.units.int,
-    populationOutput: populationOutput.int,
-    industrialOutput: industrialOutput.int,
-    gco: gco.int,
-    ncv: ncv.int,
+    populationOutput: colony.populationOutput.int,
+    industrialOutput: colony.industrialOutput.int,
+    gco: colony.grossOutput.int,
+    ncv: colony.netValue.int,
     populationGrowthPu: populationGrowthPu,
     taxRate: taxRate.int,
     starbaseBonusPct: starbaseBonusPct,
@@ -1223,20 +1211,26 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
       var sectorLabel = "?"
       var planetClassLabel = "Unknown"
       var resourceLabel = "Unknown"
+      var rawIdx = 0.0'f32
       if ps.visibleSystems.hasKey(colony.systemId):
         let visSys = ps.visibleSystems[colony.systemId]
         systemName = visSys.name
         if visSys.coordinates.isSome:
           let coords = visSys.coordinates.get()
           sectorLabel = coordLabel(coords.q.int, coords.r.int)
-        # Get planet class name
+        # Get planet class name and raw index
         let classIdx = int(visSys.planetClass)
         if classIdx >= 0 and classIdx < PlanetClassNames.len:
           planetClassLabel = PlanetClassNames[classIdx]
-        # Get resource rating name
+        # Get resource rating name and raw index
         let resourceIdx = int(visSys.resourceRating)
         if resourceIdx >= 0 and resourceIdx < ResourceRatingNames.len:
           resourceLabel = ResourceRatingNames[resourceIdx]
+        # Compute raw index from config via planet class and resource rating
+        if classIdx >= 0 and classIdx < PlanetClassNames.len and
+            resourceIdx >= 0 and resourceIdx < ResourceRatingNames.len:
+          rawIdx = gameConfig.economy.rawMaterialEfficiency.multipliers[
+            ResourceRating(resourceIdx)][PlanetClass(classIdx)]
 
       # Count facilities by type
       var spaceports, shipyards, drydocks, starbases = 0
@@ -1297,13 +1291,13 @@ proc colonyToDetailDataFromPS*(ps: PlayerState, colonyId: ColonyId): PlanetDetai
         sectorLabel: sectorLabel,
         planetClass: planetClassLabel,
         resourceRating: resourceLabel,
-        rawIndex: 0.0,  # Not available in PlayerState
+        rawIndex: rawIdx,
         populationUnits: colony.populationUnits.int,
         industrialUnits: colony.industrial.units.int,
-        populationOutput: 0,  # Not calculated in PlayerState
-        industrialOutput: 0,  # Not calculated in PlayerState
+        populationOutput: colony.populationOutput.int,
+        industrialOutput: colony.industrialOutput.int,
         gco: colony.grossOutput.int,
-        ncv: 0,  # Would need tax rate
+        ncv: colony.netValue.int,
         populationGrowthPu: none(float32),
         taxRate: colony.taxRate.int,
         starbaseBonusPct: 0,
