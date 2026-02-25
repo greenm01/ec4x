@@ -102,9 +102,21 @@ proc verifyEvent*(event: NostrEvent): bool =
 
   let serialized = serializeForSigning(event)
   let digest = sha256.digest(serialized)
-  let msg = SkMessage.fromBytes(digest.data).get()
-  let pubkey = SkXOnlyPublicKey.fromHex(event.pubkey).get()
-  let sig = SkSchnorrSignature.fromHex(event.sig).get()
+  let msgResult = SkMessage.fromBytes(digest.data)
+  if msgResult.isErr:
+    return false
+  let msg = msgResult.get()
+
+  let pubkeyResult = SkXOnlyPublicKey.fromHex(event.pubkey)
+  if pubkeyResult.isErr:
+    return false
+  let pubkey = pubkeyResult.get()
+
+  let sigResult = SkSchnorrSignature.fromHex(event.sig)
+  if sigResult.isErr:
+    return false
+  let sig = sigResult.get()
+
   sig.verify(msg, pubkey)
 
 # =============================================================================

@@ -118,3 +118,24 @@ suite "Nostr Security Hardening":
     )
     signEvent(brokenEvent, daemonPriv)
     check not verifyEvent(brokenEvent)
+
+  test "verifyEvent returns false for malformed pubkey hex":
+    var malformed = createGameDefinitionNoSlots(
+      "game-1",
+      "Malformed Pubkey",
+      "active",
+      "zz"
+    )
+    malformed.sig = "00".repeat(64)
+    check not verifyEvent(malformed)
+
+  test "verifyEvent returns false for malformed signature hex":
+    let daemonKeys = generateKeyPair()
+    var malformed = createGameDefinitionNoSlots(
+      "game-1",
+      "Malformed Sig",
+      "active",
+      daemonKeys.publicKey
+    )
+    malformed.sig = "zz"
+    check not verifyEvent(malformed)
