@@ -159,6 +159,16 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
             if model.ui.appPhase == AppPhase.Lobby and
                 model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
               return mapPrintableAppend(event, actionEntryPasswordAppend)
+            # First-run create-password prompt: append characters
+            if model.ui.appPhase == AppPhase.Lobby and
+                model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
+              return mapPrintableAppend(
+                event, actionEntryCreatePasswordAppend)
+            # Change-password prompt: append characters
+            if model.ui.appPhase == AppPhase.Lobby and
+                model.ui.entryModal.mode == EntryModalMode.ChangePasswordPrompt:
+              return mapPrintableAppend(
+                event, actionEntryChangePasswordAppend)
             # Entry modal invite code input: append characters
             # Auto-focus to InviteCode when typing valid invite characters from GameList
             if model.ui.appPhase == AppPhase.Lobby and
@@ -317,6 +327,9 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
     modifier = KeyModifier.Ctrl
   of Key.CtrlN:
     keyCode = KeyCode.KeyN
+    modifier = KeyModifier.Ctrl
+  of Key.CtrlW:
+    keyCode = KeyCode.KeyW
     modifier = KeyModifier.Ctrl
   of Key.CtrlS:
     keyCode = KeyCode.KeyS

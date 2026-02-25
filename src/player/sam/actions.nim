@@ -879,6 +879,69 @@ proc actionEntryIdentityActivate*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryCreatePasswordAppend*(value: string): Proposal =
+  ## Append character to first-run create-password buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryCreatePasswordAppend,
+    gameActionData: value
+  )
+
+proc actionEntryCreatePasswordBackspace*(): Proposal =
+  ## Backspace in first-run create-password buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryCreatePasswordBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryCreatePasswordConfirm*(): Proposal =
+  ## Confirm first-run wallet creation with chosen password
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryCreatePasswordConfirm,
+    gameActionData: ""
+  )
+
+proc actionEntryChangePassword*(): Proposal =
+  ## Open the change-wallet-password screen
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryChangePassword,
+    gameActionData: ""
+  )
+
+proc actionEntryChangePasswordAppend*(value: string): Proposal =
+  ## Append character to change-password buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryChangePasswordAppend,
+    gameActionData: value
+  )
+
+proc actionEntryChangePasswordBackspace*(): Proposal =
+  ## Backspace in change-password buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryChangePasswordBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryChangePasswordConfirm*(): Proposal =
+  ## Confirm password change
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryChangePasswordConfirm,
+    gameActionData: ""
+  )
+
 proc actionEntryDelete*(): Proposal =
   ## Delete at cursor in entry text inputs
   Proposal(

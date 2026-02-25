@@ -2555,6 +2555,48 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryIdentityCreate())
       of KeyCode.KeyD:
         return some(actionEntryIdentityDelete())
+      of KeyCode.KeyP:
+        return some(actionEntryChangePassword())
+      else:
+        if modifier != ViewModifier:
+          return none(Proposal)
+
+    elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionEntryCreatePasswordConfirm())
+      of KeyCode.KeyEscape:
+        return some(actionQuit())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryCreatePasswordBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionEntryDelete())
+      of KeyCode.KeyLeft:
+        return some(actionEntryCursorLeft())
+      of KeyCode.KeyRight:
+        return some(actionEntryCursorRight())
+      of KeyCode.KeyH:
+        return some(actionEntryToggleMask())
+      else:
+        if modifier != ViewModifier:
+          return none(Proposal)
+
+    elif model.ui.entryModal.mode == EntryModalMode.ChangePasswordPrompt:
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionEntryChangePasswordConfirm())
+      of KeyCode.KeyEscape:
+        return some(actionEntryIdentityMenu())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryChangePasswordBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionEntryDelete())
+      of KeyCode.KeyLeft:
+        return some(actionEntryCursorLeft())
+      of KeyCode.KeyRight:
+        return some(actionEntryCursorRight())
+      of KeyCode.KeyH:
+        return some(actionEntryToggleMask())
       else:
         if modifier != ViewModifier:
           return none(Proposal)
@@ -2600,13 +2642,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
             EntryModalFocus.InviteCode,
             EntryModalFocus.RelayUrl}:
           return some(actionEntryCursorRight())
-      of KeyCode.KeyT:
-        if modifier == KeyModifier.Ctrl:
-          return some(actionEntryIdentityMenu())
-      of KeyCode.KeyI:
-        if modifier == KeyModifier.Ctrl:
-          return some(actionEntryIdentityMenu())
-      of KeyCode.KeyN:
+      of KeyCode.KeyW:
         if modifier == KeyModifier.Ctrl:
           return some(actionEntryIdentityMenu())
       else:

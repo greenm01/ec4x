@@ -68,10 +68,12 @@ type
     ## Current mode of the entry modal
     Normal       ## Default: navigate games, enter invite code
     ImportNsec   ## Importing nsec identity
-    ManageIdentities ## Manage identities
+    ManageIdentities ## Manage identities (wallet manager)
     CreateGame   ## Creating a new game (admin)
     ManageGames  ## Managing existing games (admin)
     PasswordPrompt ## Prompting for password to unlock wallet
+    CreatePasswordPrompt ## First-run: set password for new wallet
+    ChangePasswordPrompt ## Change/remove wallet master password
 
   AdminMenuItem* {.pure.} = enum
     ## Admin menu options
@@ -102,12 +104,15 @@ type
     importInput*: TextInputState   ## nsec import input (masked)
     relayInput*: TextInputState    ## Relay URL input
     createNameInput*: TextInputState ## Game name input (max 32 chars)
-    passwordInput*: TextInputState ## Wallet password input
+    passwordInput*: TextInputState ## Wallet password input (unlock)
+    createPasswordInput*: TextInputState ## First-run password setup
+    changePasswordInput*: TextInputState ## Change wallet password
     importMasked*: bool            ## Toggle for masking sensitive inputs
     # Error messages
     inviteError*: string           ## Error message for invite code
     importError*: string           ## Error message for import
     createError*: string           ## Error message for game creation
+    walletStatusMsg*: string       ## Feedback msg in wallet manager
     # Other state
     isAdmin*: bool                 ## Whether user has Admin privileges
     adminSelectedIdx*: int         ## Selected item in Admin menu
@@ -120,7 +125,7 @@ type
 
 proc newEntryModalState*(): EntryModalState =
   ## Create initial entry modal state
-  let walletResult = ensureWallet()
+  let walletResult = checkWallet()
   
   var activeWallet = IdentityWallet(identities: @[], activeIdx: 0)
   var activeIdentity = Identity()
@@ -130,8 +135,11 @@ proc newEntryModalState*(): EntryModalState =
     activeWallet = walletResult.wallet.get()
     activeIdentity = activeWallet.activeIdentity()
     initialMode = EntryModalMode.Normal
-  elif walletResult.status == WalletLoadStatus.NeedsPassword or walletResult.status == WalletLoadStatus.WrongPassword:
+  elif walletResult.status == WalletLoadStatus.NeedsPassword or
+      walletResult.status == WalletLoadStatus.WrongPassword:
     initialMode = EntryModalMode.PasswordPrompt
+  elif walletResult.status == WalletLoadStatus.NotFound:
+    initialMode = EntryModalMode.CreatePasswordPrompt
 
   result = EntryModalState(
     wallet: activeWallet,
@@ -150,10 +158,13 @@ proc newEntryModalState*(): EntryModalState =
     relayInput: initTextInputState(maxLength = 0, maxDisplayWidth = 40),
     createNameInput: initTextInputState(maxLength = 32, maxDisplayWidth = 30),
     passwordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
+    createPasswordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
+    changePasswordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
     importMasked: true,
     inviteError: "",
     importError: "",
     createError: "",
+    walletStatusMsg: "",
     isAdmin: false,
     adminSelectedIdx: 0,
     managedGamesCount: 0,
@@ -395,7 +406,7 @@ proc importBuffer*(state: EntryModalState): string =
 proc unlockWallet*(state: var EntryModalState): bool =
   ## Attempt to unlock the wallet
   let password = state.passwordInput.value()
-  let result = ensureWallet(some(password))
+  let result = checkWallet(some(password))
   if result.status == WalletLoadStatus.Success:
     state.wallet = result.wallet.get()
     state.identity = state.wallet.activeIdentity()
@@ -439,6 +450,44 @@ proc closeIdentityManager*(state: var EntryModalState) =
   state.mode = EntryModalMode.Normal
   state.importError = ""
   state.identityDeleteArmed = false
+
+proc confirmCreatePassword*(state: var EntryModalState): bool =
+  ## Finalize first-run wallet creation with the chosen password.
+  ## An empty password creates an unencrypted wallet.
+  let password = state.createPasswordInput.value()
+  let passOpt = if password.len > 0: some(password) else: none(string)
+  let result = createAndSaveWallet(passOpt)
+  if result.status == WalletLoadStatus.Success:
+    state.wallet = result.wallet.get()
+    state.identity = state.wallet.activeIdentity()
+    state.mode = EntryModalMode.Normal
+    state.createPasswordInput.clear()
+    state.identityNeedsRefresh = true
+    return true
+  state.importError = "Failed to create wallet."
+  return false
+
+proc openChangePassword*(state: var EntryModalState) =
+  ## Enter the change-password screen from the wallet manager.
+  state.mode = EntryModalMode.ChangePasswordPrompt
+  state.changePasswordInput.clear()
+  state.importError = ""
+
+proc confirmChangePassword*(state: var EntryModalState) =
+  ## Apply the new password and return to wallet manager.
+  let password = state.changePasswordInput.value()
+  let passOpt = if password.len > 0: some(password) else: none(string)
+  state.wallet.changeWalletPassword(passOpt)
+  state.mode = EntryModalMode.ManageIdentities
+  state.changePasswordInput.clear()
+  state.importError = ""
+  state.walletStatusMsg = "Wallet password updated"
+
+proc cancelChangePassword*(state: var EntryModalState) =
+  ## Cancel password change and return to wallet manager.
+  state.mode = EntryModalMode.ManageIdentities
+  state.changePasswordInput.clear()
+  state.importError = ""
 
 proc setIdentityRows*(state: var EntryModalState,
                       rows: seq[tuple[npub, kind, games: string,
@@ -551,7 +600,7 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   let headerStyle = modalBgStyle()
   let emptyStyle = modalDimStyle()
 
-  let title = "MANAGE IDENTITIES "
+  let title = "MANAGE WALLET "
   let limitHint = "(max " & $MaxIdentityCount & ") "
   let ruleLen = max(0, inner.width - title.len - limitHint.len - 1)
   let headerLine = title & limitHint & repeat("─", ruleLen)
@@ -607,8 +656,8 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   x += 5
   discard buf.setString(x, footerArea.y, "]", dimStyle)
   x += 1
-  discard buf.setString(x, footerArea.y, " Activate  ", textStyle)
-  x += 11
+  discard buf.setString(x, footerArea.y, " Use  ", textStyle)
+  x += 6
   discard buf.setString(x, footerArea.y, "[", dimStyle)
   x += 1
   discard buf.setString(x, footerArea.y, "I", keyStyle)
@@ -631,8 +680,16 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   x += 1
   discard buf.setString(x, footerArea.y, "]", dimStyle)
   x += 1
-  discard buf.setString(x, footerArea.y, " Remove  ", textStyle)
-  x += 9
+  discard buf.setString(x, footerArea.y, " Del  ", textStyle)
+  x += 6
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "P", keyStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Password  ", textStyle)
+  x += 11
   discard buf.setString(x, footerArea.y, "[", dimStyle)
   x += 1
   discard buf.setString(x, footerArea.y, "Esc", keyStyle)
@@ -640,6 +697,15 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   discard buf.setString(x, footerArea.y, "]", dimStyle)
   x += 1
   discard buf.setString(x, footerArea.y, " Back", textStyle)
+
+  if state.walletStatusMsg.len > 0:
+    let statusStyle = CellStyle(
+      fg: color(PositiveColor),
+      bg: color(TrueBlackColor),
+      attrs: {}
+    )
+    discard buf.setString(footerArea.x, footerArea.y - 1,
+      state.walletStatusMsg, statusStyle)
 
 proc renderGameList(buf: var CellBuffer, area: Rect,
                     games: seq[EntryActiveGameInfo], selectedIdx: int,
@@ -876,15 +942,15 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     x += 7
   
   if mode == EntryModalMode.Normal:
-    # [Ctrl+I] IDs
+    # [Ctrl+W] Wallet
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
-    discard buf.setString(x, area.y, "Ctrl+I", keyStyle)
+    discard buf.setString(x, area.y, "Ctrl+W", keyStyle)
     x += 6
     discard buf.setString(x, area.y, "]", dimStyle)
     x += 1
-    discard buf.setString(x, area.y, " IDs  ", textStyle)
-    x += 7
+    discard buf.setString(x, area.y, " Wallet  ", textStyle)
+    x += 9
   
   # [Ctrl+X] Quit
   discard buf.setString(x, area.y, "[", dimStyle)
@@ -1011,6 +1077,98 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
       .style(inputStyle)
       .cursorStyle(inputStyle)
     widget.render(relayInput, inputArea, buf, editing and hasFocus)
+
+proc renderCreatePasswordPromptMode(buf: var CellBuffer, inner: Rect,
+    modalArea: Rect, passwordInput: TextInputState, importError: string,
+    isMasked: bool) =
+  ## Render the first-run password setup prompt.
+  let promptStyle = modalBgStyle()
+  let inputStyle = CellStyle(
+    fg: color(PositiveColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let errorStyle = CellStyle(
+    fg: color(AlertColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let footerStyle = CellStyle(
+    fg: color(NeutralColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+  let logoArea = rect(inner.x, inner.y + 1, inner.width, LogoHeight)
+  renderLogo(buf, logoArea)
+
+  let promptY = inner.y + LogoHeight + 3
+  let line1 = "Set a password to encrypt your new wallet"
+  let line2 = "(leave blank for unencrypted): "
+  discard buf.setString(inner.x, promptY, line1, promptStyle)
+  discard buf.setString(inner.x, promptY + 1, line2, promptStyle)
+
+  let inputX = inner.x + line2.len
+  let inputWidth = inner.width - line2.len - 1
+  let inputArea = rect(inputX, promptY + 1, inputWidth, 1)
+  let widget = newTextInput()
+    .masked(isMasked)
+    .style(inputStyle)
+    .cursorStyle(inputStyle)
+  widget.render(passwordInput, inputArea, buf, true)
+
+  if importError.len > 0:
+    discard buf.setString(inner.x, promptY + 2, importError, errorStyle)
+
+  let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
+  discard buf.setString(footerArea.x, footerArea.y,
+    "[H]ide   [Enter] Confirm   [Esc] Quit", footerStyle)
+
+proc renderChangePasswordPromptMode(buf: var CellBuffer, inner: Rect,
+    modalArea: Rect, passwordInput: TextInputState, importError: string,
+    isMasked: bool) =
+  ## Render the change-wallet-password prompt.
+  let promptStyle = modalBgStyle()
+  let inputStyle = CellStyle(
+    fg: color(PositiveColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let errorStyle = CellStyle(
+    fg: color(AlertColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let footerStyle = CellStyle(
+    fg: color(NeutralColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+  let logoArea = rect(inner.x, inner.y + 1, inner.width, LogoHeight)
+  renderLogo(buf, logoArea)
+
+  let promptY = inner.y + LogoHeight + 3
+  let line1 = "Enter new wallet password"
+  let line2 = "(leave blank to remove encryption): "
+  discard buf.setString(inner.x, promptY, line1, promptStyle)
+  discard buf.setString(inner.x, promptY + 1, line2, promptStyle)
+
+  let inputX = inner.x + line2.len
+  let inputWidth = inner.width - line2.len - 1
+  let inputArea = rect(inputX, promptY + 1, inputWidth, 1)
+  let widget = newTextInput()
+    .masked(isMasked)
+    .style(inputStyle)
+    .cursorStyle(inputStyle)
+  widget.render(passwordInput, inputArea, buf, true)
+
+  if importError.len > 0:
+    discard buf.setString(inner.x, promptY + 2, importError, errorStyle)
+
+  let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
+  discard buf.setString(footerArea.x, footerArea.y,
+    "[H]ide   [Enter] Confirm   [Esc] Cancel", footerStyle)
 
 proc renderPasswordPromptMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                               passwordInput: TextInputState, importError: string,
@@ -1251,9 +1409,9 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     let rowCount = max(1, state.identityRows.len)
     let tableWidth = tableWidget.renderWidth(ModalMaxWidth - 2)
     let tableHeight = tableWidget.renderHeight(rowCount)
-    let headerLine = "MANAGE IDENTITIES (max " & $MaxIdentityCount & ")"
-    let footerLine = "[↑↓] Select  [Enter] Activate  [I] Import  [N] New  " &
-      "[D] Remove  [Esc] Back"
+    let headerLine = "MANAGE WALLET (max " & $MaxIdentityCount & ")"
+    let footerLine = "[↑↓] Select  [Enter] Use  [I] Import  [N] New  " &
+      "[D] Del  [P] Password  [Esc] Back"
     let contentWidth = max(tableWidth, max(headerLine.len, footerLine.len))
     let contentHeight = 1 + tableHeight
     let managerFooterHeight = 2  # separator row + footer text row
@@ -1291,7 +1449,16 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     renderIdentityManager(buf, inner, modalArea, state, inner.height - 3)
   elif state.mode == EntryModalMode.PasswordPrompt:
     renderPasswordPromptMode(buf, inner, modalArea,
-                             state.passwordInput, state.importError, state.importMasked)
+                             state.passwordInput, state.importError,
+                             state.importMasked)
+  elif state.mode == EntryModalMode.CreatePasswordPrompt:
+    renderCreatePasswordPromptMode(buf, inner, modalArea,
+                                   state.createPasswordInput,
+                                   state.importError, state.importMasked)
+  elif state.mode == EntryModalMode.ChangePasswordPrompt:
+    renderChangePasswordPromptMode(buf, inner, modalArea,
+                                   state.changePasswordInput,
+                                   state.importError, state.importMasked)
   elif state.mode == EntryModalMode.CreateGame:
     renderCreateGameMode(buf, inner, modalArea, state)
   elif state.mode == EntryModalMode.ManageGames:

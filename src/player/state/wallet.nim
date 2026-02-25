@@ -107,12 +107,13 @@ type
     Success
     NeedsPassword
     WrongPassword
+    NotFound
     Error
 
 proc loadWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
   let path = walletPath()
   if not fileExists(path):
-    return (WalletLoadStatus.Error, none(IdentityWallet))
+    return (WalletLoadStatus.NotFound, none(IdentityWallet))
 
   try:
     let fileContent = readFile(path)
@@ -265,21 +266,25 @@ proc removeIdentityAt*(wallet: var IdentityWallet, idx: int): bool =
   saveWallet(wallet)
   true
 
-proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
+proc checkWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
+  ## Load an existing wallet. Returns NotFound if file is missing.
+  ## Does NOT create a new wallet — call createAndSaveWallet for that.
   let existing = loadWallet(passwordOpt)
   if existing.status == WalletLoadStatus.Success:
     var wallet = existing.wallet.get()
     syncLegacyIdentityMirror(wallet.activeIdentity(), not wallet.encryptedOnDisk)
     return (WalletLoadStatus.Success, some(wallet))
-  elif existing.status == WalletLoadStatus.NeedsPassword or existing.status == WalletLoadStatus.WrongPassword:
-    return existing
+  return existing
 
+proc createAndSaveWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
+  ## Create a new wallet (migrating legacy identity if present) and save
+  ## to disk. Should only be called after checkWallet returns NotFound.
   let legacy = loadIdentity()
   if legacy.isSome:
     var wallet = IdentityWallet(
       identities: @[legacy.get()],
       activeIdx: 0,
-      encryptedOnDisk: passwordOpt.isSome,
+      encryptedOnDisk: passwordOpt.isSome and passwordOpt.get().len > 0,
       sessionPassword: if passwordOpt.isSome: passwordOpt.get() else: ""
     )
     saveWallet(wallet, passwordOpt)
@@ -296,9 +301,31 @@ proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: Wa
   var newWallet = IdentityWallet(
     identities: @[first],
     activeIdx: 0,
-    encryptedOnDisk: passwordOpt.isSome,
+    encryptedOnDisk: passwordOpt.isSome and passwordOpt.get().len > 0,
     sessionPassword: if passwordOpt.isSome: passwordOpt.get() else: ""
   )
   saveWallet(newWallet, passwordOpt)
   logInfo("Wallet", "Created new wallet with local identity")
   return (WalletLoadStatus.Success, some(newWallet))
+
+proc changeWalletPassword*(wallet: var IdentityWallet,
+    newPasswordOpt: Option[string]) =
+  ## Update the wallet encryption password and re-save to disk.
+  ## Pass none(string) or some("") to remove encryption.
+  let hasPassword = newPasswordOpt.isSome and newPasswordOpt.get().len > 0
+  wallet.encryptedOnDisk = hasPassword
+  wallet.sessionPassword = if hasPassword: newPasswordOpt.get() else: ""
+  saveWallet(wallet, newPasswordOpt)
+  logInfo("Wallet", "Wallet password changed")
+
+proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
+  ## Legacy helper: load existing wallet or create one if missing.
+  ## Prefer checkWallet + createAndSaveWallet for new call sites.
+  let existing = checkWallet(passwordOpt)
+  if existing.status == WalletLoadStatus.Success or
+      existing.status == WalletLoadStatus.NeedsPassword or
+      existing.status == WalletLoadStatus.WrongPassword:
+    return existing
+  if existing.status == WalletLoadStatus.NotFound:
+    return createAndSaveWallet(passwordOpt)
+  return existing

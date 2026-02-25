@@ -111,6 +111,13 @@ type
     entryIdentityDeleteCancel
     entryIdentityActivate
     entryDelete
+    entryCreatePasswordAppend
+    entryCreatePasswordBackspace
+    entryCreatePasswordConfirm
+    entryChangePassword
+    entryChangePasswordAppend
+    entryChangePasswordBackspace
+    entryChangePasswordConfirm
     entryInviteAppend
     entryInviteBackspace
     entryInviteSubmit

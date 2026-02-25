@@ -1,14 +1,15 @@
 ## Development Cleanup & Setup Tool
 ##
 ## Automates the full development workflow:
-## 1. Clears player cache and game data
-## 2. Creates a new game
-## 3. Displays invite codes
+## 1. Clears all player state (~/.local/share/ec4x/: wallet, cache, identities)
+## 2. Clears game data (data/games, data/players)
+## 3. Creates a new game
+## 4. Displays invite codes
 ##
 ## Usage:
 ##   nim r tools/clean_dev.nim              # Full workflow: clean + create game + show invites
 ##   nim r tools/clean_dev.nim --clean      # Clean only (no game creation)
-##   nim r tools/clean_dev.nim --cache      # Clear only player cache
+##   nim r tools/clean_dev.nim --cache      # Clear only player state dir
 ##   nim r tools/clean_dev.nim --data       # Clear only game/player data
 ##   nim r tools/clean_dev.nim --dry-run    # Show what would be deleted
 
@@ -16,7 +17,6 @@ import std/[os, strutils, osproc]
 
 const
   CacheDir = ".local/share/ec4x"
-  CacheFile = "cache.db"
   DataGamesDir = "data/games"
   DataPlayersDir = "data/players"
   DataLogsDir = "data/logs"
@@ -27,26 +27,6 @@ type
     CleanOnly    # Clean everything (no game creation)
     CacheOnly    # Clean only player cache
     DataOnly     # Clean only game/player data
-
-proc getCachePath(): string =
-  ## Get the full cache database path
-  getHomeDir() / CacheDir / CacheFile
-
-proc clearCache(dryRun: bool): tuple[success: bool, message: string] =
-  ## Clear the player cache database
-  let cachePath = getCachePath()
-
-  if fileExists(cachePath):
-    if dryRun:
-      return (true, "Would delete: " & cachePath)
-    else:
-      try:
-        removeFile(cachePath)
-        return (true, "✓ Deleted cache: " & cachePath)
-      except OSError as e:
-        return (false, "✗ Failed to delete cache: " & e.msg)
-  else:
-    return (true, "• Cache already empty: " & cachePath)
 
 proc clearDirectory(dir: string, dryRun: bool): tuple[success: bool, message: string] =
   ## Clear all contents of a directory
@@ -88,6 +68,12 @@ proc clearDirectory(dir: string, dryRun: bool): tuple[success: bool, message: st
   let success = failedCount == 0
 
   return (success, msg)
+
+proc clearPlayerData(dryRun: bool): tuple[success: bool, message: string] =
+  ## Clear all player state from ~/.local/share/ec4x/
+  ## (wallet, cache, identity files, etc.)
+  let playerDir = getHomeDir() / CacheDir
+  return clearDirectory(playerDir, dryRun)
 
 proc clearLogFiles(dryRun: bool): tuple[success: bool, message: string] =
   ## Clear log files but keep the directory
@@ -205,7 +191,7 @@ Usage:
 
 Options:
   --clean      Clean everything but don't create new game
-  --cache      Clear only player cache (~/.local/share/ec4x/cache.db)
+  --cache      Clear only player state (~/.local/share/ec4x/)
   --data       Clear only game/player data (data/games, data/players)
   --scenario   Specify scenario file (default: scenarios/standard-4-player.kdl)
   --dry-run    Show what would be deleted without actually deleting
@@ -213,7 +199,7 @@ Options:
   --help       Show this help message
 
 Default Workflow (no options):
-  1. Clear player cache
+  1. Clear all player state (wallet, cache, identities)
   2. Clear game/player data
   3. Create new game from scenario
   4. Display invite codes
@@ -223,7 +209,7 @@ Examples:
   nim r tools/clean_dev.nim --clean                # Clean only, no game
   nim r tools/clean_dev.nim --scenario=my.kdl      # Use custom scenario
   nim r tools/clean_dev.nim --dry-run              # Preview changes
-  nim r tools/clean_dev.nim --cache                # Clear cache only
+  nim r tools/clean_dev.nim --cache                # Clear player state only
 """
 
 proc main() =
@@ -277,7 +263,7 @@ proc main() =
     echo ""
 
     # Clear cache
-    let (cacheOk, cacheMsg) = clearCache(dryRun)
+    let (cacheOk, cacheMsg) = clearPlayerData(dryRun)
     results.add(cacheMsg)
     allSuccess = allSuccess and cacheOk
 
@@ -298,10 +284,10 @@ proc main() =
       allSuccess = allSuccess and logsOk
 
   of CacheOnly:
-    echo "Cleaning player cache only..."
+    echo "Cleaning player state only..."
     echo ""
 
-    let (ok, msg) = clearCache(dryRun)
+    let (ok, msg) = clearPlayerData(dryRun)
     results.add(msg)
     allSuccess = ok
 
