@@ -789,6 +789,33 @@ proc actionEntryImportBackspace*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryIdentityNext*(): Proposal =
+  ## Switch to the next wallet identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityNext,
+    gameActionData: ""
+  )
+
+proc actionEntryIdentityPrev*(): Proposal =
+  ## Switch to the previous wallet identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityPrev,
+    gameActionData: ""
+  )
+
+proc actionEntryIdentityCreate*(): Proposal =
+  ## Create and activate a new local identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityCreate,
+    gameActionData: ""
+  )
+
 proc actionEntryDelete*(): Proposal =
   ## Delete at cursor in entry text inputs
   Proposal(

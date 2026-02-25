@@ -100,6 +100,9 @@ type
     entryImportCancel
     entryImportAppend
     entryImportBackspace
+    entryIdentityNext
+    entryIdentityPrev
+    entryIdentityCreate
     entryDelete
     entryInviteAppend
     entryInviteBackspace

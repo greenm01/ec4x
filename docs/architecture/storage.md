@@ -445,6 +445,31 @@ independent from the daemon's authoritative database.
 ~/.local/share/ec4x/cache.db
 ```
 
+### Identity Wallet Files
+
+The player identity wallet is stored separately from cache:
+
+```
+~/.local/share/ec4x/wallet.kdl
+```
+
+Wallet format:
+
+```kdl
+wallet active="0"
+identity nsec="nsec1..." type="local" created="2026-01-17T12:00:00Z"
+identity nsec="nsec1..." type="imported" created="2026-01-21T09:35:00Z"
+```
+
+Compatibility mirror:
+
+```
+~/.local/share/ec4x/identity.kdl
+```
+
+The active wallet identity is mirrored to `identity.kdl` for older
+single-identity tooling compatibility.
+
 ### Schema
 
 ```sql

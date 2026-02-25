@@ -19,6 +19,7 @@ import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
 import ../../state/identity
+import ../../state/wallet
 
 export text_input
 
@@ -83,6 +84,7 @@ type
 
   EntryModalState* = object
     ## State for the entry modal
+    wallet*: IdentityWallet
     identity*: Identity
     activeGames*: seq[EntryActiveGameInfo]
     focus*: EntryModalFocus
@@ -109,8 +111,10 @@ type
 
 proc newEntryModalState*(): EntryModalState =
   ## Create initial entry modal state
+  let wallet = ensureWallet()
   result = EntryModalState(
-    identity: ensureIdentity(),
+    wallet: wallet,
+    identity: wallet.activeIdentity(),
     activeGames: @[],
     focus: EntryModalFocus.GameList,
     selectedIdx: 0,
@@ -342,7 +346,7 @@ proc confirmImport*(state: var EntryModalState): bool =
   ## Attempt to import the nsec
   ## Returns true on success, false on failure (check importError)
   try:
-    state.identity = importIdentity(state.importInput.value())
+    state.identity = state.wallet.importIntoWallet(state.importInput.value())
     state.mode = EntryModalMode.Normal
     state.importInput.clear()
     state.importError = ""
@@ -350,6 +354,27 @@ proc confirmImport*(state: var EntryModalState): bool =
   except ValueError as e:
     state.importError = e.msg
     false
+
+proc selectNextIdentity*(state: var EntryModalState): bool =
+  ## Activate the next identity in the wallet.
+  if state.wallet.cycleActive(1):
+    state.identity = state.wallet.activeIdentity()
+    return true
+  false
+
+proc selectPrevIdentity*(state: var EntryModalState): bool =
+  ## Activate the previous identity in the wallet.
+  if state.wallet.cycleActive(-1):
+    state.identity = state.wallet.activeIdentity()
+    return true
+  false
+
+proc createIdentity*(state: var EntryModalState) =
+  ## Create and activate a new local identity.
+  state.identity = state.wallet.createNewLocalIdentity()
+
+proc identityCount*(state: EntryModalState): int =
+  state.wallet.identities.len
 
 # -----------------------------------------------------------------------------
 # Rendering
@@ -373,7 +398,8 @@ proc renderLogo(buf: var CellBuffer, area: Rect) =
     y += 1
 
 proc renderIdentitySection(buf: var CellBuffer, area: Rect,
-                           identity: Identity, importHint: bool) =
+                           identity: Identity, identityIndex: int,
+                           identityCount: int, importHint: bool) =
   ## Render the identity section
   let headerStyle = modalBgStyle()
   let npubStyle = CellStyle(
@@ -399,18 +425,27 @@ proc renderIdentitySection(buf: var CellBuffer, area: Rect,
   if area.height > 1:
     let npub = identity.npubTruncated
     let typeLabel = identity.typeLabel
+    let countLabel = " [" & $(identityIndex + 1) & "/" &
+      $identityCount & "]"
     discard buf.setString(area.x, area.y + 1, npub, npubStyle)
     discard buf.setString(area.x + npub.len + 1, area.y + 1,
                           typeLabel, typeStyle)
-    
-    # Import hint on the right
-    if importHint:
-      let hint = "[I] Import nsec"
-      let hintX = area.right - hint.len
-      discard buf.setString(hintX, area.y + 1, "[", dimStyle)
-      discard buf.setString(hintX + 1, area.y + 1, "I", hotkeyStyle)
-      discard buf.setString(hintX + 2, area.y + 1, "]", dimStyle)
-      discard buf.setString(hintX + 3, area.y + 1, " Import nsec", typeStyle)
+    discard buf.setString(area.x + npub.len + typeLabel.len + 2,
+      area.y + 1, countLabel, typeStyle)
+
+    if importHint and area.height > 2:
+      let hint = "[I] Import key   [N] New key  [Tab] Cycle"
+      let hintX = max(area.x, area.right - hint.len)
+      discard buf.setString(hintX, area.y + 2, "[", dimStyle)
+      discard buf.setString(hintX + 1, area.y + 2, "I", hotkeyStyle)
+      discard buf.setString(hintX + 2, area.y + 2, "]", dimStyle)
+      discard buf.setString(hintX + 3, area.y + 2,
+        " Import key   ", typeStyle)
+      discard buf.setString(hintX + 17, area.y + 2, "[", dimStyle)
+      discard buf.setString(hintX + 18, area.y + 2, "N", hotkeyStyle)
+      discard buf.setString(hintX + 19, area.y + 2, "]", dimStyle)
+      discard buf.setString(hintX + 20, area.y + 2,
+        " New key  [Tab] Cycle", typeStyle)
 
 proc renderGameList(buf: var CellBuffer, area: Rect,
                     games: seq[EntryActiveGameInfo], selectedIdx: int,
@@ -655,6 +690,26 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   x += 1
   discard buf.setString(x, area.y, " Import  ", textStyle)
   x += 9
+
+  # [Tab] Cycle ID
+  discard buf.setString(x, area.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, area.y, "Tab", keyStyle)
+  x += 3
+  discard buf.setString(x, area.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, area.y, " ID  ", textStyle)
+  x += 5
+
+  # [N] New key
+  discard buf.setString(x, area.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, area.y, "N", keyStyle)
+  x += 1
+  discard buf.setString(x, area.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, area.y, " New  ", textStyle)
+  x += 6
   
   # [F12] Quit
   discard buf.setString(x, area.y, "[", dimStyle)
@@ -804,7 +859,7 @@ proc renderImportMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   
   # Import prompt
   let promptY = inner.y + LogoHeight + 3
-  let prompt = "Enter nsec: "
+  let prompt = "Enter nsec or hex: "
   discard buf.setString(inner.x, promptY, prompt, promptStyle)
   
   # Use TextInputWidget with masking for nsec
@@ -937,7 +992,7 @@ proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
   let inviteHeight = 3  # header + input + error line
   let adminHeight = if state.isAdmin: 4 else: 0  # header + 2 items + blank
   let relayHeight = 2  # header + input
-  1 + LogoHeight + 1 + 3 + 1 + gamesHeight + 1 + inviteHeight + adminHeight +
+  1 + LogoHeight + 1 + 4 + 1 + gamesHeight + 1 + inviteHeight + adminHeight +
     relayHeight
 
 proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
@@ -984,9 +1039,10 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     y += LogoHeight + 1
     
     # Identity section
-    let identityArea = rect(inner.x, y, inner.width, 3)
-    renderIdentitySection(buf, identityArea, state.identity, true)
-    y += 3 + 1
+    let identityArea = rect(inner.x, y, inner.width, 4)
+    renderIdentitySection(buf, identityArea, state.identity,
+      state.wallet.activeIdx, state.identityCount(), true)
+    y += 4 + 1
     
     # Your Games section
     let gamesArea = rect(inner.x, y, inner.width, gamesHeight)

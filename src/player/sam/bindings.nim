@@ -2539,13 +2539,19 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
             EntryModalFocus.InviteCode,
             EntryModalFocus.RelayUrl}:
           return some(actionEntryCursorLeft())
+      of KeyCode.KeyShiftTab:
+        return some(actionEntryIdentityPrev())
       of KeyCode.KeyRight:
         if model.ui.entryModal.focus in {
             EntryModalFocus.InviteCode,
             EntryModalFocus.RelayUrl}:
           return some(actionEntryCursorRight())
+      of KeyCode.KeyTab:
+        return some(actionEntryIdentityNext())
       of KeyCode.KeyI:
         return some(actionEntryImport())
+      of KeyCode.KeyN:
+        return some(actionEntryIdentityCreate())
       of KeyCode.KeyF12:
         return some(actionQuit())
       else:

@@ -141,11 +141,12 @@ type NostrClient* = ref object
 
 #### Join Game
 ```
-1. Client connects to relay WebSocket
-2. Subscribe to EventKindGameDefinition with game_id filter
-3. Fetch game metadata (players, rules, status)
-4. Subscribe to EventKindGameState/TurnResults for own pubkey
-5. Cache state locally in SQLite
+1. Player selects identity (existing wallet key or new local key)
+2. Client connects to relay WebSocket
+3. Subscribe to EventKindGameDefinition with game_id filter
+4. Fetch game metadata (players, rules, status)
+5. Subscribe to EventKindGameState/TurnResults for selected pubkey
+6. Cache state locally in SQLite
 ```
 
 #### Submit Commands

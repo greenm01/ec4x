@@ -2128,7 +2128,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.statusMessage = "Loading game..."
     of ActionKind.entryImport:
       model.ui.entryModal.startImport()
-      model.ui.statusMessage = "Enter nsec to import identity"
+      model.ui.statusMessage = "Enter nsec or hex secret key"
     of ActionKind.entryImportConfirm:
       if model.ui.entryModal.confirmImport():
         model.ui.statusMessage = "Identity imported successfully"
@@ -2144,6 +2144,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           proposal.gameActionData[0])
     of ActionKind.entryImportBackspace:
       model.ui.entryModal.importInput.backspace()
+    of ActionKind.entryIdentityNext:
+      if model.ui.entryModal.selectNextIdentity():
+        model.ui.statusMessage = "Selected next identity"
+      else:
+        model.ui.statusMessage = "Only one identity in wallet"
+    of ActionKind.entryIdentityPrev:
+      if model.ui.entryModal.selectPrevIdentity():
+        model.ui.statusMessage = "Selected previous identity"
+      else:
+        model.ui.statusMessage = "Only one identity in wallet"
+    of ActionKind.entryIdentityCreate:
+      model.ui.entryModal.createIdentity()
+      model.ui.statusMessage = "Created and selected new local identity"
     of ActionKind.entryDelete:
       if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
         model.ui.entryModal.importInput.delete()

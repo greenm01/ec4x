@@ -90,4 +90,5 @@ logs/
 secrets.fish 
 nimble.develop
 nimble.paths
+config.nims
 nimbledeps

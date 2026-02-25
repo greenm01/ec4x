@@ -409,69 +409,44 @@ proc runTui*(gameId: string = "") =
     game.id == "invite" or game.status == "placeholder" or
       game.status == "invite"
 
-  if initialModel.ui.lobbyProfilePubkeyInput.value().len > 0:
-    # Run migration from old KDL join cache files
-    tuiCache.runMigrations("data", initialModel.ui.lobbyProfilePubkeyInput.value())
+  proc refreshLobbyGamesForPubkey(model: var TuiModel, playerPubkey: string) =
+    model.view.lobbyActiveGames = @[]
+    model.ui.entryModal.activeGames = @[]
+    if playerPubkey.len == 0:
+      return
+
+    tuiCache.runMigrations("data", playerPubkey)
     tuiCache.pruneStaleGames(30)
 
-    # Load games from cache instead of daemon's DB
-    let cachedGames = tuiCache.listPlayerGames(
-      initialModel.ui.lobbyProfilePubkeyInput.value()
-    )
+    let cachedGames = tuiCache.listPlayerGames(playerPubkey)
     for (game, houseId) in cachedGames:
       if isPlaceholderGame(game, houseId):
         if isRemovablePlaceholder(game):
-          tuiCache.deletePlayerSlot(game.id,
-            initialModel.ui.lobbyProfilePubkeyInput.value())
+          tuiCache.deletePlayerSlot(game.id, playerPubkey)
           tuiCache.deleteGame(game.id)
         continue
-      initialModel.view.lobbyActiveGames.add(ActiveGameInfo(
+      model.view.lobbyActiveGames.add(ActiveGameInfo(
         id: game.id,
         name: game.name,
         turn: game.turn,
         phase: game.status,
         houseId: houseId
       ))
-  else:
-    let profiles = loadProfiles("data")
-    if profiles.len > 0:
-      initialModel.ui.lobbyProfilePubkeyInput.setText(profiles[0])
-      let profileInfo = loadProfile("data",
-        initialModel.ui.lobbyProfilePubkeyInput.value())
-      initialModel.ui.lobbyProfileNameInput.setText(profileInfo.name)
-      initialModel.ui.lobbySessionKeyActive = profileInfo.session
+      model.ui.entryModal.activeGames.add(EntryActiveGameInfo(
+        id: game.id,
+        name: game.name,
+        turn: game.turn,
+        houseName: "",
+        houseId: houseId,
+        status: game.status
+      ))
 
-      # Run migration and load from cache
-      tuiCache.runMigrations("data", initialModel.ui.lobbyProfilePubkeyInput.value())
-      tuiCache.pruneStaleGames(30)
-      let cachedGames = tuiCache.listPlayerGames(
-        initialModel.ui.lobbyProfilePubkeyInput.value()
-      )
-      for (game, houseId) in cachedGames:
-        if isPlaceholderGame(game, houseId):
-          if isRemovablePlaceholder(game):
-            tuiCache.deletePlayerSlot(game.id,
-              initialModel.ui.lobbyProfilePubkeyInput.value())
-            tuiCache.deleteGame(game.id)
-          continue
-        initialModel.view.lobbyActiveGames.add(ActiveGameInfo(
-          id: game.id,
-          name: game.name,
-          turn: game.turn,
-          phase: game.status,
-          houseId: houseId
-        ))
-
-  # Sync lobbyActiveGames to entryModal.activeGames (includes houseId)
-  for game in initialModel.view.lobbyActiveGames:
-    initialModel.ui.entryModal.activeGames.add(EntryActiveGameInfo(
-      id: game.id,
-      name: game.name,
-      turn: game.turn,
-      houseName: "",
-      houseId: game.houseId,
-      status: game.phase
-    ))
+  let activeIdentityPubkey = initialModel.ui.entryModal.identity.npubHex
+  initialModel.ui.lobbyProfilePubkeyInput.setText(activeIdentityPubkey)
+  let profileInfo = loadProfile("data", activeIdentityPubkey)
+  initialModel.ui.lobbyProfileNameInput.setText(profileInfo.name)
+  initialModel.ui.lobbySessionKeyActive = profileInfo.session
+  refreshLobbyGamesForPubkey(initialModel, activeIdentityPubkey)
 
   # Note: lobbyJoinGames (available games to join) comes from Nostr events
   # games appear when their definition events arrive from the relay
@@ -720,7 +695,7 @@ proc runTui*(gameId: string = "") =
               if gameStatus == GameStatusCancelled or
                   gameStatus == GameStatusRemoved:
                 tuiCache.deletePlayerSlot(gameId,
-                  sam.model.ui.lobbyProfilePubkeyInput.value())
+                  sam.model.ui.entryModal.identity.npubHex)
                 tuiCache.deleteGame(gameId)
                 sam.model.view.lobbyActiveGames =
                   sam.model.view.lobbyActiveGames.filterIt(it.id != gameId)
@@ -736,7 +711,7 @@ proc runTui*(gameId: string = "") =
 
               # Check if player has a slot in this game
               let slotOpt = tuiCache.getPlayerSlot(gameId,
-                sam.model.ui.lobbyProfilePubkeyInput.value())
+                sam.model.ui.entryModal.identity.npubHex)
               let houseIdFromCache = if slotOpt.isSome:
                 slotOpt.get().houseId else: 0
 
@@ -1002,6 +977,7 @@ proc runTui*(gameId: string = "") =
   #
   var needsRender = true  # Flag set when model changes
   var lastRenderTime = epochTime()
+  var lastIdentityPubkey = initialModel.ui.entryModal.identity.npubHex
   const TargetFrameTimeMs = 16  # ~60fps (16.67ms per frame)
   
   proc doRender() =
@@ -1075,6 +1051,12 @@ proc runTui*(gameId: string = "") =
       nostrClient = nil
       sam.model.ui.nostrEnabled = false
       sam.model.ui.nostrStatus = "idle"
+      sam.model.ui.nostrJoinRequested = false
+      sam.model.ui.nostrJoinSent = false
+      sam.model.ui.nostrJoinInviteCode = ""
+      sam.model.ui.nostrJoinRelayUrl = ""
+      sam.model.ui.nostrJoinGameId = ""
+      sam.model.ui.nostrJoinPubkey = ""
       nostrConnectStartTime = 0.0
       needsRender = true
 
@@ -1452,7 +1434,46 @@ proc runTui*(gameId: string = "") =
       needsRender = true
 
     # -------------------------------------------------------------------------
-    # Phase 5: Process async operations (Nostr WebSocket events)
+    # Phase 5: Detect identity changes in entry modal
+    # -------------------------------------------------------------------------
+    let currentIdentityPubkey = sam.model.ui.entryModal.identity.npubHex
+    if currentIdentityPubkey != lastIdentityPubkey:
+      lastIdentityPubkey = currentIdentityPubkey
+      sam.model.ui.lobbyProfilePubkeyInput.setText(currentIdentityPubkey)
+      let profile = loadProfile("data", currentIdentityPubkey)
+      sam.model.ui.lobbyProfileNameInput.setText(profile.name)
+      sam.model.ui.lobbySessionKeyActive = profile.session
+      refreshLobbyGamesForPubkey(sam.model, currentIdentityPubkey)
+
+      if nostrClient != nil:
+        asyncCheck nostrClient.stop()
+      nostrClient = nil
+      nostrListenerStarted = false
+      nostrSubscriptions.setLen(0)
+      nostrDaemonPubkey = ""
+      sam.model.ui.nostrEnabled = false
+      sam.model.ui.nostrStatus = "idle"
+
+      if sam.model.ui.nostrRelayUrl.len > 0:
+        let identity = sam.model.ui.entryModal.identity
+        let relayList = @[sam.model.ui.nostrRelayUrl]
+        nostrClient = newPlayerNostrClient(
+          relayList,
+          activeGameId,
+          identity.nsecHex,
+          identity.npubHex,
+          nostrDaemonPubkey,
+          nostrHandlers
+        )
+        asyncCheck nostrClient.start()
+        sam.model.ui.nostrStatus = "connecting"
+        sam.model.ui.nostrEnabled = true
+        nostrConnectStartTime = epochTime()
+      sam.model.ui.statusMessage = "Identity switched"
+      needsRender = true
+
+    # -------------------------------------------------------------------------
+    # Phase 6: Process async operations (Nostr WebSocket events)
     # -------------------------------------------------------------------------
     if hasPendingOperations():
       poll(0)  # Non-blocking poll for async events
@@ -1468,7 +1489,7 @@ proc runTui*(gameId: string = "") =
       sam.present(actionLobbyJoinPoll())
 
     # -------------------------------------------------------------------------
-    # Phase 6: Handle game loading and state changes
+    # Phase 7: Handle game loading and state changes
     # -------------------------------------------------------------------------
     if sam.model.ui.loadGameRequested:
       let gameId = sam.model.ui.loadGameId
