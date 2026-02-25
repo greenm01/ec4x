@@ -34,8 +34,8 @@ type
     status*: string
 
 const
-  ModalMaxWidth = 72
-  ModalMinWidth = 50
+  ModalMaxWidth = 84
+  ModalMinWidth = 84
   ModalMinHeight = 24  # Increased to ensure relay section is visible
   FooterHeight = 1
   
@@ -435,20 +435,18 @@ proc renderLogo(buf: var CellBuffer, area: Rect) =
 proc renderIdentitySection(buf: var CellBuffer, area: Rect,
                            identity: Identity, identityIndex: int,
                            identityCount: int, importHint: bool) =
-  ## Render the identity section
+  ## Render the active identity information
   let headerStyle = modalBgStyle()
   let npubStyle = CellStyle(
-    fg: color(PositiveColor),
+    fg: color(NeutralColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
-  let typeStyle = modalDimStyle()
-  let hotkeyStyle = CellStyle(
-    fg: color(KeyHintColor),
+  let typeStyle = CellStyle(
+    fg: color(NeutralColor),
     bg: color(TrueBlackColor),
-    attrs: {StyleAttr.Bold}
+    attrs: {}
   )
-  let dimStyle = modalDimStyle()
   
   # Section header
   let headerText = "IDENTITY "
@@ -469,18 +467,8 @@ proc renderIdentitySection(buf: var CellBuffer, area: Rect,
       area.y + 1, countLabel, typeStyle)
 
     if importHint and area.height > 2:
-      let hint = "[I] Import key   [N] New key  [Tab] Cycle"
-      let hintX = max(area.x, area.right - hint.len)
-      discard buf.setString(hintX, area.y + 2, "[", dimStyle)
-      discard buf.setString(hintX + 1, area.y + 2, "I", hotkeyStyle)
-      discard buf.setString(hintX + 2, area.y + 2, "]", dimStyle)
-      discard buf.setString(hintX + 3, area.y + 2,
-        " Import key   ", typeStyle)
-      discard buf.setString(hintX + 17, area.y + 2, "[", dimStyle)
-      discard buf.setString(hintX + 18, area.y + 2, "N", hotkeyStyle)
-      discard buf.setString(hintX + 19, area.y + 2, "]", dimStyle)
-      discard buf.setString(hintX + 20, area.y + 2,
-        " New key  [Tab] Cycle", typeStyle)
+      # Removed redundant hints from under IDENTITY to save vertical space.
+      discard
 
 proc renderGameList(buf: var CellBuffer, area: Rect,
                     games: seq[EntryActiveGameInfo], selectedIdx: int,
@@ -716,31 +704,31 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     discard buf.setString(x, area.y, " Edit  ", textStyle)
     x += 7
   
-  # [I] Import
+  # [Ctrl-I] Import
   discard buf.setString(x, area.y, "[", dimStyle)
   x += 1
-  discard buf.setString(x, area.y, "I", keyStyle)
-  x += 1
+  discard buf.setString(x, area.y, "Ctrl-I", keyStyle)
+  x += 6
   discard buf.setString(x, area.y, "]", dimStyle)
   x += 1
   discard buf.setString(x, area.y, " Import  ", textStyle)
   x += 9
 
-  # [Tab] Cycle ID
+  # [Ctrl-T] Cycle ID
   discard buf.setString(x, area.y, "[", dimStyle)
   x += 1
-  discard buf.setString(x, area.y, "Tab", keyStyle)
-  x += 3
+  discard buf.setString(x, area.y, "Ctrl-T", keyStyle)
+  x += 6
   discard buf.setString(x, area.y, "]", dimStyle)
   x += 1
   discard buf.setString(x, area.y, " ID  ", textStyle)
   x += 5
 
-  # [N] New key
+  # [Ctrl-N] New key
   discard buf.setString(x, area.y, "[", dimStyle)
   x += 1
-  discard buf.setString(x, area.y, "N", keyStyle)
-  x += 1
+  discard buf.setString(x, area.y, "Ctrl-N", keyStyle)
+  x += 6
   discard buf.setString(x, area.y, "]", dimStyle)
   x += 1
   discard buf.setString(x, area.y, " New  ", textStyle)
@@ -1072,7 +1060,7 @@ proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
   let inviteHeight = 3  # header + input + error line
   let adminHeight = if state.isAdmin: 4 else: 0  # header + 2 items + blank
   let relayHeight = 2  # header + input
-  1 + LogoHeight + 1 + 4 + 1 + gamesHeight + 1 + inviteHeight + adminHeight +
+  1 + LogoHeight + 1 + 2 + 1 + gamesHeight + 1 + inviteHeight + adminHeight +
     relayHeight
 
 proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
@@ -1122,10 +1110,10 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     y += LogoHeight + 1
     
     # Identity section
-    let identityArea = rect(inner.x, y, inner.width, 4)
+    let identityArea = rect(inner.x, y, inner.width, 2)
     renderIdentitySection(buf, identityArea, state.identity,
       state.wallet.activeIdx, state.identityCount(), true)
-    y += 4 + 1
+    y += 2 + 1
     
     # Your Games section
     let gamesArea = rect(inner.x, y, inner.width, gamesHeight)

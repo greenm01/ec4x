@@ -2568,12 +2568,15 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
             EntryModalFocus.InviteCode,
             EntryModalFocus.RelayUrl}:
           return some(actionEntryCursorRight())
-      of KeyCode.KeyTab:
-        return some(actionEntryIdentityNext())
+      of KeyCode.KeyT:
+        if modifier == KeyModifier.Ctrl:
+          return some(actionEntryIdentityNext())
       of KeyCode.KeyI:
-        return some(actionEntryImport())
+        if modifier == KeyModifier.Ctrl:
+          return some(actionEntryImport())
       of KeyCode.KeyN:
-        return some(actionEntryIdentityCreate())
+        if modifier == KeyModifier.Ctrl:
+          return some(actionEntryIdentityCreate())
       of KeyCode.KeyF12:
         return some(actionQuit())
       else:
