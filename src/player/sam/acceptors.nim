@@ -2116,11 +2116,15 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.entryUp:
       if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
         model.ui.entryModal.moveIdentitySelection(-1)
+      elif model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
+        model.ui.entryModal.movePlayerGameSelection(-1)
       else:
         model.ui.entryModal.moveUp()
     of ActionKind.entryDown:
       if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
         model.ui.entryModal.moveIdentitySelection(1)
+      elif model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
+        model.ui.entryModal.movePlayerGameSelection(1)
       else:
         model.ui.entryModal.moveDown()
     of ActionKind.entrySelect:
@@ -2132,6 +2136,21 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.loadGameId = game.id
         model.ui.loadHouseId = game.houseId
         model.ui.statusMessage = "Loading game..."
+    of ActionKind.entryPlayerGamesMenu:
+      if model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
+        model.ui.entryModal.closePlayerGamesManager()
+      else:
+        model.ui.entryModal.openPlayerGamesManager()
+      model.ui.statusMessage = ""
+    of ActionKind.entryPlayerGamesSelect:
+      let gameOpt = model.ui.entryModal.selectedGame()
+      if gameOpt.isSome:
+        let game = gameOpt.get()
+        model.ui.loadGameRequested = true
+        model.ui.loadGameId = game.id
+        model.ui.loadHouseId = game.houseId
+        model.ui.statusMessage = "Loading game..."
+        model.ui.entryModal.closePlayerGamesManager()
     of ActionKind.entryImport:
       model.ui.entryModal.startImport()
       model.ui.statusMessage = "Enter nsec or hex secret key"

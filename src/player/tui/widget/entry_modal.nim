@@ -69,6 +69,7 @@ type
     Normal       ## Default: navigate games, enter invite code
     ImportNsec   ## Importing nsec identity
     ManageIdentities ## Manage identities (wallet manager)
+    ManagePlayerGames ## Manage player's joined games
     CreateGame   ## Creating a new game (admin)
     ManageGames  ## Managing existing games (admin)
     PasswordPrompt ## Prompting for password to unlock wallet
@@ -451,6 +452,14 @@ proc closeIdentityManager*(state: var EntryModalState) =
   state.importError = ""
   state.identityDeleteArmed = false
 
+proc openPlayerGamesManager*(state: var EntryModalState) =
+  state.returnMode = state.mode
+  state.mode = EntryModalMode.ManagePlayerGames
+
+proc closePlayerGamesManager*(state: var EntryModalState) =
+  state.mode = state.returnMode
+  state.selectedIdx = 0
+
 proc confirmCreatePassword*(state: var EntryModalState): bool =
   ## Finalize first-run wallet creation with the chosen password.
   ## Password is mandatory — blank is rejected.
@@ -503,6 +512,18 @@ proc setIdentityRows*(state: var EntryModalState,
     state.identitySelectedIdx = 0
   elif state.identitySelectedIdx >= state.identityRows.len:
     state.identitySelectedIdx = state.identityRows.len - 1
+
+proc movePlayerGameSelection*(state: var EntryModalState, delta: int) =
+  var activeCount = 0
+  for g in state.activeGames:
+    if g.houseId > 0 and g.status != "completed":
+      activeCount += 1
+  if activeCount == 0:
+    return
+  var idx = state.selectedIdx + delta
+  if idx < 0: idx = 0
+  if idx >= activeCount: idx = activeCount - 1
+  state.selectedIdx = idx
 
 proc updateIdentityRows*(state: var EntryModalState,
                          getGameAcronyms: proc(npubHex: string): string) =
@@ -715,121 +736,56 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
 proc renderGameList(buf: var CellBuffer, area: Rect,
                     games: seq[EntryActiveGameInfo], selectedIdx: int,
                     hasFocus: bool) =
-  ## Render the list of active games
+  ## Render a single active game line (compact)
   let headerStyle = modalBgStyle()
   let emptyStyle = modalDimStyle()
-  
+
   # Section header
-  let headerText = "YOUR GAMES "
+  let headerText = "ACTIVE GAME "
   let ruleLen = area.width - headerText.len - 1
   let headerLine = headerText & repeat("─", ruleLen)
   discard buf.setString(area.x, area.y, headerLine, headerStyle)
 
-  let listHeight = area.height - 1
-  if listHeight <= 0:
+  if area.height <= 1:
     return
-  
-  var activeGames: seq[EntryActiveGameInfo] = @[]
-  var archivedGames: seq[EntryActiveGameInfo] = @[]
+
+  # Find first active game (houseId > 0 and not completed)
+  var found = false
+  var g = EntryActiveGameInfo()
   for game in games:
-    if game.houseId <= 0:
-      continue
-    if game.status == "completed":
-      archivedGames.add(game)
-    else:
-      activeGames.add(game)
-  if activeGames.len == 0 and archivedGames.len == 0:
-    if area.height > 1:
-      discard buf.setString(area.x + 2, area.y + 1,
-                            "None", emptyStyle)
+    if game.houseId > 0 and game.status != "completed":
+      g = game
+      found = true
+      break
+
+  if not found:
+    discard buf.setString(area.x + 2, area.y + 1, "None", emptyStyle)
     return
-  
-  var y = area.y + 1
-  var renderedActive = 0
-  if activeGames.len == 0:
-    discard buf.setString(area.x + 2, y, "None", emptyStyle)
-    renderedActive = 1
-    y += 1
+
+  let lineY = area.y + 1
+  let cursor = if hasFocus: "►" else: " "
+  discard buf.setString(area.x, lineY, cursor, headerStyle)
+
+  # Truncate name to fit
+  let nameMax = max(10, area.width - 20)
+  var name = g.name
+  if name.len > nameMax:
+    name = name[0 ..< nameMax - 1] & "\xe2\x80\xa6"
+  discard buf.setString(area.x + 2, lineY, name, modalBgStyle())
+
+  let turnStr = "T" & $g.turn
+  # Try to right-align turn and house name
+  let house = g.houseName
+  let suffix = " " & turnStr & " " & house
+  var suffixX = area.right - suffix.len
+  if suffixX <= area.x + 2 + name.len:
+    # Not enough room to right-align; place after name
+    let afterX = area.x + 2 + name.len + 1
+    discard buf.setString(afterX, lineY, turnStr & " ", modalDimStyle())
+    discard buf.setString(afterX + turnStr.len + 1, lineY, house, modalDimStyle())
   else:
-    var boundedSelected = selectedIdx
-    if boundedSelected < 0:
-      boundedSelected = 0
-    if boundedSelected >= activeGames.len:
-      boundedSelected = activeGames.len - 1
-    let maxStart = max(0, activeGames.len - listHeight)
-    var startIdx = 0
-    if activeGames.len > listHeight:
-      startIdx = boundedSelected - listHeight + 1
-      if startIdx < 0:
-        startIdx = 0
-      if startIdx > maxStart:
-        startIdx = maxStart
-
-    let selIdx = if hasFocus: boundedSelected else: -1
-    var gameTable = table([
-      tableColumn("Name", width = 24),
-      tableColumn("Turn", width = 6),
-      tableColumn("House", width = 0, minWidth = 4)
-    ]).showBorders(false)
-      .showHeader(false)
-      .showSeparator(false)
-      .cellPadding(1)
-      .rowStyle(modalBgStyle())
-      .selectedStyle(selectedStyle())
-      .selectedIdx(selIdx)
-      .scrollOffset(startIdx)
-    for game in activeGames:
-      var name = game.name
-      if name.len > 24:
-        name = name[0..<23] & "\xe2\x80\xa6"
-      let turnStr = "T" & $game.turn
-      gameTable.addRow(@[name, turnStr, game.houseName])
-
-    let tableArea = rect(area.x, y,
-                         area.width, listHeight)
-    gameTable.render(tableArea, buf)
-
-    let endIdx = min(activeGames.len, startIdx + listHeight)
-    renderedActive = endIdx - startIdx
-    y = area.y + 1 + renderedActive
-
-    if activeGames.len > listHeight and listHeight > 1:
-      let listArea = rect(area.x, area.y + 1,
-                          area.width, listHeight)
-      let scrollbarState = ScrollbarState(
-        contentLength: activeGames.len,
-        position: startIdx,
-        viewportLength: listHeight
-      )
-      renderScrollbar(listArea, buf, scrollbarState,
-        ScrollbarOrientation.VerticalRight)
-
-  if archivedGames.len > 0 and y < area.bottom:
-    let archivedHeader = "ARCHIVED "
-    let archivedRule = area.width - archivedHeader.len - 1
-    let archivedLine = archivedHeader & repeat("─", archivedRule)
-    discard buf.setString(area.x, y, archivedLine, headerStyle)
-    y += 1
-
-    let archHeight = min(archivedGames.len, area.bottom - y)
-    if archHeight > 0:
-      var archTable = table([
-        tableColumn("Name", width = 24),
-        tableColumn("Turn", width = 6),
-        tableColumn("House", width = 0, minWidth = 4)
-      ]).showBorders(false)
-        .showHeader(false)
-        .showSeparator(false)
-        .cellPadding(1)
-        .rowStyle(modalDimStyle())
-      for game in archivedGames:
-        archTable.addRow(@[game.name,
-                           "T" & $game.turn,
-                           game.houseName])
-      let archArea = rect(area.x, y,
-                          area.width, archHeight)
-      archTable.render(archArea, buf)
-      y += archHeight
+    discard buf.setString(suffixX, lineY, " " & turnStr & " ", modalDimStyle())
+    discard buf.setString(suffixX + turnStr.len + 2, lineY, house, modalDimStyle())
 
 proc renderInviteCodeSection(buf: var CellBuffer, area: Rect,
                               inviteInput: TextInputState,
@@ -1357,20 +1313,49 @@ proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   let footerHint = "[↑↓] Navigate  [←→] Adjust  [Enter] Select  [Esc] Cancel"
   discard buf.setString(footerArea.x, footerArea.y, footerHint, footerStyle)
 
-proc desiredGamesHeight(state: EntryModalState): int =
-  ## Calculate the games section height with all rows
-  var activeCount = 0
-  var archivedCount = 0
+proc renderPlayerGamesManager(buf: var CellBuffer, inner: Rect,
+                              modalArea: Rect, state: EntryModalState,
+                              tableHeight: int) =
+  ## Render a table of player's active games (non-completed, owned)
+  let headerStyle = modalBgStyle()
+  let emptyStyle = modalDimStyle()
+
+  let title = "MY GAMES "
+  let ruleLen = max(0, inner.width - title.len - 1)
+  let headerLine = title & repeat("─", ruleLen)
+  discard buf.setString(inner.x, inner.y, headerLine, headerStyle)
+
+  if inner.height <= 2:
+    return
+
+  let tableArea = rect(inner.x, inner.y + 1, inner.width, tableHeight)
+
+  var rows: seq[TableRow] = @[]
   for game in state.activeGames:
-    if game.houseId <= 0:
-      continue
-    if game.status == "completed":
-      archivedCount += 1
-    else:
-      activeCount += 1
-  let activeRows = if activeCount > 0: activeCount else: 1
-  let archivedRows = if archivedCount > 0: archivedCount + 1 else: 0
-  1 + activeRows + archivedRows
+    if game.houseId > 0 and game.status != "completed":
+      var name = game.name
+      if name.len > 24:
+        name = name[0..<23] & "\xe2\x80\xa6"
+      rows.add(TableRow(cells: @[name, "T" & $game.turn, game.houseName]))
+
+  if rows.len == 0:
+    discard buf.setString(tableArea.x + 2, tableArea.y, "None", emptyStyle)
+    return
+
+  var tableWidget = table([
+    tableColumn("Name", width = 24),
+    tableColumn("Turn", width = 6),
+    tableColumn("House", width = 0, minWidth = 4)
+  ]).showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .rowStyle(modalBgStyle())
+    .selectedStyle(selectedStyle())
+    .selectedIdx(state.selectedIdx)
+    .rows(rows)
+
+  tableWidget.render(tableArea, buf)
 
 proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
   ## Calculate content height with a specific games section size
@@ -1429,16 +1414,39 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     let inner = managerModal.inner(modalArea)
     renderIdentityManager(buf, inner, modalArea, state, tableHeight)
     return
-  
-  let desiredHeight = desiredGamesHeight(state)
-  let fixedHeight = calculateContentHeight(state, 0)
-  let minGamesHeight = 2
-  let maxContentHeight = viewport.height - FooterHeight - 2
-  let availableForGames = maxContentHeight - fixedHeight
-  let maxGamesHeight = max(minGamesHeight, availableForGames)
-  let gamesHeight = max(minGamesHeight,
-    min(desiredHeight, maxGamesHeight))
-  let contentHeight = fixedHeight + gamesHeight
+  if state.mode == EntryModalMode.ManagePlayerGames:
+    var tableWidget = table([
+      tableColumn("Name", width = 24),
+      tableColumn("Turn", width = 6),
+      tableColumn("House", width = 0, minWidth = 4)
+    ]).showBorders(true)
+      .showHeader(true)
+      .showSeparator(true)
+      .cellPadding(1)
+    # Count rows (at least 1)
+    var gameCount = 0
+    for g in state.activeGames:
+      if g.houseId > 0 and g.status != "completed":
+        gameCount += 1
+    let rowCount = max(1, gameCount)
+    let tableWidth = tableWidget.renderWidth(ModalMaxWidth - 2)
+    let tableHeight = tableWidget.renderHeight(rowCount)
+    let contentWidth = max(tableWidth, "MY GAMES ".len)
+    let contentHeight = 1 + tableHeight
+    let managerFooterHeight = 2
+    let managerModal = modal
+      .minWidth(max(40, contentWidth + 2))
+      .minHeight(contentHeight + managerFooterHeight + 2)
+    let modalArea = managerModal.calculateArea(viewport, contentWidth,
+                                               contentHeight + managerFooterHeight)
+    managerModal.renderWithSeparator(modalArea, buf, managerFooterHeight)
+    let inner = managerModal.inner(modalArea)
+    renderPlayerGamesManager(buf, inner, modalArea, state, tableHeight)
+    return
+
+  # Normal mode: use a fixed small games area and calculate content height
+  let gamesHeight = 2
+  let contentHeight = calculateContentHeight(state, gamesHeight)
   let modalArea = modal.calculateArea(viewport, contentHeight + FooterHeight)
   
   # Render modal frame with footer separator

@@ -441,6 +441,21 @@ proc runTui*(gameId: string = "") =
         status: game.status
       ))
 
+    # Restore last selected active game from cache if available
+    let lastActive = tuiCache.getLastActiveGame()
+    if lastActive.len > 0:
+      var foundIdx = -1
+      for idx, g in model.ui.entryModal.activeGames:
+        if g.id == lastActive:
+          foundIdx = idx
+          break
+      if foundIdx >= 0:
+        model.ui.entryModal.selectedIdx = foundIdx
+      else:
+        model.ui.entryModal.selectedIdx = 0
+    else:
+      model.ui.entryModal.selectedIdx = 0
+
   let activeIdentityPubkey = initialModel.ui.entryModal.identity.npubHex
   initialModel.ui.lobbyProfilePubkeyInput.setText(activeIdentityPubkey)
   let profileInfo = loadProfile("data", activeIdentityPubkey)
@@ -888,6 +903,8 @@ proc runTui*(gameId: string = "") =
                   sam.model.ui.entryModal.inviteInput.clear()
                   sam.model.ui.entryModal.inviteError = ""
                   logInfo("JOIN", "★★★ JOIN COMPLETE! Game should now appear in YOUR GAMES")
+                  # Persist last active game so UI can restore selection
+                  tuiCache.setLastActiveGame(joinGameId)
                   break
             enqueueProposal(emptyProposal())
         except CatchableError as e:
@@ -1588,6 +1605,9 @@ proc runTui*(gameId: string = "") =
               lastDraftFingerprint = packetFingerprint(draft.packet)
           syncCachedIntelNotes(sam.model)
           syncCachedMessages(sam.model)
+          # Persist last active game when entering a game
+          if gameId.len > 0:
+            tuiCache.setLastActiveGame(gameId)
         elif cachedStateOpt.isSome and not authoritativeConfigLoaded:
           # Cached state exists but config snapshot is missing/invalid.
           activeGameId = gameId
@@ -1749,8 +1769,12 @@ proc runTui*(gameId: string = "") =
     # Phase 7: Game list maintenance
     # -------------------------------------------------------------------------
     # Filter out placeholder games, maintain selection consistency
+    # Prefer cached last active game when available
+    let cachedLast = tuiCache.getLastActiveGame()
     let selectedId =
-      if sam.model.ui.entryModal.selectedIdx >= 0 and
+      if cachedLast.len > 0:
+        cachedLast
+      elif sam.model.ui.entryModal.selectedIdx >= 0 and
           sam.model.ui.entryModal.selectedIdx <
           sam.model.ui.entryModal.activeGames.len:
         sam.model.ui.entryModal.activeGames[

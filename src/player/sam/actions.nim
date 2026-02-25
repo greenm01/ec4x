@@ -879,6 +879,24 @@ proc actionEntryIdentityActivate*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryPlayerGamesMenu*(): Proposal =
+  ## Open the player games manager
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPlayerGamesMenu,
+    gameActionData: ""
+  )
+
+proc actionEntryPlayerGamesSelect*(): Proposal =
+  ## Select a game from the player games manager
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPlayerGamesSelect,
+    gameActionData: ""
+  )
+
 proc actionEntryCreatePasswordAppend*(value: string): Proposal =
   ## Append character to first-run create-password buffer
   Proposal(

@@ -2561,6 +2561,20 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         if modifier != ViewModifier:
           return none(Proposal)
 
+    elif model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
+      case key
+      of KeyCode.KeyEscape:
+        return some(actionEntryPlayerGamesMenu())
+      of KeyCode.KeyUp:
+        return some(actionEntryUp())
+      of KeyCode.KeyDown:
+        return some(actionEntryDown())
+      of KeyCode.KeyEnter:
+        return some(actionEntryPlayerGamesSelect())
+      else:
+        if modifier != ViewModifier:
+          return none(Proposal)
+
     elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
       case key
       of KeyCode.KeyEnter:
@@ -2645,6 +2659,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyW:
         if modifier == KeyModifier.Ctrl:
           return some(actionEntryIdentityMenu())
+      of KeyCode.KeyG:
+        if modifier == KeyModifier.Ctrl:
+          return some(actionEntryPlayerGamesMenu())
       else:
         if modifier != ViewModifier:
           return none(Proposal)

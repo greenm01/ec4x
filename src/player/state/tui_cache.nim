@@ -379,6 +379,14 @@ proc setDefaultRelay*(cache: TuiCache, relayUrl: string) =
   ## Set the default relay URL
   cache.setSetting("default_relay", relayUrl)
 
+proc getLastActiveGame*(cache: TuiCache): string =
+  ## Get the last active game ID (empty string if none)
+  cache.getSetting("last_active_game_id")
+
+proc setLastActiveGame*(cache: TuiCache, gameId: string) =
+  ## Set the last active game ID
+  cache.setSetting("last_active_game_id", gameId)
+
 # =============================================================================
 # Game Operations
 # =============================================================================

@@ -105,6 +105,8 @@ type
     entryPasswordConfirm
     entryPasswordBackspace
     entryIdentityMenu
+    entryPlayerGamesMenu
+    entryPlayerGamesSelect
     entryIdentityCreate
     entryIdentityDelete
     entryIdentityDeleteConfirm
