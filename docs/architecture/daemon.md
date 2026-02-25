@@ -69,7 +69,7 @@ The **daemon** is the autonomous turn processing service that powers EC4X. It mo
 
 **During Runtime:**
 1. Periodically re-scan for new game directories (hot reload)
-2. Detect games added by `moderator new`
+2. Detect games added by admin tooling
 3. Detect games paused/resumed/completed
 4. Adjust monitoring dynamically
 
@@ -108,17 +108,34 @@ Loop every poll_interval:
 **Nostr Mode:**
 ```
 Maintain WebSocket subscription:
-  Filter: kind=30001, g=<game_ids>, p=<moderator_pubkey>
+  Filter: kind=30402, d=<game_ids>, p=<daemon_pubkey>
 
 On EVENT received:
   Verify signature
-  Decrypt with moderator's private key
-  Parse command packet
-  Validate against game rules
-  Insert into commands table
-  Cache in nostr_events table
+  Validate required tags (d, turn, p)
+  Validate turn matches current game turn
+  Decrypt with daemon private key
+  Parse msgpack CommandPacket
+  Upsert commands row by (game_id, turn, house_id)
+  Cache event ID for replay protection
   Log command receipt
 ```
+
+**Nostr Turn Command Lifecycle (30402):**
+
+Normative rules:
+
+- Players MAY resubmit command packets to revise orders for the same turn.
+- Daemon MUST retain only the latest valid packet for
+  `(game_id, house_id, turn)`.
+- Invalid signatures, missing tags, and wrong-turn packets are rejected.
+- Turn readiness checks use the authoritative packet per house.
+
+Implementation references:
+
+- `src/daemon/daemon.nim` (`processIncomingCommand`)
+- `src/daemon/persistence/writer.nim` (`saveCommandPacket`)
+- `src/daemon/transport/nostr/client.nim` (`subscribeDaemon`)
 
 **Multi-Game Efficiency:**
 - Localhost: Single filesystem poll covers all games in directory tree
@@ -214,7 +231,7 @@ COMMIT;
 **Error Handling:**
 - On any error: ROLLBACK transaction
 - Log error details
-- Notify moderator (future: via Nostr event)
+- Notify operator/admin tooling
 - Leave game in 'Active' state for retry
 - Mark turn as failed in metadata
 
@@ -244,27 +261,25 @@ Public results:
 For each house in game:
   1. Query state_deltas for house_id
   2. Query intel tables for visibility
-  3. Generate filtered delta JSON
-  4. Check size:
-     - If < 32 KB: single event
-     - If >= 32 KB: chunk into multiple events
-  5. Encrypt to house's pubkey (NIP-44)
-  6. Create EventKindStateDelta (or EventKindDeltaChunk)
-  7. Sign with moderator's keypair
-  8. Insert into nostr_outbox queue
+  3. Generate filtered delta msgpack
+  4. Encrypt to house's pubkey (NIP-44)
+  5. Create EventKindTurnResults (30403)
+  6. Sign with daemon keypair
+  7. Publish to relay and record outbound event id
 
 Public results:
   1. Generate public turn summary
-  2. Create EventKindTurnComplete
-  3. Sign with moderator's keypair
-  4. Insert into nostr_outbox queue
+  2. Keep as file/log output (no dedicated turn-complete event kind)
 
 Publish loop (separate thread):
-  Poll nostr_outbox for unsent events
-  Batch publish to relay (up to 10/second)
-  Mark sent = 1 on success
-  Retry on failure (exponential backoff)
+  Use Nostr client publisher
+  Retry publish according to relay client behavior
 ```
+
+Implementation references:
+
+- `src/daemon/publisher.nim` (`publishTurnResults`, `publishFullState`)
+- `src/daemon/transport/nostr/events.nim` (`createTurnResults`)
 
 ## Operational Model
 
@@ -580,7 +595,7 @@ proc listenNostr(msgQueue: AsyncQueue[DaemonMsg]) {.async.} =
     let packet = await ws.receiveStrPacket()  # Non-blocking
     let event = parseNostrEvent(packet)
 
-    if event.kind == 30001:  # Command packet
+    if event.kind == 30402:  # Turn command packet
       let command = decryptCommand(event)
       await msgQueue.send(Msg(
         kind: OrderReceived,
@@ -790,7 +805,7 @@ health {
 2. Log full error with stack trace
 3. Leave game in 'Active' phase
 4. Increment failure counter in metadata
-5. If failures > 3: Set phase to 'Paused', notify moderator
+5. If failures > 3: Set phase to 'Paused', notify operator
 6. Continue processing other games
 
 ### Nostr Relay Disconnection
@@ -802,7 +817,7 @@ health {
 2. Attempt reconnect with exponential backoff
 3. Resubscribe to all game filters on reconnect
 4. Fetch missed events (if relay supports)
-5. If all relays fail: Alert moderator, continue with cached state
+5. If all relays fail: Alert operator, continue with cached state
 
 ### Command Validation Failure
 
@@ -811,7 +826,7 @@ health {
 **Response:**
 1. Log validation error
 2. Reject command (don't insert into commands table)
-3. Send error notification to player (Nostr: EventKindError)
+3. Optionally notify player via transport-specific UX/status messaging
 4. On turn deadline: Resolve with valid commands, treat invalid as "Hold"
 
 ### Database Corruption
@@ -822,16 +837,16 @@ health {
 1. Log critical error
 2. Attempt automatic recovery: `PRAGMA integrity_check`
 3. If recoverable: Run recovery, continue
-4. If unrecoverable: Pause affected game, alert moderator, restore from backup
+4. If unrecoverable: Pause game, alert operator, restore from backup
 
 ## Security Considerations
 
-### Moderator Key Protection
+### Daemon Key Protection
 
-**Critical**: Moderator's private key can:
+**Critical**: Daemon private key can:
 - Decrypt all player commands
 - Sign game state updates
-- Impersonate the game server
+- Impersonate the daemon
 
 **Best Practices:**
 - Store private key encrypted on disk
@@ -899,7 +914,7 @@ health {
 ### Replay and Rollback
 
 **Current**: Turn resolution is final
-**Future**: Store pre-resolution state, allow rollback on moderator approval
+**Future**: Store pre-resolution state, allow rollback on operator approval
 **Use Case**: Correct bugs, adjudicate disputes
 
 ### Distributed Daemon

@@ -5,9 +5,8 @@ coordination, state synchronization, and player communication.
 
 ## Overview
 
-EC4X uses a central relay architecture where the relay server is also
-the authoritative game engine. The Nostr protocol serves as the
-transport layer for:
+EC4X uses a daemon + relay architecture where the daemon is the
+authoritative game engine and Nostr is the transport layer for:
 
 - Game discovery and invitations
 - Player identity and authentication
@@ -31,9 +30,71 @@ transport layer for:
        └───────┘       └───────┘       └───────┘
 ```
 
-The server database is the authoritative source of game state. Nostr
+The daemon database is the authoritative source of game state. Nostr
 events are used for real-time updates and client-server communication,
 not as the primary data store.
+
+---
+
+## Normative Constants and Invariants
+
+The rules in this section are normative. Later sections and examples
+must be interpreted to match these rules.
+
+### Core Invariants
+
+- The daemon is the authoritative source of game state.
+- Nostr relays transport events but are not authoritative state.
+- Clients MUST validate daemon-signed authoritative events
+  (`30400`, `30403`, `30404`, `30405`).
+- Clients MUST treat malformed `turn` tags as invalid for
+  turn-scoped events.
+
+### Canonical Event Kinds
+
+| Kind | Name | Publisher | Encryption |
+|------|------|-----------|------------|
+| 30400 | Game Definition | Daemon/Admin | None |
+| 30401 | Player Slot Claim | Player | None |
+| 30402 | Turn Commands | Player | NIP-44 |
+| 30403 | Turn Results | Daemon | NIP-44 |
+| 30404 | Join Error | Daemon | NIP-44 |
+| 30405 | Game State | Daemon | NIP-44 |
+| 30406 | Player Message | Player/Daemon | NIP-44 |
+
+### Required Tags by Event Kind
+
+| Kind | Required tags |
+|------|---------------|
+| 30400 | `d`, `name`, `status` |
+| 30401 | `d`, `code` |
+| 30402 | `d`, `turn`, `p` (daemon pubkey) |
+| 30403 | `d`, `turn`, `p` (player pubkey) |
+| 30404 | `p` (player pubkey) |
+| 30405 | `d`, `turn`, `p` (player pubkey) |
+| 30406 | `d`, `p`, `from_house`, `to_house` |
+
+### Canonical Wire Pipeline
+
+All encrypted payloads (`30402`, `30403`, `30404`, `30405`, `30406`)
+MUST use:
+
+```
+msgpack binary -> zstd compress -> NIP-44 encrypt -> base64 encode
+```
+
+### Security Boundary (Confidentiality vs Metadata)
+
+NIP-44 protects payload contents, but relay-visible metadata remains:
+
+- Event kind (`kind`)
+- Tags (`d`, `turn`, `p`, etc.)
+- Sender pubkey (`pubkey`)
+- Event timestamp (`created_at`)
+- Message size and timing patterns
+
+Therefore, EC4X guarantees payload confidentiality, not metadata
+confidentiality.
 
 ---
 
@@ -172,7 +233,7 @@ velvet-mountain@localhost:8080       # Local relay (ws port 8080)
 - Localhost, 127.0.0.1, 192.168.*, 10.*, 172.16-31.* -> `ws://`
 - All other hosts -> `wss://`
 
-When the moderator generates invite codes, they include the relay URL:
+When admin tooling generates invite codes, it includes the relay URL:
 
 ```bash
 $ ec4x invite friday-night
@@ -248,7 +309,7 @@ SETUP ──────────► ACTIVE ──────────►
 ### Creation Flow
 
 1. Admin creates game (via TUI)
-2. Server generates invite codes for each slot
+2. Daemon generates invite codes for each slot
 3. Admin shares codes privately with players
 4. Players claim slots by entering codes
 5. Admin starts game when ready
@@ -267,23 +328,25 @@ EC4X uses the 304xx range for parameterized replaceable events.
 
 | Kind | Name | Publisher | Description |
 |------|------|-----------|-------------|
-| 30400 | Game Definition | Server | Game metadata, slot status |
-
-Note: server pubkey is authoritative for 30400/30403/30405 events.
+| 30400 | Game Definition | Daemon | Game metadata, slot status |
 | 30401 | Player Slot Claim | Player | Player claims invite code |
 | 30402 | Turn Orders | Player | Player's orders for a turn |
-| 30403 | Turn Results | Server | Delta from turn resolution |
-| 30405 | Game State | Server | Full current state |
-| 30406 | Player Message | Player/Server | Encrypted player-to-player message |
+| 30403 | Turn Results | Daemon | Delta from turn resolution |
+| 30404 | Join Error | Daemon | Slot-claim failure reason |
+| 30405 | Game State | Daemon | Full current state |
+| 30406 | Player Message | Player/Daemon | Player messaging |
+
+Daemon pubkey is authoritative for `30400`, `30403`, `30404`,
+and `30405`.
 
 ### 30400: Game Definition
 
-Published by the server when creating or updating a game.
+Published by the daemon when creating or updating a game.
 
 ```json
 {
   "kind": 30400,
-  "pubkey": "<server-npub>",
+  "pubkey": "<daemon-npub>",
   "created_at": 1705500000,
   "tags": [
     ["d", "<game-id>"],
@@ -309,7 +372,7 @@ Published by the server when creating or updating a game.
 Invite codes are normalized (lowercase, trimmed) before hashing with SHA-256.
 
 Invite codes are stored as hashes to prevent leaking codes in public
-events. The server validates the actual code on claim.
+events. The daemon validates the actual code on claim.
 
 ### 30401: Player Slot Claim
 
@@ -329,7 +392,7 @@ Published by Player when claiming an invite code.
 }
 ```
 
-The server validates:
+The daemon validates:
 
 1. Code exists and is pending
 2. Code not already claimed
@@ -358,11 +421,27 @@ Published by Player when submitting commands for a turn.
 
 The content field contains: `base64(NIP-44-encrypt(zstd-compress(msgpack)))`
 
+Normative behavior:
+
+- Player MUST set tags `d`, `turn`, and `p` (daemon pubkey).
+- Daemon MUST verify event signature before processing.
+- Daemon MUST reject packets with missing/non-numeric `turn`.
+- Daemon MUST reject packets not matching the current game turn.
+- Players MAY resubmit `30402` for the same game/turn to revise orders.
+- Daemon MUST store the latest valid submission for
+  `(game_id, house_id, turn)` as authoritative.
+
 See [Payload Formats](#payload-formats) for the msgpack structure.
+
+Implementation references:
+
+- `src/daemon/daemon.nim` (`processIncomingCommand`)
+- `src/daemon/persistence/writer.nim` (`saveCommandPacket`)
+- `src/daemon/transport/nostr/events.nim` (`createTurnCommands`)
 
 ### 30403: Turn Results
 
-Published by Server after resolving a turn. One event per player,
+Published by Daemon after resolving a turn. One event per player,
 encrypted to that player's pubkey. Clients must ignore events with
 missing or non-numeric turn tags and treat the newest turn as authoritative.
 
@@ -398,9 +477,42 @@ rules snapshot from the most recent 30405 full-state payload.
 
 See [Payload Formats](#payload-formats) for the msgpack structure.
 
+Implementation references:
+
+- `src/daemon/transport/nostr/events.nim` (`createTurnResults`)
+- `src/daemon/transport/nostr/delta_msgpack.nim`
+
+### 30404: Join Error
+
+Published by Daemon when a slot-claim attempt fails validation.
+
+```json
+{
+  "kind": 30404,
+  "pubkey": "<daemon-npub>",
+  "created_at": 1705500150,
+  "tags": [
+    ["p", "<player-npub>"]
+  ],
+  "content": "<encrypted-error-message>",
+  "sig": "..."
+}
+```
+
+Normative behavior:
+
+- Content MUST be encrypted with the canonical pipeline.
+- `p` MUST identify the intended recipient player pubkey.
+- Clients MUST only accept join errors from the authoritative daemon pubkey.
+
+Implementation references:
+
+- `src/daemon/publisher.nim` (`publishJoinError`)
+- `src/daemon/transport/nostr/events.nim` (`createJoinError`)
+
 ### 30405: Game State
 
-Published by Server, contains full current game state for a player.
+Published by Daemon, contains full current game state for a player.
 Encrypted to that player's pubkey with fog-of-war filtering. Clients must
 ignore events with missing or non-numeric turn tags and treat the newest
 turn as authoritative.
@@ -437,6 +549,11 @@ Clients request this when:
 - Manual resync requested
 
 See [Payload Formats](#payload-formats) for the msgpack structure.
+
+Implementation references:
+
+- `src/daemon/transport/nostr/events.nim` (`createGameState`)
+- `src/daemon/transport/nostr/state_msgpack.nim`
 
 ### Authoritative TUI Rules Snapshot
 
@@ -488,6 +605,11 @@ msgpack binary -> zstd compress -> NIP-44 encrypt -> base64 encode
 
 **Implementation:** `src/daemon/transport/nostr/wire.nim`
 
+Supporting modules:
+
+- `src/daemon/transport/nostr/compression.nim`
+- `src/daemon/transport/nostr/crypto.nim`
+
 ---
 
 ## Message Flows
@@ -495,7 +617,7 @@ msgpack binary -> zstd compress -> NIP-44 encrypt -> base64 encode
 ### Player Joins Game
 
 ```
-Player                              Server
+Player                              Daemon
    │                                   │
    │  EVENT 30401 (claim code)         │
    ├──────────────────────────────────►│
@@ -517,7 +639,7 @@ Player                              Server
 ### Player Submits Orders
 
 ```
-Player                              Server
+Player                              Daemon
    │                                   │
    │  EVENT 30402 (turn orders)        │
    ├──────────────────────────────────►│
@@ -530,7 +652,7 @@ Player                              Server
 ### Turn Resolution
 
 ```
-Server                              All Players
+Daemon                              All Players
    │                                   │
    │ (all orders received or timeout)  │
    │                                   │
@@ -546,7 +668,7 @@ Server                              All Players
 ### State Recovery
 
 ```
-Player                              Server
+Player                              Daemon
    │                                   │
    │  REQ {"kinds":[30405],            │
    │       "#d":["<game-id>"]}         │
@@ -567,7 +689,7 @@ Player                              Server
 ### Player Messages
 
 ```
-Player A                              Server                           Player B
+Player A                              Daemon                           Player B
    │                                   │                                 │
    │  EVENT 30406 (message)            │                                 │
    │  encrypted to daemon              │                                 │
@@ -635,13 +757,24 @@ If the player has Admin privileges, they also see:
 
 - Private keys (nsec) never leave the client
 - All events are signed with the player's key
-- Server verifies signatures on all events
+- Daemon verifies signatures on all events
 
-### Server Authority
+### Daemon Authority
 
-- The server is the authoritative source of game state
-- Clients should validate server-signed events
-- The server npub should be well-known and verifiable
+- The daemon is the authoritative source of game state
+- Clients should validate daemon-signed events
+- The daemon npub should be well-known and verifiable
+
+### Metadata Visibility
+
+NIP-44 encrypts payload content, but relays still observe:
+
+- Event kind
+- Tags (`d`, `turn`, `p`, etc.)
+- Sender pubkey and timestamp
+- Message size and timing
+
+Design assumption: EC4X protects payload contents, not all metadata.
 
 ### Fog of War
 
@@ -666,7 +799,7 @@ could support:
 
 For games requiring hidden information:
 
-- Use NIP-04 or NIP-44 for encrypted DMs
+- Use NIP-44 for encrypted payloads
 - Per-player encrypted turn results
 - Encrypted order submission
 

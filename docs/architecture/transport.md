@@ -45,24 +45,36 @@ communication via WebSocket connections to relays.
 - NIP-44 provides end-to-end encryption
 
 **EC4X Uses:**
-- 6 custom event kinds (30400-30405)
+- 7 custom event kinds (30400-30406)
 - Encrypted private messages (orders, state)
 - Public announcements (game metadata)
-- Relay infrastructure (no custom server needed)
+- Relay infrastructure (no custom relay protocol needed)
 
 ### Event Kinds
 
 | Kind  | Name             | Direction        | Encryption |
 |-------|------------------|------------------|------------|
-| 30400 | GameDefinition   | Admin → Public   | None       |
+| 30400 | GameDefinition   | Daemon → Public  | None       |
 | 30401 | PlayerSlotClaim  | Player → Daemon  | None       |
 | 30402 | TurnCommands     | Player → Daemon  | NIP-44     |
 | 30403 | TurnResults      | Daemon → Player  | NIP-44     |
-| 30404 | JoinError        | Daemon → Player  | None       |
+| 30404 | JoinError        | Daemon → Player  | NIP-44     |
 | 30405 | GameState        | Daemon → Player  | NIP-44     |
 | 30406 | PlayerMessage    | Player ↔ Daemon  | NIP-44     |
 
 **Defined in:** `src/daemon/transport/nostr/types.nim:67-74`
+
+### Required Tags by Kind
+
+| Kind | Required tags |
+|------|---------------|
+| 30400 | `d`, `name`, `status` |
+| 30401 | `d`, `code` |
+| 30402 | `d`, `turn`, `p` (daemon pubkey) |
+| 30403 | `d`, `turn`, `p` (player pubkey) |
+| 30404 | `p` (player pubkey) |
+| 30405 | `d`, `turn`, `p` (player pubkey) |
+| 30406 | `d`, `p`, `from_house`, `to_house` |
 
 ### Wire Format
 
@@ -149,6 +161,12 @@ type NostrClient* = ref object
 6. Wait for OK/CLOSED response
 ```
 
+Normative behavior:
+
+- Clients MAY resubmit `30402` commands for the same turn to revise orders.
+- Daemon treats the latest valid packet for `(game_id, house_id, turn)`
+  as authoritative.
+
 #### Fetch Game State
 ```
 1. Subscribe to EventKindTurnResults with filters:
@@ -201,14 +219,21 @@ type NostrClient* = ref object
    - d: game_id (for all managed games)
    - p: daemon_pubkey
 2. Receive events from relay stream
-  3. For each event:
-    - Verify signature
-    - Decrypt and decompress content
-    - Parse msgpack to command structure
-    - Validate command packet
-    - Insert base64 msgpack packet into commands table
+3. For each event:
+   - Verify signature
+   - Validate required tags (`d`, `turn`, `p`)
+   - Reject if `turn` does not match current game turn
+   - Decrypt and decompress content
+   - Parse msgpack to `CommandPacket`
+   - Upsert packet in commands table by `(game_id, turn, house_id)`
 4. Check if all commands received or deadline passed
 ```
+
+Implementation references:
+
+- `src/daemon/daemon.nim` (`processIncomingCommand`)
+- `src/daemon/persistence/writer.nim` (`saveCommandPacket`)
+- `src/daemon/transport/nostr/client.nim` (`subscribeDaemon`)
 
 #### Publish Results
 ```
@@ -284,10 +309,21 @@ Client reassembles chunks before applying.
 
 **State (Daemon → Player):**
 - Encrypted to each player's pubkey
-- Implements fog of war via encryption
+- Fog-of-war filtering happens before encryption
 - Each player receives different content
 
 **Implementation:** `src/daemon/transport/nostr/crypto.nim`
+
+#### Metadata Visibility
+
+Encrypted payloads still expose metadata to relays and observers:
+
+- Event kind
+- Tags (`d`, `turn`, `p`, etc.)
+- Sender pubkey and timestamp
+- Message size and timing
+
+Security guarantee: payload confidentiality, not full metadata secrecy.
 
 #### Signing
 
@@ -309,7 +345,7 @@ Client reassembles chunks before applying.
 **Mitigation:**
 - Open source daemon (verifiable)
 - Multiple relay fallbacks
-- Command validation on server
+- Command validation on daemon
 
 ### Relay Selection
 
@@ -343,7 +379,7 @@ Client reassembles chunks before applying.
 
 ### Advantages
 
-- **Decentralized**: No central server needed
+- **Relay-flexible**: Works with existing Nostr relay infrastructure
 - **Encrypted**: End-to-end privacy via NIP-44
 - **Censorship-resistant**: Multiple relays
 - **Identity**: Use existing Nostr identity
@@ -376,7 +412,7 @@ All transport code lives in `src/daemon/transport/nostr/`:
 | `compression.nim` | zstd compression |
 | `delta_msgpack.nim` | PlayerStateDelta serialization |
 | `state_msgpack.nim` | Full PlayerState serialization |
-| `events.nim` | Event builders for 30400-30405 |
+| `events.nim` | Event builders for 30400-30406 |
 | `nip01.nim` | Basic Nostr protocol (REQ, EVENT, CLOSE) |
 | `filter.nim` | NostrFilter builder |
 
