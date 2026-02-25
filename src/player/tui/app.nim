@@ -38,6 +38,27 @@ import ./cursor_target
 import ../svg/starmap_export
 import ../svg/file_export
 
+type
+  GameDefinitionEventValidation* {.pure.} = enum
+    Accept
+    InvalidSignature
+    Stale
+    UnknownServer
+
+proc validateGameDefinitionEvent*(
+  event: NostrEvent,
+  lastSeen: int64,
+  daemonPubkey: string
+): GameDefinitionEventValidation =
+  if not verifyEvent(event):
+    return GameDefinitionEventValidation.InvalidSignature
+  if event.created_at <= lastSeen:
+    return GameDefinitionEventValidation.Stale
+  if event.pubkey.len > 0 and daemonPubkey.len > 0 and
+      event.pubkey != daemonPubkey:
+    return GameDefinitionEventValidation.UnknownServer
+  GameDefinitionEventValidation.Accept
+
 proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
@@ -657,18 +678,27 @@ proc runTui*(gameId: string = "") =
                 nostrGameDefinitionSeen[gameId]
                 else:
                   0'i64
-              if event.created_at <= lastSeen:
+              let validation = validateGameDefinitionEvent(
+                event,
+                lastSeen,
+                nostrDaemonPubkey
+              )
+              case validation
+              of GameDefinitionEventValidation.InvalidSignature:
+                sam.model.ui.statusMessage =
+                  "Ignored game definition: invalid signature"
+                return
+              of GameDefinitionEventValidation.Stale:
                 sam.model.ui.statusMessage =
                   "Ignored game definition: stale"
                 return
-              nostrGameDefinitionSeen[gameId] = event.created_at
-
-              if event.pubkey.len > 0 and
-                  nostrDaemonPubkey.len > 0 and
-                  event.pubkey != nostrDaemonPubkey:
+              of GameDefinitionEventValidation.UnknownServer:
                 sam.model.ui.statusMessage =
                   "Ignored game definition: unknown server"
                 return
+              of GameDefinitionEventValidation.Accept:
+                discard
+              nostrGameDefinitionSeen[gameId] = event.created_at
 
               let nameTag = event.getTagValue(TagName)
               let statusTag = event.getStatus()

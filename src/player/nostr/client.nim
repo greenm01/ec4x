@@ -46,6 +46,12 @@ proc handleEvent*(pc: PlayerNostrClient, subId: string, event: NostrEvent) =
       event.kind == EventKindGameState or
       event.kind == EventKindJoinError or
       event.kind == EventKindPlayerMessage:
+    if not verifyEvent(event):
+      pc.handleError("Invalid event signature")
+      return
+    if pc.daemonPubkey.len > 0 and event.pubkey != pc.daemonPubkey:
+      pc.handleError("Ignored event: non-daemon sender")
+      return
     let privOpt = hexToBytes32Safe(pc.playerPrivHex)
     let pubOpt = hexToBytes32Safe(event.pubkey)
     if privOpt.isNone or pubOpt.isNone:

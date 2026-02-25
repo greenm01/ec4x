@@ -88,6 +88,7 @@ type DaemonCmd* = proc (): Future[Proposal[DaemonModel]]
 
 # Forward declarations
 proc resolveTurnCmd(gameId: GameId): DaemonCmd
+proc resolveHouseId(state: GameState, pubkey: string): Option[HouseId]
 
 
 proc calculateTurnDeadline(minutes: int): Option[int64] =
@@ -469,6 +470,26 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
     # Parse msgpack into CommandPacket
     let commandPacket = parseOrdersMsgpack(msgpackCommands)
 
+    # Enforce payload turn consistency with validated event turn tag
+    if int(commandPacket.turn) != turn:
+      logWarn("Nostr", "Command packet turn mismatch for game=", gameId,
+        " eventTurn=", $turn, " packetTurn=", $commandPacket.turn)
+      return
+
+    # Validate sender ownership of submitted house id
+    let state = loadFullState(gameInfo.dbPath)
+    let senderHouseOpt = resolveHouseId(state, event.pubkey)
+    if senderHouseOpt.isNone:
+      logWarn("Nostr", "Command sender not in game=", gameId)
+      return
+
+    let senderHouse = senderHouseOpt.get()
+    if senderHouse != commandPacket.houseId:
+      logWarn("Nostr", "Command sender/house mismatch for game=", gameId,
+        " senderHouse=", $senderHouse, " packetHouse=",
+        $commandPacket.houseId)
+      return
+
     # Save to database
     saveCommandPacket(gameInfo.dbPath, gameId, commandPacket)
 
@@ -749,7 +770,7 @@ proc processIncomingMessage(event: NostrEvent) {.async.} =
     # Echo back to sender as confirmation
     recipientHouses.add(senderHouse)
 
-    let senderPubkey = event.pubkey
+    let daemonPubkey = daemonLoop.model.identity.publicKeyHex
     for houseId in recipientHouses:
       let pubkeyOpt = reader.getHousePubkey(gameInfo.dbPath, gameId, houseId)
       if pubkeyOpt.isNone:
@@ -765,7 +786,7 @@ proc processIncomingMessage(event: NostrEvent) {.async.} =
         gameId = gameId,
         encryptedPayload = encryptedPayload,
         recipientPubkey = playerPubkey,
-        senderPubkey = senderPubkey,
+        senderPubkey = daemonPubkey,
         fromHouse = msg.fromHouse,
         toHouse = msg.toHouse
       )
