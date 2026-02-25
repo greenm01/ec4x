@@ -392,7 +392,7 @@ proc renderIdentityDeleteConfirm*(buf: var CellBuffer,
   if model.ui.termWidth < 36 or model.ui.termHeight < 8:
     return
 
-  let width = min(56, model.ui.termWidth - 4)
+  let width = min(38, model.ui.termWidth - 4)
   let height = 7
   let x = (model.ui.termWidth - width) div 2
   let y = (model.ui.termHeight - height) div 2
@@ -404,7 +404,7 @@ proc renderIdentityDeleteConfirm*(buf: var CellBuffer,
     .maxWidth(width)
     .minHeight(height)
     .showBackdrop(true)
-  m.renderWithFooter(modalArea, buf, "[Y/Enter] Remove   [N/Esc] Cancel")
+  m.renderWithFooter(modalArea, buf, "[Y] Remove   [N] Cancel")
   let content = m.contentArea(modalArea, true)
   if content.isEmpty:
     return

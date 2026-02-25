@@ -37,7 +37,7 @@ const
   ModalMaxWidth = 84
   ModalMinWidth = 84
   ModalMinHeight = 24  # Increased to ensure relay section is visible
-  FooterHeight = 1
+  FooterHeight = 2
   
   # ASCII art logo using Unicode block characters
   Logo* = [
@@ -146,7 +146,7 @@ proc newEntryModalState*(): EntryModalState =
     mode: initialMode,
     returnMode: EntryModalMode.Normal,
     inviteInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
-    importInput: initTextInputState(maxLength = 0, maxDisplayWidth = 50),
+    importInput: initTextInputState(maxLength = 64, maxDisplayWidth = 50),
     relayInput: initTextInputState(maxLength = 0, maxDisplayWidth = 40),
     createNameInput: initTextInputState(maxLength = 32, maxDisplayWidth = 30),
     passwordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
@@ -415,6 +415,7 @@ proc confirmImport*(state: var EntryModalState): bool =
     state.mode = state.returnMode
     state.importInput.clear()
     state.importError = ""
+    state.identitySelectedIdx = state.wallet.activeIdx
     state.identityNeedsRefresh = true
     true
   except ValueError as e:
@@ -424,6 +425,7 @@ proc confirmImport*(state: var EntryModalState): bool =
 proc createIdentity*(state: var EntryModalState) =
   ## Create and activate a new local identity.
   state.identity = state.wallet.createNewLocalIdentity()
+  state.identitySelectedIdx = state.wallet.activeIdx
   state.identityNeedsRefresh = true
 
 proc openIdentityManager*(state: var EntryModalState) =
@@ -874,21 +876,21 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     x += 7
   
   if mode == EntryModalMode.Normal:
-    # [Ctrl-I] IDs
+    # [Ctrl+I] IDs
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
-    discard buf.setString(x, area.y, "Ctrl-I", keyStyle)
+    discard buf.setString(x, area.y, "Ctrl+I", keyStyle)
     x += 6
     discard buf.setString(x, area.y, "]", dimStyle)
     x += 1
     discard buf.setString(x, area.y, " IDs  ", textStyle)
     x += 7
   
-  # [F12] Quit
+  # [Ctrl+X] Quit
   discard buf.setString(x, area.y, "[", dimStyle)
   x += 1
-  discard buf.setString(x, area.y, "F12", keyStyle)
-  x += 3
+  discard buf.setString(x, area.y, "Ctrl+X", keyStyle)
+  x += 6
   discard buf.setString(x, area.y, "]", dimStyle)
   x += 1
   discard buf.setString(x, area.y, " Quit", textStyle)
@@ -1052,7 +1054,7 @@ proc renderPasswordPromptMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
   discard buf.setString(footerArea.x, footerArea.y,
-                        "[Tab] Show/Hide   [Enter] Unlock   [Esc] Quit", footerStyle)
+                        "[H]ide   [Enter] Unlock   [Esc] Quit", footerStyle)
 
 proc renderImportMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                       importInput: TextInputState, importError: string,
@@ -1094,10 +1096,12 @@ proc renderImportMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   if importError.len > 0:
     discard buf.setString(inner.x, promptY + 1, importError, errorStyle)
   
-  # Footer
+  # Footer — sits between separator and bottom border.
+  # With FooterHeight=2, separator is at area.bottom-3, footer text at
+  # area.bottom-2 (one row above the bottom border).
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
   discard buf.setString(footerArea.x, footerArea.y,
-                        "[Tab] Show/Hide   [Enter] Confirm   [Esc] Cancel", footerStyle)
+                        "[H]ide   [Enter] Confirm   [Esc] Cancel", footerStyle)
 
 proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                           state: EntryModalState) =
@@ -1221,6 +1225,20 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     .minWidth(ModalMinWidth)
     .minHeight(ModalMinHeight)
   
+  if state.mode == EntryModalMode.ImportNsec:
+    # Compact modal: logo + prompt + error + footer only
+    let importContentHeight =
+      1 + LogoHeight + 2 + 1 + 1 + FooterHeight  # blank+logo+gap+prompt+error+footer
+    let importModal = modal
+      .minHeight(importContentHeight + 2)
+      .minWidth(ModalMinWidth)
+    let importArea = importModal.calculateArea(viewport, importContentHeight)
+    importModal.renderWithSeparator(importArea, buf, FooterHeight)
+    let importInner = importModal.inner(importArea)
+    renderImportMode(buf, importInner, importArea,
+                     state.importInput, state.importError, state.importMasked)
+    return
+
   if state.mode == EntryModalMode.ManageIdentities:
     var tableWidget = table([
       tableColumn("ID", width = 24),

@@ -151,30 +151,31 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
               not model.ui.submitConfirmActive:
             if model.ui.expertModeActive:
               return mapPrintableAppend(event, actionExpertInputAppend)
-          # Entry modal import mode: append characters to nsec buffer
-          if model.ui.appPhase == AppPhase.Lobby and
-              model.ui.entryModal.mode == EntryModalMode.ImportNsec:
-            return mapPrintableAppend(event, actionEntryImportAppend)
-          # Password prompt: append characters
-          if model.ui.appPhase == AppPhase.Lobby and
-              model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
-            return mapPrintableAppend(event, actionEntryPasswordAppend)
-          # Entry modal invite code input: append characters
-          # Auto-focus to InviteCode when typing valid invite characters from GameList
-          if model.ui.appPhase == AppPhase.Lobby and
-              model.ui.entryModal.mode == EntryModalMode.Normal:
-            if model.ui.entryModal.focus == EntryModalFocus.InviteCode:
-              return mapPrintableAppend(event, actionEntryInviteAppend)
-            elif model.ui.entryModal.focus == EntryModalFocus.GameList:
-              # Auto-focus to invite code when typing valid invite characters
-              let ch = ($event.rune).toLowerAscii()
-              if ch.len > 0 and (ch[0] in 'a'..'z' or ch[0] in '0'..'9' or ch[0] == '-'):
-                return some(actionEntryInviteAppend($event.rune))
-              # Otherwise fall through to key bindings
-          # Lobby input mode: append characters to pubkey/name
-          if model.ui.appPhase == AppPhase.Lobby and
-              model.ui.lobbyInputMode != LobbyInputMode.None:
-            return mapPrintableAppend(event, actionLobbyInputAppend)
+            # Entry modal import mode: append characters to nsec buffer
+            if model.ui.appPhase == AppPhase.Lobby and
+                model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+              return mapPrintableAppend(event, actionEntryImportAppend)
+            # Password prompt: append characters
+            if model.ui.appPhase == AppPhase.Lobby and
+                model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
+              return mapPrintableAppend(event, actionEntryPasswordAppend)
+            # Entry modal invite code input: append characters
+            # Auto-focus to InviteCode when typing valid invite characters from GameList
+            if model.ui.appPhase == AppPhase.Lobby and
+                model.ui.entryModal.mode == EntryModalMode.Normal:
+              if model.ui.entryModal.focus == EntryModalFocus.InviteCode:
+                return mapPrintableAppend(event, actionEntryInviteAppend)
+              elif model.ui.entryModal.focus == EntryModalFocus.GameList:
+                # Auto-focus to invite code when typing valid invite characters
+                let ch = ($event.rune).toLowerAscii()
+                if ch.len > 0 and (ch[0] in 'a'..'z' or ch[0] in '0'..'9' or
+                    ch[0] == '-'):
+                  return some(actionEntryInviteAppend($event.rune))
+                # Otherwise fall through to key bindings
+            # Lobby input mode: append characters to pubkey/name
+            if model.ui.appPhase == AppPhase.Lobby and
+                model.ui.lobbyInputMode != LobbyInputMode.None:
+              return mapPrintableAppend(event, actionLobbyInputAppend)
       let ch = $event.rune
       case ch
       of "0":

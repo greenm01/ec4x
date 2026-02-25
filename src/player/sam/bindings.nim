@@ -2079,6 +2079,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
   ## since they don't fit the registry pattern well.
 
   if key == KeyCode.KeyEscape and modifier == KeyModifier.None:
+    if model.ui.identityDeleteConfirmActive:
+      return none(Proposal)
     let backAction = backActionForState(model)
     if backAction.isSome:
       return backAction
@@ -2086,8 +2088,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       model.ui.intelDetailFleetPopupActive:
     return none(Proposal)
 
-  # F12 always quits (global)
-  if key == KeyCode.KeyF12:
+  # Ctrl+X always quits (global)
+  if key == KeyCode.KeyX and modifier == KeyModifier.Ctrl:
     return some(actionQuit())
 
   # Quit confirmation modal - takes precedence over everything
@@ -2424,9 +2426,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     # Identity delete confirmation popup takes priority
     if model.ui.identityDeleteConfirmActive:
       case key
-      of KeyCode.KeyEnter, KeyCode.KeyY:
+      of KeyCode.KeyY:
         return some(actionEntryIdentityDeleteConfirm())
-      of KeyCode.KeyN, KeyCode.KeyEscape:
+      of KeyCode.KeyN:
         return some(actionEntryIdentityDeleteCancel())
       else:
         return none(Proposal)
@@ -2461,7 +2463,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryCursorLeft())
       of KeyCode.KeyRight:
         return some(actionEntryCursorRight())
-      of KeyCode.KeyTab:
+      of KeyCode.KeyH:
         return some(actionEntryToggleMask())
       else:
         if modifier != ViewModifier:
@@ -2481,7 +2483,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryCursorLeft())
       of KeyCode.KeyRight:
         return some(actionEntryCursorRight())
-      of KeyCode.KeyTab:
+      of KeyCode.KeyH:
         return some(actionEntryToggleMask())
       else:
         if modifier != ViewModifier:
@@ -2607,8 +2609,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyN:
         if modifier == KeyModifier.Ctrl:
           return some(actionEntryIdentityMenu())
-      of KeyCode.KeyF12:
-        return some(actionQuit())
       else:
         if modifier != ViewModifier:
           return none(Proposal)

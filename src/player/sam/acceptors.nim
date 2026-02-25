@@ -2190,10 +2190,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.identityDeleteConfirmActive = false
       model.ui.statusMessage = ""
     of ActionKind.entryIdentityActivate:
-      if model.ui.entryModal.applyIdentitySelection():
-        model.ui.statusMessage = "Identity activated"
-      else:
-        model.ui.statusMessage = "Identity already active"
+      discard model.ui.entryModal.applyIdentitySelection()
+      model.ui.entryModal.closeIdentityManager()
+      model.ui.statusMessage = "Identity activated"
     of ActionKind.entryDelete:
       if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
         model.ui.entryModal.passwordInput.delete()
