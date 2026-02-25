@@ -52,6 +52,8 @@ offline_game/
 test_game/
 *_offline/
 data/games/
+data/players/
+data/logs/
 data/snapshots/
 test_*/
 balance_tuning/
@@ -86,3 +88,6 @@ logs/
 .env
 
 secrets.fish 
+nimble.develop
+nimble.paths
+nimbledeps

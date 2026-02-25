@@ -2117,7 +2117,8 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
       return
     let prefix = label & " "
     let valueWidth = max(0, width - prefix.len)
-    drawTextLine(outBuf, x, y, width, prefix & align(value, valueWidth), style)
+    drawTextLine(outBuf, x, y, width,
+      prefix & strutils.align(value, valueWidth), style)
 
   let modal = newModal()
     .title("ESPIONAGE")
@@ -2181,7 +2182,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   drawTextLine(
     buf,
     ebpInner.x, ebpInner.y + 1, ebpInner.width,
-    "Invest: [ " & align($ebpInvest, 3) & " ]",
+    "Invest: [ " & strutils.align($ebpInvest, 3) & " ]",
     if ebpActive: selectedStyle() else: normalStyle()
   )
   drawMetric(
@@ -2208,7 +2209,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   drawTextLine(
     buf,
     cipInner.x, cipInner.y + 1, cipInner.width,
-    "Invest: [ " & align($cipInvest, 3) & " ]",
+    "Invest: [ " & strutils.align($cipInvest, 3) & " ]",
     if cipActive: selectedStyle() else: normalStyle()
   )
   drawMetric(
