@@ -14,11 +14,14 @@ import kdl
 import ../../common/logger
 import ../../daemon/transport/nostr/[crypto, nip19]
 import ./identity
+import ./wallet_crypto
 
 type
   IdentityWallet* = object
     identities*: seq[Identity]
     activeIdx*: int
+    encryptedOnDisk*: bool
+    sessionPassword*: string
 
 const
   WalletNode = "wallet"
@@ -44,7 +47,7 @@ proc clampActiveIdx(wallet: var IdentityWallet) =
   elif wallet.activeIdx >= wallet.identities.len:
     wallet.activeIdx = wallet.identities.len - 1
 
-proc saveWallet*(wallet: IdentityWallet) =
+proc saveWallet*(wallet: IdentityWallet, passwordOpt: Option[string] = none(string)) =
   var normalized = wallet
   normalized.clampActiveIdx()
   if normalized.identities.len == 0:
@@ -65,21 +68,63 @@ proc saveWallet*(wallet: IdentityWallet) =
       "created=\"" & createdStr & "\"\n"
     )
 
-  writeFile(walletPath(), content)
-  saveIdentity(normalized.identities[normalized.activeIdx])
-  logInfo("Wallet", "Saved wallet to ", walletPath())
+  var finalContent = content
+  var willBeEncrypted = false
 
-proc loadWallet*(): Option[IdentityWallet] =
+  if passwordOpt.isSome:
+    finalContent = encryptWallet(content, passwordOpt.get())
+    willBeEncrypted = true
+  elif wallet.encryptedOnDisk and wallet.sessionPassword.len > 0:
+    finalContent = encryptWallet(content, wallet.sessionPassword)
+    willBeEncrypted = true
+
+  writeFile(walletPath(), finalContent)
+  saveIdentity(normalized.identities[normalized.activeIdx])
+  
+  if willBeEncrypted:
+    logInfo("Wallet", "Saved encrypted wallet to ", walletPath())
+  else:
+    logInfo("Wallet", "Saved plaintext wallet to ", walletPath())
+
+type
+  WalletLoadStatus* {.pure.} = enum
+    Success
+    NeedsPassword
+    WrongPassword
+    Error
+
+proc loadWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
   let path = walletPath()
   if not fileExists(path):
-    return none(IdentityWallet)
+    return (WalletLoadStatus.Error, none(IdentityWallet))
 
   try:
-    let doc = parseKdl(readFile(path))
-    if doc.len == 0:
-      return none(IdentityWallet)
+    let fileContent = readFile(path)
+    if fileContent.len == 0:
+      return (WalletLoadStatus.Error, none(IdentityWallet))
 
-    var wallet = IdentityWallet(identities: @[], activeIdx: 0)
+    var kdlStr = fileContent
+    var isEncrypted = false
+
+    if isEncryptedContainer(fileContent):
+      if passwordOpt.isNone or passwordOpt.get().len == 0:
+        return (WalletLoadStatus.NeedsPassword, none(IdentityWallet))
+      let decrypted = decryptWallet(fileContent, passwordOpt.get())
+      if decrypted.isNone:
+        return (WalletLoadStatus.WrongPassword, none(IdentityWallet))
+      kdlStr = decrypted.get()
+      isEncrypted = true
+
+    let doc = parseKdl(kdlStr)
+    if doc.len == 0:
+      return (WalletLoadStatus.Error, none(IdentityWallet))
+
+    var wallet = IdentityWallet(
+      identities: @[],
+      activeIdx: 0,
+      encryptedOnDisk: isEncrypted,
+      sessionPassword: if isEncrypted: passwordOpt.get() else: ""
+    )
 
     for node in doc:
       if node.name == WalletNode:
@@ -117,13 +162,13 @@ proc loadWallet*(): Option[IdentityWallet] =
         ))
 
     if wallet.identities.len == 0:
-      return none(IdentityWallet)
+      return (WalletLoadStatus.Error, none(IdentityWallet))
 
     wallet.clampActiveIdx()
-    some(wallet)
+    return (WalletLoadStatus.Success, some(wallet))
   except CatchableError as e:
     logError("Wallet", "Failed to load wallet: ", e.msg)
-    none(IdentityWallet)
+    return (WalletLoadStatus.Error, none(IdentityWallet))
 
 proc activeIdentity*(wallet: IdentityWallet): Identity =
   if wallet.identities.len == 0:
@@ -188,29 +233,33 @@ proc importIntoWallet*(wallet: var IdentityWallet, nsecOrHex: string):
   wallet.activeIdx = wallet.identities.len - 1
   saveWallet(wallet)
 
-proc ensureWallet*(): IdentityWallet =
-  let existing = loadWallet()
-  if existing.isSome:
-    result = existing.get()
-    saveIdentity(result.activeIdentity())
-    return
+proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
+  let existing = loadWallet(passwordOpt)
+  if existing.status == WalletLoadStatus.Success:
+    var wallet = existing.wallet.get()
+    saveIdentity(wallet.activeIdentity())
+    return (WalletLoadStatus.Success, some(wallet))
+  elif existing.status == WalletLoadStatus.NeedsPassword or existing.status == WalletLoadStatus.WrongPassword:
+    return existing
 
   let legacy = loadIdentity()
   if legacy.isSome:
-    result = IdentityWallet(
+    var wallet = IdentityWallet(
       identities: @[legacy.get()],
-      activeIdx: 0
+      activeIdx: 0,
+      encryptedOnDisk: passwordOpt.isSome,
+      sessionPassword: if passwordOpt.isSome: passwordOpt.get() else: ""
     )
-    saveWallet(result)
+    saveWallet(wallet, passwordOpt)
     let oldPath = identityPath()
     if fileExists(oldPath):
       try:
         removeFile(oldPath)
       except OSError:
         discard
-    saveIdentity(result.activeIdentity())
+    saveIdentity(wallet.activeIdentity())
     logInfo("Wallet", "Migrated legacy identity to wallet")
-    return
+    return (WalletLoadStatus.Success, some(wallet))
 
   let keys = identity.generateKeyPair()
   let first = Identity(
@@ -219,9 +268,12 @@ proc ensureWallet*(): IdentityWallet =
     identityType: IdentityType.Local,
     created: now()
   )
-  result = IdentityWallet(
+  var newWallet = IdentityWallet(
     identities: @[first],
-    activeIdx: 0
+    activeIdx: 0,
+    encryptedOnDisk: passwordOpt.isSome,
+    sessionPassword: if passwordOpt.isSome: passwordOpt.get() else: ""
   )
-  saveWallet(result)
+  saveWallet(newWallet, passwordOpt)
   logInfo("Wallet", "Created new wallet with local identity")
+  return (WalletLoadStatus.Success, some(newWallet))

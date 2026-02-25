@@ -70,6 +70,7 @@ type
     ImportNsec   ## Importing nsec identity
     CreateGame   ## Creating a new game (admin)
     ManageGames  ## Managing existing games (admin)
+    PasswordPrompt ## Prompting for password to unlock wallet
 
   AdminMenuItem* {.pure.} = enum
     ## Admin menu options
@@ -95,6 +96,8 @@ type
     importInput*: TextInputState   ## nsec import input (masked)
     relayInput*: TextInputState    ## Relay URL input
     createNameInput*: TextInputState ## Game name input (max 32 chars)
+    passwordInput*: TextInputState ## Wallet password input
+    importMasked*: bool            ## Toggle for masking sensitive inputs
     # Error messages
     inviteError*: string           ## Error message for invite code
     importError*: string           ## Error message for import
@@ -111,18 +114,31 @@ type
 
 proc newEntryModalState*(): EntryModalState =
   ## Create initial entry modal state
-  let wallet = ensureWallet()
+  let walletResult = ensureWallet()
+  
+  var activeWallet = IdentityWallet(identities: @[], activeIdx: 0)
+  var activeIdentity = Identity()
+  var initialMode = EntryModalMode.Normal
+  
+  if walletResult.status == WalletLoadStatus.Success:
+    activeWallet = walletResult.wallet.get()
+    activeIdentity = activeWallet.activeIdentity()
+  elif walletResult.status == WalletLoadStatus.NeedsPassword or walletResult.status == WalletLoadStatus.WrongPassword:
+    initialMode = EntryModalMode.PasswordPrompt
+
   result = EntryModalState(
-    wallet: wallet,
-    identity: wallet.activeIdentity(),
+    wallet: activeWallet,
+    identity: activeIdentity,
     activeGames: @[],
     focus: EntryModalFocus.GameList,
     selectedIdx: 0,
-    mode: EntryModalMode.Normal,
+    mode: initialMode,
     inviteInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
     importInput: initTextInputState(maxLength = 0, maxDisplayWidth = 50),
     relayInput: initTextInputState(maxLength = 0, maxDisplayWidth = 40),
     createNameInput: initTextInputState(maxLength = 32, maxDisplayWidth = 30),
+    passwordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
+    importMasked: true,
     inviteError: "",
     importError: "",
     createError: "",
@@ -332,6 +348,10 @@ proc startImport*(state: var EntryModalState) =
   state.importInput.clear()
   state.importError = ""
 
+proc toggleMask*(state: var EntryModalState) =
+  ## Toggle the masked state for sensitive inputs
+  state.importMasked = not state.importMasked
+
 proc cancelImport*(state: var EntryModalState) =
   ## Cancel import mode
   state.mode = EntryModalMode.Normal
@@ -341,6 +361,21 @@ proc cancelImport*(state: var EntryModalState) =
 proc importBuffer*(state: EntryModalState): string =
   ## Get the import buffer value
   state.importInput.value()
+
+proc unlockWallet*(state: var EntryModalState): bool =
+  ## Attempt to unlock the wallet
+  let password = state.passwordInput.value()
+  let result = ensureWallet(some(password))
+  if result.status == WalletLoadStatus.Success:
+    state.wallet = result.wallet.get()
+    state.identity = state.wallet.activeIdentity()
+    state.mode = EntryModalMode.Normal
+    state.passwordInput.clear()
+    state.importError = ""
+    return true
+  else:
+    state.importError = "Incorrect password or corrupted wallet."
+    return false
 
 proc confirmImport*(state: var EntryModalState): bool =
   ## Attempt to import the nsec
@@ -837,8 +872,53 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
       .cursorStyle(inputStyle)
     widget.render(relayInput, inputArea, buf, editing and hasFocus)
 
+proc renderPasswordPromptMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
+                              passwordInput: TextInputState, importError: string,
+                              isMasked: bool) =
+  ## Render the password prompt mode
+  let promptStyle = modalBgStyle()
+  let inputStyle = CellStyle(
+    fg: color(PositiveColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let errorStyle = CellStyle(
+    fg: color(AlertColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let footerStyle = CellStyle(
+    fg: color(NeutralColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  
+  let logoArea = rect(inner.x, inner.y + 1, inner.width, LogoHeight)
+  renderLogo(buf, logoArea)
+  
+  let promptY = inner.y + LogoHeight + 3
+  let prompt = "Enter wallet password: "
+  discard buf.setString(inner.x, promptY, prompt, promptStyle)
+  
+  let inputX = inner.x + prompt.len
+  let inputWidth = inner.width - prompt.len - 1
+  let inputArea = rect(inputX, promptY, inputWidth, 1)
+  let widget = newTextInput()
+    .masked(isMasked)
+    .style(inputStyle)
+    .cursorStyle(inputStyle)
+  widget.render(passwordInput, inputArea, buf, true)  # Always focused
+  
+  if importError.len > 0:
+    discard buf.setString(inner.x, promptY + 1, importError, errorStyle)
+  
+  let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
+  discard buf.setString(footerArea.x, footerArea.y,
+                        "[Tab] Show/Hide   [Enter] Unlock   [Esc] Quit", footerStyle)
+
 proc renderImportMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
-                      importInput: TextInputState, importError: string) =
+                      importInput: TextInputState, importError: string,
+                      isMasked: bool) =
   ## Render the import nsec mode
   let promptStyle = modalBgStyle()
   let inputStyle = CellStyle(
@@ -867,7 +947,7 @@ proc renderImportMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   let inputWidth = inner.width - prompt.len - 1
   let inputArea = rect(inputX, promptY, inputWidth, 1)
   let widget = newTextInput()
-    .masked(true)
+    .masked(isMasked)
     .style(inputStyle)
     .cursorStyle(inputStyle)
   widget.render(importInput, inputArea, buf, true)  # Always focused in import
@@ -879,7 +959,7 @@ proc renderImportMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   # Footer
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
   discard buf.setString(footerArea.x, footerArea.y,
-                        "[Enter] Confirm   [Esc] Cancel", footerStyle)
+                        "[Tab] Show/Hide   [Enter] Confirm   [Esc] Cancel", footerStyle)
 
 proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                           state: EntryModalState) =
@@ -1022,13 +1102,16 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
   
   if state.mode == EntryModalMode.ImportNsec:
     renderImportMode(buf, inner, modalArea,
-                     state.importInput, state.importError)
+                     state.importInput, state.importError, state.importMasked)
+  elif state.mode == EntryModalMode.PasswordPrompt:
+    renderPasswordPromptMode(buf, inner, modalArea,
+                             state.passwordInput, state.importError, state.importMasked)
   elif state.mode == EntryModalMode.CreateGame:
     renderCreateGameMode(buf, inner, modalArea, state)
   elif state.mode == EntryModalMode.ManageGames:
     # TODO: Implement manage games mode
     renderImportMode(buf, inner, modalArea,
-                     state.importInput, "Manage Games: Not implemented")
+                     state.importInput, "Manage Games: Not implemented", state.importMasked)
   else:
     # Normal mode
     var y = inner.y + 1  # Space after title bar

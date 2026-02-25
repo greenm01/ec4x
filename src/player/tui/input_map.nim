@@ -155,6 +155,10 @@ proc mapKeyEvent*(event: KeyEvent, model: TuiModel): Option[Proposal] =
           if model.ui.appPhase == AppPhase.Lobby and
               model.ui.entryModal.mode == EntryModalMode.ImportNsec:
             return mapPrintableAppend(event, actionEntryImportAppend)
+          # Password prompt: append characters
+          if model.ui.appPhase == AppPhase.Lobby and
+              model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
+            return mapPrintableAppend(event, actionEntryPasswordAppend)
           # Entry modal invite code input: append characters
           # Auto-focus to InviteCode when typing valid invite characters from GameList
           if model.ui.appPhase == AppPhase.Lobby and

@@ -789,6 +789,42 @@ proc actionEntryImportBackspace*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryToggleMask*(): Proposal =
+  ## Toggle masking of sensitive fields in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryToggleMask,
+    gameActionData: ""
+  )
+
+proc actionEntryPasswordAppend*(value: string): Proposal =
+  ## Append character to password buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPasswordAppend,
+    gameActionData: value
+  )
+
+proc actionEntryPasswordBackspace*(): Proposal =
+  ## Backspace in password buffer
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPasswordBackspace,
+    gameActionData: ""
+  )
+
+proc actionEntryPasswordConfirm*(): Proposal =
+  ## Confirm password entry
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPasswordConfirm,
+    gameActionData: ""
+  )
+
 proc actionEntryIdentityNext*(): Proposal =
   ## Switch to the next wallet identity
   Proposal(

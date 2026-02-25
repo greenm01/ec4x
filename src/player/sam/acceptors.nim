@@ -2138,6 +2138,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.entryImportCancel:
       model.ui.entryModal.cancelImport()
       model.ui.statusMessage = ""
+    of ActionKind.entryToggleMask:
+      model.ui.entryModal.toggleMask()
+    of ActionKind.entryPasswordAppend:
+      if proposal.gameActionData.len > 0:
+        discard model.ui.entryModal.passwordInput.appendChar(
+          proposal.gameActionData[0])
+    of ActionKind.entryPasswordBackspace:
+      model.ui.entryModal.passwordInput.backspace()
+    of ActionKind.entryPasswordConfirm:
+      if model.ui.entryModal.unlockWallet():
+        model.ui.statusMessage = "Wallet unlocked successfully"
+      else:
+        model.ui.statusMessage = "Unlock failed: " & model.ui.entryModal.importError
     of ActionKind.entryImportAppend:
       if proposal.gameActionData.len > 0:
         discard model.ui.entryModal.importInput.appendChar(
@@ -2158,7 +2171,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.entryModal.createIdentity()
       model.ui.statusMessage = "Created and selected new local identity"
     of ActionKind.entryDelete:
-      if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+      if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
+        model.ui.entryModal.passwordInput.delete()
+      elif model.ui.entryModal.mode == EntryModalMode.ImportNsec:
         model.ui.entryModal.importInput.delete()
       elif model.ui.entryModal.editingRelay:
         model.ui.entryModal.relayInput.delete()
@@ -2174,7 +2189,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           discard
     of ActionKind.entryCursorLeft:
-      if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+      if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
+        model.ui.entryModal.passwordInput.moveCursorLeft()
+      elif model.ui.entryModal.mode == EntryModalMode.ImportNsec:
         model.ui.entryModal.importInput.moveCursorLeft()
       elif model.ui.entryModal.editingRelay:
         model.ui.entryModal.relayInput.moveCursorLeft()
@@ -2190,7 +2207,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           discard
     of ActionKind.entryCursorRight:
-      if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
+      if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
+        model.ui.entryModal.passwordInput.moveCursorRight()
+      elif model.ui.entryModal.mode == EntryModalMode.ImportNsec:
         model.ui.entryModal.importInput.moveCursorRight()
       elif model.ui.entryModal.editingRelay:
         model.ui.entryModal.relayInput.moveCursorRight()

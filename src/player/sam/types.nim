@@ -100,6 +100,10 @@ type
     entryImportCancel
     entryImportAppend
     entryImportBackspace
+    entryToggleMask
+    entryPasswordAppend
+    entryPasswordConfirm
+    entryPasswordBackspace
     entryIdentityNext
     entryIdentityPrev
     entryIdentityCreate

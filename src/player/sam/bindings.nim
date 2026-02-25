@@ -2435,6 +2435,26 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         if modifier != ViewModifier:
           return none(Proposal)
 
+    if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionEntryPasswordConfirm())
+      of KeyCode.KeyEscape:
+        return some(actionQuit())
+      of KeyCode.KeyBackspace:
+        return some(actionEntryPasswordBackspace())
+      of KeyCode.KeyDelete:
+        return some(actionEntryDelete())
+      of KeyCode.KeyLeft:
+        return some(actionEntryCursorLeft())
+      of KeyCode.KeyRight:
+        return some(actionEntryCursorRight())
+      of KeyCode.KeyTab:
+        return some(actionEntryToggleMask())
+      else:
+        if modifier != ViewModifier:
+          return none(Proposal)
+
     if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
       case key
       of KeyCode.KeyEnter:
@@ -2449,6 +2469,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryCursorLeft())
       of KeyCode.KeyRight:
         return some(actionEntryCursorRight())
+      of KeyCode.KeyTab:
+        return some(actionEntryToggleMask())
       else:
         if modifier != ViewModifier:
           return none(Proposal)

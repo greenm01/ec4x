@@ -915,47 +915,48 @@ proc runTui*(gameId: string = "") =
         # Don't change status or disable - keep processing other events
         enqueueProposal(emptyProposal())
 
-      nostrClient = newPlayerNostrClient(
-        relayList,
-        activeGameId,
-        identity.nsecHex,
-        identity.npubHex,
-        nostrDaemonPubkey,
-        nostrHandlers
-      )
+      if initialModel.ui.entryModal.mode != EntryModalMode.PasswordPrompt:
+        nostrClient = newPlayerNostrClient(
+          relayList,
+          activeGameId,
+          identity.nsecHex,
+          identity.npubHex,
+          nostrDaemonPubkey,
+          nostrHandlers
+        )
 
-      asyncCheck nostrClient.start()
-      initialModel.ui.nostrStatus = "connecting"
-      initialModel.ui.nostrEnabled = true
-      
-      # Wait for connection to establish (up to 5 seconds)
-      for i in 0..50:
-        poll(100)
-        if nostrClient.isConnected():
-          logInfo("Nostr", "Connection established after ", $((i+1)*100), "ms")
-          initialModel.ui.nostrStatus = "connected"
+        asyncCheck nostrClient.start()
+        initialModel.ui.nostrStatus = "connecting"
+        initialModel.ui.nostrEnabled = true
+        
+        # Wait for connection to establish (up to 5 seconds)
+        for i in 0..50:
+          poll(100)
+          if nostrClient.isConnected():
+            logInfo("Nostr", "Connection established after ", $((i+1)*100), "ms")
+            initialModel.ui.nostrStatus = "connected"
 
-          # Start listening and subscribe to lobby games
-          asyncCheck nostrClient.listen()
-          nostrListenerStarted = true
-          let lobbyFilter = newFilter().withKinds(@[EventKindGameDefinition])
-          asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
-          nostrSubscriptions.add("lobby:games")
-          logInfo("Nostr", "Subscribed to lobby:games")
+            # Start listening and subscribe to lobby games
+            asyncCheck nostrClient.listen()
+            nostrListenerStarted = true
+            let lobbyFilter = newFilter().withKinds(@[EventKindGameDefinition])
+            asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+            nostrSubscriptions.add("lobby:games")
+            logInfo("Nostr", "Subscribed to lobby:games")
 
-          # Subscribe to join errors for this player
-          if identity.npubHex.len > 0:
-            let joinErrorFilter = newFilter()
-              .withKinds(@[EventKindJoinError])
-              .withTag(TagP, @[identity.npubHex])
-            asyncCheck nostrClient.subscribe("lobby:join-errors", @[joinErrorFilter])
-            nostrSubscriptions.add("lobby:join-errors")
-            logInfo("Nostr", "Subscribed to lobby:join-errors")
-          break
+            # Subscribe to join errors for this player
+            if identity.npubHex.len > 0:
+              let joinErrorFilter = newFilter()
+                .withKinds(@[EventKindJoinError])
+                .withTag(TagP, @[identity.npubHex])
+              asyncCheck nostrClient.subscribe("lobby:join-errors", @[joinErrorFilter])
+              nostrSubscriptions.add("lobby:join-errors")
+              logInfo("Nostr", "Subscribed to lobby:join-errors")
+            break
 
-      if not nostrClient.isConnected():
-        logWarn("Nostr", "Connection not established within timeout")
-        initialModel.ui.nostrStatus = "error"
+        if not nostrClient.isConnected():
+          logWarn("Nostr", "Connection not established within timeout")
+          initialModel.ui.nostrStatus = "error"
     except CatchableError as e:
       initialModel.ui.nostrLastError = e.msg
       initialModel.ui.nostrStatus = "error"
