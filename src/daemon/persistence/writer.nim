@@ -294,7 +294,8 @@ proc saveGameEvent*(state: GameState, event: GameEvent) =
     eventDataJson,
   )
 
-proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
+proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket,
+    submittedAt: int64) =
   ## Persist a command packet to the database
   let db = open(dbPath, "", "", "")
   defer: db.close()
@@ -307,17 +308,19 @@ proc saveCommandPacket*(dbPath: string, gameId: string, packet: CommandPacket) =
     db.exec(sql"""
       INSERT INTO commands (
         game_id, house_id, turn, command_msgpack, submitted_at
-      ) VALUES (?, ?, ?, ?, unixepoch())
+      ) VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(game_id, turn, house_id)
       DO UPDATE SET
         command_msgpack=excluded.command_msgpack,
         submitted_at=excluded.submitted_at,
         processed=0
+      WHERE excluded.submitted_at > commands.submitted_at
     """,
       gameId,
       $packet.houseId,
       packet.turn,
-      payload
+      payload,
+      submittedAt
     )
 
     db.exec(sql"COMMIT")

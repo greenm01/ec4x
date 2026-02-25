@@ -491,7 +491,8 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
       return
 
     # Save to database
-    saveCommandPacket(gameInfo.dbPath, gameId, commandPacket)
+    saveCommandPacket(gameInfo.dbPath, gameId, commandPacket,
+      event.created_at)
 
     logInfo("Nostr", "Received and saved commands for game=", gameId,
             " turn=", $turn, " house=", $commandPacket.houseId)

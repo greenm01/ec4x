@@ -1488,6 +1488,13 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.loadGameRequested = false
       else:
         let houseId = HouseId(sam.model.ui.loadHouseId.uint32)
+        let cachedGame = tuiCache.getGame(gameId)
+        if cachedGame.isSome:
+          let cachedDaemonPubkey = cachedGame.get().daemonPubkey
+          if cachedDaemonPubkey.len > 0:
+            nostrDaemonPubkey = cachedDaemonPubkey
+            if nostrClient != nil:
+              nostrClient.setDaemonPubkey(nostrDaemonPubkey)
         let cachedConfigOpt = tuiCache.loadLatestConfigSnapshot(gameId)
         var invalidCachedConfig = false
         if cachedConfigOpt.isSome:
@@ -1514,7 +1521,6 @@ proc runTui*(gameId: string = "") =
           sam.model.resetBreadcrumbs(sam.model.ui.mode)
           if sam.model.view.homeworld.isSome:
             sam.model.ui.mapState.cursor = sam.model.view.homeworld.get
-          let cachedGame = tuiCache.getGame(gameId)
           let gameName = if cachedGame.isSome: cachedGame.get().name
                          else: gameId
           sam.model.ui.statusMessage = "Loaded game " & gameName
@@ -1566,7 +1572,6 @@ proc runTui*(gameId: string = "") =
           activeGameId = gameId
           viewingHouse = houseId
           sam.model.view.viewingHouse = int(houseId)
-          let cachedGame = tuiCache.getGame(gameId)
           let gameName = if cachedGame.isSome: cachedGame.get().name
                          else: gameId
           sam.model.view.houseName = gameName

@@ -50,6 +50,10 @@ proc cleanupTestGame(dbPath: string) =
   if dirExists(testDir):
     removeDir(testDir)
 
+# Keep existing tests deterministic after saveCommandPacket signature hardening.
+proc saveCommandPacket(dbPath: string, gameId: string, packet: CommandPacket) =
+  writer.saveCommandPacket(dbPath, gameId, packet, 1'i64)
+
 suite "Auto-Resolve: Query Functions":
 
   test "countExpectedPlayers returns 0 when no pubkeys assigned":
@@ -363,6 +367,143 @@ suite "Auto-Resolve: Readiness Detection":
 
     # Still counts as 1 house
     check countPlayersSubmitted(dbPath, gameId, 1) == 1
+
+suite "Auto-Resolve: Command Ordering":
+
+  test "older submission does not overwrite newer command packet":
+    let (dbPath, gameId, state) = createTestGame(1)
+    defer: cleanupTestGame(dbPath)
+
+    let olderPacket = CommandPacket(
+      houseId: HouseId(1),
+      turn: 1,
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(1),
+          commandType: FleetCommandType.Hold,
+          priority: 0,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId)
+        )
+      ],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[]
+    )
+    let newerPacket = CommandPacket(
+      houseId: HouseId(1),
+      turn: 1,
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(1),
+          commandType: FleetCommandType.Patrol,
+          priority: 0,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId)
+        )
+      ],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[]
+    )
+
+    writer.saveCommandPacket(dbPath, gameId, newerPacket, 200'i64)
+    writer.saveCommandPacket(dbPath, gameId, olderPacket, 100'i64)
+
+    let orders = loadOrders(dbPath, 1)
+    check orders.hasKey(HouseId(1))
+    check orders[HouseId(1)].fleetCommands[0].commandType ==
+      FleetCommandType.Patrol
+
+  test "newer submission overwrites older command packet":
+    let (dbPath, gameId, state) = createTestGame(1)
+    defer: cleanupTestGame(dbPath)
+
+    let olderPacket = CommandPacket(
+      houseId: HouseId(1),
+      turn: 1,
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(1),
+          commandType: FleetCommandType.Hold,
+          priority: 0,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId)
+        )
+      ],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[]
+    )
+    let newerPacket = CommandPacket(
+      houseId: HouseId(1),
+      turn: 1,
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(1),
+          commandType: FleetCommandType.Patrol,
+          priority: 0,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId)
+        )
+      ],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[]
+    )
+
+    writer.saveCommandPacket(dbPath, gameId, olderPacket, 100'i64)
+    writer.saveCommandPacket(dbPath, gameId, newerPacket, 200'i64)
+
+    let orders = loadOrders(dbPath, 1)
+    check orders.hasKey(HouseId(1))
+    check orders[HouseId(1)].fleetCommands[0].commandType ==
+      FleetCommandType.Patrol
+
+  test "equal timestamp resubmission does not overwrite":
+    let (dbPath, gameId, state) = createTestGame(1)
+    defer: cleanupTestGame(dbPath)
+
+    let firstPacket = CommandPacket(
+      houseId: HouseId(1),
+      turn: 1,
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(1),
+          commandType: FleetCommandType.Hold,
+          priority: 0,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId)
+        )
+      ],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[]
+    )
+    let secondPacket = CommandPacket(
+      houseId: HouseId(1),
+      turn: 1,
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(1),
+          commandType: FleetCommandType.Patrol,
+          priority: 0,
+          targetSystem: none(SystemId),
+          targetFleet: none(FleetId)
+        )
+      ],
+      buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[]
+    )
+
+    writer.saveCommandPacket(dbPath, gameId, firstPacket, 200'i64)
+    writer.saveCommandPacket(dbPath, gameId, secondPacket, 200'i64)
+
+    let orders = loadOrders(dbPath, 1)
+    check orders.hasKey(HouseId(1))
+    check orders[HouseId(1)].fleetCommands[0].commandType ==
+      FleetCommandType.Hold
 
 suite "Auto-Resolve: Phase Gating":
 
