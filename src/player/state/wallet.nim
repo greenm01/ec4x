@@ -47,6 +47,18 @@ proc clampActiveIdx(wallet: var IdentityWallet) =
   elif wallet.activeIdx >= wallet.identities.len:
     wallet.activeIdx = wallet.identities.len - 1
 
+proc syncLegacyIdentityMirror(activeIdentity: Identity,
+    allowPlaintextMirror: bool) =
+  ## Keep legacy identity.kdl only for plaintext wallets.
+  let mirrorPath = identityPath()
+  if allowPlaintextMirror:
+    saveIdentity(activeIdentity)
+  elif fileExists(mirrorPath):
+    try:
+      removeFile(mirrorPath)
+    except OSError:
+      discard
+
 proc saveWallet*(wallet: IdentityWallet, passwordOpt: Option[string] = none(string)) =
   var normalized = wallet
   normalized.clampActiveIdx()
@@ -79,7 +91,10 @@ proc saveWallet*(wallet: IdentityWallet, passwordOpt: Option[string] = none(stri
     willBeEncrypted = true
 
   writeFile(walletPath(), finalContent)
-  saveIdentity(normalized.identities[normalized.activeIdx])
+  syncLegacyIdentityMirror(
+    normalized.identities[normalized.activeIdx],
+    not willBeEncrypted
+  )
   
   if willBeEncrypted:
     logInfo("Wallet", "Saved encrypted wallet to ", walletPath())
@@ -237,7 +252,7 @@ proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: Wa
   let existing = loadWallet(passwordOpt)
   if existing.status == WalletLoadStatus.Success:
     var wallet = existing.wallet.get()
-    saveIdentity(wallet.activeIdentity())
+    syncLegacyIdentityMirror(wallet.activeIdentity(), not wallet.encryptedOnDisk)
     return (WalletLoadStatus.Success, some(wallet))
   elif existing.status == WalletLoadStatus.NeedsPassword or existing.status == WalletLoadStatus.WrongPassword:
     return existing
@@ -251,13 +266,6 @@ proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: Wa
       sessionPassword: if passwordOpt.isSome: passwordOpt.get() else: ""
     )
     saveWallet(wallet, passwordOpt)
-    let oldPath = identityPath()
-    if fileExists(oldPath):
-      try:
-        removeFile(oldPath)
-      except OSError:
-        discard
-    saveIdentity(wallet.activeIdentity())
     logInfo("Wallet", "Migrated legacy identity to wallet")
     return (WalletLoadStatus.Success, some(wallet))
 

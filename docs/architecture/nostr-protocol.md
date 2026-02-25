@@ -171,8 +171,9 @@ Compatibility mirror:
 ~/.local/share/ec4x/identity.kdl
 ```
 
-The active wallet identity is mirrored to `identity.kdl` for older tools
-that still expect a single identity file.
+When wallet encryption is disabled, the active wallet identity is mirrored
+to `identity.kdl` for older tools that still expect a single identity file.
+When wallet encryption is enabled, `identity.kdl` is not written.
 
 ### Player Message (30406)
 
