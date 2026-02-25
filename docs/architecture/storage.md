@@ -471,6 +471,22 @@ When wallet encryption is disabled, the active wallet identity is mirrored
 to `identity.kdl` for older single-identity tooling compatibility.
 When wallet encryption is enabled, `identity.kdl` is removed/omitted.
 
+### Wallet Encryption Policy
+
+**Wallet encryption is mandatory.** A password must be set on first run;
+blank passwords are not accepted. The TUI enforces this at the
+`CreatePasswordPrompt` screen — the wallet file is never written until a
+non-empty password is confirmed.
+
+Encryption is applied via `wallet_crypto.nim` (ChaCha20-Poly1305). The
+on-disk format is an encrypted container; `isEncryptedContainer()` detects
+it. The session password is kept in memory in `IdentityWallet.sessionPassword`
+for the lifetime of the process and is never persisted.
+
+**Password change** (`[P]` in the Wallet Manager) re-encrypts the wallet in
+place via `changeWalletPassword()` in `src/player/state/wallet.nim`.
+Removing encryption entirely is not exposed through the UI.
+
 ### Schema
 
 ```sql

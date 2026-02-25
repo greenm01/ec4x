@@ -453,10 +453,12 @@ proc closeIdentityManager*(state: var EntryModalState) =
 
 proc confirmCreatePassword*(state: var EntryModalState): bool =
   ## Finalize first-run wallet creation with the chosen password.
-  ## An empty password creates an unencrypted wallet.
+  ## Password is mandatory — blank is rejected.
   let password = state.createPasswordInput.value()
-  let passOpt = if password.len > 0: some(password) else: none(string)
-  let result = createAndSaveWallet(passOpt)
+  if password.len == 0:
+    state.importError = "A password is required."
+    return false
+  let result = createAndSaveWallet(some(password))
   if result.status == WalletLoadStatus.Success:
     state.wallet = result.wallet.get()
     state.identity = state.wallet.activeIdentity()
@@ -475,9 +477,12 @@ proc openChangePassword*(state: var EntryModalState) =
 
 proc confirmChangePassword*(state: var EntryModalState) =
   ## Apply the new password and return to wallet manager.
+  ## Blank password is rejected — encryption is mandatory.
   let password = state.changePasswordInput.value()
-  let passOpt = if password.len > 0: some(password) else: none(string)
-  state.wallet.changeWalletPassword(passOpt)
+  if password.len == 0:
+    state.importError = "A password is required."
+    return
+  state.wallet.changeWalletPassword(some(password))
   state.mode = EntryModalMode.ManageIdentities
   state.changePasswordInput.clear()
   state.importError = ""
@@ -1104,7 +1109,7 @@ proc renderCreatePasswordPromptMode(buf: var CellBuffer, inner: Rect,
 
   let promptY = inner.y + LogoHeight + 3
   let line1 = "Set a password to encrypt your new wallet"
-  let line2 = "(leave blank for unencrypted): "
+  let line2 = "Password: "
   discard buf.setString(inner.x, promptY, line1, promptStyle)
   discard buf.setString(inner.x, promptY + 1, line2, promptStyle)
 
@@ -1150,7 +1155,7 @@ proc renderChangePasswordPromptMode(buf: var CellBuffer, inner: Rect,
 
   let promptY = inner.y + LogoHeight + 3
   let line1 = "Enter new wallet password"
-  let line2 = "(leave blank to remove encryption): "
+  let line2 = "New password: "
   discard buf.setString(inner.x, promptY, line1, promptStyle)
   discard buf.setString(inner.x, promptY + 1, line2, promptStyle)
 
