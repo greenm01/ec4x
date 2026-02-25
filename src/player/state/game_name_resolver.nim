@@ -1,6 +1,6 @@
 ## Shared game-name resolution helpers for lobby/TUI flows.
 
-import std/[options, strutils]
+import std/[options, strutils, sequtils]
 
 type
   GameNameResolution* = tuple[name: string, source: string]
@@ -30,3 +30,27 @@ proc resolveGameName*(nameTag: Option[string], gameId: string,
     return (cached, "cache")
 
   (gameId, "gameId-fallback")
+
+proc gameNameAcronym*(name: string): string =
+  ## Build a 3-letter acronym from a game name.
+  ## Splits on non-alphanumeric characters and takes first letters.
+  var letters: seq[char] = @[]
+  var takeNext = true
+  for ch in name:
+    if ch.isAlphaNumeric():
+      if takeNext:
+        letters.add(ch)
+        takeNext = false
+    else:
+      takeNext = true
+  var resultStr = ""
+  for i in 0..<min(3, letters.len):
+    resultStr.add(letters[i])
+  if resultStr.len < 3:
+    var fallbackText = name.filterIt(it.isAlphaNumeric())
+    for ch in fallbackText:
+      if resultStr.len >= 3:
+        break
+      if not resultStr.contains(ch):
+        resultStr.add(ch)
+  resultStr.toUpperAscii()

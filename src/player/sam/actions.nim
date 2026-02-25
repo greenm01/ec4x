@@ -789,6 +789,15 @@ proc actionEntryImportBackspace*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryIdentityMenu*(): Proposal =
+  ## Open the identity manager
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityMenu,
+    gameActionData: ""
+  )
+
 proc actionEntryToggleMask*(): Proposal =
   ## Toggle masking of sensitive fields in entry modal
   Proposal(
@@ -825,30 +834,48 @@ proc actionEntryPasswordConfirm*(): Proposal =
     gameActionData: ""
   )
 
-proc actionEntryIdentityNext*(): Proposal =
-  ## Switch to the next wallet identity
-  Proposal(
-    kind: ProposalKind.pkGameAction,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.entryIdentityNext,
-    gameActionData: ""
-  )
-
-proc actionEntryIdentityPrev*(): Proposal =
-  ## Switch to the previous wallet identity
-  Proposal(
-    kind: ProposalKind.pkGameAction,
-    timestamp: getTime().toUnix(),
-    actionKind: ActionKind.entryIdentityPrev,
-    gameActionData: ""
-  )
-
 proc actionEntryIdentityCreate*(): Proposal =
   ## Create and activate a new local identity
   Proposal(
     kind: ProposalKind.pkGameAction,
     timestamp: getTime().toUnix(),
     actionKind: ActionKind.entryIdentityCreate,
+    gameActionData: ""
+  )
+
+proc actionEntryIdentityDelete*(): Proposal =
+  ## Open delete confirmation popup for the selected identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityDelete,
+    gameActionData: ""
+  )
+
+proc actionEntryIdentityDeleteConfirm*(): Proposal =
+  ## Confirm deletion of the selected identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityDeleteConfirm,
+    gameActionData: ""
+  )
+
+proc actionEntryIdentityDeleteCancel*(): Proposal =
+  ## Cancel deletion of the selected identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityDeleteCancel,
+    gameActionData: ""
+  )
+
+proc actionEntryIdentityActivate*(): Proposal =
+  ## Activate the selected identity
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryIdentityActivate,
     gameActionData: ""
   )
 

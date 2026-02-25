@@ -969,6 +969,7 @@ type
     quitConfirmationActive*: bool
     quitConfirmationChoice*: QuitConfirmationChoice
     showHelpOverlay*: bool
+    identityDeleteConfirmActive*: bool
 
     # Map export flags
     exportMapRequested*: bool

@@ -151,7 +151,7 @@ based on the user's npub privileges:
 
 ### Storage
 
-Player identities are stored locally in a wallet at:
+Player identities are stored locally in a wallet at (max 10 identities):
 
 ```
 ~/.local/share/ec4x/wallet.kdl

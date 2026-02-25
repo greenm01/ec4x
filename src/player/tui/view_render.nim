@@ -384,6 +384,44 @@ proc renderExportConfirm*(buf: var CellBuffer, model: TuiModel) =
   let hintX = inner.x + max(0, (inner.width - hint.len) div 2)
   discard buf.setString(hintX, inner.y + 3, hint, modalDimStyle())
 
+proc renderIdentityDeleteConfirm*(buf: var CellBuffer,
+                                  model: TuiModel) =
+  ## Render identity delete confirmation modal.
+  if not model.ui.identityDeleteConfirmActive:
+    return
+  if model.ui.termWidth < 36 or model.ui.termHeight < 8:
+    return
+
+  let width = min(56, model.ui.termWidth - 4)
+  let height = 7
+  let x = (model.ui.termWidth - width) div 2
+  let y = (model.ui.termHeight - height) div 2
+  let modalArea = rect(x, y, width, height)
+
+  let m = newModal()
+    .title("REMOVE IDENTITY")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+  m.renderWithFooter(modalArea, buf, "[Y/Enter] Remove   [N/Esc] Cancel")
+  let content = m.contentArea(modalArea, true)
+  if content.isEmpty:
+    return
+
+  let idx = model.ui.entryModal.identitySelectedIdx
+  let rows = model.ui.entryModal.identityRows
+  let idStr =
+    if idx >= 0 and idx < rows.len: rows[idx].npub
+    else: "selected identity"
+
+  let msgX = content.x + 2
+  discard buf.setString(
+    msgX, content.y + 1,
+    "Remove " & idStr & "?",
+    modalBgStyle()
+  )
+
 proc renderSubmitConfirmation*(buf: var CellBuffer, model: TuiModel) =
   ## Render submit turn confirmation modal with command category table.
   if not model.ui.submitConfirmActive:
@@ -3803,6 +3841,9 @@ proc renderDashboard*(
 
   if model.ui.quitConfirmationActive:
     renderQuitConfirmation(buf, model)
+
+  if model.ui.identityDeleteConfirmActive:
+    renderIdentityDeleteConfirm(buf, model)
 
   if model.ui.submitConfirmActive:
     renderSubmitConfirmation(buf, model)

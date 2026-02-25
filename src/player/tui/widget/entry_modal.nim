@@ -68,6 +68,7 @@ type
     ## Current mode of the entry modal
     Normal       ## Default: navigate games, enter invite code
     ImportNsec   ## Importing nsec identity
+    ManageIdentities ## Manage identities
     CreateGame   ## Creating a new game (admin)
     ManageGames  ## Managing existing games (admin)
     PasswordPrompt ## Prompting for password to unlock wallet
@@ -88,9 +89,14 @@ type
     wallet*: IdentityWallet
     identity*: Identity
     activeGames*: seq[EntryActiveGameInfo]
+    identityRows*: seq[tuple[npub, kind, games: string, isActive: bool]]
+    identitySelectedIdx*: int
+    identityNeedsRefresh*: bool
+    identityDeleteArmed*: bool
     focus*: EntryModalFocus
     selectedIdx*: int
     mode*: EntryModalMode
+    returnMode*: EntryModalMode
     # Text input states (bounded display with scrolling)
     inviteInput*: TextInputState   ## Invite code input
     importInput*: TextInputState   ## nsec import input (masked)
@@ -123,6 +129,7 @@ proc newEntryModalState*(): EntryModalState =
   if walletResult.status == WalletLoadStatus.Success:
     activeWallet = walletResult.wallet.get()
     activeIdentity = activeWallet.activeIdentity()
+    initialMode = EntryModalMode.Normal
   elif walletResult.status == WalletLoadStatus.NeedsPassword or walletResult.status == WalletLoadStatus.WrongPassword:
     initialMode = EntryModalMode.PasswordPrompt
 
@@ -130,9 +137,14 @@ proc newEntryModalState*(): EntryModalState =
     wallet: activeWallet,
     identity: activeIdentity,
     activeGames: @[],
+    identityRows: @[],
+    identitySelectedIdx: 0,
+    identityNeedsRefresh: walletResult.status == WalletLoadStatus.Success,
+    identityDeleteArmed: false,
     focus: EntryModalFocus.GameList,
     selectedIdx: 0,
     mode: initialMode,
+    returnMode: EntryModalMode.Normal,
     inviteInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
     importInput: initTextInputState(maxLength = 0, maxDisplayWidth = 50),
     relayInput: initTextInputState(maxLength = 0, maxDisplayWidth = 40),
@@ -165,8 +177,22 @@ proc selectedGame*(state: EntryModalState): Option[EntryActiveGameInfo] =
   else:
     none(EntryActiveGameInfo)
 
+proc moveIdentitySelection*(state: var EntryModalState, delta: int) =
+  ## Move selection inside identity manager.
+  if state.identityRows.len == 0:
+    return
+  var idx = state.identitySelectedIdx + delta
+  if idx < 0:
+    idx = 0
+  if idx >= state.identityRows.len:
+    idx = state.identityRows.len - 1
+  state.identitySelectedIdx = idx
+
 proc moveUp*(state: var EntryModalState) =
   ## Move selection up in current section or switch focus
+  if state.mode == EntryModalMode.ManageIdentities:
+    state.moveIdentitySelection(-1)
+    return
   case state.focus
   of EntryModalFocus.GameList:
     if state.selectedIdx > 0:
@@ -192,6 +218,9 @@ proc moveUp*(state: var EntryModalState) =
 
 proc moveDown*(state: var EntryModalState) =
   ## Move selection down in current section or switch focus
+  if state.mode == EntryModalMode.ManageIdentities:
+    state.moveIdentitySelection(1)
+    return
   case state.focus
   of EntryModalFocus.GameList:
     if state.activeGames.len > 0 and
@@ -344,6 +373,7 @@ proc setInviteError*(state: var EntryModalState, msg: string) =
 
 proc startImport*(state: var EntryModalState) =
   ## Enter import mode
+  state.returnMode = state.mode
   state.mode = EntryModalMode.ImportNsec
   state.importInput.clear()
   state.importError = ""
@@ -354,7 +384,7 @@ proc toggleMask*(state: var EntryModalState) =
 
 proc cancelImport*(state: var EntryModalState) =
   ## Cancel import mode
-  state.mode = EntryModalMode.Normal
+  state.mode = state.returnMode
   state.importInput.clear()
   state.importError = ""
 
@@ -382,31 +412,74 @@ proc confirmImport*(state: var EntryModalState): bool =
   ## Returns true on success, false on failure (check importError)
   try:
     state.identity = state.wallet.importIntoWallet(state.importInput.value())
-    state.mode = EntryModalMode.Normal
+    state.mode = state.returnMode
     state.importInput.clear()
     state.importError = ""
+    state.identityNeedsRefresh = true
     true
   except ValueError as e:
     state.importError = e.msg
     false
 
-proc selectNextIdentity*(state: var EntryModalState): bool =
-  ## Activate the next identity in the wallet.
-  if state.wallet.cycleActive(1):
-    state.identity = state.wallet.activeIdentity()
-    return true
-  false
-
-proc selectPrevIdentity*(state: var EntryModalState): bool =
-  ## Activate the previous identity in the wallet.
-  if state.wallet.cycleActive(-1):
-    state.identity = state.wallet.activeIdentity()
-    return true
-  false
-
 proc createIdentity*(state: var EntryModalState) =
   ## Create and activate a new local identity.
   state.identity = state.wallet.createNewLocalIdentity()
+  state.identityNeedsRefresh = true
+
+proc openIdentityManager*(state: var EntryModalState) =
+  ## Enter identity manager mode.
+  state.mode = EntryModalMode.ManageIdentities
+  state.identityNeedsRefresh = true
+  state.identityDeleteArmed = false
+
+proc closeIdentityManager*(state: var EntryModalState) =
+  ## Return to main entry screen.
+  state.mode = EntryModalMode.Normal
+  state.importError = ""
+  state.identityDeleteArmed = false
+
+proc setIdentityRows*(state: var EntryModalState,
+                      rows: seq[tuple[npub, kind, games: string,
+                      isActive: bool]]) =
+  ## Replace identity rows for the manager.
+  state.identityRows = rows
+  if state.identityRows.len == 0:
+    state.identitySelectedIdx = 0
+  elif state.identitySelectedIdx >= state.identityRows.len:
+    state.identitySelectedIdx = state.identityRows.len - 1
+
+proc updateIdentityRows*(state: var EntryModalState,
+                         getGameAcronyms: proc(npubHex: string): string) =
+  ## Rebuild identity rows using the provided acronyms resolver.
+  var rows: seq[tuple[npub, kind, games: string, isActive: bool]] = @[]
+  for idx, identity in state.wallet.identities:
+    let npub = identity.npubTruncated
+    let kind = identity.typeLabel
+    let games = getGameAcronyms(identity.npubHex)
+    let isActive = idx == state.wallet.activeIdx
+    rows.add((npub: npub, kind: kind, games: games, isActive: isActive))
+  state.setIdentityRows(rows)
+
+proc applyIdentitySelection*(state: var EntryModalState): bool =
+  ## Activate the selected identity.
+  let idx = state.identitySelectedIdx
+  if idx < 0 or idx >= state.wallet.identities.len:
+    return false
+  if state.wallet.setActiveIndex(idx):
+    state.identity = state.wallet.activeIdentity()
+    state.identityNeedsRefresh = true
+    return true
+  false
+
+proc deleteSelectedIdentity*(state: var EntryModalState): bool =
+  ## Remove the selected identity if allowed. Returns true on success.
+  let idx = state.identitySelectedIdx
+  if state.wallet.removeIdentityAt(idx):
+    if state.wallet.identities.len > 0:
+      state.identity = state.wallet.activeIdentity()
+    state.identityNeedsRefresh = true
+    return true
+  false
 
 proc identityCount*(state: EntryModalState): int =
   state.wallet.identities.len
@@ -469,6 +542,102 @@ proc renderIdentitySection(buf: var CellBuffer, area: Rect,
     if importHint and area.height > 2:
       # Removed redundant hints from under IDENTITY to save vertical space.
       discard
+
+proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
+                           state: EntryModalState, tableHeight: int) =
+  ## Render identity manager table.
+  let headerStyle = modalBgStyle()
+  let emptyStyle = modalDimStyle()
+
+  let title = "MANAGE IDENTITIES "
+  let limitHint = "(max " & $MaxIdentityCount & ") "
+  let ruleLen = max(0, inner.width - title.len - limitHint.len - 1)
+  let headerLine = title & limitHint & repeat("─", ruleLen)
+  discard buf.setString(inner.x, inner.y, headerLine, headerStyle)
+
+  if inner.height <= 2:
+    return
+
+  let tableArea = rect(inner.x, inner.y + 1, inner.width, tableHeight)
+  if state.identityRows.len == 0:
+    discard buf.setString(tableArea.x + 2, tableArea.y, "None", emptyStyle)
+  else:
+    var rows: seq[TableRow] = @[]
+    for row in state.identityRows:
+      let prefix = if row.isActive: "*" else: " "
+      rows.add(TableRow(cells: @[prefix & row.npub, row.kind, row.games]))
+
+    var tableWidget = table([
+      tableColumn("ID", width = 24),
+      tableColumn("Type", width = 10),
+      tableColumn("Games", width = 0, minWidth = 3)
+    ]).showBorders(true)
+      .showHeader(true)
+      .showSeparator(true)
+      .cellPadding(1)
+      .rowStyle(modalBgStyle())
+      .selectedStyle(selectedStyle())
+      .selectedIdx(state.identitySelectedIdx)
+      .rows(rows)
+
+    tableWidget.render(tableArea, buf)
+
+  let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
+  let dimStyle = modalDimStyle()
+  let keyStyle = CellStyle(
+    fg: color(KeyHintColor),
+    bg: color(TrueBlackColor),
+    attrs: {StyleAttr.Bold}
+  )
+  let textStyle = modalBgStyle()
+  var x = footerArea.x
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "↑↓", keyStyle)
+  x += 2
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Select  ", textStyle)
+  x += 9
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "Enter", keyStyle)
+  x += 5
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Activate  ", textStyle)
+  x += 11
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "I", keyStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Import  ", textStyle)
+  x += 9
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "N", keyStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " New  ", textStyle)
+  x += 6
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "D", keyStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Remove  ", textStyle)
+  x += 9
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "Esc", keyStyle)
+  x += 3
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Back", textStyle)
 
 proc renderGameList(buf: var CellBuffer, area: Rect,
                     games: seq[EntryActiveGameInfo], selectedIdx: int,
@@ -640,7 +809,7 @@ proc renderInviteCodeSection(buf: var CellBuffer, area: Rect,
     discard buf.setString(area.x + 2, area.y + 2, errorMsg, errorStyle)
 
 proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
-                  isAdmin: bool) =
+                  isAdmin: bool, mode: EntryModalMode) =
   ## Render the footer with hotkeys and version
   let dimStyle = modalDimStyle()
   let keyStyle = CellStyle(
@@ -704,35 +873,16 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     discard buf.setString(x, area.y, " Edit  ", textStyle)
     x += 7
   
-  # [Ctrl-I] Import
-  discard buf.setString(x, area.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, "Ctrl-I", keyStyle)
-  x += 6
-  discard buf.setString(x, area.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, " Import  ", textStyle)
-  x += 9
-
-  # [Ctrl-T] Cycle ID
-  discard buf.setString(x, area.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, "Ctrl-T", keyStyle)
-  x += 6
-  discard buf.setString(x, area.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, " ID  ", textStyle)
-  x += 5
-
-  # [Ctrl-N] New key
-  discard buf.setString(x, area.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, "Ctrl-N", keyStyle)
-  x += 6
-  discard buf.setString(x, area.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, area.y, " New  ", textStyle)
-  x += 6
+  if mode == EntryModalMode.Normal:
+    # [Ctrl-I] IDs
+    discard buf.setString(x, area.y, "[", dimStyle)
+    x += 1
+    discard buf.setString(x, area.y, "Ctrl-I", keyStyle)
+    x += 6
+    discard buf.setString(x, area.y, "]", dimStyle)
+    x += 1
+    discard buf.setString(x, area.y, " IDs  ", textStyle)
+    x += 7
   
   # [F12] Quit
   discard buf.setString(x, area.y, "[", dimStyle)
@@ -1071,6 +1221,34 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     .minWidth(ModalMinWidth)
     .minHeight(ModalMinHeight)
   
+  if state.mode == EntryModalMode.ManageIdentities:
+    var tableWidget = table([
+      tableColumn("ID", width = 24),
+      tableColumn("Type", width = 10),
+      tableColumn("Games", width = 0, minWidth = 3)
+    ]).showBorders(true)
+      .showHeader(true)
+      .showSeparator(true)
+      .cellPadding(1)
+    let rowCount = max(1, state.identityRows.len)
+    let tableWidth = tableWidget.renderWidth(ModalMaxWidth - 2)
+    let tableHeight = tableWidget.renderHeight(rowCount)
+    let headerLine = "MANAGE IDENTITIES (max " & $MaxIdentityCount & ")"
+    let footerLine = "[↑↓] Select  [Enter] Activate  [I] Import  [N] New  " &
+      "[D] Remove  [Esc] Back"
+    let contentWidth = max(tableWidth, max(headerLine.len, footerLine.len))
+    let contentHeight = 1 + tableHeight
+    let managerFooterHeight = 2  # separator row + footer text row
+    let managerModal = modal
+      .minWidth(max(40, contentWidth + 2))
+      .minHeight(contentHeight + managerFooterHeight + 2)
+    let modalArea = managerModal.calculateArea(viewport, contentWidth,
+                                               contentHeight + managerFooterHeight)
+    managerModal.renderWithSeparator(modalArea, buf, managerFooterHeight)
+    let inner = managerModal.inner(modalArea)
+    renderIdentityManager(buf, inner, modalArea, state, tableHeight)
+    return
+  
   let desiredHeight = desiredGamesHeight(state)
   let fixedHeight = calculateContentHeight(state, 0)
   let minGamesHeight = 2
@@ -1091,6 +1269,8 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
   if state.mode == EntryModalMode.ImportNsec:
     renderImportMode(buf, inner, modalArea,
                      state.importInput, state.importError, state.importMasked)
+  elif state.mode == EntryModalMode.ManageIdentities:
+    renderIdentityManager(buf, inner, modalArea, state, inner.height - 3)
   elif state.mode == EntryModalMode.PasswordPrompt:
     renderPasswordPromptMode(buf, inner, modalArea,
                              state.passwordInput, state.importError, state.importMasked)
@@ -1143,4 +1323,4 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     
     # Footer
     let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
-    renderFooter(buf, footerArea, state.focus, state.isAdmin)
+    renderFooter(buf, footerArea, state.focus, state.isAdmin, state.mode)

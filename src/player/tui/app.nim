@@ -980,6 +980,17 @@ proc runTui*(gameId: string = "") =
   var lastRenderTime = epochTime()
   var lastIdentityPubkey = initialModel.ui.entryModal.identity.npubHex
   const TargetFrameTimeMs = 16  # ~60fps (16.67ms per frame)
+
+  proc buildIdentityAcronyms(pubkeyHex: string): string =
+    let games = tuiCache.listPlayerGames(pubkeyHex)
+    var parts: seq[string] = @[]
+    for entry in games:
+      let shortName = gameNameAcronym(entry.game.name)
+      if shortName.len > 0:
+        parts.add(shortName)
+    if parts.len == 0:
+      return "---"
+    parts.join(",")
   
   proc doRender() =
     ## Explicit render function - called by main loop, not SAM
@@ -1471,6 +1482,11 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.nostrEnabled = true
         nostrConnectStartTime = epochTime()
       sam.model.ui.statusMessage = "Identity switched"
+      needsRender = true
+
+    if sam.model.ui.entryModal.identityNeedsRefresh:
+      sam.model.ui.entryModal.updateIdentityRows(buildIdentityAcronyms)
+      sam.model.ui.entryModal.identityNeedsRefresh = false
       needsRender = true
 
     # -------------------------------------------------------------------------

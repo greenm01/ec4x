@@ -2114,9 +2114,15 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         discard
     # Entry modal actions
     of ActionKind.entryUp:
-      model.ui.entryModal.moveUp()
+      if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+        model.ui.entryModal.moveIdentitySelection(-1)
+      else:
+        model.ui.entryModal.moveUp()
     of ActionKind.entryDown:
-      model.ui.entryModal.moveDown()
+      if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+        model.ui.entryModal.moveIdentitySelection(1)
+      else:
+        model.ui.entryModal.moveDown()
     of ActionKind.entrySelect:
       # Enter selected game from game list
       let gameOpt = model.ui.entryModal.selectedGame()
@@ -2157,19 +2163,37 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           proposal.gameActionData[0])
     of ActionKind.entryImportBackspace:
       model.ui.entryModal.importInput.backspace()
-    of ActionKind.entryIdentityNext:
-      if model.ui.entryModal.selectNextIdentity():
-        model.ui.statusMessage = "Selected next identity"
-      else:
-        model.ui.statusMessage = "Only one identity in wallet"
-    of ActionKind.entryIdentityPrev:
-      if model.ui.entryModal.selectPrevIdentity():
-        model.ui.statusMessage = "Selected previous identity"
-      else:
-        model.ui.statusMessage = "Only one identity in wallet"
     of ActionKind.entryIdentityCreate:
       model.ui.entryModal.createIdentity()
       model.ui.statusMessage = "Created and selected new local identity"
+    of ActionKind.entryIdentityMenu:
+      if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+        model.ui.entryModal.closeIdentityManager()
+      else:
+        model.ui.entryModal.openIdentityManager()
+      model.ui.statusMessage = ""
+    of ActionKind.entryIdentityDelete:
+      # Only open popup if there is more than one identity to delete
+      let wallet = model.ui.entryModal.wallet
+      if wallet.identities.len <= 1:
+        model.ui.statusMessage = "Cannot delete last identity"
+      else:
+        model.ui.identityDeleteConfirmActive = true
+        model.ui.statusMessage = "Confirm identity removal"
+    of ActionKind.entryIdentityDeleteConfirm:
+      if model.ui.entryModal.deleteSelectedIdentity():
+        model.ui.statusMessage = "Identity removed"
+      else:
+        model.ui.statusMessage = "Cannot delete last identity"
+      model.ui.identityDeleteConfirmActive = false
+    of ActionKind.entryIdentityDeleteCancel:
+      model.ui.identityDeleteConfirmActive = false
+      model.ui.statusMessage = ""
+    of ActionKind.entryIdentityActivate:
+      if model.ui.entryModal.applyIdentitySelection():
+        model.ui.statusMessage = "Identity activated"
+      else:
+        model.ui.statusMessage = "Identity already active"
     of ActionKind.entryDelete:
       if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
         model.ui.entryModal.passwordInput.delete()

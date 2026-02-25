@@ -27,6 +27,7 @@ const
   WalletNode = "wallet"
   WalletIdentityNode = "identity"
   WalletFile = "wallet.kdl"
+  MaxIdentityCount* = 10
 
 proc walletPath*(): string =
   identityDir() / WalletFile
@@ -217,6 +218,8 @@ proc cycleActive*(wallet: var IdentityWallet, delta: int): bool =
   true
 
 proc createNewLocalIdentity*(wallet: var IdentityWallet): Identity =
+  if wallet.identities.len >= MaxIdentityCount:
+    raise newException(ValueError, "Identity limit reached")
   let keys = identity.generateKeyPair()
   result = Identity(
     nsecHex: keys.nsecHex,
@@ -238,6 +241,9 @@ proc importIntoWallet*(wallet: var IdentityWallet, nsecOrHex: string):
       saveWallet(wallet)
       return identity
 
+  if wallet.identities.len >= MaxIdentityCount:
+    raise newException(ValueError, "Identity limit reached")
+
   result = Identity(
     nsecHex: nsecHex,
     npubHex: npubHex,
@@ -247,6 +253,17 @@ proc importIntoWallet*(wallet: var IdentityWallet, nsecOrHex: string):
   wallet.identities.add(result)
   wallet.activeIdx = wallet.identities.len - 1
   saveWallet(wallet)
+
+proc removeIdentityAt*(wallet: var IdentityWallet, idx: int): bool =
+  ## Remove an identity by index. Returns false if not allowed.
+  if wallet.identities.len <= 1:
+    return false
+  if idx < 0 or idx >= wallet.identities.len:
+    return false
+  wallet.identities.delete(idx)
+  wallet.clampActiveIdx()
+  saveWallet(wallet)
+  true
 
 proc ensureWallet*(passwordOpt: Option[string] = none(string)): tuple[status: WalletLoadStatus, wallet: Option[IdentityWallet]] =
   let existing = loadWallet(passwordOpt)

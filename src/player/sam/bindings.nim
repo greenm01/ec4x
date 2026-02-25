@@ -2057,6 +2057,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
       return some(actionCreateGameCancel())
     if model.ui.entryModal.mode == EntryModalMode.ManageGames:
       return some(actionManageGamesCancel())
+    if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+      return some(actionEntryIdentityMenu())
   if model.ui.mode in {
       ViewMode.PlanetDetail,
       ViewMode.IntelDetail}:
@@ -2419,6 +2421,16 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Lobby phase: special handling for text input modes
   if model.ui.appPhase == AppPhase.Lobby:
+    # Identity delete confirmation popup takes priority
+    if model.ui.identityDeleteConfirmActive:
+      case key
+      of KeyCode.KeyEnter, KeyCode.KeyY:
+        return some(actionEntryIdentityDeleteConfirm())
+      of KeyCode.KeyN, KeyCode.KeyEscape:
+        return some(actionEntryIdentityDeleteCancel())
+      else:
+        return none(Proposal)
+
     if model.ui.lobbyInputMode != LobbyInputMode.None:
       case key
       of KeyCode.KeyEnter:
@@ -2525,6 +2537,26 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         if modifier != ViewModifier:
           return none(Proposal)
 
+    elif model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+      case key
+      of KeyCode.KeyEscape:
+        return some(actionEntryIdentityMenu())
+      of KeyCode.KeyUp:
+        return some(actionEntryUp())
+      of KeyCode.KeyDown:
+        return some(actionEntryDown())
+      of KeyCode.KeyEnter:
+        return some(actionEntryIdentityActivate())
+      of KeyCode.KeyI:
+        return some(actionEntryImport())
+      of KeyCode.KeyN:
+        return some(actionEntryIdentityCreate())
+      of KeyCode.KeyD:
+        return some(actionEntryIdentityDelete())
+      else:
+        if modifier != ViewModifier:
+          return none(Proposal)
+
     else:
       # Normal entry modal mode
       case key
@@ -2561,8 +2593,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
             EntryModalFocus.InviteCode,
             EntryModalFocus.RelayUrl}:
           return some(actionEntryCursorLeft())
-      of KeyCode.KeyShiftTab:
-        return some(actionEntryIdentityPrev())
       of KeyCode.KeyRight:
         if model.ui.entryModal.focus in {
             EntryModalFocus.InviteCode,
@@ -2570,13 +2600,13 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           return some(actionEntryCursorRight())
       of KeyCode.KeyT:
         if modifier == KeyModifier.Ctrl:
-          return some(actionEntryIdentityNext())
+          return some(actionEntryIdentityMenu())
       of KeyCode.KeyI:
         if modifier == KeyModifier.Ctrl:
-          return some(actionEntryImport())
+          return some(actionEntryIdentityMenu())
       of KeyCode.KeyN:
         if modifier == KeyModifier.Ctrl:
-          return some(actionEntryIdentityCreate())
+          return some(actionEntryIdentityMenu())
       of KeyCode.KeyF12:
         return some(actionQuit())
       else:

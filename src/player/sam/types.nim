@@ -104,9 +104,12 @@ type
     entryPasswordAppend
     entryPasswordConfirm
     entryPasswordBackspace
-    entryIdentityNext
-    entryIdentityPrev
+    entryIdentityMenu
     entryIdentityCreate
+    entryIdentityDelete
+    entryIdentityDeleteConfirm
+    entryIdentityDeleteCancel
+    entryIdentityActivate
     entryDelete
     entryInviteAppend
     entryInviteBackspace

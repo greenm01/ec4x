@@ -227,6 +227,8 @@ proc listenToRelay(client: NostrClient, url: string) {.async.} =
     return
   
   while client.running:
+    if url notin client.connections:
+      break
     let conn = client.connections[url]
     if conn.state != ConnectionState.Connected:
       break
@@ -239,7 +241,8 @@ proc listenToRelay(client: NostrClient, url: string) {.async.} =
         client.handleMessage(url, data)
       of Opcode.Close:
         logInfo("Nostr", "Connection closed by relay: ", url)
-        client.connections[url].state = ConnectionState.Disconnected
+        if url in client.connections:
+          client.connections[url].state = ConnectionState.Disconnected
         break
       of Opcode.Ping:
         await conn.socket.send(data, Opcode.Pong)
@@ -248,7 +251,8 @@ proc listenToRelay(client: NostrClient, url: string) {.async.} =
     
     except CatchableError as e:
       logError("Nostr", "Error receiving from ", url, ": ", e.msg)
-      client.connections[url].state = ConnectionState.Disconnected
+      if url in client.connections:
+        client.connections[url].state = ConnectionState.Disconnected
       break
 
 proc listen*(client: NostrClient) {.async.} =

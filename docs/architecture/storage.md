@@ -447,7 +447,7 @@ independent from the daemon's authoritative database.
 
 ### Identity Wallet Files
 
-The player identity wallet is stored separately from cache:
+The player identity wallet is stored separately from cache (max 10 identities):
 
 ```
 ~/.local/share/ec4x/wallet.kdl

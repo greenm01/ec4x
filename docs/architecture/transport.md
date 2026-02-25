@@ -141,7 +141,7 @@ type NostrClient* = ref object
 
 #### Join Game
 ```
-1. Player selects identity (existing wallet key or new local key)
+1. Player selects identity (existing wallet key or new local key, max 10)
 2. Client connects to relay WebSocket
 3. Subscribe to EventKindGameDefinition with game_id filter
 4. Fetch game metadata (players, rules, status)
