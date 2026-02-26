@@ -2127,6 +2127,16 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.entryModal.movePlayerGameSelection(1)
       else:
         model.ui.entryModal.moveDown()
+    of ActionKind.entryPageUp:
+      if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+        model.ui.entryModal.moveIdentitySelection(-10)
+      elif model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
+        model.ui.entryModal.movePlayerGameSelection(-10)
+    of ActionKind.entryPageDown:
+      if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+        model.ui.entryModal.moveIdentitySelection(10)
+      elif model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
+        model.ui.entryModal.movePlayerGameSelection(10)
     of ActionKind.entrySelect:
       # Enter selected game from game list
       let gameOpt = model.ui.entryModal.selectedGame()

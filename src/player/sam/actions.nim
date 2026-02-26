@@ -735,6 +735,24 @@ proc actionEntryDown*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryPageUp*(): Proposal =
+  ## Move selection page up in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPageUp,
+    gameActionData: ""
+  )
+
+proc actionEntryPageDown*(): Proposal =
+  ## Move selection page down in entry modal
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryPageDown,
+    gameActionData: ""
+  )
+
 proc actionEntrySelect*(): Proposal =
   ## Select current game/lobby in entry modal
   Proposal(

@@ -32,6 +32,9 @@ type
     houseName*: string
     houseId*: int
     status*: string
+    server*: string
+    prestige*: int
+    rank*: string
 
 const
   ModalMaxWidth = 84
@@ -751,7 +754,17 @@ proc renderGameList(buf: var CellBuffer, area: Rect,
 
   # Find first active game (houseId > 0 and not completed)
   var found = false
-  var g = EntryActiveGameInfo()
+  var g = EntryActiveGameInfo(
+    id: "",
+    name: "",
+    turn: 0,
+    houseName: "",
+    houseId: 0,
+    status: "",
+    server: "",
+    prestige: 0,
+    rank: ""
+  )
   for game in games:
     if game.houseId > 0 and game.status != "completed":
       g = game
@@ -912,6 +925,15 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     x += 1
     discard buf.setString(x, area.y, " Wallet  ", textStyle)
     x += 9
+    # [Ctrl+G] Games (right after Wallet)
+    discard buf.setString(x, area.y, "[", dimStyle)
+    x += 1
+    discard buf.setString(x, area.y, "Ctrl+G", keyStyle)
+    x += 6
+    discard buf.setString(x, area.y, "]", dimStyle)
+    x += 1
+    discard buf.setString(x, area.y, " Games  ", textStyle)
+    x += 8
   
   # [Ctrl+X] Quit
   discard buf.setString(x, area.y, "[", dimStyle)
@@ -1336,7 +1358,10 @@ proc renderPlayerGamesManager(buf: var CellBuffer, inner: Rect,
       var name = game.name
       if name.len > 24:
         name = name[0..<23] & "\xe2\x80\xa6"
-      rows.add(TableRow(cells: @[name, "T" & $game.turn, game.houseName]))
+      var server = game.server
+      if server.len > 16:
+        server = server[0..<15] & "\xe2\x80\xa6"
+      rows.add(TableRow(cells: @[name, server, "T" & $game.turn, game.houseName, $game.prestige, game.rank]))
 
   if rows.len == 0:
     discard buf.setString(tableArea.x + 2, tableArea.y, "None", emptyStyle)
@@ -1344,8 +1369,11 @@ proc renderPlayerGamesManager(buf: var CellBuffer, inner: Rect,
 
   var tableWidget = table([
     tableColumn("Name", width = 24),
+    tableColumn("Server", width = 16),
     tableColumn("Turn", width = 6),
-    tableColumn("House", width = 0, minWidth = 4)
+    tableColumn("House", width = 14),
+    tableColumn("Prest", width = 7),
+    tableColumn("Rank", width = 6)
   ]).showBorders(true)
     .showHeader(true)
     .showSeparator(true)
@@ -1356,6 +1384,39 @@ proc renderPlayerGamesManager(buf: var CellBuffer, inner: Rect,
     .rows(rows)
 
   tableWidget.render(tableArea, buf)
+
+  let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
+  let dimStyle = modalDimStyle()
+  let keyStyle = CellStyle(
+    fg: color(KeyHintColor),
+    bg: color(TrueBlackColor),
+    attrs: {StyleAttr.Bold}
+  )
+  let textStyle = modalBgStyle()
+  var x = footerArea.x
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "↑↓", keyStyle)
+  x += 2
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Nav  ", textStyle)
+  x += 6
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "Enter", keyStyle)
+  x += 5
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Play  ", textStyle)
+  x += 7
+  discard buf.setString(x, footerArea.y, "[", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, "Esc", keyStyle)
+  x += 3
+  discard buf.setString(x, footerArea.y, "]", dimStyle)
+  x += 1
+  discard buf.setString(x, footerArea.y, " Back", textStyle)
 
 proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
   ## Calculate content height with a specific games section size

@@ -432,13 +432,41 @@ proc runTui*(gameId: string = "") =
         phase: game.status,
         houseId: houseId
       ))
+      # Try to enrich entry modal with server and prestige/rank info from cache
+      var prestigeVal = 0
+      var rankStr = ""
+      let cachedPsOpt = tuiCache.loadLatestPlayerState(game.id, houseId)
+      if cachedPsOpt.isSome:
+        let ps = cachedPsOpt.get()
+        # prestige for viewing house (should be present in snapshot)
+        prestigeVal = ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
+        # compute rank (1-based) among houses by prestige
+        var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
+        for hId, p in ps.housePrestige.pairs:
+          prestigeList.add((id: hId, prestige: p))
+        prestigeList.sort(proc(a, b: tuple[id: HouseId, prestige: int32]): int =
+          result = cmp(b.prestige, a.prestige)
+          if result == 0:
+            result = cmp(int(a.id), int(b.id))
+        )
+        var rank = 0
+        for i, entry in prestigeList:
+          if entry.id == ps.viewingHouse:
+            rank = i + 1
+            break
+        if rank > 0:
+          rankStr = $(rank) & "/" & $prestigeList.len
+
       model.ui.entryModal.activeGames.add(EntryActiveGameInfo(
         id: game.id,
         name: game.name,
         turn: game.turn,
         houseName: "",
         houseId: houseId,
-        status: game.status
+        status: game.status,
+        server: game.relayUrl,
+        prestige: prestigeVal,
+        rank: rankStr
       ))
 
     # Restore last selected active game from cache if available
@@ -731,13 +759,42 @@ proc runTui*(gameId: string = "") =
                 slotOpt.get().houseId else: 0
 
               if houseIdFromCache > 0:
+                # Enrich entry modal info with server and prestige from cache if
+                # available.
+                var prestigeVal = 0
+                var rankStr = ""
+                let postCached = tuiCache.getGame(gameId)
+                var serverUrl = if postCached.isSome: postCached.get().relayUrl else: sam.model.ui.nostrRelayUrl
+                let psOpt = tuiCache.loadLatestPlayerState(gameId, houseIdFromCache)
+                if psOpt.isSome:
+                  let ps = psOpt.get()
+                  prestigeVal = ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
+                  var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
+                  for hId, p in ps.housePrestige.pairs:
+                    prestigeList.add((id: hId, prestige: p))
+                  prestigeList.sort(proc(a, b: tuple[id: HouseId, prestige: int32]): int =
+                    result = cmp(b.prestige, a.prestige)
+                    if result == 0:
+                      result = cmp(int(a.id), int(b.id))
+                  )
+                  var rank = 0
+                  for i, entry in prestigeList:
+                    if entry.id == ps.viewingHouse:
+                      rank = i + 1
+                      break
+                  if rank > 0:
+                    rankStr = $(rank) & "/" & $prestigeList.len
+
                 let gameInfo = EntryActiveGameInfo(
                   id: gameId,
                   name: gameNameStr,
                   turn: turnNum,
                   houseName: "",
                   houseId: houseIdFromCache,
-                  status: gameStatus
+                  status: gameStatus,
+                  server: serverUrl,
+                  prestige: prestigeVal,
+                  rank: rankStr
                 )
                 var updated = false
                 for idx in 0..<sam.model.ui.entryModal.activeGames.len:
@@ -881,16 +938,47 @@ proc runTui*(gameId: string = "") =
                       break
                   if not foundGame:
                     logInfo("JOIN", "Adding new game to entryModal")
-                    # Add the game if not already in entry modal
+                    # Add the game if not already in entry modal. Try to
+                    # populate server/prestige from cache.
+                    var serverUrl = ""
+                    let cachedAfter = tuiCache.getGame(joinGameId)
+                    if cachedAfter.isSome:
+                      serverUrl = cachedAfter.get().relayUrl
+                    var prestigeVal = 0
+                    var rankStr = ""
+                    let psOpt = tuiCache.loadLatestPlayerState(joinGameId, int(houseId))
+                    if psOpt.isSome:
+                      let ps = psOpt.get()
+                      prestigeVal = ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
+                      var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
+                      for hId, p in ps.housePrestige.pairs:
+                        prestigeList.add((id: hId, prestige: p))
+                      prestigeList.sort(proc(a, b: tuple[id: HouseId, prestige: int32]): int =
+                        result = cmp(b.prestige, a.prestige)
+                        if result == 0:
+                          result = cmp(int(a.id), int(b.id))
+                      )
+                      var rank = 0
+                      for i, entry in prestigeList:
+                        if entry.id == ps.viewingHouse:
+                          rank = i + 1
+                          break
+                      if rank > 0:
+                        rankStr = $(rank) & "/" & $prestigeList.len
+
+                    # Add the entry with enriched fields
                     sam.model.ui.entryModal.activeGames.add(
                       EntryActiveGameInfo(
-                      id: joinGameId,
-                      name: gameNameStr,
-                      turn: turnNum,
-                      houseName: "",
-                      houseId: int(houseId),
-                      status: "active"
-                    ))
+                        id: joinGameId,
+                        name: gameNameStr,
+                        turn: turnNum,
+                        houseName: "",
+                        houseId: int(houseId),
+                        status: "active",
+                        server: serverUrl,
+                        prestige: prestigeVal,
+                        rank: rankStr
+                      ))
                   sam.model.ui.lobbyJoinStatus = JoinStatus.Joined
                   sam.model.ui.lobbyJoinError = ""
                   sam.model.ui.statusMessage = "Joined game " & joinGameId

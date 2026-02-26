@@ -2565,10 +2565,14 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       case key
       of KeyCode.KeyEscape:
         return some(actionEntryPlayerGamesMenu())
-      of KeyCode.KeyUp:
+      of KeyCode.KeyUp, KeyCode.KeyK:
         return some(actionEntryUp())
-      of KeyCode.KeyDown:
+      of KeyCode.KeyDown, KeyCode.KeyJ:
         return some(actionEntryDown())
+      of KeyCode.KeyPageUp:
+        return some(actionEntryPageUp())
+      of KeyCode.KeyPageDown:
+        return some(actionEntryPageDown())
       of KeyCode.KeyEnter:
         return some(actionEntryPlayerGamesSelect())
       else:

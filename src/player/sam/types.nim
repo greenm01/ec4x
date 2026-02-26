@@ -94,6 +94,8 @@ type
     cancelOrder
     entryUp
     entryDown
+    entryPageUp
+    entryPageDown
     entrySelect
     entryImport
     entryImportConfirm
