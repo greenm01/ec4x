@@ -28,8 +28,9 @@ type
     CacheOnly    # Clean only player cache
     DataOnly     # Clean only game/player data
 
-proc clearDirectory(dir: string, dryRun: bool): tuple[success: bool, message: string] =
-  ## Clear all contents of a directory
+proc clearDirectory(dir: string, dryRun: bool,
+    exclude: seq[string] = @[]): tuple[success: bool, message: string] =
+  ## Clear all contents of a directory, optionally skipping named entries
   if not dirExists(dir):
     return (true, "• Directory doesn't exist: " & dir)
 
@@ -37,9 +38,11 @@ proc clearDirectory(dir: string, dryRun: bool): tuple[success: bool, message: st
   var failedCount = 0
   var items: seq[string] = @[]
 
+  let skipNames = @["README.md", ".gitkeep"] & exclude
+
   # Collect items to delete
   for kind, path in walkDir(dir):
-    if path.extractFilename() notin ["README.md", ".gitkeep"]:
+    if path.extractFilename() notin skipNames:
       items.add(path)
 
   if items.len == 0:
@@ -70,10 +73,11 @@ proc clearDirectory(dir: string, dryRun: bool): tuple[success: bool, message: st
   return (success, msg)
 
 proc clearPlayerData(dryRun: bool): tuple[success: bool, message: string] =
-  ## Clear all player state from ~/.local/share/ec4x/
-  ## (wallet, cache, identity files, etc.)
+  ## Clear player state from ~/.local/share/ec4x/
+  ## Excludes daemon_identity.kdl - the daemon keypair must survive resets
+  ## so the daemon does not need to be re-initialised after each dev cycle.
   let playerDir = getHomeDir() / CacheDir
-  return clearDirectory(playerDir, dryRun)
+  return clearDirectory(playerDir, dryRun, @["daemon_identity.kdl"])
 
 proc clearLogFiles(dryRun: bool): tuple[success: bool, message: string] =
   ## Clear log files but keep the directory
