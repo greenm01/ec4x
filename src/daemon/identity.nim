@@ -3,7 +3,7 @@
 ## Manages Nostr keypair generation, storage, and loading.
 ## Storage location: ~/.local/share/ec4x/daemon_identity.kdl
 
-import std/[os, times, options, strutils]
+import std/[os, times, options, strutils, posix]
 import kdl
 
 import transport/nostr/crypto
@@ -113,6 +113,8 @@ proc saveIdentity*(identity: DaemonIdentity) =
                 "type=\"" & typeStr & "\" " &
                 "created=\"" & createdStr & "\"\n"
   writeFile(path, content)
+  # Restrict to owner read/write only (600) — private key material
+  discard chmod(path.cstring, 0o600)
   logInfo("DaemonIdentity", "Saved daemon identity to ", path)
 
 proc createLocalIdentity*(): DaemonIdentity =
@@ -147,7 +149,7 @@ proc ensureIdentity*(allowRegen: bool): DaemonIdentity =
     return existing.get()
   if not allowRegen:
     raise newException(CatchableError,
-      "Daemon identity missing or invalid; set EC4X_REGEN_IDENTITY=1 to regenerate")
+      "Daemon identity missing. Run 'ec4x-daemon init' to generate a keypair.")
   createLocalIdentity()
 
 proc ensureIdentity*(): DaemonIdentity =

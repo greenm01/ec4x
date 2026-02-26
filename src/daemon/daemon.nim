@@ -1086,15 +1086,11 @@ proc start*(
 
   setControlCHook(requestShutdown)
 
-  let allowIdentityRegen = getEnv("EC4X_REGEN_IDENTITY") == "1"
-  if allowIdentityRegen:
-    logWarn("DaemonIdentity", "Regenerating identity enabled via env")
-
   try:
     waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls,
       replayRetentionTurns, replayRetentionDays,
       replayRetentionDaysDefinition, replayRetentionDaysState,
-      turnDeadlineMinutes, allowIdentityRegen)
+      turnDeadlineMinutes, false)
   except CatchableError as e:
     logError("Daemon", "Failed to start daemon: ", e.msg)
     return 1
@@ -1163,6 +1159,26 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
   logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
   return 0
 
+proc initIdentity*(): int =
+  ## Initialize daemon identity (Nostr keypair).
+  ##
+  ## Run this once before starting the daemon for the first time.
+  ## If an identity already exists, prints its path and public key.
+  ## Safe to run multiple times - will never overwrite an existing identity.
+  let existing = loadIdentity()
+  if existing.isSome:
+    let id = existing.get()
+    echo "Daemon identity already exists at: ", identityPath()
+    echo "Public key (npub): ", id.npub()
+    echo "No changes made."
+    return 0
+
+  let id = createLocalIdentity()
+  echo "Daemon identity created at: ", identityPath()
+  echo "Public key (npub): ", id.npub()
+  echo "Keep this file safe - back it up alongside your game databases."
+  return 0
+
 proc stop*(): int =
   echo "Stop command not yet implemented"
   return 0
@@ -1178,6 +1194,8 @@ proc version*(): int =
 when isMainModule:
   dispatchMulti(
     [start, help = "Start the daemon"],
+    [initIdentity, cmdName = "init",
+      help = "Initialize daemon identity (run once before first start)"],
     [stop, help = "Stop the daemon"],
     [status, help = "Show daemon status"],
     [resolve, help = "Manually resolve a turn"],

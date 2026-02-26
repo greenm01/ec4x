@@ -34,12 +34,10 @@ sudo chmod 750 /etc/ec4x
 
 Create `/etc/ec4x/ec4x-daemon.env` with relay and data config:
 
-```bash
+```ini
 EC4X_DATA_DIR=/var/lib/ec4x
 EC4X_RELAY_URLS=ws://localhost:8080
 EC4X_LOG_LEVEL=info
-# Optional dev-only override:
-# EC4X_REGEN_IDENTITY=1
 ```
 
 ## 4) Install the Daemon Binary (Optional)
@@ -78,14 +76,32 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-## 6) Enable and Start
+## 6) Initialize Daemon Identity
+
+Generate the Nostr keypair once before the first start:
+
+```bash
+sudo -u ec4x /usr/local/bin/ec4x-daemon init
+```
+
+Output:
+```
+Daemon identity created at: /var/lib/ec4x/daemon_identity.kdl
+Public key (npub): npub1...
+Keep this file safe - back it up alongside your game databases.
+```
+
+The file is written with `600` permissions (owner read/write only).
+Running `init` again is safe — it will never overwrite an existing identity.
+
+## 7) Enable and Start
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now ec4x-daemon
 ```
 
-## 7) Verify
+## 8) Verify
 
 ```bash
 systemctl status ec4x-daemon
@@ -95,5 +111,7 @@ journalctl -u ec4x-daemon -f
 ## Notes
 
 - Relay URLs are managed in `/etc/ec4x/ec4x-daemon.env`.
-- Identity will be created at `/var/lib/ec4x/daemon_identity.kdl` on first run.
-- For local development, you can still run `./bin/ec4x-daemon start` manually from your checkout.
+- Back up `daemon_identity.kdl` alongside your game databases. If the identity
+  is lost, existing GameDefinition events on the relay will be unverifiable.
+- For local development, run `./bin/ec4x-daemon start` manually from your
+  checkout.
