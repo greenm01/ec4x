@@ -553,9 +553,7 @@ proc openShipSelectorForZtc(
   if model.ui.fleetDetailModal.shipSelectorShipIds.len == 0:
     model.ui.statusMessage = "No ships available"
     return
-  model.ui.fleetDetailModal.shipSelectorSelected.incl(
-    model.ui.fleetDetailModal.shipSelectorShipIds[0]
-  )
+  model.ui.fleetDetailModal.fleetId = sourceFleetId
   model.ui.fleetDetailModal.subModal = FleetSubModal.ShipSelector
 
 proc advanceSortColumn*(state: var TableSortState) =
@@ -2356,11 +2354,12 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.nostrJoinInviteCode,
             " relayUrl=", model.ui.nostrJoinRelayUrl,
             " gameId=", model.ui.nostrJoinGameId)
-          model.ui.entryModal.setInviteError("Join request sent")
+          model.ui.entryModal.setInviteError(
+            "Joining... game will appear in YOUR GAMES")
           model.ui.entryModal.clearInviteCode()
           model.ui.lobbyJoinStatus = JoinStatus.WaitingResponse
-          model.ui.statusMessage = "Joining via " &
-            model.ui.nostrJoinRelayUrl
+          model.ui.statusMessage = "Join request sent - " &
+            "game will appear when confirmed"
 
     of ActionKind.entryAdminSelect:
       # Dispatch based on selected admin menu item
@@ -3607,6 +3606,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.statusMessage = "No source fleet selected"
           return
         model.ui.fleetDetailModal.ztcType = some(ztcType)
+        if sourceFleetIds.len == 1:
+          model.ui.fleetDetailModal.fleetId = sourceFleetIds[0]
         case ztcType
         of ZeroTurnCommandType.Reactivate:
           let houseId = HouseId(model.view.viewingHouse.uint32)

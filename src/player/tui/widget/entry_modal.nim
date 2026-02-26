@@ -157,7 +157,7 @@ proc newEntryModalState*(): EntryModalState =
     selectedIdx: 0,
     mode: initialMode,
     returnMode: EntryModalMode.Normal,
-    inviteInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
+    inviteInput: initTextInputState(maxLength = 0, maxDisplayWidth = 0),
     importInput: initTextInputState(maxLength = 64, maxDisplayWidth = 50),
     relayInput: initTextInputState(maxLength = 0, maxDisplayWidth = 40),
     createNameInput: initTextInputState(maxLength = 32, maxDisplayWidth = 30),
@@ -1434,18 +1434,33 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     .minWidth(ModalMinWidth)
     .minHeight(ModalMinHeight)
   
-  if state.mode == EntryModalMode.ImportNsec:
+  if state.mode in {EntryModalMode.ImportNsec, EntryModalMode.PasswordPrompt,
+                    EntryModalMode.CreatePasswordPrompt, EntryModalMode.ChangePasswordPrompt}:
     # Compact modal: logo + prompt + error + footer only
+    let extraHeight = if state.mode == EntryModalMode.ChangePasswordPrompt: 1 else: 0
     let importContentHeight =
-      1 + LogoHeight + 2 + 1 + 1 + FooterHeight  # blank+logo+gap+prompt+error+footer
+      1 + LogoHeight + 2 + 1 + 1 + FooterHeight + extraHeight # blank+logo+gap+prompt+error+footer
     let importModal = modal
       .minHeight(importContentHeight + 2)
       .minWidth(ModalMinWidth)
     let importArea = importModal.calculateArea(viewport, importContentHeight)
     importModal.renderWithSeparator(importArea, buf, FooterHeight)
     let importInner = importModal.inner(importArea)
-    renderImportMode(buf, importInner, importArea,
-                     state.importInput, state.importError, state.importMasked)
+    if state.mode == EntryModalMode.ImportNsec:
+      renderImportMode(buf, importInner, importArea,
+                       state.importInput, state.importError, state.importMasked)
+    elif state.mode == EntryModalMode.PasswordPrompt:
+      renderPasswordPromptMode(buf, importInner, importArea,
+                               state.passwordInput, state.importError,
+                               state.importMasked)
+    elif state.mode == EntryModalMode.CreatePasswordPrompt:
+      renderCreatePasswordPromptMode(buf, importInner, importArea,
+                                     state.createPasswordInput,
+                                     state.importError, state.importMasked)
+    elif state.mode == EntryModalMode.ChangePasswordPrompt:
+      renderChangePasswordPromptMode(buf, importInner, importArea,
+                                     state.changePasswordInput,
+                                     state.importError, state.importMasked)
     return
 
   if state.mode == EntryModalMode.ManageIdentities:
@@ -1516,23 +1531,8 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
   # Get inner content area
   let inner = modal.inner(modalArea)
   
-  if state.mode == EntryModalMode.ImportNsec:
-    renderImportMode(buf, inner, modalArea,
-                     state.importInput, state.importError, state.importMasked)
-  elif state.mode == EntryModalMode.ManageIdentities:
+  if state.mode == EntryModalMode.ManageIdentities:
     renderIdentityManager(buf, inner, modalArea, state, inner.height - 3)
-  elif state.mode == EntryModalMode.PasswordPrompt:
-    renderPasswordPromptMode(buf, inner, modalArea,
-                             state.passwordInput, state.importError,
-                             state.importMasked)
-  elif state.mode == EntryModalMode.CreatePasswordPrompt:
-    renderCreatePasswordPromptMode(buf, inner, modalArea,
-                                   state.createPasswordInput,
-                                   state.importError, state.importMasked)
-  elif state.mode == EntryModalMode.ChangePasswordPrompt:
-    renderChangePasswordPromptMode(buf, inner, modalArea,
-                                   state.changePasswordInput,
-                                   state.importError, state.importMasked)
   elif state.mode == EntryModalMode.CreateGame:
     renderCreateGameMode(buf, inner, modalArea, state)
   elif state.mode == EntryModalMode.ManageGames:

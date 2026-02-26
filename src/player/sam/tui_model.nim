@@ -2807,6 +2807,32 @@ proc removeFleetFromViews(model: var TuiModel, fleetId: int) =
   for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
     fleets.keepItIf(it.fleetId != fleetId)
 
+proc nextTemporaryFleetId(model: TuiModel): int =
+  ## Create deterministic temporary IDs for optimistic detached fleets.
+  ## Uses the lowest existing FleetId and decrements by one.
+  var minFleetId = 0
+  for fleet in model.view.fleets:
+    minFleetId = min(minFleetId, fleet.id)
+  minFleetId - 1
+
+proc fleetLabelFromIndex(index: int): string =
+  if index < 0 or index >= FleetLabelCapacity:
+    return "??"
+  let first = index div FleetLabelSecondChars.len
+  let second = index mod FleetLabelSecondChars.len
+  $FleetLabelFirstChars[first] & $FleetLabelSecondChars[second]
+
+proc nextAvailableFleetLabel(model: TuiModel, ownerId: int): string =
+  var used = initHashSet[string]()
+  for fleet in model.view.fleets:
+    if fleet.owner == ownerId:
+      used.incl(fleet.name)
+  for i in 0 ..< FleetLabelCapacity:
+    let label = fleetLabelFromIndex(i)
+    if label notin used:
+      return label
+  "??"
+
 proc applyZeroTurnCommandOptimistically*(
     model: var TuiModel,
     cmd: ZeroTurnCommand,
@@ -2820,8 +2846,7 @@ proc applyZeroTurnCommandOptimistically*(
   ##   MergeFleets  - add source stats to target; remove source fleet
   ##   TransferShips- move selected ship stats src→target;
   ##                  remove source if empty
-  ##   DetachShips  - decrement source ship count/stats only
-  ##                  (no new fleet created until engine resolves)
+  ##   DetachShips  - decrement source and create temporary detached fleet
   case cmd.commandType
   of ZeroTurnCommandType.Reactivate:
     if cmd.sourceFleetId.isNone:
@@ -2929,16 +2954,18 @@ proc applyZeroTurnCommandOptimistically*(
       model.removeFleetFromViews(srcId)
 
   of ZeroTurnCommandType.DetachShips:
-    # Partial optimistic update: decrement source stats only.
-    # No new fleet entry created — engine assigns real FleetId at CMD5.
+    # Decrement source stats and inject a temporary detached fleet entry.
     if cmd.sourceFleetId.isNone:
       return
     if cmd.shipIds.len == 0:
       return
     let srcId = int(cmd.sourceFleetId.get())
     let detachStats = model.shipStatsForIds(cmd.shipIds)
+    var srcFleetForDetach = none(FleetInfo)
+    var srcShipCount = 0
     for fleet in model.view.fleets.mitems:
       if fleet.id == srcId:
+        srcFleetForDetach = some(fleet)
         fleet.shipCount -= detachStats.count
         fleet.attackStrength -= detachStats.attack
         fleet.defenseStrength -= detachStats.defense
@@ -2950,6 +2977,7 @@ proc applyZeroTurnCommandOptimistically*(
         fleet.hasEtacs = remaining.hasEtacs
         fleet.isScoutOnly = remaining.hasScouts and
           not remaining.hasCombat and not remaining.hasSupport
+        srcShipCount = fleet.shipCount
         break
     for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
       for flt in fleets.mitems:
@@ -2958,6 +2986,63 @@ proc applyZeroTurnCommandOptimistically*(
           flt.attackStrength -= detachStats.attack
           flt.defenseStrength -= detachStats.defense
           break
+    if srcFleetForDetach.isNone:
+      return
+
+    let srcFleet = srcFleetForDetach.get()
+    let tempFleetId = model.nextTemporaryFleetId()
+    let newFleetName = model.nextAvailableFleetLabel(srcFleet.owner)
+    let detachedFleet = FleetInfo(
+      id: tempFleetId,
+      name: newFleetName,
+      location: srcFleet.location,
+      locationName: srcFleet.locationName,
+      sectorLabel: srcFleet.sectorLabel,
+      shipCount: detachStats.count,
+      owner: srcFleet.owner,
+      command: CmdHold,
+      commandLabel: "Hold",
+      isIdle: true,
+      roe: srcFleet.roe,
+      attackStrength: detachStats.attack,
+      defenseStrength: detachStats.defense,
+      statusLabel: srcFleet.statusLabel,
+      destinationLabel: "-",
+      destinationSystemId: 0,
+      eta: 0,
+      hasCrippled: false,
+      hasCombatShips: detachStats.hasCombat,
+      hasSupportShips: detachStats.hasSupport,
+      hasScouts: detachStats.hasScouts,
+      hasTroopTransports: detachStats.hasTroops,
+      hasEtacs: detachStats.hasEtacs,
+      isScoutOnly: detachStats.hasScouts and
+        not detachStats.hasCombat and not detachStats.hasSupport,
+      seekHomeTarget: none(int),
+      needsAttention: true
+    )
+    model.view.fleets.add(detachedFleet)
+    if srcFleet.location notin model.ui.fleetConsoleFleetsBySystem:
+      model.ui.fleetConsoleFleetsBySystem[srcFleet.location] = @[]
+    model.ui.fleetConsoleFleetsBySystem[srcFleet.location].add(
+      FleetConsoleFleet(
+        fleetId: tempFleetId,
+        name: newFleetName,
+        shipCount: detachStats.count,
+        attackStrength: detachStats.attack,
+        defenseStrength: detachStats.defense,
+        troopTransports: 0,
+        etacs: 0,
+        commandLabel: "Hold",
+        destinationLabel: "-",
+        eta: 0,
+        roe: srcFleet.roe,
+        status: srcFleet.statusLabel,
+        needsAttention: true
+      )
+    )
+    if srcShipCount <= 0:
+      model.removeFleetFromViews(srcId)
 
   else:
     # LoadCargo, UnloadCargo, LoadFighters, UnloadFighters,

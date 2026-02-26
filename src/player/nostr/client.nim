@@ -115,6 +115,10 @@ proc subscribe*(pc: PlayerNostrClient, subId: string,
     filters: seq[NostrFilter]) {.async.} =
   await pc.client.subscribe(subId, filters)
 
+proc unsubscribe*(pc: PlayerNostrClient,
+    subId: string) {.async.} =
+  await pc.client.unsubscribe(subId)
+
 proc subscribeGame*(pc: PlayerNostrClient, gameId: string) {.async.} =
   pc.gameId = gameId
   await pc.client.subscribeGame(gameId, pc.playerPubHex)

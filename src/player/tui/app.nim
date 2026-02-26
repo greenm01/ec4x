@@ -91,6 +91,8 @@ proc runTui*(gameId: string = "") =
   var lastDraftFingerprint = ""
   var nostrSubmitFuture: Future[bool] = nil  # Pending turn submission
   var nostrSubmitStartTime: float = 0.0  # When submit started
+  var nostrJoinPublishTime: float = 0.0  # When slot claim was published
+  var nostrJoinRetryCount: int = 0       # Re-subscribe retry attempts
 
   var nostrHandlers = PlayerNostrHandlers()
 
@@ -833,6 +835,80 @@ proc runTui*(gameId: string = "") =
                     phase: gameStatus,
                     houseId: houseIdFromCache
                   ))
+              else:
+                # Passive slot detection: cache has no record of this player
+                # in this game, but the event itself may have a claimed slot
+                # for our pubkey. This handles the case where the TUI restarted
+                # after publishing a slot claim but before receiving the
+                # daemon's updated GameDefinition response.
+                let myPubkey =
+                  sam.model.ui.entryModal.identity.npubHex
+                if myPubkey.len > 0:
+                  let eventSlots = event.getSlots()
+                  for slot in eventSlots:
+                    if slot.status == SlotStatusClaimed and
+                        slot.pubkey == myPubkey:
+                      let houseId = HouseId(slot.index.uint32)
+                      logInfo("JOIN",
+                        "★ Passive slot detection: found claimed slot",
+                        " game=", gameId,
+                        " house=", $houseId)
+                      tuiCache.upsertGame(gameId, gameNameStr, turnNum,
+                        "active", sam.model.ui.nostrRelayUrl,
+                        event.pubkey)
+                      tuiCache.insertPlayerSlot(gameId, myPubkey,
+                        int(houseId))
+                      writeJoinCache("data", myPubkey, gameId,
+                        houseId, gameNameStr)
+                      var foundGame = false
+                      for idx in 0..<sam.model.ui.entryModal.activeGames.len:
+                        if sam.model.ui.entryModal.activeGames[idx].id ==
+                            gameId:
+                          sam.model.ui.entryModal.activeGames[idx
+                            ].houseId = int(houseId)
+                          sam.model.ui.entryModal.activeGames[idx
+                            ].status = "active"
+                          foundGame = true
+                          break
+                      if not foundGame:
+                        let cachedAfter = tuiCache.getGame(gameId)
+                        let serverUrl = if cachedAfter.isSome:
+                          cachedAfter.get().relayUrl
+                        else:
+                          sam.model.ui.nostrRelayUrl
+                        sam.model.ui.entryModal.activeGames.add(
+                          EntryActiveGameInfo(
+                            id: gameId,
+                            name: gameNameStr,
+                            turn: turnNum,
+                            houseName: "",
+                            houseId: int(houseId),
+                            status: "active",
+                            server: serverUrl,
+                            prestige: 0,
+                            rank: ""
+                          ))
+                      var lobbyUpdated2 = false
+                      for idx in 0..<sam.model.view.lobbyActiveGames.len:
+                        if sam.model.view.lobbyActiveGames[idx].id ==
+                            gameId:
+                          lobbyUpdated2 = true
+                          break
+                      if not lobbyUpdated2:
+                        sam.model.view.lobbyActiveGames.add(
+                          ActiveGameInfo(
+                            id: gameId,
+                            name: gameNameStr,
+                            turn: turnNum,
+                            phase: "active",
+                            houseId: int(houseId)
+                          ))
+                      sam.model.ui.statusMessage =
+                        "Joined game " & gameId
+                      tuiCache.setLastActiveGame(gameId)
+                      logInfo("JOIN",
+                        "★ Passive join complete for game=", gameId)
+                      break
               if gameId == activeGameId and
                   event.pubkey.len > 0 and
                   nostrDaemonPubkey.len == 0:
@@ -886,6 +962,9 @@ proc runTui*(gameId: string = "") =
                   let houseId = HouseId(slot.index.uint32)
                   logInfo("JOIN", "★★★ FOUND MATCH! Adding game to cache",
                     " game=", joinGameId, " house=", $houseId)
+                  # Stop retry timer — match found
+                  nostrJoinPublishTime = 0.0
+                  nostrJoinRetryCount = 0
 
                   # Update TUI cache with joined game
                   let cachedGameOpt = tuiCache.getGame(joinGameId)
@@ -988,6 +1067,8 @@ proc runTui*(gameId: string = "") =
                   sam.model.ui.nostrJoinRelayUrl = ""
                   sam.model.ui.nostrJoinGameId = ""
                   sam.model.ui.nostrJoinPubkey = ""
+                  nostrJoinPublishTime = 0.0
+                  nostrJoinRetryCount = 0
                   sam.model.ui.entryModal.inviteInput.clear()
                   sam.model.ui.entryModal.inviteError = ""
                   logInfo("JOIN", "★★★ JOIN COMPLETE! Game should now appear in YOUR GAMES")
@@ -1010,6 +1091,8 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.nostrJoinSent = false
           sam.model.ui.nostrJoinInviteCode = ""
           sam.model.ui.nostrJoinGameId = ""
+          nostrJoinPublishTime = 0.0
+          nostrJoinRetryCount = 0
         enqueueProposal(emptyProposal())
 
       nostrHandlers.onError = proc(message: string) =
@@ -1164,6 +1247,7 @@ proc runTui*(gameId: string = "") =
       asyncCheck nostrClient.stop()
       nostrListenerStarted = false
       nostrSubscriptions.setLen(0)
+      nostrGameDefinitionSeen.clear()
       nostrDaemonPubkey = ""
       nostrClient = nil
       sam.model.ui.nostrEnabled = false
@@ -1174,6 +1258,8 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.nostrJoinRelayUrl = ""
       sam.model.ui.nostrJoinGameId = ""
       sam.model.ui.nostrJoinPubkey = ""
+      nostrJoinPublishTime = 0.0
+      nostrJoinRetryCount = 0
       nostrConnectStartTime = 0.0
       needsRender = true
 
@@ -1218,6 +1304,7 @@ proc runTui*(gameId: string = "") =
           let lobbyFilter = newFilter().withKinds(@[EventKindGameDefinition])
           asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
           nostrSubscriptions.add("lobby:games")
+          nostrGameDefinitionSeen.clear()
           logInfo("Nostr", "Subscribed to lobby:games")
         
         # Subscribe to join errors
@@ -1246,6 +1333,8 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.nostrJoinSent = false
         sam.model.ui.nostrJoinInviteCode = ""
         sam.model.ui.nostrJoinRelayUrl = ""
+        nostrJoinPublishTime = 0.0
+        nostrJoinRetryCount = 0
         nostrClient = nil
         sam.model.ui.nostrEnabled = false
         nostrConnectStartTime = 0.0
@@ -1266,6 +1355,7 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.nostrEnabled = false
         nostrListenerStarted = false
         nostrSubscriptions.setLen(0)
+        nostrGameDefinitionSeen.clear()
         nostrDaemonPubkey = ""
         needsRender = true
 
@@ -1307,6 +1397,7 @@ proc runTui*(gameId: string = "") =
         asyncCheck nostrClient.stop()
         nostrListenerStarted = false
         nostrSubscriptions.setLen(0)
+        nostrGameDefinitionSeen.clear()
         nostrDaemonPubkey = ""
         
         # Create new client
@@ -1368,6 +1459,8 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.nostrJoinRelayUrl = ""
           sam.model.ui.nostrJoinGameId = ""
           sam.model.ui.nostrJoinPubkey = ""
+          nostrJoinPublishTime = 0.0
+          nostrJoinRetryCount = 0
           needsRender = true
 
     # -----------------------------------------------------------------------
@@ -1381,7 +1474,7 @@ proc runTui*(gameId: string = "") =
         
         if published:
           logInfo("Nostr", "Slot claim published successfully")
-          sam.model.ui.statusMessage = "Join request sent"
+          sam.model.ui.statusMessage = "Joining... game will appear in YOUR GAMES"
           sam.model.ui.nostrJoinSent = true
           sam.model.ui.nostrJoinRequested = false
           let gameId =
@@ -1394,6 +1487,12 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.nostrJoinGameId = gameId
           sam.model.ui.nostrJoinInviteCode = ""
           sam.model.ui.nostrJoinRelayUrl = ""
+          # Record publish time so the retry logic can fire delayed
+          # re-subscribes, giving the daemon time to process the claim
+          # and publish an updated 30400 GameDefinition event.
+          nostrJoinPublishTime = epochTime()
+          nostrJoinRetryCount = 0
+          logInfo("JOIN", "Slot claim published; awaiting daemon update")
         else:
           logWarn("Nostr", "Failed to publish slot claim")
           sam.model.ui.lobbyJoinStatus = JoinStatus.Failed
@@ -1401,6 +1500,8 @@ proc runTui*(gameId: string = "") =
           sam.model.ui.statusMessage = "Join failed - check relay connection"
           sam.model.ui.nostrJoinRequested = false
           sam.model.ui.nostrJoinSent = false
+          nostrJoinPublishTime = 0.0
+          nostrJoinRetryCount = 0
         needsRender = true
         
       elif nostrPublishStartTime > 0 and
@@ -1414,6 +1515,45 @@ proc runTui*(gameId: string = "") =
         sam.model.ui.statusMessage = sam.model.ui.lobbyJoinError
         sam.model.ui.nostrJoinRequested = false
         sam.model.ui.nostrJoinSent = false
+        nostrJoinPublishTime = 0.0
+        nostrJoinRetryCount = 0
+        needsRender = true
+
+    # -----------------------------------------------------------------------
+    # Delayed re-subscribe retries for join (gives daemon time to process
+    # the slot claim and publish an updated 30400 GameDefinition event)
+    # -----------------------------------------------------------------------
+    if sam.model.ui.nostrJoinSent and
+        nostrJoinPublishTime > 0.0 and
+        nostrClient != nil:
+      const RetryDelays = [2.0, 5.0, 10.0]
+      const MaxRetries = 3
+      if nostrJoinRetryCount < MaxRetries:
+        let elapsed = epochTime() - nostrJoinPublishTime
+        let nextAt = RetryDelays[nostrJoinRetryCount]
+        if elapsed >= nextAt:
+          inc nostrJoinRetryCount
+          logInfo("JOIN", "Re-subscribe retry #",
+            $nostrJoinRetryCount, " at ", $elapsed, "s post-publish")
+          nostrGameDefinitionSeen.clear()
+          asyncCheck nostrClient.unsubscribe("lobby:games")
+          nostrSubscriptions = nostrSubscriptions.filterIt(
+            it != "lobby:games")
+          let retryFilter =
+            newFilter().withKinds(@[EventKindGameDefinition])
+          asyncCheck nostrClient.subscribe(
+            "lobby:games", @[retryFilter])
+          nostrSubscriptions.add("lobby:games")
+      else:
+        # All retries exhausted — give up waiting
+        let elapsed = epochTime() - nostrJoinPublishTime
+        logWarn("JOIN", "Join retries exhausted after ",
+          $elapsed, "s; giving up")
+        nostrJoinPublishTime = 0.0
+        nostrJoinRetryCount = 0
+        sam.model.ui.nostrJoinSent = false
+        sam.model.ui.statusMessage =
+          "Join timed out - try again"
         needsRender = true
 
     # -----------------------------------------------------------------------

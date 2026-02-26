@@ -283,6 +283,71 @@ Implementation references:
 
 ## Operational Model
 
+### Daemon Identity (Nostr Keypair)
+
+The daemon requires a Nostr keypair to sign GameDefinition events (30400) and
+publish slot claim responses. The keypair is stored at:
+
+```
+~/.local/share/ec4x/daemon_identity.kdl
+```
+
+**On a fresh machine this file does not exist.** The daemon will refuse to
+start with:
+
+```
+Daemon identity missing or invalid; set EC4X_REGEN_IDENTITY=1 to regenerate
+```
+
+**Symptoms in systemd:** `Active: activating (auto-restart) (Result: exit-code)`
+
+**Fix — one-time setup:**
+
+Add `EC4X_REGEN_IDENTITY=1` to the daemon environment file, restart once, then
+remove the variable so the identity is not regenerated on subsequent restarts:
+
+```bash
+# 1. Allow the daemon to generate a fresh keypair
+echo "EC4X_REGEN_IDENTITY=1" >> ~/.config/ec4x/ec4x-daemon.env
+
+# 2. Restart the daemon (it will write daemon_identity.kdl and stay running)
+systemctl --user restart ec4x-daemon
+systemctl --user status ec4x-daemon   # should show "active (running)"
+
+# 3. Remove the flag so restarts never accidentally regenerate the key
+sed -i '/EC4X_REGEN_IDENTITY/d' ~/.config/ec4x/ec4x-daemon.env
+systemctl --user restart ec4x-daemon  # restarts cleanly with existing identity
+```
+
+> **Why remove the flag?** If `EC4X_REGEN_IDENTITY=1` is left in the env file
+> and the identity file is ever deleted (e.g. wiped `~/.local/share/ec4x/`),
+> the daemon will silently generate a **new** keypair. The new pubkey will not
+> match the one embedded in existing 30400 GameDefinition events on the relay,
+> so the TUI will reject all incoming game state as `UnknownServer`. Keep the
+> identity file in backups alongside the game databases.
+
+**Transferring an identity to another machine:**
+
+Copy `~/.local/share/ec4x/daemon_identity.kdl` to the same path on the new
+machine. Do **not** set `EC4X_REGEN_IDENTITY=1` — that would overwrite it.
+
+**Environment file location:**
+
+```
+~/.config/ec4x/ec4x-daemon.env
+```
+
+The systemd unit reads this file via `EnvironmentFile=`. Other variables:
+
+```ini
+EC4X_DATA_DIR=/home/mag/dev/ec4x/data   # root of game directories
+EC4X_RELAY_URLS=ws://localhost:8080      # comma-separated relay WebSocket URLs
+EC4X_LOG_LEVEL=info
+# EC4X_REGEN_IDENTITY=1                  # ONLY set this once to bootstrap
+```
+
+---
+
 ### Daemon Lifecycle
 
 **Startup:**

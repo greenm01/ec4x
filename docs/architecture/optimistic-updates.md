@@ -173,7 +173,7 @@ engine will produce.
 | `Reactivate`   | `statusLabel → "Active"`, `commandLabel → "Hold"`, `command = 0`, `isIdle = true` |
 | `MergeFleets`  | Add source stats to target; remove source fleet from both views |
 | `TransferShips`| Move selected-ship stats src→target; remove source if empty |
-| `DetachShips`  | Decrement source stats only (no new fleet entry — engine assigns real FleetId at CMD5) |
+| `DetachShips`  | Decrement source stats and insert a temporary detached fleet with negative `FleetId`; remove source if empty |
 | Cargo/Fighter ops | No-op (FleetInfo has no marine/fighter count fields)     |
 
 AS and DS values are computed by summing `ship.stats.attackStrength` /
@@ -218,7 +218,7 @@ honest and avoids confusing zero-effect submits.
 2. **Engine data is read-only always.** `ownFleetsById` and `ownShipsById` are never modified by staging or optimistic updates.
 3. **Every command drop triggers a full rebuild.** Partial reverts are not attempted — `reapplyAllOptimisticUpdates` always resets to pristine and replays the full remaining list.
 4. **Replay order mirrors engine execution order.** ZTCs first (CMD5), then FleetCommands. Swapping this order would produce incorrect intermediate states.
-5. **DetachShips creates no new fleet entry in the UI.** The engine assigns the real `FleetId` during CMD5 and the UI re-syncs on the next turn delta. The TUI only decrements the source fleet's stats.
+5. **DetachShips creates a temporary UI fleet entry.** A deterministic negative `FleetId` is generated from the current minimum fleet ID minus one, then inserted into both active fleet views. The engine still assigns the real `FleetId` during CMD5 and the next turn delta re-syncs the authoritative state.
 6. **Pattern A domains never mutate `model.view.*`.** Tax, espionage, diplomacy, colony management, and research staged values live entirely in `model.ui.*` and are read by renderers and helpers directly.
 
 ---
@@ -232,13 +232,12 @@ branch in `applyZeroTurnCommandOptimistically`. Adding their optimistic
 effects is straightforward once the display fields exist — no changes
 to the rebuild/drop/filter plumbing are needed.
 
-**When DetachShips needs a new fleet UI entry:**  
-`applyZeroTurnCommandOptimistically` would need to construct a fake
-`FleetInfo` and insert it into both Active View tables. A temporary
-negative ID (e.g. a decrementing counter in `TuiUIState`) can serve as
-the placeholder key until the real `FleetId` arrives in the turn delta.
-The `MergeFleets` source-removal logic (`removeFleetFromViews`) is the
-pattern to mirror for insertion.
+**DetachShips temporary fleet details:**  
+`applyZeroTurnCommandOptimistically` now constructs a fake `FleetInfo`
+and `FleetConsoleFleet` and inserts them into both Active View tables.
+The placeholder key is a deterministic negative ID derived from current
+view state (`minFleetId - 1`). If the source fleet reaches zero ships
+after detachment, `removeFleetFromViews` removes it immediately.
 
 **When adding a new Pattern A domain:**  
 Hold the staged value in `model.ui.*`, add a helper function that
