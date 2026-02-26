@@ -20,43 +20,45 @@ Turns cycle every 24 hours IRL, intentionally designed for async gameplay where 
 
 ## Architecture
 
-EC4X supports **two transport modes** with the same game engine:
+EC4X uses **Nostr relays** for transport. For local development, point the daemon at a localhost relay (e.g. `ws://localhost:8080`). For multiplayer, point it at any public or private Nostr relay.
 
-- **Localhost Mode** - File-based transport for offline/hotseat multiplayer and testing
-- **Nostr Mode** - Decentralized relay-based transport with end-to-end encryption
-
-**Components:**
-- **Client** - Player interface (supports both modes, auto-detects transport)
-- **Daemon** - Autonomous turn processing service (manages multiple games)
-- **SQLite** - Single source of truth for game state (both modes)
+**Binaries:**
+- `ec4x` — Game moderator CLI: create games, manage invites, inspect state
+- `ec4x-daemon` — Autonomous turn processing service: ingests player commands, resolves turns, publishes results
+- `tui` — Terminal player client: join games via invite code, submit orders, view game state
 
 **Key Features:**
-- Server-authoritative game state
+- Server-authoritative game state over Nostr (NIP-44 end-to-end encryption)
 - Fog of war via intel system
-- Bandwidth-efficient state deltas (Nostr)
-- Transport-agnostic game engine
+- Bandwidth-efficient state deltas
+- KDL-based configuration (18 config files, no hardcoded values)
+- SQLite single source of truth per game
 
-See **[Architecture Documentation](docs/architecture/overview.md)** for complete system design and implementation details.
+See **[Architecture Documentation](docs/architecture/overview.md)** for complete system design.
 
 ## Development Status
 
-**Engine Stable - Building Player Client**
+**Engine, Daemon & TUI Operational — Playtesting**
 
-✅ **Engine Status:**
+✅ **Engine:**
 - Core game engine stable and tested (343+ tests passing)
 - All 13 game systems operational
-- KDL-based configuration (14 config files)
 - Full turn cycle tested (Conflict → Income → Command → Production)
 
+✅ **Infrastructure:**
+- Daemon operational: game discovery, turn resolution, Nostr publish/subscribe
+- TUI operational: invite code join flow, order submission, fog-of-war state rendering
+- Nostr transport implemented: encrypted commands (NIP-44), replaceable events, delta publishing
+
 🔄 **Current Work:**
-- Building localhost game server for testing
-- Building player client for human playtesting
-- Preparing for initial playtesting sessions
+- Playtesting and balance validation
+- Polish and bug fixes surfaced during real games
 
 📋 **Test Coverage:**
 - Unit Tests: 9 suites passing
 - Integration Tests: 310 tests passing
 - Stress Tests: 24 tests passing
+- **Total: 343+ tests passing**
 
 **Game Systems (Operational):**
 - Combat system (space battles, ground combat, starbases)
@@ -81,12 +83,15 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 
 ### Architecture
 - **[System Architecture](docs/architecture/overview.md)** - Core system design and components
+- **[Daemon Design](docs/architecture/daemon.md)** - Daemon architecture and identity management
 - **[Combat Engine](docs/architecture/combat-engine.md)** - Combat system architecture
 - **[Fleet System](docs/architecture/fleet_system.md)** - Fleet management architecture
 - **[Intelligence System](docs/architecture/intel.md)** - Fog-of-war and intelligence mechanics
 
 ### Development
 - **[TODO](docs/TODO.md)** - Current work tracking and roadmap
+- **[Daemon Setup (system service)](docs/guides/daemon-setup.md)** - Production deployment guide
+- **[Daemon Setup (user service)](docs/guides/daemon-setup-user.md)** - Local dev deployment guide
 - **[Playtesting Plans](docs/play_testing/README.md)** - Human playtesting and training data collection
 
 ## Development Setup
@@ -96,11 +101,6 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 - **Nim** 2.0+ and **Nimble**
 - **OpenGL** development libraries (for client)
 - **zstd** compression library
-
-**macOS (Homebrew):**
-```bash
-brew install nim zstd
-```
 
 **Arch/CachyOS:**
 ```bash
@@ -112,34 +112,46 @@ sudo pacman -S nim nimble zstd libgl libx11 libxcursor libxi libxrandr
 sudo apt install nim libgl-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libzstd-dev
 ```
 
+**macOS (Homebrew):**
+```bash
+brew install nim zstd
+```
+
 ### Quick Start (Developers)
+
+**Build everything:**
+```bash
+nimble buildAll
+```
 
 **Run tests:**
 ```bash
-nimble testUnit           # Unit tests (9 suites)
-nimble testIntegration    # Integration tests (310 tests)
-nimble testStress         # Stress tests (24 tests)
+nimble testUnit           # Unit tests
+nimble testIntegration    # Integration tests
+nimble testStress         # Stress tests
 ```
 
-**Build engine:**
+**Dev reset** (clear state, create a fresh game, print invite codes):
 ```bash
-nimble buildAll           # All binaries
-nimble checkAll           # Verify compilation
+nim r tools/clean_dev.nim
 ```
-
-**Note:** Player client not yet implemented. See [docs/TODO.md](docs/TODO.md) for roadmap.
 
 ### Running the Daemon
 
-The daemon requires a Nostr relay at `ws://localhost:8080` (configurable in `config/daemon.kdl`). We recommend [nostr-rs-relay](https://github.com/scsibug/nostr-rs-relay) - follow their setup guide to install.
+The daemon requires a Nostr relay. For local dev we recommend [nostr-rs-relay](https://github.com/scsibug/nostr-rs-relay) at `ws://localhost:8080` (configurable in `config/daemon.kdl`).
 
-**First-time setup** - Generate a daemon identity:
+**First-time setup** — generate the daemon's Nostr keypair:
 ```bash
-EC4X_REGEN_IDENTITY=1 ./bin/ec4x-daemon start
+./bin/ec4x-daemon init
 ```
 
-This creates a Nostr keypair at `~/.local/share/ec4x/daemon_identity.kdl`. Subsequent runs only need:
+This creates `~/.local/share/ec4x/daemon_identity.kdl` with `600` permissions. Running `init` again is safe — it will never overwrite an existing identity.
 
+**Start the daemon:**
 ```bash
 ./bin/ec4x-daemon start
 ```
+
+For running the daemon as a systemd service, see the full setup guides:
+- [System service (production)](docs/guides/daemon-setup.md)
+- [User service (local dev)](docs/guides/daemon-setup-user.md)
