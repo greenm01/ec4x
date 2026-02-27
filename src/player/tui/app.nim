@@ -438,6 +438,7 @@ proc runTui*(gameId: string = "") =
       var prestigeVal = 0
       var rankStr = ""
       let cachedPsOpt = tuiCache.loadLatestPlayerState(game.id, houseId)
+      var houseNameStr = ""
       if cachedPsOpt.isSome:
         let ps = cachedPsOpt.get()
         # prestige for viewing house (should be present in snapshot)
@@ -458,12 +459,13 @@ proc runTui*(gameId: string = "") =
             break
         if rank > 0:
           rankStr = $(rank) & "/" & $prestigeList.len
+        houseNameStr = ps.houseNames.getOrDefault(ps.viewingHouse, "")
 
       model.ui.entryModal.activeGames.add(EntryActiveGameInfo(
         id: game.id,
         name: game.name,
         turn: game.turn,
-        houseName: "",
+        houseName: houseNameStr,
         houseId: houseId,
         status: game.status,
         server: game.relayUrl,
@@ -765,6 +767,7 @@ proc runTui*(gameId: string = "") =
                 # available.
                 var prestigeVal = 0
                 var rankStr = ""
+                var houseNameStr = ""
                 let postCached = tuiCache.getGame(gameId)
                 var serverUrl = if postCached.isSome: postCached.get().relayUrl else: sam.model.ui.nostrRelayUrl
                 let psOpt = tuiCache.loadLatestPlayerState(gameId, houseIdFromCache)
@@ -786,12 +789,13 @@ proc runTui*(gameId: string = "") =
                       break
                   if rank > 0:
                     rankStr = $(rank) & "/" & $prestigeList.len
+                  houseNameStr = ps.houseNames.getOrDefault(ps.viewingHouse, "")
 
                 let gameInfo = EntryActiveGameInfo(
                   id: gameId,
                   name: gameNameStr,
                   turn: turnNum,
-                  houseName: "",
+                  houseName: houseNameStr,
                   houseId: houseIdFromCache,
                   status: gameStatus,
                   server: serverUrl,
@@ -868,6 +872,16 @@ proc runTui*(gameId: string = "") =
                             ].houseId = int(houseId)
                           sam.model.ui.entryModal.activeGames[idx
                             ].status = "active"
+                          # Backfill houseName if still empty
+                          if sam.model.ui.entryModal.activeGames[idx
+                              ].houseName.len == 0:
+                            let psPassive = tuiCache.loadLatestPlayerState(
+                              gameId, int(houseId))
+                            if psPassive.isSome:
+                              let ps = psPassive.get()
+                              sam.model.ui.entryModal.activeGames[idx
+                                ].houseName =
+                                ps.houseNames.getOrDefault(ps.viewingHouse, "")
                           foundGame = true
                           break
                       if not foundGame:
@@ -876,12 +890,19 @@ proc runTui*(gameId: string = "") =
                           cachedAfter.get().relayUrl
                         else:
                           sam.model.ui.nostrRelayUrl
+                        var passiveHouseName = ""
+                        let psPassive2 = tuiCache.loadLatestPlayerState(
+                          gameId, int(houseId))
+                        if psPassive2.isSome:
+                          let ps = psPassive2.get()
+                          passiveHouseName =
+                            ps.houseNames.getOrDefault(ps.viewingHouse, "")
                         sam.model.ui.entryModal.activeGames.add(
                           EntryActiveGameInfo(
                             id: gameId,
                             name: gameNameStr,
                             turn: turnNum,
-                            houseName: "",
+                            houseName: passiveHouseName,
                             houseId: int(houseId),
                             status: "active",
                             server: serverUrl,
@@ -1025,17 +1046,22 @@ proc runTui*(gameId: string = "") =
                       serverUrl = cachedAfter.get().relayUrl
                     var prestigeVal = 0
                     var rankStr = ""
-                    let psOpt = tuiCache.loadLatestPlayerState(joinGameId, int(houseId))
+                    var houseNameStr = ""
+                    let psOpt = tuiCache.loadLatestPlayerState(
+                      joinGameId, int(houseId))
                     if psOpt.isSome:
                       let ps = psOpt.get()
-                      prestigeVal = ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
-                      var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
+                      prestigeVal =
+                        ps.housePrestige.getOrDefault(ps.viewingHouse, 0).int
+                      var prestigeList:
+                        seq[tuple[id: HouseId, prestige: int32]] = @[]
                       for hId, p in ps.housePrestige.pairs:
                         prestigeList.add((id: hId, prestige: p))
-                      prestigeList.sort(proc(a, b: tuple[id: HouseId, prestige: int32]): int =
-                        result = cmp(b.prestige, a.prestige)
-                        if result == 0:
-                          result = cmp(int(a.id), int(b.id))
+                      prestigeList.sort(
+                        proc(a, b: tuple[id: HouseId, prestige: int32]): int =
+                          result = cmp(b.prestige, a.prestige)
+                          if result == 0:
+                            result = cmp(int(a.id), int(b.id))
                       )
                       var rank = 0
                       for i, entry in prestigeList:
@@ -1044,6 +1070,8 @@ proc runTui*(gameId: string = "") =
                           break
                       if rank > 0:
                         rankStr = $(rank) & "/" & $prestigeList.len
+                      houseNameStr =
+                        ps.houseNames.getOrDefault(ps.viewingHouse, "")
 
                     # Add the entry with enriched fields
                     sam.model.ui.entryModal.activeGames.add(
@@ -1051,7 +1079,7 @@ proc runTui*(gameId: string = "") =
                         id: joinGameId,
                         name: gameNameStr,
                         turn: turnNum,
-                        houseName: "",
+                        houseName: houseNameStr,
                         houseId: int(houseId),
                         status: "active",
                         server: serverUrl,
