@@ -120,6 +120,8 @@ proc planetsContextActions*(hasSelection: bool): seq[ContextAction] =
     ContextAction(key: "B", label: "Build", enabled: hasSelection),
     ContextAction(key: "T", label: "Transfer", enabled: hasSelection),
     ContextAction(key: "V", label: "Terraform", enabled: hasSelection),
+    ContextAction(key: "P", label: "Repair", enabled: hasSelection),
+    ContextAction(key: "X", label: "Scrap", enabled: hasSelection),
   ]
 
 proc planetDetailContextActions*(): seq[ContextAction] =
@@ -130,6 +132,8 @@ proc planetDetailContextActions*(): seq[ContextAction] =
     ContextAction(key: "B", label: "Build", enabled: true),
     ContextAction(key: "T", label: "Transfer", enabled: true),
     ContextAction(key: "V", label: "Terraform", enabled: true),
+    ContextAction(key: "P", label: "Repair", enabled: true),
+    ContextAction(key: "X", label: "Scrap", enabled: true),
     ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 

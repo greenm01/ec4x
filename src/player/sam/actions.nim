@@ -1461,6 +1461,24 @@ proc actionPopulationTransferDeleteRoute*(): Proposal =
 proc actionStageTerraformCommand*(): Proposal =
   gameActionProposal(ActionKind.stageTerraformCommand, "")
 
+proc actionOpenRepairModal*(): Proposal =
+  gameActionProposal(ActionKind.openRepairModal, "")
+
+proc actionOpenScrapModal*(): Proposal =
+  gameActionProposal(ActionKind.openScrapModal, "")
+
+proc actionCloseMaintenanceModal*(): Proposal =
+  gameActionProposal(ActionKind.closeMaintenanceModal, "")
+
+proc actionMaintenanceListUp*(): Proposal =
+  gameActionProposal(ActionKind.maintenanceListUp, "")
+
+proc actionMaintenanceListDown*(): Proposal =
+  gameActionProposal(ActionKind.maintenanceListDown, "")
+
+proc actionMaintenanceSelect*(): Proposal =
+  gameActionProposal(ActionKind.maintenanceSelect, "")
+
 # ============================================================================
 # Order Entry Actions
 # ============================================================================

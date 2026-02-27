@@ -51,6 +51,7 @@ type
     BuildModal    ## Build command modal
     QueueModal    ## Queue modal
     PopulationTransferModal ## Population transfer staging modal
+    MaintenanceModal ## Repair/scrap staging modal
 
   Binding* = object
     key*: actions.KeyCode
@@ -267,6 +268,7 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
   of BindingContext.QueueModal: none(ViewMode)
   of BindingContext.PopulationTransferModal: none(ViewMode)
+  of BindingContext.MaintenanceModal: none(ViewMode)
   else: none(ViewMode)
 
 # =============================================================================
@@ -586,6 +588,20 @@ proc initBindings*() =
     longLabel: "TERRAFORM", shortLabel: "Ter", priority: 23,
     enabledCheck: "hasColonySelection"))
 
+  registerBinding(Binding(
+    key: KeyCode.KeyP, modifier: KeyModifier.None,
+    actionKind: ActionKind.openRepairModal,
+    context: BindingContext.Planets,
+    longLabel: "REPAIR", shortLabel: "Rep", priority: 24,
+    enabledCheck: "hasColonySelection"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyX, modifier: KeyModifier.None,
+    actionKind: ActionKind.openScrapModal,
+    context: BindingContext.Planets,
+    longLabel: "SCRAP", shortLabel: "Scr", priority: 25,
+    enabledCheck: "hasColonySelection"))
+
   # =========================================================================
   # Planet Detail Context
   # =========================================================================
@@ -661,6 +677,18 @@ proc initBindings*() =
     actionKind: ActionKind.stageTerraformCommand,
     context: BindingContext.PlanetDetail,
     longLabel: "TERRAFORM", shortLabel: "Ter", priority: 34))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyP, modifier: KeyModifier.None,
+    actionKind: ActionKind.openRepairModal,
+    context: BindingContext.PlanetDetail,
+    longLabel: "REPAIR", shortLabel: "Rep", priority: 35))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyX, modifier: KeyModifier.None,
+    actionKind: ActionKind.openScrapModal,
+    context: BindingContext.PlanetDetail,
+    longLabel: "SCRAP", shortLabel: "Scr", priority: 36))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -1701,6 +1729,46 @@ proc initBindings*() =
     longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
+  # Maintenance Modal Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyUp, modifier: KeyModifier.None,
+    actionKind: ActionKind.maintenanceListUp,
+    context: BindingContext.MaintenanceModal,
+    longLabel: "NAV", shortLabel: "↑", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyK, modifier: KeyModifier.None,
+    actionKind: ActionKind.maintenanceListUp,
+    context: BindingContext.MaintenanceModal,
+    longLabel: "NAV", shortLabel: "K", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyDown, modifier: KeyModifier.None,
+    actionKind: ActionKind.maintenanceListDown,
+    context: BindingContext.MaintenanceModal,
+    longLabel: "NAV", shortLabel: "↓", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyJ, modifier: KeyModifier.None,
+    actionKind: ActionKind.maintenanceListDown,
+    context: BindingContext.MaintenanceModal,
+    longLabel: "NAV", shortLabel: "J", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.maintenanceSelect,
+    context: BindingContext.MaintenanceModal,
+    longLabel: "TOGGLE", shortLabel: "OK", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.closeMaintenanceModal,
+    context: BindingContext.MaintenanceModal,
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
+
+  # =========================================================================
   # Expert Mode Context
   # =========================================================================
 
@@ -2000,6 +2068,18 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionPopulationTransferDeleteRoute())
   of ActionKind.stageTerraformCommand:
     return some(actionStageTerraformCommand())
+  of ActionKind.openRepairModal:
+    return some(actionOpenRepairModal())
+  of ActionKind.openScrapModal:
+    return some(actionOpenScrapModal())
+  of ActionKind.closeMaintenanceModal:
+    return some(actionCloseMaintenanceModal())
+  of ActionKind.maintenanceListUp:
+    return some(actionMaintenanceListUp())
+  of ActionKind.maintenanceListDown:
+    return some(actionMaintenanceListDown())
+  of ActionKind.maintenanceSelect:
+    return some(actionMaintenanceSelect())
   
   # Fleet console pane navigation
   of ActionKind.fleetConsoleNextPane:
@@ -2171,6 +2251,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     return some(actionCloseQueueModal())
   if model.ui.populationTransferModal.active:
     return some(actionClosePopulationTransferModal())
+  if model.ui.maintenanceModal.active:
+    return some(actionCloseMaintenanceModal())
   if model.ui.buildModal.active:
     return some(actionCloseBuildModal())
   if model.ui.mode == ViewMode.FleetDetail:
@@ -2280,6 +2362,19 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         )
         if plusResult.isSome:
           return plusResult
+      return none(Proposal)
+
+  if model.ui.maintenanceModal.active and
+      modifier == KeyModifier.None:
+    if key != KeyCode.KeyEscape:
+      let maintenanceResult = lookupAndDispatch(
+        key,
+        KeyModifier.None,
+        BindingContext.MaintenanceModal,
+        model
+      )
+      if maintenanceResult.isSome:
+        return maintenanceResult
       return none(Proposal)
 
   # Build modal mode: use registry

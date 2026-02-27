@@ -86,6 +86,9 @@ proc syncGameStateToModel*(
   model.view.ownColoniesBySystem.clear()
   model.view.ownFleetsById.clear()
   model.view.ownShipsById.clear()
+  model.view.ownGroundUnitsById.clear()
+  model.view.ownNeoriasById.clear()
+  model.view.ownKastrasById.clear()
   model.view.planetBreakersInFleets = 0
   for colony in state.coloniesOwned(viewingHouse):
     model.view.ownColoniesBySystem[int(colony.systemId)] = colony
@@ -121,6 +124,13 @@ proc syncGameStateToModel*(
         model.view.planetBreakersInFleets.inc
   for ship in state.shipsOwned(viewingHouse):
     model.view.ownShipsById[int(ship.id)] = ship
+  for _, unit in state.allGroundUnitsWithId():
+    if unit.houseId == viewingHouse:
+      model.view.ownGroundUnitsById[int(unit.id)] = unit
+  for neoria in state.neoriasOwned(viewingHouse):
+    model.view.ownNeoriasById[int(neoria.id)] = neoria
+  for kastra in state.kastrasOwned(viewingHouse):
+    model.view.ownKastrasById[int(kastra.id)] = kastra
 
   # Prestige rank and total houses
   var prestigeList: seq[tuple[id: HouseId, prestige: int32]] = @[]
@@ -925,12 +935,21 @@ proc syncPlayerStateToModel*(
   model.view.ownColoniesBySystem.clear()
   model.view.ownFleetsById.clear()
   model.view.ownShipsById.clear()
+  model.view.ownGroundUnitsById.clear()
+  model.view.ownNeoriasById.clear()
+  model.view.ownKastrasById.clear()
   for colony in ps.ownColonies:
     model.view.ownColoniesBySystem[int(colony.systemId)] = colony
   for fleet in ps.ownFleets:
     model.view.ownFleetsById[int(fleet.id)] = fleet
   for ship in ps.ownShips:
     model.view.ownShipsById[int(ship.id)] = ship
+  for unit in ps.ownGroundUnits:
+    model.view.ownGroundUnitsById[int(unit.id)] = unit
+  for neoria in ps.ownNeorias:
+    model.view.ownNeoriasById[int(neoria.id)] = neoria
+  for kastra in ps.ownKastras:
+    model.view.ownKastrasById[int(kastra.id)] = kastra
   model.view.planetBreakersInFleets = countPlanetBreakersInFleets(ps)
   let c2 = computeBaseC2FromPlayerState(ps)
   model.view.commandUsed = c2.used

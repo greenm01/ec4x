@@ -258,6 +258,25 @@ type
     ptuAmount*: int
     focus*: TransferModalFocus
 
+  MaintenanceMode* {.pure.} = enum
+    Repair
+    Scrap
+
+  MaintenanceCandidate* = object
+    label*: string
+    targetId*: uint32
+    repairType*: RepairTargetType
+    scrapType*: ScrapTargetType
+    queueRisk*: bool
+
+  MaintenanceModalState* = object
+    active*: bool
+    mode*: MaintenanceMode
+    colonyId*: int
+    colonyName*: string
+    selectedIdx*: int
+    candidates*: seq[MaintenanceCandidate]
+
   FleetConsoleSystem* = object
     ## System with fleets for fleet console (cached from PlayerState)
     systemId*: int
@@ -1062,6 +1081,7 @@ type
     # Queue modal state
     queueModal*: QueueModalState
     populationTransferModal*: PopulationTransferModalState
+    maintenanceModal*: MaintenanceModalState
 
     # Fleet detail modal state
     fleetDetailModal*: FleetDetailModalState
@@ -1126,6 +1146,9 @@ type
     ownColoniesBySystem*: Table[int, Colony]
     ownFleetsById*: Table[int, Fleet]
     ownShipsById*: Table[int, Ship]
+    ownGroundUnitsById*: Table[int, GroundUnit]
+    ownNeoriasById*: Table[int, Neoria]
+    ownKastrasById*: Table[int, Kastra]
 
   # ============================================================================
   # The Complete TUI Model (SAM wrapper)
@@ -1415,6 +1438,14 @@ proc initTuiUiState*(): TuiUiState =
       ptuAmount: 1,
       focus: TransferModalFocus.Destination
     ),
+    maintenanceModal: MaintenanceModalState(
+      active: false,
+      mode: MaintenanceMode.Repair,
+      colonyId: 0,
+      colonyName: "",
+      selectedIdx: 0,
+      candidates: @[]
+    ),
     fleetDetailModal: FleetDetailModalState(
       active: false,
       fleetId: 0,
@@ -1497,6 +1528,9 @@ proc initTuiViewState*(): TuiViewState =
     ownColoniesBySystem: initTable[int, Colony](),
     ownFleetsById: initTable[int, Fleet](),
     ownShipsById: initTable[int, Ship](),
+    ownGroundUnitsById: initTable[int, GroundUnit](),
+    ownNeoriasById: initTable[int, Neoria](),
+    ownKastrasById: initTable[int, Kastra](),
   )
   result.turnBuckets = buildTurnBuckets(result.reports)
   result.inboxItems = buildInboxItems(

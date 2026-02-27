@@ -580,6 +580,87 @@ proc renderPopulationTransferModal*(
   discard buf.setString(content.x + 1, content.y + 3, destLine, destinationStyle)
   discard buf.setString(content.x + 1, content.y + 4, amountLine, amountStyle)
 
+proc renderMaintenanceModal*(
+    area: Rect,
+    buf: var CellBuffer,
+    model: TuiModel
+) =
+  if not model.ui.maintenanceModal.active:
+    return
+  if area.width < 52 or area.height < 12:
+    return
+
+  let modalState = model.ui.maintenanceModal
+  let width = min(84, area.width - 4)
+  let height = min(max(12, modalState.candidates.len + 8), area.height - 2)
+  let x = area.x + (area.width - width) div 2
+  let y = area.y + (area.height - height) div 2
+  let modalArea = rect(x, y, width, height)
+
+  let title =
+    if modalState.mode == MaintenanceMode.Repair:
+      "Manual Repair"
+    else:
+      "Scrap / Salvage"
+
+  let m = newModal()
+    .title(title)
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+  m.renderWithFooter(
+    modalArea,
+    buf,
+    "[↑↓] Select  [Enter] Stage/Unstage  [Esc] Close"
+  )
+
+  let content = m.contentArea(modalArea, hasFooter = true)
+  if content.isEmpty:
+    return
+
+  let header = "Colony: " & modalState.colonyName
+  discard buf.setString(content.x + 1, content.y + 1, header, modalBgStyle())
+
+  var yRow = content.y + 3
+  let maxRows = max(0, content.height - 4)
+  let selectedIdx = clamp(modalState.selectedIdx, 0,
+    max(0, modalState.candidates.len - 1))
+  var startIdx = 0
+  if selectedIdx >= maxRows and maxRows > 0:
+    startIdx = selectedIdx - maxRows + 1
+
+  for i in startIdx ..< min(modalState.candidates.len, startIdx + maxRows):
+    if yRow >= content.bottom:
+      break
+    let candidate = modalState.candidates[i]
+    let marker =
+      block:
+        let colId = ColonyId(modalState.colonyId.uint32)
+        if modalState.mode == MaintenanceMode.Repair:
+          var staged = false
+          for cmd in model.ui.stagedRepairCommands:
+            if cmd.colonyId == colId and
+                cmd.targetType == candidate.repairType and
+                cmd.targetId == candidate.targetId:
+              staged = true
+              break
+          if staged: "[STAGED] " else: ""
+        else:
+          var staged = false
+          for cmd in model.ui.stagedScrapCommands:
+            if cmd.colonyId == colId and
+                cmd.targetType == candidate.scrapType and
+                cmd.targetId == candidate.targetId:
+              staged = true
+              break
+          if staged: "[STAGED] " else: ""
+    let line = marker & candidate.label
+    let style = if i == selectedIdx: selectedStyle() else: modalBgStyle()
+    let clipped = line[0 ..< min(line.len, content.width - 2)]
+    discard buf.setString(content.x + 1, yRow, clipped, style)
+    yRow += 1
+
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
   if area.isEmpty:
@@ -1698,7 +1779,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   
   let footerText =
     "[↑↓] Navigate  [Enter] Details  [B] Build  [Q] Queue  " &
-    "[T] Transfer  [V] Terraform  " &
+    "[T] Transfer  [V] Terraform  [P] Repair  [X] Scrap  " &
     "[PgUp/PgDn] Scroll  [A-Z0-9]Jump  [/]Help"
   modal.renderWithFooter(modalArea, buf, footerText)
   
@@ -3912,6 +3993,7 @@ proc renderDashboard*(
     let queueModalWidget = newQueueModalWidget()
     queueModalWidget.render(model.ui.queueModal, canvasArea, buf)
   renderPopulationTransferModal(canvasArea, buf, model)
+  renderMaintenanceModal(canvasArea, buf, model)
   renderIntelNoteEditor(canvasArea, buf, model)
 
   if model.ui.expertModeActive:

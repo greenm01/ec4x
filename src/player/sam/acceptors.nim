@@ -3218,6 +3218,138 @@ proc findStagedTransferIdx(
       return i
   -1
 
+proc colonyById(model: TuiModel, colonyId: int): Option[Colony] =
+  for colony in model.view.ownColoniesBySystem.values:
+    if int(colony.id) == colonyId:
+      return some(colony)
+  none(Colony)
+
+proc colonyNameById(model: TuiModel, colonyId: int): string =
+  let infoOpt = model.colonyInfoById(colonyId)
+  if infoOpt.isSome:
+    return infoOpt.get().systemName
+  "Colony " & $colonyId
+
+proc buildMaintenanceCandidates(
+    model: TuiModel,
+    colony: Colony,
+    mode: MaintenanceMode
+): seq[MaintenanceCandidate] =
+  result = @[]
+
+  template addShipCandidate(ship: Ship) =
+    let damaged = ship.state == CombatState.Crippled
+    if mode == MaintenanceMode.Repair and not damaged:
+      discard
+    elif mode == MaintenanceMode.Scrap and ship.state == CombatState.Destroyed:
+      discard
+    else:
+      let prefix = if damaged: "[DAMAGED] " else: ""
+      result.add(MaintenanceCandidate(
+        label: prefix & "Ship " & $ship.id & " " & $ship.shipClass,
+        targetId: uint32(ship.id),
+        repairType: RepairTargetType.Ship,
+        scrapType: ScrapTargetType.Ship,
+        queueRisk: false
+      ))
+
+  for fleet in model.view.ownFleetsById.values:
+    if fleet.location != colony.systemId:
+      continue
+    for shipId in fleet.ships:
+      let sid = int(shipId)
+      if sid in model.view.ownShipsById:
+        addShipCandidate(model.view.ownShipsById[sid])
+
+  for shipId in colony.fighterIds:
+    let sid = int(shipId)
+    if sid in model.view.ownShipsById:
+      addShipCandidate(model.view.ownShipsById[sid])
+
+  for unitId in colony.groundUnitIds:
+    let uid = int(unitId)
+    if uid notin model.view.ownGroundUnitsById:
+      continue
+    let unit = model.view.ownGroundUnitsById[uid]
+    let damaged = unit.state == CombatState.Crippled
+    if mode == MaintenanceMode.Repair and not damaged:
+      continue
+    if mode == MaintenanceMode.Scrap and unit.state == CombatState.Destroyed:
+      continue
+    let prefix = if damaged: "[DAMAGED] " else: ""
+    result.add(MaintenanceCandidate(
+      label: prefix & "Ground " & $unit.id & " " & $unit.stats.unitType,
+      targetId: uint32(unit.id),
+      repairType: RepairTargetType.GroundUnit,
+      scrapType: ScrapTargetType.GroundUnit,
+      queueRisk: false
+    ))
+
+  for neoriaId in colony.neoriaIds:
+    let nid = int(neoriaId)
+    if nid notin model.view.ownNeoriasById:
+      continue
+    let neoria = model.view.ownNeoriasById[nid]
+    let damaged = neoria.state == CombatState.Crippled
+    if mode == MaintenanceMode.Repair and not damaged:
+      continue
+    if mode == MaintenanceMode.Scrap and neoria.state == CombatState.Destroyed:
+      continue
+    let queueRisk =
+      neoria.constructionQueue.len > 0 or neoria.repairQueue.len > 0
+    let prefix = if damaged: "[DAMAGED] " else: ""
+    result.add(MaintenanceCandidate(
+      label: prefix & "Facility " & $neoria.id & " " &
+        $neoria.neoriaClass,
+      targetId: uint32(neoria.id),
+      repairType: RepairTargetType.Facility,
+      scrapType: ScrapTargetType.Neoria,
+      queueRisk: queueRisk
+    ))
+
+  for kastraId in colony.kastraIds:
+    let kid = int(kastraId)
+    if kid notin model.view.ownKastrasById:
+      continue
+    let kastra = model.view.ownKastrasById[kid]
+    let damaged = kastra.state == CombatState.Crippled
+    if mode == MaintenanceMode.Repair and not damaged:
+      continue
+    if mode == MaintenanceMode.Scrap and kastra.state == CombatState.Destroyed:
+      continue
+    let prefix = if damaged: "[DAMAGED] " else: ""
+    result.add(MaintenanceCandidate(
+      label: prefix & "Starbase " & $kastra.id,
+      targetId: uint32(kastra.id),
+      repairType: RepairTargetType.Starbase,
+      scrapType: ScrapTargetType.Kastra,
+      queueRisk: false
+    ))
+
+proc findStagedRepairIdx(
+    model: TuiModel,
+    colonyId: ColonyId,
+    targetType: RepairTargetType,
+    targetId: uint32
+): int =
+  for i, cmd in model.ui.stagedRepairCommands:
+    if cmd.colonyId == colonyId and cmd.targetType == targetType and
+        cmd.targetId == targetId:
+      return i
+  -1
+
+proc findStagedScrapIdx(
+    model: TuiModel,
+    colonyId: ColonyId,
+    targetType: ScrapTargetType,
+    targetId: uint32
+): int =
+  for i, cmd in model.ui.stagedScrapCommands:
+    if cmd.colonyId == colonyId and cmd.targetType == targetType and
+        cmd.targetId == targetId:
+      return i
+  -1
+
 proc populationTransferModalAcceptor*(
     model: var TuiModel,
     proposal: Proposal
@@ -3443,6 +3575,125 @@ proc populationTransferModalAcceptor*(
     ))
     model.ui.modifiedSinceSubmit = true
     model.ui.statusMessage = "Staged terraforming"
+
+  else:
+    discard
+
+proc maintenanceModalAcceptor*(model: var TuiModel, proposal: Proposal) =
+  if proposal.kind != ProposalKind.pkGameAction:
+    return
+
+  case proposal.actionKind
+  of ActionKind.openRepairModal, ActionKind.openScrapModal:
+    if model.ui.mode notin {ViewMode.Planets, ViewMode.PlanetDetail}:
+      return
+    let colonyId = selectedColonyIdForCommand(model)
+    if colonyId <= 0:
+      model.ui.statusMessage = "No colony selected"
+      return
+    let colonyOpt = colonyById(model, colonyId)
+    if colonyOpt.isNone:
+      model.ui.statusMessage = "Colony not found in owned assets"
+      return
+    let mode =
+      if proposal.actionKind == ActionKind.openRepairModal:
+        MaintenanceMode.Repair
+      else:
+        MaintenanceMode.Scrap
+    let candidates = buildMaintenanceCandidates(model, colonyOpt.get(), mode)
+    if candidates.len == 0:
+      if mode == MaintenanceMode.Repair:
+        model.ui.statusMessage = "No damaged assets available for repair"
+      else:
+        model.ui.statusMessage = "No assets available for scrap"
+      return
+    model.ui.maintenanceModal.active = true
+    model.ui.maintenanceModal.mode = mode
+    model.ui.maintenanceModal.colonyId = colonyId
+    model.ui.maintenanceModal.colonyName = colonyNameById(model, colonyId)
+    model.ui.maintenanceModal.selectedIdx = 0
+    model.ui.maintenanceModal.candidates = candidates
+
+  of ActionKind.closeMaintenanceModal:
+    model.ui.maintenanceModal.active = false
+
+  of ActionKind.maintenanceListUp:
+    if not model.ui.maintenanceModal.active:
+      return
+    let n = model.ui.maintenanceModal.candidates.len
+    if n <= 0:
+      return
+    if model.ui.maintenanceModal.selectedIdx > 0:
+      model.ui.maintenanceModal.selectedIdx -= 1
+    else:
+      model.ui.maintenanceModal.selectedIdx = n - 1
+
+  of ActionKind.maintenanceListDown:
+    if not model.ui.maintenanceModal.active:
+      return
+    let n = model.ui.maintenanceModal.candidates.len
+    if n <= 0:
+      return
+    if model.ui.maintenanceModal.selectedIdx < n - 1:
+      model.ui.maintenanceModal.selectedIdx += 1
+    else:
+      model.ui.maintenanceModal.selectedIdx = 0
+
+  of ActionKind.maintenanceSelect:
+    if not model.ui.maintenanceModal.active:
+      return
+    let idx = model.ui.maintenanceModal.selectedIdx
+    if idx < 0 or idx >= model.ui.maintenanceModal.candidates.len:
+      return
+    let candidate = model.ui.maintenanceModal.candidates[idx]
+    let colonyId = ColonyId(model.ui.maintenanceModal.colonyId.uint32)
+
+    if model.ui.maintenanceModal.mode == MaintenanceMode.Repair:
+      let stagedIdx = findStagedRepairIdx(
+        model,
+        colonyId,
+        candidate.repairType,
+        candidate.targetId
+      )
+      if stagedIdx >= 0:
+        model.ui.stagedRepairCommands.delete(stagedIdx)
+        model.ui.modifiedSinceSubmit = true
+        model.ui.statusMessage = "Removed staged repair command"
+        return
+      model.ui.stagedRepairCommands.add(RepairCommand(
+        colonyId: colonyId,
+        targetType: candidate.repairType,
+        targetId: candidate.targetId,
+        priority: 1
+      ))
+      model.ui.modifiedSinceSubmit = true
+      model.ui.statusMessage = "Staged repair command"
+      return
+
+    let stagedIdx = findStagedScrapIdx(
+      model,
+      colonyId,
+      candidate.scrapType,
+      candidate.targetId
+    )
+    if stagedIdx >= 0:
+      model.ui.stagedScrapCommands.delete(stagedIdx)
+      model.ui.modifiedSinceSubmit = true
+      model.ui.statusMessage = "Removed staged scrap command"
+      return
+
+    model.ui.stagedScrapCommands.add(ScrapCommand(
+      colonyId: colonyId,
+      targetType: candidate.scrapType,
+      targetId: candidate.targetId,
+      acknowledgeQueueLoss: candidate.queueRisk
+    ))
+    model.ui.modifiedSinceSubmit = true
+    if candidate.queueRisk:
+      model.ui.statusMessage =
+        "Staged scrap command (queue-loss acknowledged)"
+    else:
+      model.ui.statusMessage = "Staged scrap command"
 
   else:
     discard
@@ -4866,6 +5117,7 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
     buildModalAcceptor, queueModalAcceptor,
-    populationTransferModalAcceptor, fleetDetailModalAcceptor,
+    populationTransferModalAcceptor, maintenanceModalAcceptor,
+    fleetDetailModalAcceptor,
     fleetListInputAcceptor, quitAcceptor, errorAcceptor,
   ]

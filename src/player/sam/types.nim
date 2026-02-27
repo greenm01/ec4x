@@ -180,6 +180,12 @@ type
     populationTransferConfirm
     populationTransferDeleteRoute
     stageTerraformCommand
+    openRepairModal
+    openScrapModal
+    closeMaintenanceModal
+    maintenanceListUp
+    maintenanceListDown
+    maintenanceSelect
     fleetConsoleNextPane
     fleetConsolePrevPane
     openFleetDetailModal
