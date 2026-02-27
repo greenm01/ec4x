@@ -62,6 +62,7 @@ proc fleetConsoleFleetsColumns*(): seq[TableColumn] =
     tableColumn("TGT", 5, table.Alignment.Left),
     tableColumn("ETA", 3, table.Alignment.Right),
     tableColumn("ROE", 3, table.Alignment.Right),
+    tableColumn("State", 8, table.Alignment.Left),
     tableColumn("STS", 3, table.Alignment.Center)
   ]
 
@@ -83,6 +84,7 @@ proc fleetListColumns*(): seq[TableColumn] =
     tableColumn("Target", 10, table.Alignment.Left),
     tableColumn("ETA", 4, table.Alignment.Right),
     tableColumn("ROE", 4, table.Alignment.Right),
+    tableColumn("State", 8, table.Alignment.Left),
     tableColumn("Status", 8, table.Alignment.Left)
   ]
 

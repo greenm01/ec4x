@@ -297,6 +297,7 @@ type
     destinationLabel*: string
     eta*: int
     roe*: int
+    stateLabel*: string
     status*: string
     needsAttention*: bool
 
@@ -3147,6 +3148,7 @@ proc applyZeroTurnCommandOptimistically*(
         destinationLabel: "-",
         eta: 0,
         roe: srcFleet.roe,
+        stateLabel: "Nominal",
         status: srcFleet.statusLabel,
         needsAttention: true
       )

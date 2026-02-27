@@ -494,6 +494,7 @@ proc buildFleetPickerCandidatesForZtc(
         destinationLabel: fleet.destinationLabel,
         eta: fleet.eta,
         roe: fleet.roe,
+        stateLabel: if fleet.hasCrippled: "Crippled" else: "Nominal",
         status: fleet.statusLabel,
         needsAttention: fleet.needsAttention
       )
@@ -3230,6 +3231,69 @@ proc colonyNameById(model: TuiModel, colonyId: int): string =
     return infoOpt.get().systemName
   "Colony " & $colonyId
 
+proc selectedFleetIdForRepair(model: TuiModel): int =
+  if model.ui.mode == ViewMode.FleetDetail:
+    return model.ui.fleetDetailModal.fleetId
+  if model.ui.mode != ViewMode.Fleets:
+    return 0
+  if model.ui.fleetViewMode == FleetViewMode.ListView:
+    let fleets = model.filteredFleets()
+    if model.ui.selectedIdx < 0 or model.ui.selectedIdx >= fleets.len:
+      return 0
+    return fleets[model.ui.selectedIdx].id
+  let systems = model.ui.fleetConsoleSystems
+  if systems.len == 0:
+    return 0
+  let systemIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, systems.len - 1)
+  let systemId = systems[systemIdx].systemId
+  if systemId notin model.ui.fleetConsoleFleetsBySystem:
+    return 0
+  let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
+  if model.ui.fleetConsoleFleetIdx < 0 or
+      model.ui.fleetConsoleFleetIdx >= fleets.len:
+    return 0
+  fleets[model.ui.fleetConsoleFleetIdx].fleetId
+
+proc colonyInfoBySystem(
+    model: TuiModel,
+    systemId: int
+): Option[ColonyInfo] =
+  for colony in model.view.colonies:
+    if colony.systemId == systemId:
+      return some(colony)
+  none(ColonyInfo)
+
+proc availableRepairSlots(model: TuiModel, colonyId: int): int =
+  let infoOpt = model.colonyInfoById(colonyId)
+  if infoOpt.isNone:
+    return 0
+  var used = 0
+  let key = ColonyId(colonyId.uint32)
+  for cmd in model.ui.stagedRepairCommands:
+    if cmd.colonyId == key:
+      used.inc
+  max(0, infoOpt.get().repairDockAvailable - used)
+
+proc buildFleetRepairCandidates(
+    model: TuiModel,
+    fleet: Fleet
+): seq[MaintenanceCandidate] =
+  result = @[]
+  for shipId in fleet.ships:
+    let sid = int(shipId)
+    if sid notin model.view.ownShipsById:
+      continue
+    let ship = model.view.ownShipsById[sid]
+    if ship.state != CombatState.Crippled:
+      continue
+    result.add(MaintenanceCandidate(
+      label: "[DAMAGED] Ship " & $ship.id & " " & $ship.shipClass,
+      targetId: uint32(ship.id),
+      repairType: RepairTargetType.Ship,
+      scrapType: ScrapTargetType.Ship,
+      queueRisk: false
+    ))
+
 proc buildMaintenanceCandidates(
     model: TuiModel,
     colony: Colony,
@@ -3585,21 +3649,63 @@ proc maintenanceModalAcceptor*(model: var TuiModel, proposal: Proposal) =
 
   case proposal.actionKind
   of ActionKind.openRepairModal, ActionKind.openScrapModal:
-    if model.ui.mode notin {ViewMode.Planets, ViewMode.PlanetDetail}:
-      return
-    let colonyId = selectedColonyIdForCommand(model)
-    if colonyId <= 0:
-      model.ui.statusMessage = "No colony selected"
-      return
-    let colonyOpt = colonyById(model, colonyId)
-    if colonyOpt.isNone:
-      model.ui.statusMessage = "Colony not found in owned assets"
-      return
+    var colonyId = 0
+    var colonyOpt = none(Colony)
     let mode =
       if proposal.actionKind == ActionKind.openRepairModal:
         MaintenanceMode.Repair
       else:
         MaintenanceMode.Scrap
+
+    if mode == MaintenanceMode.Repair and
+        model.ui.mode in {ViewMode.Fleets, ViewMode.FleetDetail}:
+      let fleetId = selectedFleetIdForRepair(model)
+      if fleetId <= 0 or fleetId notin model.view.ownFleetsById:
+        model.ui.statusMessage = "No fleet selected"
+        return
+      let fleet = model.view.ownFleetsById[fleetId]
+      let colonyInfoOpt = colonyInfoBySystem(model, int(fleet.location))
+      if colonyInfoOpt.isNone:
+        model.ui.statusMessage = "Fleet must be at owned colony with drydock"
+        return
+      let colonyInfo = colonyInfoOpt.get()
+      if colonyInfo.repairDockTotal <= 0:
+        model.ui.statusMessage = "No drydock at this colony"
+        return
+      if availableRepairSlots(model, colonyInfo.colonyId) <= 0:
+        model.ui.statusMessage = "No repair dock capacity available"
+        return
+      colonyId = colonyInfo.colonyId
+      colonyOpt = colonyById(model, colonyId)
+      if colonyOpt.isNone:
+        model.ui.statusMessage = "Colony not found in owned assets"
+        return
+      let candidates = buildFleetRepairCandidates(model, fleet)
+      if candidates.len == 0:
+        model.ui.statusMessage = "No damaged ships in selected fleet"
+        return
+      model.ui.maintenanceModal.active = true
+      model.ui.maintenanceModal.mode = mode
+      model.ui.maintenanceModal.colonyId = colonyId
+      model.ui.maintenanceModal.colonyName = colonyNameById(model, colonyId)
+      model.ui.maintenanceModal.selectedIdx = 0
+      model.ui.maintenanceModal.candidates = candidates
+      return
+
+    if model.ui.mode notin {ViewMode.Planets, ViewMode.PlanetDetail}:
+      return
+    colonyId = selectedColonyIdForCommand(model)
+    if colonyId <= 0:
+      model.ui.statusMessage = "No colony selected"
+      return
+    colonyOpt = colonyById(model, colonyId)
+    if colonyOpt.isNone:
+      model.ui.statusMessage = "Colony not found in owned assets"
+      return
+    if mode == MaintenanceMode.Repair and
+        availableRepairSlots(model, colonyId) <= 0:
+      model.ui.statusMessage = "No repair dock capacity available"
+      return
     let candidates = buildMaintenanceCandidates(model, colonyOpt.get(), mode)
     if candidates.len == 0:
       if mode == MaintenanceMode.Repair:
@@ -3659,6 +3765,9 @@ proc maintenanceModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.stagedRepairCommands.delete(stagedIdx)
         model.ui.modifiedSinceSubmit = true
         model.ui.statusMessage = "Removed staged repair command"
+        return
+      if availableRepairSlots(model, int(colonyId)) <= 0:
+        model.ui.statusMessage = "No repair dock capacity available"
         return
       model.ui.stagedRepairCommands.add(RepairCommand(
         colonyId: colonyId,
@@ -4096,11 +4205,12 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
                   troopTransports: 0,
                   etacs: 0,
                   commandLabel: fleet.commandLabel,
-                  destinationLabel: fleet.destinationLabel,
-                  eta: fleet.eta,
-                  roe: fleet.roe,
-                  status: fleet.statusLabel,
-                  needsAttention: fleet.needsAttention
+                    destinationLabel: fleet.destinationLabel,
+                    eta: fleet.eta,
+                    roe: fleet.roe,
+                    stateLabel: if fleet.hasCrippled: "Crippled" else: "Nominal",
+                    status: fleet.statusLabel,
+                    needsAttention: fleet.needsAttention
                 )
               )
           if model.ui.fleetDetailModal.fleetPickerCandidates.len == 0:

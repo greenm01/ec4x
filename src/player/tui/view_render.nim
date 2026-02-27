@@ -6,7 +6,7 @@ import std/[options, unicode, strutils, tables]
 import std/tables as stdtables
 
 import ../../engine/types/[core, player_state as ps_types, fleet, colony,
-  ground_unit, facilities, ship, tech, diplomacy]
+  ground_unit, facilities, ship, tech, diplomacy, production]
 import ../../engine/state/engine
 import ../../engine/globals
 import ../../engine/systems/tech/[advancement, costs]
@@ -894,6 +894,18 @@ proc fleetFlag(
     return GlyphOk
   " "
 
+proc fleetHasQueuedRepair(model: TuiModel, fleetId: int): bool =
+  if fleetId notin model.view.ownFleetsById:
+    return false
+  let fleet = model.view.ownFleetsById[fleetId]
+  for cmd in model.ui.stagedRepairCommands:
+    if cmd.targetType != RepairTargetType.Ship:
+      continue
+    let shipId = ShipId(cmd.targetId)
+    if shipId in fleet.ships:
+      return true
+  false
+
 proc buildFleetListTable*(model: TuiModel,
                           scroll: ScrollState): table.Table =
   ## Build fleet list table (ListView)
@@ -932,6 +944,13 @@ proc buildFleetListTable*(model: TuiModel,
       $fleet.eta
     else:
       "-"
+    let stateLabel =
+      if fleetHasQueuedRepair(model, fleet.id):
+        "Queued"
+      elif fleet.hasCrippled:
+        "Crippled"
+      else:
+        "Nominal"
     let dataRow = @[
       flag,
       fleet.name,
@@ -944,6 +963,7 @@ proc buildFleetListTable*(model: TuiModel,
       fleet.destinationLabel,
       etaLabel,
       $fleet.roe,
+      stateLabel,
       fleet.statusLabel
     ]
     result.addRow(dataRow)
@@ -1017,6 +1037,7 @@ proc renderFleetConsoleSystems(
 proc renderFleetConsoleFleets(
   area: Rect,
   buf: var CellBuffer,
+  model: TuiModel,
   fleets: seq[FleetConsoleFleet],
   selectedIdx: int,
   hasFocus: bool,
@@ -1060,6 +1081,10 @@ proc renderFleetConsoleFleets(
       flt.destinationLabel,
       $flt.eta,
       $flt.roe,
+      (if fleetHasQueuedRepair(model, flt.fleetId):
+          "Queued"
+        else:
+          flt.stateLabel),
       flt.status
     ])
   
@@ -1161,7 +1186,7 @@ proc renderFleetConsole*(
   # Render fleets pane
   let fleetIdx = clamp(model.ui.fleetConsoleFleetIdx, 0,
     max(0, fleets.len - 1))
-  renderFleetConsoleFleets(fleetsInner, buf, fleets, fleetIdx,
+  renderFleetConsoleFleets(fleetsInner, buf, model, fleets, fleetIdx,
     effectiveFocus == FleetConsoleFocus.FleetsPane,
     model.ui.stagedFleetCommands,
     model.ui.selectedFleetIds,
@@ -1779,7 +1804,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   
   let footerText =
     "[↑↓] Navigate  [Enter] Details  [B] Build  [Q] Queue  " &
-    "[T] Transfer  [V] Terraform  [P] Repair  [X] Scrap  " &
+    "[T] Transfer  [V] Terraform  [D] Drydock  [X] Scrap  " &
     "[PgUp/PgDn] Scroll  [A-Z0-9]Jump  [/]Help"
   modal.renderWithFooter(modalArea, buf, footerText)
   
@@ -1829,7 +1854,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
       max(1, inner.height - 2))
     let hintLine =
       "[↑↓]Nav [Enter]Details [X]Select [←→]Sort [S]Asc/Desc " &
-      "[A-Z0-9]Jump [C]md [R]OE [Z]TC [V]iew [/]Help"
+      "[A-Z0-9]Jump [C]md [R]epair RO[E] [Z]TC [V]iew [/]Help"
     let footerY = inner.bottom - 1
     discard buf.setString(inner.x, footerY, hintLine,
       canvasDimStyle())
@@ -1878,7 +1903,7 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let modalArea = modal.calculateArea(canvas, contentWidth, contentHeight)
     modal.renderWithFooter(modalArea, buf,
       "[Arrows]Nav  [Tab]Pane  [Enter]Details  [X]Select  " &
-      "[A-Z0-9]Jump  [C]md  [R]OE  [Z]eroTurn  [V]iew  [/]Help")
+      "[A-Z0-9]Jump  [C]md  [R]epair  RO[E]  [Z]eroTurn  [V]iew  [/]Help")
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 

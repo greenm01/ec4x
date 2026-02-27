@@ -120,7 +120,7 @@ proc planetsContextActions*(hasSelection: bool): seq[ContextAction] =
     ContextAction(key: "B", label: "Build", enabled: hasSelection),
     ContextAction(key: "T", label: "Transfer", enabled: hasSelection),
     ContextAction(key: "V", label: "Terraform", enabled: hasSelection),
-    ContextAction(key: "P", label: "Repair", enabled: hasSelection),
+    ContextAction(key: "D", label: "Drydock", enabled: hasSelection),
     ContextAction(key: "X", label: "Scrap", enabled: hasSelection),
   ]
 
@@ -132,7 +132,7 @@ proc planetDetailContextActions*(): seq[ContextAction] =
     ContextAction(key: "B", label: "Build", enabled: true),
     ContextAction(key: "T", label: "Transfer", enabled: true),
     ContextAction(key: "V", label: "Terraform", enabled: true),
-    ContextAction(key: "P", label: "Repair", enabled: true),
+    ContextAction(key: "D", label: "Drydock", enabled: true),
     ContextAction(key: "X", label: "Scrap", enabled: true),
     ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
@@ -157,6 +157,8 @@ proc fleetsContextActions*(hasSelection: bool,
     ),
       ContextAction(key: "←→", label: "Sort", enabled: true),
       ContextAction(key: "S", label: "Asc/Desc", enabled: true),
+      ContextAction(key: "R", label: "Repair", enabled: hasSelection),
+      ContextAction(key: "E", label: "ROE", enabled: hasSelection),
     ]
 
 proc fleetDetailContextActions*(): seq[ContextAction] =
@@ -166,7 +168,8 @@ proc fleetDetailContextActions*(): seq[ContextAction] =
     ContextAction(key: "P", label: "Patrol", enabled: true),
     ContextAction(key: "H", label: "Hold", enabled: true),
     ContextAction(key: "G", label: "Guard", enabled: true),
-    ContextAction(key: "R", label: "ROE", enabled: true),
+    ContextAction(key: "R", label: "Repair", enabled: true),
+    ContextAction(key: "E", label: "ROE", enabled: true),
     ContextAction(key: "J", label: "Join", enabled: true),
     ContextAction(key: "D", label: "Detach ships", enabled: true),
     ContextAction(key: "Esc", label: "Back", enabled: true),

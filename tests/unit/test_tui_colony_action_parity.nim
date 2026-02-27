@@ -20,7 +20,7 @@ suite "TUI colony action parity":
     check hasAction(actions, "B", "Build")
     check hasAction(actions, "T", "Transfer")
     check hasAction(actions, "V", "Terraform")
-    check hasAction(actions, "P", "Repair")
+    check hasAction(actions, "D", "Drydock")
     check hasAction(actions, "X", "Scrap")
 
   test "planet detail command dock exposes colony command keys":
@@ -28,7 +28,7 @@ suite "TUI colony action parity":
     check hasAction(actions, "B", "Build")
     check hasAction(actions, "T", "Transfer")
     check hasAction(actions, "V", "Terraform")
-    check hasAction(actions, "P", "Repair")
+    check hasAction(actions, "D", "Drydock")
     check hasAction(actions, "X", "Scrap")
 
   test "planets key mapping reaches colony actions":
@@ -59,7 +59,7 @@ suite "TUI colony action parity":
     let buildAct = mapKeyToAction(KeyCode.KeyB, KeyModifier.None, model)
     let transferAct = mapKeyToAction(KeyCode.KeyT, KeyModifier.None, model)
     let terraAct = mapKeyToAction(KeyCode.KeyV, KeyModifier.None, model)
-    let repairAct = mapKeyToAction(KeyCode.KeyP, KeyModifier.None, model)
+    let repairAct = mapKeyToAction(KeyCode.KeyD, KeyModifier.None, model)
     let scrapAct = mapKeyToAction(KeyCode.KeyX, KeyModifier.None, model)
 
     check buildAct.isSome
@@ -87,7 +87,7 @@ suite "TUI colony action parity":
 
     let transferAct = mapKeyToAction(KeyCode.KeyT, KeyModifier.None, model)
     let terraAct = mapKeyToAction(KeyCode.KeyV, KeyModifier.None, model)
-    let repairAct = mapKeyToAction(KeyCode.KeyP, KeyModifier.None, model)
+    let repairAct = mapKeyToAction(KeyCode.KeyD, KeyModifier.None, model)
     let scrapAct = mapKeyToAction(KeyCode.KeyX, KeyModifier.None, model)
 
     check transferAct.isSome
@@ -104,3 +104,26 @@ suite "TUI colony action parity":
       check repairAct.get().actionKind == ActionKind.openRepairModal
     if scrapAct.isSome:
       check scrapAct.get().actionKind == ActionKind.openScrapModal
+
+  test "fleet key mapping uses repair and ROE remap":
+    var model = initTuiModel()
+    model.ui.appPhase = AppPhase.InGame
+    model.ui.mode = ViewMode.Fleets
+    model.ui.fleetViewMode = FleetViewMode.ListView
+    model.view.fleets = @[
+      FleetInfo(id: 1, name: "A1", shipCount: 1)
+    ]
+
+    let repairAct = mapKeyToAction(KeyCode.KeyR, KeyModifier.None, model)
+    let roeAct = mapKeyToAction(KeyCode.KeyE, KeyModifier.None, model)
+    let toggleAct = mapKeyToAction(KeyCode.KeyV, KeyModifier.None, model)
+
+    check repairAct.isSome
+    check roeAct.isSome
+    check toggleAct.isSome
+    if repairAct.isSome:
+      check repairAct.get().actionKind == ActionKind.openRepairModal
+    if roeAct.isSome:
+      check roeAct.get().actionKind == ActionKind.fleetBatchROE
+    if toggleAct.isSome:
+      check toggleAct.get().actionKind == ActionKind.switchFleetView

@@ -713,7 +713,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     else: "FLEET COMMANDS"
   let (hasFooter, footerText) = case state.subModal
     of FleetSubModal.None:
-      (true, "[C]md [R]OE [Z]TC [PgUp/PgDn]Scroll [Esc]Close")
+      (true, "[C]md [R]epair RO[E] [Z]TC [PgUp/PgDn]Scroll [Esc]Close")
     of FleetSubModal.CommandPicker:
       (true, "[↑↓]Select [00-19]Quick [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.ROEPicker:

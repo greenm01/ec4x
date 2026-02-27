@@ -702,6 +702,11 @@ proc syncFleetConsoleFleets*(
       of FleetStatus.Active: "A"
       of FleetStatus.Reserve: "R"
       of FleetStatus.Mothballed: "M"
+    let stateLabel =
+      if hasCrippled:
+        "Crippled"
+      else:
+        "Nominal"
     
     let isIdle = fleet.command.commandType == FleetCommandType.Hold
     let needsAttention = if needsAttentionByFleet.hasKey(int(fleet.id)):
@@ -726,6 +731,7 @@ proc syncFleetConsoleFleets*(
       destinationLabel: destLabel,
       eta: eta,
       roe: int(fleet.roe),
+      stateLabel: stateLabel,
       status: statusStr,
       needsAttention: needsAttention
     ))

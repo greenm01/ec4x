@@ -112,6 +112,112 @@ suite "TUI modal acceptors":
     populationTransferModalAcceptor(model, actionPopulationTransferDeleteRoute())
     check model.ui.stagedPopulationTransfers.len == 0
 
+  test "population transfer confirm replaces same route":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.viewingHouse = 1
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(11),
+        systemId: 101,
+        systemName: "Alpha",
+        coordLabel: "A1",
+        isOwned: true
+      ),
+      PlanetRow(
+        colonyId: some(12),
+        systemId: 102,
+        systemName: "Beta",
+        coordLabel: "A2",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 11,
+        systemId: 101,
+        systemName: "Alpha",
+        populationUnits: 20,
+        industrialUnits: 8,
+        owner: 1
+      ),
+      ColonyInfo(
+        colonyId: 12,
+        systemId: 102,
+        systemName: "Beta",
+        populationUnits: 15,
+        industrialUnits: 6,
+        owner: 1
+      )
+    ]
+    model.ui.stagedPopulationTransfers = @[
+      PopulationTransferCommand(
+        houseId: HouseId(1),
+        sourceColony: ColonyId(11),
+        destColony: ColonyId(12),
+        ptuAmount: 2
+      )
+    ]
+
+    populationTransferModalAcceptor(model, actionOpenPopulationTransferModal())
+    model.ui.populationTransferModal.focus = TransferModalFocus.Amount
+    model.ui.populationTransferModal.ptuAmount = 7
+    populationTransferModalAcceptor(model, actionPopulationTransferConfirm())
+
+    check model.ui.stagedPopulationTransfers.len == 1
+    check model.ui.stagedPopulationTransfers[0].sourceColony == ColonyId(11)
+    check model.ui.stagedPopulationTransfers[0].destColony == ColonyId(12)
+    check model.ui.stagedPopulationTransfers[0].ptuAmount == 7
+
+  test "population transfer amount clamps to source max":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.viewingHouse = 1
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(21),
+        systemId: 201,
+        systemName: "Gamma",
+        coordLabel: "B1",
+        isOwned: true
+      ),
+      PlanetRow(
+        colonyId: some(22),
+        systemId: 202,
+        systemName: "Delta",
+        coordLabel: "B2",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 21,
+        systemId: 201,
+        systemName: "Gamma",
+        populationUnits: 5,
+        industrialUnits: 7,
+        owner: 1
+      ),
+      ColonyInfo(
+        colonyId: 22,
+        systemId: 202,
+        systemName: "Delta",
+        populationUnits: 20,
+        industrialUnits: 11,
+        owner: 1
+      )
+    ]
+
+    populationTransferModalAcceptor(model, actionOpenPopulationTransferModal())
+    model.ui.populationTransferModal.focus = TransferModalFocus.Amount
+    model.ui.populationTransferModal.ptuAmount = 99
+    populationTransferModalAcceptor(model, actionPopulationTransferConfirm())
+
+    check model.ui.stagedPopulationTransfers.len == 1
+    check model.ui.stagedPopulationTransfers[0].ptuAmount == 4
+
   test "maintenance modal stages repair command":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets
@@ -132,6 +238,8 @@ suite "TUI modal acceptors":
         systemName: "Gamma",
         populationUnits: 25,
         industrialUnits: 12,
+        repairDockAvailable: 2,
+        repairDockTotal: 2,
         owner: 1
       )
     ]
@@ -164,6 +272,71 @@ suite "TUI modal acceptors":
     maintenanceModalAcceptor(model, actionMaintenanceSelect())
     check model.ui.stagedRepairCommands.len == 1
     check model.ui.stagedRepairCommands[0].targetType == RepairTargetType.Ship
+    check model.ui.stagedRepairCommands[0].targetId == 500
+
+  test "fleet repair mode stages damaged ships at local drydock":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Fleets
+    model.ui.fleetViewMode = FleetViewMode.ListView
+    model.ui.selectedIdx = 0
+    model.view.viewingHouse = 1
+    model.view.fleets = @[
+      FleetInfo(
+        id: 300,
+        name: "A1",
+        location: 201,
+        locationName: "Gamma",
+        shipCount: 2,
+        hasCrippled: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 21,
+        systemId: 201,
+        systemName: "Gamma",
+        populationUnits: 25,
+        industrialUnits: 12,
+        repairDockAvailable: 2,
+        repairDockTotal: 2,
+        owner: 1
+      )
+    ]
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(500), ShipId(501)]
+    )
+    model.view.ownShipsById[500] = Ship(
+      id: ShipId(500),
+      houseId: HouseId(1),
+      shipClass: ShipClass.Destroyer,
+      state: CombatState.Crippled
+    )
+    model.view.ownShipsById[501] = Ship(
+      id: ShipId(501),
+      houseId: HouseId(1),
+      shipClass: ShipClass.Frigate,
+      state: CombatState.Nominal
+    )
+
+    maintenanceModalAcceptor(model, actionOpenRepairModal())
+    check model.ui.maintenanceModal.active
+    check model.ui.maintenanceModal.candidates.len == 1
+
+    maintenanceModalAcceptor(model, actionMaintenanceSelect())
+    check model.ui.stagedRepairCommands.len == 1
+    check model.ui.stagedRepairCommands[0].colonyId == ColonyId(21)
     check model.ui.stagedRepairCommands[0].targetId == 500
 
   test "maintenance scrap sets queue-loss acknowledgement when needed":

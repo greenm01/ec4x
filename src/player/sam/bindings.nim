@@ -589,10 +589,10 @@ proc initBindings*() =
     enabledCheck: "hasColonySelection"))
 
   registerBinding(Binding(
-    key: KeyCode.KeyP, modifier: KeyModifier.None,
+    key: KeyCode.KeyD, modifier: KeyModifier.None,
     actionKind: ActionKind.openRepairModal,
     context: BindingContext.Planets,
-    longLabel: "REPAIR", shortLabel: "Rep", priority: 24,
+    longLabel: "DRYDOCK", shortLabel: "Dry", priority: 24,
     enabledCheck: "hasColonySelection"))
 
   registerBinding(Binding(
@@ -679,10 +679,10 @@ proc initBindings*() =
     longLabel: "TERRAFORM", shortLabel: "Ter", priority: 34))
 
   registerBinding(Binding(
-    key: KeyCode.KeyP, modifier: KeyModifier.None,
+    key: KeyCode.KeyD, modifier: KeyModifier.None,
     actionKind: ActionKind.openRepairModal,
     context: BindingContext.PlanetDetail,
-    longLabel: "REPAIR", shortLabel: "Rep", priority: 35))
+    longLabel: "DRYDOCK", shortLabel: "Dry", priority: 35))
 
   registerBinding(Binding(
     key: KeyCode.KeyX, modifier: KeyModifier.None,
@@ -772,9 +772,16 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionKind: ActionKind.openRepairModal,
+    context: BindingContext.Fleets,
+    longLabel: "REPAIR", shortLabel: "Rep", priority: 31,
+    enabledCheck: "hasFleets"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetBatchROE,
     context: BindingContext.Fleets,
-    longLabel: "ROE", shortLabel: "ROE", priority: 31))
+    longLabel: "RO[E]", shortLabel: "ROE", priority: 32))
 
   registerBinding(Binding(
     key: KeyCode.KeyZ, modifier: KeyModifier.None,
@@ -827,9 +834,15 @@ proc initBindings*() =
 
   registerBinding(Binding(
     key: KeyCode.KeyR, modifier: KeyModifier.None,
+    actionKind: ActionKind.openRepairModal,
+    context: BindingContext.FleetDetail,
+    longLabel: "REPAIR", shortLabel: "Rep", priority: 20))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyE, modifier: KeyModifier.None,
     actionKind: ActionKind.fleetDetailOpenROE,
     context: BindingContext.FleetDetail,
-    longLabel: "ROE", shortLabel: "ROE", priority: 20))
+    longLabel: "RO[E]", shortLabel: "ROE", priority: 21))
 
   registerBinding(Binding(
     key: KeyCode.KeyZ, modifier: KeyModifier.None,
@@ -2500,7 +2513,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       modifier == KeyModifier.None:
     # Fleet label jump: type 2-char label (e.g. A1, B3) to jump to fleet
     # Excludes letters bound in Fleets context: H/J/K(nav), S(sort), V(view),
-    # X(select), C(batch cmd), R(batch ROE), Z(batch ZTC)
+    # X(select), C(batch cmd), R(repair), E(ROE), Z(batch ZTC)
     let jumpChar = case key
       of KeyCode.Key0: '0'
       of KeyCode.Key1: '1'
@@ -2515,7 +2528,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyA: 'A'
       of KeyCode.KeyB: 'B'
       of KeyCode.KeyD: 'D'
-      of KeyCode.KeyE: 'E'
       of KeyCode.KeyF: 'F'
       of KeyCode.KeyG: 'G'
       of KeyCode.KeyI: 'I'
@@ -2535,7 +2547,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
   # Fleet console SystemView jump: type 2-char label to jump to
   # system (Systems pane) or fleet (Fleets pane).
   # Reserved in Fleets context: J/K (up/down), H/L (pane nav),
-  # S (sort), V (view), X (select), C (cmd), R (ROE), Z (ZTC)
+  # S (sort), V (view), X (select), C (cmd), R (repair), E (ROE), Z (ZTC)
   if model.ui.mode == ViewMode.Fleets and
       model.ui.fleetViewMode == FleetViewMode.SystemView and
       not model.ui.expertModeActive and
@@ -2554,7 +2566,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyA: 'A'
       of KeyCode.KeyB: 'B'
       of KeyCode.KeyD: 'D'
-      of KeyCode.KeyE: 'E'
       of KeyCode.KeyF: 'F'
       of KeyCode.KeyG: 'G'
       of KeyCode.KeyI: 'I'
@@ -2617,7 +2628,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
 
   # Planets jump: type 2-char sector label (e.g. A01, B03) to jump.
   # Reserve direct action keys for colony workflows.
-  # Excludes B/Q/T/V/P/X (build/queue/transfer/terraform/repair/scrap)
+  # Excludes B/Q/T/V/D/X (build/queue/transfer/terraform/drydock/scrap)
   if model.ui.mode == ViewMode.Planets and
       not model.ui.expertModeActive and
       modifier == KeyModifier.None:
@@ -2634,7 +2645,6 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.Key9: '9'
       of KeyCode.KeyA: 'A'
       of KeyCode.KeyC: 'C'
-      of KeyCode.KeyD: 'D'
       of KeyCode.KeyE: 'E'
       of KeyCode.KeyF: 'F'
       of KeyCode.KeyG: 'G'
