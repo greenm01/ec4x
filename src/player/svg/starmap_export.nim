@@ -235,15 +235,16 @@ proc renderLabels(builder: var SvgBuilder, systems: seq[SystemNode]) =
   builder.add(svgGroup("labels", labelsSvg))
 
 proc renderLegend(builder: var SvgBuilder, width, height: int,
+                  viewingHouse: int,
                   houseNames: seq[tuple[id: int, name: string]]) =
   ## Render the legend in the corner
   var legendSvg = ""
   var y = 0.0
-  
+
   # Title
   legendSvg.add(svgText(0.0, y, "LEGEND", "legend-title"))
   y += 20.0
-  
+
   # Lane types
   legendSvg.add(svgText(0.0, y, "Lanes:", "legend-text"))
   y += 15.0
@@ -256,18 +257,22 @@ proc renderLegend(builder: var SvgBuilder, width, height: int,
   legendSvg.add(svgLine(0.0, y, 30.0, y, "lane lane-restricted"))
   legendSvg.add(svgText(40.0, y + 4.0, "Restricted", "legend-text"))
   y += 25.0
-  
-  # Node types
+
+  # Node types - use actual viewing house color so legend matches the map
+  let ownColor = houseColor(viewingHouse)
+  let enemyExampleId = if viewingHouse == 0: 1 else: 0
+  let enemyColor = houseColor(enemyExampleId)
   legendSvg.add(svgText(0.0, y, "Systems:", "legend-text"))
   y += 18.0
   legendSvg.add(svgCircle(12.0, y, 12.0, "node-hub", ""))
   legendSvg.add(svgText(36.0, y + 4.0, "Hub", "legend-text"))
   y += 28.0
-  legendSvg.add(svgCircle(12.0, y, 10.0, "node-own", &"fill: {HouseColors[0]}"))
+  legendSvg.add(svgCircle(12.0, y, 10.0, "node-own",
+                          &"fill: {ownColor}"))
   legendSvg.add(svgText(36.0, y + 4.0, "Your Colony", "legend-text"))
   y += 26.0
   legendSvg.add(svgCircle(12.0, y, 10.0, "node-enemy",
-                          &"stroke: {HouseColors[1]}"))
+                          &"stroke: {enemyColor}"))
   legendSvg.add(svgText(36.0, y + 4.0, "Enemy Colony", "legend-text"))
   y += 26.0
   legendSvg.add(svgCircle(12.0, y, 8.0, "node-neutral", ""))
@@ -349,8 +354,8 @@ proc generateStarmap*(state: GameState, houseId: HouseId,
   renderLanes(builder, lanes)
   renderNodes(builder, systems)
   renderLabels(builder, systems)
-  renderLegend(builder, width, height, houseNames)
-  
+  renderLegend(builder, width, height, int(houseId), houseNames)
+
   builder.build()
 
 proc generateStarmapFromPlayerState*(
@@ -460,6 +465,6 @@ proc generateStarmapFromPlayerState*(
   renderLanes(builder, lanes)
   renderNodes(builder, systems)
   renderLabels(builder, systems)
-  renderLegend(builder, width, height, houseNames)
+  renderLegend(builder, width, height, int(ps.viewingHouse), houseNames)
 
   builder.build()
