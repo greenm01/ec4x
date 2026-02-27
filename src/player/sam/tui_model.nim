@@ -2883,6 +2883,13 @@ proc fleetLabelFromIndex(index: int): string =
   let second = index mod FleetLabelSecondChars.len
   $FleetLabelFirstChars[first] & $FleetLabelSecondChars[second]
 
+proc shortFleetStatus(statusLabel: string): string =
+  case statusLabel
+  of "Active": "A"
+  of "Reserve": "R"
+  of "Mothballed": "M"
+  else: statusLabel
+
 proc nextAvailableFleetLabel(model: TuiModel, ownerId: int): string =
   var used = initHashSet[string]()
   for fleet in model.view.fleets:
@@ -2932,7 +2939,7 @@ proc applyZeroTurnCommandOptimistically*(
     for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
       for flt in fleets.mitems:
         if flt.fleetId == fid:
-          flt.status = "Active"
+          flt.status = "A"
           flt.commandLabel = "Hold"
           return
 
@@ -3149,7 +3156,7 @@ proc applyZeroTurnCommandOptimistically*(
         eta: 0,
         roe: srcFleet.roe,
         stateLabel: "Nominal",
-        status: srcFleet.statusLabel,
+        status: shortFleetStatus(srcFleet.statusLabel),
         needsAttention: true
       )
     )
