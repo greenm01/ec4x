@@ -1429,6 +1429,31 @@ proc generateCommandReports(
         isUnread: true,
         linkView: 3, linkLabel: "Fleets",
       ))
+    of GameEventType.ColonyEstablished:
+      # Event-based path ensures the player sees this even if
+      # prevPs is unavailable (e.g. fresh client connection on
+      # the same turn the ETAC lands).
+      let sysName =
+        if evt.systemId.isSome:
+          sysLabel(ps.visibleSystems, evt.systemId.get())
+        else: "Unknown System"
+      var lines: seq[string] = @[
+        "System: " & sysName,
+      ]
+      if evt.description.len > 0:
+        lines.add(evt.description)
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Operations,
+        title: "Colony Established — " & sysName,
+        summary: "A new colony has been founded at " &
+          sysName & ".",
+        detail: lines,
+        isUnread: true,
+        linkView: 2, linkLabel: "Planets",
+      ))
+
     of GameEventType.CommandRejected,
         GameEventType.CommandFailed,
         GameEventType.CommandAborted:
