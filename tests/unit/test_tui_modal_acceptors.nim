@@ -59,6 +59,59 @@ suite "TUI modal acceptors":
     check model.ui.stagedPopulationTransfers[0].destColony == ColonyId(12)
     check model.ui.stagedPopulationTransfers[0].ptuAmount == 4
 
+  test "population transfer delete route removes staged command":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.viewingHouse = 1
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(11),
+        systemId: 101,
+        systemName: "Alpha",
+        coordLabel: "A1",
+        isOwned: true
+      ),
+      PlanetRow(
+        colonyId: some(12),
+        systemId: 102,
+        systemName: "Beta",
+        coordLabel: "A2",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 11,
+        systemId: 101,
+        systemName: "Alpha",
+        populationUnits: 20,
+        industrialUnits: 8,
+        owner: 1
+      ),
+      ColonyInfo(
+        colonyId: 12,
+        systemId: 102,
+        systemName: "Beta",
+        populationUnits: 15,
+        industrialUnits: 6,
+        owner: 1
+      )
+    ]
+    model.ui.stagedPopulationTransfers = @[
+      PopulationTransferCommand(
+        houseId: HouseId(1),
+        sourceColony: ColonyId(11),
+        destColony: ColonyId(12),
+        ptuAmount: 3
+      )
+    ]
+
+    populationTransferModalAcceptor(model, actionOpenPopulationTransferModal())
+    check model.ui.populationTransferModal.active
+    populationTransferModalAcceptor(model, actionPopulationTransferDeleteRoute())
+    check model.ui.stagedPopulationTransfers.len == 0
+
   test "maintenance modal stages repair command":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets
@@ -163,6 +216,52 @@ suite "TUI modal acceptors":
     check model.ui.stagedScrapCommands[0].targetType == ScrapTargetType.Neoria
     check model.ui.stagedScrapCommands[0].targetId == 700
     check model.ui.stagedScrapCommands[0].acknowledgeQueueLoss
+
+  test "maintenance select toggles staged scrap command":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(51),
+        systemId: 501,
+        systemName: "Zeta",
+        coordLabel: "F1",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 51,
+        systemId: 501,
+        systemName: "Zeta",
+        populationUnits: 30,
+        industrialUnits: 14,
+        owner: 1
+      )
+    ]
+    model.view.ownColoniesBySystem[501] = Colony(
+      id: ColonyId(51),
+      owner: HouseId(1),
+      systemId: SystemId(501),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[NeoriaId(810)],
+      kastraIds: @[]
+    )
+    model.view.ownNeoriasById[810] = Neoria(
+      id: NeoriaId(810),
+      neoriaClass: NeoriaClass.Drydock,
+      colonyId: ColonyId(51),
+      state: CombatState.Nominal
+    )
+
+    maintenanceModalAcceptor(model, actionOpenScrapModal())
+    check model.ui.maintenanceModal.active
+    maintenanceModalAcceptor(model, actionMaintenanceSelect())
+    check model.ui.stagedScrapCommands.len == 1
+    maintenanceModalAcceptor(model, actionMaintenanceSelect())
+    check model.ui.stagedScrapCommands.len == 0
 
   test "terraform action toggles staged terraform command":
     var model = initTuiModel()
