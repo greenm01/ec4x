@@ -324,28 +324,35 @@ proc generateIntroReport(
       "your command.",
     detail: detail & @[
       "=== VICTORY CONDITION: PRESTIGE ===",
+      "",
       "EC4X is a zero-sum prestige race. Military victories, " &
         "planetary conquests, economic growth, and technological " &
         "advancement all elevate your standing.",
+      "",
       "Losing a colony to an enemy carries a severe prestige " &
         "penalty—never leave colonies undefended.",
       "",
       "=== EARLY EXPANSION: ETACs ===",
+      "",
       "You begin with 2 ETAC fleets. Each ETAC carries 3 PTU " &
         "of frozen colonists, enough to plant a foundation colony " &
         "with a 3 PU starter population.",
+      "",
       "ETACs are consumed on landing—the ship itself becomes " &
         "the colony's starting infrastructure.",
+      "",
       "Crucially, ETAC fleets do NOT count against your " &
         "Strategic Command (SC) fleet limit. Use them freely " &
         "for early land grabs before rivals claim the best " &
         "systems.",
       "",
       "=== EXPLORATION: SCOUTS ===",
+      "",
       "Scouts are fast, carry no cargo, and cost zero Command " &
         "Cost (CC). Send them ahead of your expansion wave to " &
         "uncover the fog of war and identify high-value systems " &
         "before committing your ETACs.",
+      "",
       "Intel decays over time. Maintain scout patrols on " &
         "your borders to track rival fleet movements.",
     ],
