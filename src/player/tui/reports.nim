@@ -47,87 +47,197 @@ type HouseLore = tuple[tag: string, blurb: string]
 const HouseLoreTable: array[12, HouseLore] = [
   (
     tag: "valerian",
-    blurb: "The oldest of the dynatoi, claiming unbroken lineage " &
-      "from the First Expansion. Your ancestral palace orbits a " &
-      "dying red giant. Family tradition demands every heir make " &
-      "a pilgrimage there before assuming the mantle of leadership."
+    blurb: "The Valerian dynasty measures its age not in generations " &
+      "but in stellar epochs. When the First Expansion pushed " &
+      "humanity beyond the core systems, it was a Valerian who " &
+      "planted the first flag on a world orbiting another star — " &
+      "a fact your archivists have never allowed anyone to forget.\n" &
+      "\n" &
+      "Your ancestral seat orbits a dying red giant, a calculated " &
+      "choice made by your founders: every heir who gazes upon " &
+      "that swelling, cooling star is reminded that nothing lasts " &
+      "forever except the will to endure. You are the oldest of " &
+      "the dynatoi. The other houses know it. So do you."
   ),
   (
     tag: "thelon",
-    blurb: "You rose to power during the Collapse Wars by playing " &
-      "all sides. Your motto translates as \"patience cuts deeper " &
-      "than blades.\" Other houses consider you untrustworthy, but " &
-      "indispensable."
+    blurb: "The Thelon rose to prominence not through conquest or " &
+      "discovery, but through something rarer and more durable: " &
+      "patience. During the Collapse Wars, when every other house " &
+      "chose a side and bled for it, you chose all of them — " &
+      "supplying, informing, and quietly profiting while the " &
+      "great fleets destroyed one another.\n" &
+      "\n" &
+      "Your motto translates loosely as \"patience cuts deeper " &
+      "than blades.\" The other houses have never forgiven you " &
+      "for being right. They call you treacherous in the same " &
+      "breath they call you indispensable, and you have long " &
+      "understood that this contradiction is the source of all " &
+      "your power."
   ),
   (
     tag: "marius",
-    blurb: "A martial dynasty that has produced more fleet admirals " &
-      "than any other house. Your officers duel for command " &
-      "positions. Your war college is considered the finest in " &
-      "known space."
+    blurb: "There is an old saying in the officer academies: a " &
+      "Marius never asks permission to fight, only where. Your " &
+      "dynasty has produced more fleet admirals than any other " &
+      "house in the empire — not by accident, but by design. " &
+      "Command is earned through the duel here, not inherited " &
+      "through appointment.\n" &
+      "\n" &
+      "Your war college draws candidates from across known space, " &
+      "and graduates who wash out still outperform the best " &
+      "officers most houses can field. You do not merely study " &
+      "war. You have made war into a civilization."
   ),
   (
     tag: "kalan",
-    blurb: "Merchant princes who built their fortune on monopolizing " &
-      "rare earth extraction in the Kalan Cluster. Every marriage " &
-      "into another house carries financial arrangements that " &
-      "benefit Kalan interests for generations."
+    blurb: "Wealth, your founders understood, is not gold or ships " &
+      "or colonies. Wealth is the thing others cannot do without. " &
+      "Three centuries ago, Kalan prospectors surveying what every " &
+      "other house had dismissed as worthless rock discovered the " &
+      "rare-earth deposits that power every drive coil, every " &
+      "weapons array, every communications relay in the empire.\n" &
+      "\n" &
+      "You have been careful never to extract too much, never to " &
+      "let prices fall, never to let a rival develop a substitute. " &
+      "Every marriage contract your house signs contains financial " &
+      "clauses that will still be generating revenue when the " &
+      "grandchildren of the signatories are dust. The other houses " &
+      "call this greed. You call it foresight."
   ),
   (
     tag: "delos",
-    blurb: "Founded by a legendary scientist-explorer who discovered " &
-      "the Delos Traverse. Your house maintains an obsession with " &
-      "technological superiority and views the other houses as " &
-      "provincial."
+    blurb: "The Delos Traverse — that improbable chain of stable " &
+      "jump points threading through the Periphery — was not " &
+      "discovered by accident. It was found by your founder, a " &
+      "scientist-explorer who spent eleven years mapping " &
+      "gravitational anomalies that every other navigator had " &
+      "discarded as noise. The empire was built on that route, " &
+      "and your house has never let it forget the debt.\n" &
+      "\n" &
+      "Technology is not merely a tool to House Delos; it is a " &
+      "theology. You regard the other houses with a detached, " &
+      "almost clinical pity — powerful in the way that blunt " &
+      "instruments are powerful, incapable of the precision that " &
+      "separates civilization from mere survival."
   ),
   (
     tag: "stratos",
-    blurb: "You have conquered and absorbed three lesser houses in " &
-      "the past two centuries through strategic marriages and " &
-      "opportunistic invasions. You celebrate Incorporation Day " &
-      "annually."
+    blurb: "Three houses no longer exist because of you. Not " &
+      "destroyed in battle — absorbed, dissolved, their lineages " &
+      "folded into yours through a combination of strategic " &
+      "marriage and, when patience ran out, swift military action. " &
+      "You celebrate Incorporation Day each year with a feast that " &
+      "the surviving dynatoi attend and pretend to enjoy.\n" &
+      "\n" &
+      "Your expansion model is simple: identify a weaker neighbor, " &
+      "cultivate dependency, then offer a merger that is more " &
+      "politely worded than an ultimatum but functionally " &
+      "indistinguishable from one. The empire considers you " &
+      "aggressive. You consider yourself efficient."
   ),
   (
     tag: "nikos",
-    blurb: "Known for internal power struggles that sometimes spill " &
-      "into open civil war between family branches. Despite chronic " &
-      "instability, you have held your core territories for eight " &
-      "centuries through sheer stubbornness."
+    blurb: "No house has torn itself apart as many times as Nikos " &
+      "and still held its borders. The family tree splits at " &
+      "nearly every generation into rival branches, and the " &
+      "arguments over succession have twice erupted into open " &
+      "civil war that the other houses watched with poorly " &
+      "concealed delight. Both times, you survived.\n" &
+      "\n" &
+      "The historians explain this as stubbornness. Your own " &
+      "strategists describe it differently: when a Nikos is " &
+      "threatened from outside, the internal factions stop " &
+      "fighting each other with a speed that has surprised more " &
+      "than one invader. Eight centuries of core territory, " &
+      "intact. The price was high, but the account remains open."
   ),
   (
     tag: "hektor",
-    blurb: "Your ancestral homeworld was rendered uninhabitable three " &
-      "centuries ago by industrial collapse. Now scattered across " &
-      "multiple systems, Hektor gatherings are melancholic affairs " &
-      "focused on lost glory and eventual restoration."
+    blurb: "Your homeworld is a cautionary tale taught in every " &
+      "colonial engineering program in the empire. Three hundred " &
+      "years ago, the industrial ambition of your ancestors " &
+      "outpaced their caution, and the cascading ecological " &
+      "collapse that followed rendered an entire planet " &
+      "uninhabitable within a single generation. The Hektor " &
+      "diaspora scattered across seven systems, carrying nothing " &
+      "but memory and the burning need to rebuild.\n" &
+      "\n" &
+      "That wound has never closed. Your gatherings are quiet, " &
+      "deliberate affairs, heavy with a shared understanding of " &
+      "what was lost and what must never be risked again. Some " &
+      "houses see tragedy in this. You see clarity. You know " &
+      "precisely what is worth protecting — because you have " &
+      "already lost it once."
   ),
   (
     tag: "krios",
-    blurb: "You began as frontier colonists who struck it rich finding " &
-      "habitable worlds in what others considered worthless space. " &
-      "You still maintain a frontier mentality and look down on the " &
-      "soft core-world houses."
+    blurb: "The core-world houses still tell the story with a " &
+      "mixture of amusement and discomfort: a convoy of " &
+      "underfunded frontier colonists, turned away from every " &
+      "catalogued system, pushed deeper into unmapped space out " &
+      "of desperation — and found paradise. Not once, but four " &
+      "times. The habitable worlds that built the Krios fortune " &
+      "were sitting in sectors that three major survey expeditions " &
+      "had written off as barren.\n" &
+      "\n" &
+      "You have never quite forgiven the core houses for their " &
+      "condescension, and you have never quite stopped enjoying " &
+      "the look on their faces when they need something only you " &
+      "can provide. The frontier made you, and you see no reason " &
+      "to pretend otherwise."
   ),
   (
     tag: "zenos",
-    blurb: "Every generation produces one designated Philosopher-Heir " &
-      "who writes official history and strategic doctrine. These " &
-      "texts are studied throughout the empire, giving your house " &
-      "outsized cultural influence despite modest military power."
+    blurb: "Every generation, one member of the Zenos bloodline is " &
+      "designated Philosopher-Heir and given a single mandate: " &
+      "observe everything, write it down, and make it mean " &
+      "something. The resulting texts — part history, part " &
+      "strategic doctrine, part philosophy — are studied in " &
+      "academies across the empire, and have shaped military " &
+      "thinking for two centuries in ways that most commanders " &
+      "cannot trace back to their source.\n" &
+      "\n" &
+      "This is power of a particular kind: invisible, deniable, " &
+      "and almost impossible to destroy. Your fleets are modest. " &
+      "Your armies are adequate. But the frameworks through which " &
+      "your rivals understand the galaxy were, in significant " &
+      "part, written by your ancestors. You find this deeply " &
+      "satisfying."
   ),
   (
     tag: "theron",
-    blurb: "You have survived five major invasions by trading space " &
-      "for time and bleeding attackers dry. Your commanders are " &
-      "legendarily cautious, earning a reputation for patience " &
-      "among more aggressive houses."
+    blurb: "Five times in three centuries, an invading force has " &
+      "crossed into Theron space expecting a short campaign. " &
+      "Five times, they encountered the same maddening response: " &
+      "no decisive engagement, no fixed front, just a slow " &
+      "grinding retreat that traded territory for time while " &
+      "supply lines stretched thin and casualty lists grew longer " &
+      "than any pre-war estimate had projected. Five times, the " &
+      "invader eventually stopped.\n" &
+      "\n" &
+      "Your commanders are called cautious by rivals who confuse " &
+      "aggression with competence. What they practice is something " &
+      "more precise — an understanding that space is not a " &
+      "weakness to yield, but a weapon to deploy. The patient " &
+      "mind, your doctrine holds, wins the war that the impatient " &
+      "mind wins on paper."
   ),
   (
     tag: "alexos",
-    blurb: "The newest great house, elevated only three generations " &
-      "ago through a marriage alliance. The older dynatoi still " &
-      "treat you as upstarts—which you take as a personal insult " &
-      "requiring constant proof of legitimacy."
+    blurb: "Three generations ago, a marriage alliance elevated " &
+      "what had been a prosperous but minor clan into the ranks " &
+      "of the great houses. The ceremony was lavish. The " &
+      "congratulations from the older dynatoi were gracious. " &
+      "The tone behind both has never quite changed.\n" &
+      "\n" &
+      "You have spent three generations proving that your " &
+      "elevation was earned and not merely granted, and the " &
+      "oldest houses have spent three generations making sure " &
+      "the standard of proof keeps rising. It has made you " &
+      "formidable in ways your critics did not anticipate. " &
+      "There is no more dangerous rival than one who has spent " &
+      "their entire existence being told they do not belong."
   ),
 ]
 
@@ -201,6 +311,10 @@ proc generateIntroReport(
 ): ReportEntry =
   ## Build the Turn 1 welcome/intro report for the given house.
   let lore = houseLoreBlurb(houseName)
+  var detail: seq[string] = @["=== YOUR HOUSE ==="]
+  for paragraph in lore.split('\n'):
+    detail.add(paragraph)
+  detail.add("")
   ReportEntry(
     id: 1,
     turn: turn,
@@ -208,10 +322,7 @@ proc generateIntroReport(
     title: "Welcome to EC4X — House " & houseName,
     summary: "The age of conquest begins. Your house awaits " &
       "your command.",
-    detail: @[
-      "=== YOUR HOUSE ===",
-      lore,
-      "",
+    detail: detail & @[
       "=== VICTORY CONDITION: PRESTIGE ===",
       "EC4X is a zero-sum prestige race. Military victories, " &
         "planetary conquests, economic growth, and technological " &
