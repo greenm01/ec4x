@@ -1,0 +1,204 @@
+## Unit tests for colony command modals in SAM acceptors.
+
+import std/[unittest, options, tables]
+
+import ../../src/player/sam/sam_pkg
+import ../../src/engine/types/[core, fleet, ship, colony, production,
+  combat, facilities, command]
+
+suite "TUI modal acceptors":
+  test "population transfer modal stages command":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.viewingHouse = 1
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(11),
+        systemId: 101,
+        systemName: "Alpha",
+        coordLabel: "A1",
+        isOwned: true
+      ),
+      PlanetRow(
+        colonyId: some(12),
+        systemId: 102,
+        systemName: "Beta",
+        coordLabel: "A2",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 11,
+        systemId: 101,
+        systemName: "Alpha",
+        populationUnits: 20,
+        industrialUnits: 8,
+        owner: 1
+      ),
+      ColonyInfo(
+        colonyId: 12,
+        systemId: 102,
+        systemName: "Beta",
+        populationUnits: 15,
+        industrialUnits: 6,
+        owner: 1
+      )
+    ]
+
+    populationTransferModalAcceptor(model, actionOpenPopulationTransferModal())
+    check model.ui.populationTransferModal.active
+
+    model.ui.populationTransferModal.focus = TransferModalFocus.Amount
+    model.ui.populationTransferModal.ptuAmount = 4
+    populationTransferModalAcceptor(model, actionPopulationTransferConfirm())
+
+    check model.ui.stagedPopulationTransfers.len == 1
+    check model.ui.stagedPopulationTransfers[0].sourceColony == ColonyId(11)
+    check model.ui.stagedPopulationTransfers[0].destColony == ColonyId(12)
+    check model.ui.stagedPopulationTransfers[0].ptuAmount == 4
+
+  test "maintenance modal stages repair command":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(21),
+        systemId: 201,
+        systemName: "Gamma",
+        coordLabel: "B1",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 21,
+        systemId: 201,
+        systemName: "Gamma",
+        populationUnits: 25,
+        industrialUnits: 12,
+        owner: 1
+      )
+    ]
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(500)]
+    )
+    model.view.ownShipsById[500] = Ship(
+      id: ShipId(500),
+      houseId: HouseId(1),
+      shipClass: ShipClass.Destroyer,
+      state: CombatState.Crippled
+    )
+
+    maintenanceModalAcceptor(model, actionOpenRepairModal())
+    check model.ui.maintenanceModal.active
+    check model.ui.maintenanceModal.candidates.len > 0
+
+    maintenanceModalAcceptor(model, actionMaintenanceSelect())
+    check model.ui.stagedRepairCommands.len == 1
+    check model.ui.stagedRepairCommands[0].targetType == RepairTargetType.Ship
+    check model.ui.stagedRepairCommands[0].targetId == 500
+
+  test "maintenance scrap sets queue-loss acknowledgement when needed":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(31),
+        systemId: 301,
+        systemName: "Delta",
+        coordLabel: "C1",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 31,
+        systemId: 301,
+        systemName: "Delta",
+        populationUnits: 30,
+        industrialUnits: 14,
+        owner: 1
+      )
+    ]
+    model.view.ownColoniesBySystem[301] = Colony(
+      id: ColonyId(31),
+      owner: HouseId(1),
+      systemId: SystemId(301),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[NeoriaId(700)],
+      kastraIds: @[]
+    )
+    model.view.ownNeoriasById[700] = Neoria(
+      id: NeoriaId(700),
+      neoriaClass: NeoriaClass.Spaceport,
+      colonyId: ColonyId(31),
+      state: CombatState.Nominal,
+      constructionQueue: @[ConstructionProjectId(1)],
+      repairQueue: @[]
+    )
+
+    maintenanceModalAcceptor(model, actionOpenScrapModal())
+    check model.ui.maintenanceModal.active
+    check model.ui.maintenanceModal.candidates.len > 0
+
+    maintenanceModalAcceptor(model, actionMaintenanceSelect())
+    check model.ui.stagedScrapCommands.len == 1
+    check model.ui.stagedScrapCommands[0].targetType == ScrapTargetType.Neoria
+    check model.ui.stagedScrapCommands[0].targetId == 700
+    check model.ui.stagedScrapCommands[0].acknowledgeQueueLoss
+
+  test "terraform action toggles staged terraform command":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Planets
+    model.ui.selectedIdx = 0
+    model.view.viewingHouse = 1
+    model.view.turn = 15
+    model.view.planetsRows = @[
+      PlanetRow(
+        colonyId: some(41),
+        systemId: 401,
+        systemName: "Epsilon",
+        coordLabel: "D1",
+        isOwned: true
+      )
+    ]
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 41,
+        systemId: 401,
+        systemName: "Epsilon",
+        populationUnits: 18,
+        industrialUnits: 9,
+        owner: 1
+      )
+    ]
+    model.view.ownColoniesBySystem[401] = Colony(
+      id: ColonyId(41),
+      owner: HouseId(1),
+      systemId: SystemId(401),
+      activeTerraforming: none(TerraformProject)
+    )
+
+    populationTransferModalAcceptor(model, actionStageTerraformCommand())
+    check model.ui.stagedTerraformCommands.len == 1
+    check model.ui.stagedTerraformCommands[0].colonyId == ColonyId(41)
+
+    populationTransferModalAcceptor(model, actionStageTerraformCommand())
+    check model.ui.stagedTerraformCommands.len == 0

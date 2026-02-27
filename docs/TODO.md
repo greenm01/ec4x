@@ -46,15 +46,11 @@ Reference audit:
 
 Priority backlog:
 
-1. Implement normal TUI staging + submit support for
-   `populationTransfers`.
-2. Implement normal TUI staging + submit support for
-   `terraformCommands`.
-3. Complete normal TUI staging flows for `repairCommands` and
-   `scrapCommands`.
-4. Ensure all command categories persist/restore in order drafts.
-5. Add integration tests proving TUI can produce full canonical
-   `CommandPacket` coverage.
+1. Add integration tests proving submit/resume behavior for all
+   command categories in normal TUI flows.
+2. Expand UI-level regression coverage for maintenance and transfer
+   modal interactions.
+3. Validate command-dock/action-hint parity across all colony actions.
 
 ## Future (Post-Playtesting)
 

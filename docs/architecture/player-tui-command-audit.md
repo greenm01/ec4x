@@ -1,7 +1,7 @@
 # Player TUI Command Audit
 
 **Date:** 2026-02-27
-**Status:** In progress
+**Status:** In progress (P0 implementation underway)
 **Goal:** Make the player TUI capable of producing the full canonical
 turn command queue for practical human playtesting and bug hunting.
 
@@ -30,12 +30,12 @@ Legend: `Complete`, `Partial`, `Missing`
 | `zeroTurnCommands` | Complete | Fleet detail ZTC picker and staging flow implemented. |
 | `fleetCommands` | Complete | Single + batch fleet command staging implemented. |
 | `buildCommands` | Complete | Build modal queues and staging implemented. |
-| `repairCommands` | Partial | Present in packet/draft plumbing, no complete normal UI flow. |
-| `scrapCommands` | Partial | Present in packet/draft plumbing, no complete normal UI flow. |
+| `repairCommands` | Complete | Normal TUI maintenance modal now stages/unstages repair commands. |
+| `scrapCommands` | Complete | Normal TUI maintenance modal now stages/unstages scrap commands. |
 | `researchAllocation` | Complete | Research panel staging implemented. |
 | `diplomaticCommand` | Complete | Economy/diplomacy flow stages commands. |
-| `populationTransfers` | Missing | No staging UI or submit-path population transfer generation. |
-| `terraformCommands` | Missing | No staging UI or submit-path terraform command generation. |
+| `populationTransfers` | Complete | Normal TUI transfer modal stages commands and submit path is wired. |
+| `terraformCommands` | Complete | Colony-level terraform staging is wired into submit path. |
 | `colonyManagement` | Complete | Tax/toggles overlay into packet generation. |
 | `espionageActions` | Complete | Espionage queue and budget flow implemented. |
 | `ebpInvestment` | Complete | Staged and submitted. |
@@ -69,20 +69,12 @@ draft-restored, and submitted through `CommandPacket`.
 
 ### P0 - Required for feature completeness
 
-- Implement population transfer staging in normal TUI flow:
-  - add model staged state
-  - add actions/bindings/acceptors
-  - add review/drop UX
-  - serialize into `CommandPacket.populationTransfers`
-  - include in draft save/restore
-- Implement terraforming staging in normal TUI flow:
-  - add model staged state
-  - add actions/bindings/acceptors
-  - add review/drop UX
-  - serialize into `CommandPacket.terraformCommands`
-  - include in draft save/restore
-- Implement complete repair command staging flow in normal TUI flow.
-- Implement complete scrap command staging flow in normal TUI flow.
+- [x] Implement population transfer staging in normal TUI flow.
+- [x] Implement terraforming staging in normal TUI flow.
+- [x] Implement complete repair command staging flow in normal TUI flow.
+- [x] Implement complete scrap command staging flow in normal TUI flow.
+- [ ] Add focused integration tests for submit/resume UX paths
+  (beyond unit packet/draft coverage).
 
 ### P1 - Validation and quality
 

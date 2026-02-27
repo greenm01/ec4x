@@ -2,6 +2,7 @@
 
 import std/unittest
 import std/[options, tables]
+import std/strutils
 
 import ../../src/player/sam/tui_model
 import ../../src/engine/types/[core, fleet, ship, facilities, ground_unit,
@@ -72,6 +73,49 @@ suite "TUI command staging":
     ))
     check model.ui.stagedPopulationTransfers.len == 0
     check model.ui.stagedTerraformCommands.len == 0
+
+  test "stagedCommandsSummary renders transfer and terraform labels":
+    var model = initTuiModel()
+    model.view.colonies = @[
+      ColonyInfo(
+        colonyId: 41,
+        systemId: 401,
+        systemName: "Icarus",
+        populationUnits: 80,
+        industrialUnits: 15,
+        owner: 1
+      ),
+      ColonyInfo(
+        colonyId: 42,
+        systemId: 402,
+        systemName: "Hestia",
+        populationUnits: 60,
+        industrialUnits: 12,
+        owner: 1
+      )
+    ]
+    model.ui.stagedPopulationTransfers = @[
+      PopulationTransferCommand(
+        houseId: HouseId(1),
+        sourceColony: ColonyId(41),
+        destColony: ColonyId(42),
+        ptuAmount: 5
+      )
+    ]
+    model.ui.stagedTerraformCommands = @[
+      TerraformCommand(
+        houseId: HouseId(1),
+        colonyId: ColonyId(41),
+        startTurn: 8,
+        turnsRemaining: 0,
+        ppCost: 0,
+        targetClass: 0
+      )
+    ]
+
+    let summary = model.stagedCommandsSummary()
+    check summary.contains("Transfer 5 PTU: Icarus -> Hestia")
+    check summary.contains("Terraform: Icarus")
 
   test "buildCommandPacket includes colony command categories":
     var model = initTuiModel()
