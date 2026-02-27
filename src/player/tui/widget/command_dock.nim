@@ -118,6 +118,8 @@ proc planetsContextActions*(hasSelection: bool): seq[ContextAction] =
   @[
     ContextAction(key: "Enter", label: "View Colony", enabled: hasSelection),
     ContextAction(key: "B", label: "Build", enabled: hasSelection),
+    ContextAction(key: "T", label: "Transfer", enabled: hasSelection),
+    ContextAction(key: "V", label: "Terraform", enabled: hasSelection),
   ]
 
 proc planetDetailContextActions*(): seq[ContextAction] =

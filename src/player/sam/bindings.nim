@@ -572,6 +572,20 @@ proc initBindings*() =
     longLabel: "QUEUE", shortLabel: "Que", priority: 21,
     enabledCheck: "hasColonySelection"))
 
+  registerBinding(Binding(
+    key: KeyCode.KeyT, modifier: KeyModifier.None,
+    actionKind: ActionKind.openPopulationTransferModal,
+    context: BindingContext.Planets,
+    longLabel: "TRANSFER", shortLabel: "Xfer", priority: 22,
+    enabledCheck: "hasColonySelection"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyV, modifier: KeyModifier.None,
+    actionKind: ActionKind.stageTerraformCommand,
+    context: BindingContext.Planets,
+    longLabel: "TERRAFORM", shortLabel: "Ter", priority: 23,
+    enabledCheck: "hasColonySelection"))
+
   # =========================================================================
   # Planet Detail Context
   # =========================================================================
@@ -1675,6 +1689,12 @@ proc initBindings*() =
     longLabel: "STAGE", shortLabel: "OK", priority: 10))
 
   registerBinding(Binding(
+    key: KeyCode.KeyD, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferDeleteRoute,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "DELETE", shortLabel: "Del", priority: 11))
+
+  registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
     actionKind: ActionKind.closePopulationTransferModal,
     context: BindingContext.PopulationTransferModal,
@@ -1976,6 +1996,8 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionPopulationTransferAmountDec())
   of ActionKind.populationTransferConfirm:
     return some(actionPopulationTransferConfirm())
+  of ActionKind.populationTransferDeleteRoute:
+    return some(actionPopulationTransferDeleteRoute())
   of ActionKind.stageTerraformCommand:
     return some(actionStageTerraformCommand())
   
@@ -2240,16 +2262,24 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return queueResult
       return none(Proposal)
 
-  if model.ui.populationTransferModal.active and
-      modifier == KeyModifier.None:
+  if model.ui.populationTransferModal.active:
     if key != KeyCode.KeyEscape:
       let transferResult = lookupAndDispatch(
-        key, KeyModifier.None,
+        key, modifier,
         BindingContext.PopulationTransferModal,
         model
       )
       if transferResult.isSome:
         return transferResult
+      if modifier == KeyModifier.Shift and key == KeyCode.KeyPlus:
+        let plusResult = lookupAndDispatch(
+          key,
+          KeyModifier.None,
+          BindingContext.PopulationTransferModal,
+          model
+        )
+        if plusResult.isSome:
+          return plusResult
       return none(Proposal)
 
   # Build modal mode: use registry

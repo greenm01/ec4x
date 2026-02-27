@@ -3206,6 +3206,18 @@ proc refreshTransferModalStatus(model: var TuiModel) =
       maxPtu
     )
 
+proc findStagedTransferIdx(
+    model: TuiModel,
+    sourceId: int,
+    destId: int
+): int =
+  let sourceKey = ColonyId(sourceId.uint32)
+  let destKey = ColonyId(destId.uint32)
+  for i, staged in model.ui.stagedPopulationTransfers:
+    if staged.sourceColony == sourceKey and staged.destColony == destKey:
+      return i
+  -1
+
 proc populationTransferModalAcceptor*(
     model: var TuiModel,
     proposal: Proposal
@@ -3245,6 +3257,11 @@ proc populationTransferModalAcceptor*(
     model.ui.populationTransferModal.destinationIdx = 0
     model.ui.populationTransferModal.ptuAmount = 1
     model.ui.populationTransferModal.focus = TransferModalFocus.Destination
+    let initialDest = model.ui.populationTransferModal.destinationIds[0]
+    let initialIdx = findStagedTransferIdx(model, colonyId, initialDest)
+    if initialIdx >= 0:
+      model.ui.populationTransferModal.ptuAmount =
+        int(model.ui.stagedPopulationTransfers[initialIdx].ptuAmount)
     refreshTransferModalStatus(model)
     model.ui.statusMessage = "Population transfer: choose destination and PTU"
 
@@ -3281,6 +3298,17 @@ proc populationTransferModalAcceptor*(
       model.ui.populationTransferModal.destinationIdx -= 1
     else:
       model.ui.populationTransferModal.destinationIdx = n - 1
+    let sourceId = model.ui.populationTransferModal.sourceColonyId
+    let destId = model.ui.populationTransferModal.destinationIds[
+      model.ui.populationTransferModal.destinationIdx
+    ]
+    let stagedIdx = findStagedTransferIdx(model, sourceId, destId)
+    if stagedIdx >= 0:
+      model.ui.populationTransferModal.ptuAmount =
+        int(model.ui.stagedPopulationTransfers[stagedIdx].ptuAmount)
+    else:
+      model.ui.populationTransferModal.ptuAmount = 1
+    refreshTransferModalStatus(model)
 
   of ActionKind.populationTransferDestNext:
     if not model.ui.populationTransferModal.active:
@@ -3294,6 +3322,17 @@ proc populationTransferModalAcceptor*(
       model.ui.populationTransferModal.destinationIdx += 1
     else:
       model.ui.populationTransferModal.destinationIdx = 0
+    let sourceId = model.ui.populationTransferModal.sourceColonyId
+    let destId = model.ui.populationTransferModal.destinationIds[
+      model.ui.populationTransferModal.destinationIdx
+    ]
+    let stagedIdx = findStagedTransferIdx(model, sourceId, destId)
+    if stagedIdx >= 0:
+      model.ui.populationTransferModal.ptuAmount =
+        int(model.ui.stagedPopulationTransfers[stagedIdx].ptuAmount)
+    else:
+      model.ui.populationTransferModal.ptuAmount = 1
+    refreshTransferModalStatus(model)
 
   of ActionKind.populationTransferAmountInc:
     if not model.ui.populationTransferModal.active:
@@ -3352,6 +3391,26 @@ proc populationTransferModalAcceptor*(
     model.ui.modifiedSinceSubmit = true
     model.ui.populationTransferModal.active = false
     model.ui.statusMessage = "Staged transfer: " & $amount & " PTU"
+
+  of ActionKind.populationTransferDeleteRoute:
+    if not model.ui.populationTransferModal.active:
+      return
+    let sourceId = model.ui.populationTransferModal.sourceColonyId
+    let idx = model.ui.populationTransferModal.destinationIdx
+    let n = model.ui.populationTransferModal.destinationIds.len
+    if sourceId <= 0 or idx < 0 or idx >= n:
+      model.ui.statusMessage = "Invalid transfer destination"
+      return
+    let destId = model.ui.populationTransferModal.destinationIds[idx]
+    let stagedIdx = findStagedTransferIdx(model, sourceId, destId)
+    if stagedIdx < 0:
+      model.ui.statusMessage = "No staged transfer for route"
+      return
+    model.ui.stagedPopulationTransfers.delete(stagedIdx)
+    model.ui.modifiedSinceSubmit = true
+    model.ui.populationTransferModal.ptuAmount = 1
+    refreshTransferModalStatus(model)
+    model.ui.statusMessage = "Removed staged transfer"
 
   of ActionKind.stageTerraformCommand:
     if model.ui.mode notin {ViewMode.Planets, ViewMode.PlanetDetail}:

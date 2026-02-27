@@ -537,7 +537,7 @@ proc renderPopulationTransferModal*(
   m.renderWithFooter(
     modalArea,
     buf,
-    "[Tab] Field  [< >] Change  [+/-] PTU  [Enter] Stage  [Esc] Close"
+    "[Tab] Field  [< >] Change  [+/-] PTU  [Enter] Stage  [D] Delete  [Esc] Close"
   )
 
   let content = m.contentArea(modalArea, hasFooter = true)
@@ -1698,6 +1698,7 @@ proc renderPlanetsModal*(canvas: Rect, buf: var CellBuffer,
   
   let footerText =
     "[↑↓] Navigate  [Enter] Details  [B] Build  [Q] Queue  " &
+    "[T] Transfer  [V] Terraform  " &
     "[PgUp/PgDn] Scroll  [A-Z0-9]Jump  [/]Help"
   modal.renderWithFooter(modalArea, buf, footerText)
   

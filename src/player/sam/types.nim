@@ -178,6 +178,7 @@ type
     populationTransferAmountInc
     populationTransferAmountDec
     populationTransferConfirm
+    populationTransferDeleteRoute
     stageTerraformCommand
     fleetConsoleNextPane
     fleetConsolePrevPane

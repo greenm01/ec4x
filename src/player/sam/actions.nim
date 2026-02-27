@@ -1455,6 +1455,9 @@ proc actionPopulationTransferAmountDec*(): Proposal =
 proc actionPopulationTransferConfirm*(): Proposal =
   gameActionProposal(ActionKind.populationTransferConfirm, "")
 
+proc actionPopulationTransferDeleteRoute*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferDeleteRoute, "")
+
 proc actionStageTerraformCommand*(): Proposal =
   gameActionProposal(ActionKind.stageTerraformCommand, "")
 
