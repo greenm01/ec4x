@@ -132,16 +132,27 @@ proc render*(p: Paragraph, area: Rect, buf: var CellBuffer) =
           discard buf.setString(contentArea.x, y, "", p.text.style)
         y += 1
         continue
-      var startIdx = 0
-      while startIdx < buffer.len:
-        if y >= contentArea.bottom:
-          break
-        let endIdx = min(buffer.len, startIdx + wrapWidth)
-        let slice = buffer[startIdx ..< endIdx]
-        if y >= contentArea.y:
-          discard buf.setString(contentArea.x, y, slice, p.text.style)
+      # Word-level wrapping
+      let words = buffer.split(' ')
+      var currentLine = ""
+      for word in words:
+        if currentLine.len == 0:
+          # First word on line — always take it (even if > wrapWidth)
+          currentLine = word
+        elif currentLine.len + 1 + word.len <= wrapWidth:
+          currentLine.add(' ')
+          currentLine.add(word)
+        else:
+          # Emit current line
+          if y >= contentArea.y and y < contentArea.bottom:
+            discard buf.setString(contentArea.x, y, currentLine, p.text.style)
+          y += 1
+          currentLine = word
+      # Emit remaining
+      if currentLine.len > 0:
+        if y >= contentArea.y and y < contentArea.bottom:
+          discard buf.setString(contentArea.x, y, currentLine, p.text.style)
         y += 1
-        startIdx = endIdx
       continue
 
     if y >= contentArea.y:

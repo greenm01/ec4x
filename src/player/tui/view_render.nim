@@ -2743,38 +2743,45 @@ proc renderInboxDetailReports(
         "No report selected", modalDimStyle())
       return
     let rpt = bucket.reports[rptIdx]
-    # Title
-    discard buf.setString(area.x, area.y,
-      rpt.title, canvasHeaderStyle())
-    # Category + turn
-    discard buf.setString(area.x, area.y + 1,
-      $rpt.category & " - Turn " & $rpt.turn,
-      modalDimStyle())
-    # Summary
-    discard buf.setString(area.x, area.y + 3,
-      rpt.summary, canvasBoldStyle())
-    # Detail lines
-    var y = area.y + 5
+
+    # Build lines for paragraph
+    var lines: seq[Line] = @[]
+    lines.add(line(rpt.title, canvasHeaderStyle()))
+    lines.add(line($rpt.category & " - Turn " & $rpt.turn,
+      modalDimStyle()))
+    lines.add(line(""))
+    lines.add(line(rpt.summary, canvasBoldStyle()))
+    lines.add(line(""))
+    for d in rpt.detail:
+      lines.add(line(d, modalBgStyle()))
+
+    # Link label
+    if rpt.linkLabel.len > 0:
+      lines.add(line(""))
+      lines.add(line("[Enter] Go to " & rpt.linkLabel,
+        canvasBoldStyle()))
+
+    let paraText = text(lines)
+
+    # Estimate wrapped line count for scroll
+    var wrappedLineCount = 0
+    for ln in lines:
+      var content = ""
+      for s in ln.spans:
+        content.add(s.content)
+      wrappedLineCount += max(1,
+        (content.len + area.width - 1) div max(1, area.width))
+
     var detailScroll = model.ui.inboxDetailScroll
-    detailScroll.contentLength = rpt.detail.len
-    detailScroll.viewportLength = max(1,
-      area.bottom - y)
+    detailScroll.contentLength = wrappedLineCount
+    detailScroll.viewportLength = max(1, area.height)
     detailScroll.clampOffsets()
     model.ui.inboxDetailScroll = detailScroll
-    let startLine = detailScroll.verticalOffset
-    for i in startLine ..< rpt.detail.len:
-      if y >= area.bottom:
-        break
-      discard buf.setString(area.x, y,
-        rpt.detail[i], modalBgStyle())
-      y += 1
-    # Link label at bottom
-    if rpt.linkLabel.len > 0 and y < area.bottom:
-      y += 1
-      if y < area.bottom:
-        discard buf.setString(area.x, y,
-          "[Enter] Go to " & rpt.linkLabel,
-          canvasBoldStyle())
+
+    let para = paragraph(paraText)
+      .wrap(Wrap(trim: true))
+      .scrollState(detailScroll)
+    para.render(area, buf)
 
 proc renderInboxModal*(canvas: Rect,
     buf: var CellBuffer, model: var TuiModel) =
@@ -2790,8 +2797,8 @@ proc renderInboxModal*(canvas: Rect,
   let modalArea = modal.calculateArea(
     canvas, contentHeight)
   let footerText =
-    "[↑↓]Nav [←→/H/L/Tab]Focus [C]Compose" &
-    " [M]Messages [R]Reports [Esc]Back"
+    "[↑↓/JK]Nav/Scroll [←→/Tab]Focus" &
+    " [PgUp/PgDn]Page [C]Compose [Esc]Back"
   modal.renderWithFooter(modalArea, buf, footerText)
   let contentArea = modal.contentArea(
     modalArea, hasFooter = true)

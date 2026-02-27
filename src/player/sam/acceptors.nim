@@ -961,6 +961,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxTurnIdx = item.turnIdx
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
+      elif model.ui.inboxFocus == InboxPaneFocus.Detail:
+        # Scroll report/message detail with Up when detail pane focused
+        if model.ui.inboxSection == InboxSection.Messages:
+          model.ui.messagesScroll.scrollBy(-1)
+        else:
+          model.ui.inboxDetailScroll.scrollBy(-1)
     elif model.ui.mode == ViewMode.Research:
       if model.ui.researchFocus == ResearchFocus.Detail:
         model.ui.researchFocus = ResearchFocus.List
@@ -1106,6 +1112,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
               model.ui.inboxTurnIdx = item.turnIdx
               model.ui.inboxReportIdx = 0
               model.ui.inboxDetailScroll.reset()
+      elif model.ui.inboxFocus == InboxPaneFocus.Detail:
+        # Scroll report/message detail with Down when detail pane focused
+        if model.ui.inboxSection == InboxSection.Messages:
+          model.ui.messagesScroll.scrollBy(1)
+        else:
+          model.ui.inboxDetailScroll.scrollBy(1)
     elif model.ui.mode == ViewMode.Research:
       if model.ui.researchFocus == ResearchFocus.Detail:
         discard  # down does nothing in detail pane (no scrollable content)
@@ -1844,15 +1856,19 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.messageScrollUp:
       if model.ui.mode == ViewMode.Messages:
         if model.ui.inboxSection == InboxSection.Messages:
-          model.ui.messagesScroll.scrollBy(-1)
+          model.ui.messagesScroll.scrollBy(
+            -(max(1, model.ui.messagesScroll.viewportLength - 1)))
         else:
-          model.ui.inboxDetailScroll.scrollBy(-1)
+          model.ui.inboxDetailScroll.scrollBy(
+            -(max(1, model.ui.inboxDetailScroll.viewportLength - 1)))
     of ActionKind.messageScrollDown:
       if model.ui.mode == ViewMode.Messages:
         if model.ui.inboxSection == InboxSection.Messages:
-          model.ui.messagesScroll.scrollBy(1)
+          model.ui.messagesScroll.scrollBy(
+            max(1, model.ui.messagesScroll.viewportLength - 1))
         else:
-          model.ui.inboxDetailScroll.scrollBy(1)
+          model.ui.inboxDetailScroll.scrollBy(
+            max(1, model.ui.inboxDetailScroll.viewportLength - 1))
     of ActionKind.messageMarkRead:
       if model.ui.mode == ViewMode.Messages:
         model.ui.statusMessage = "Marking thread read..."
