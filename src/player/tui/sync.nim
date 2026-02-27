@@ -16,6 +16,7 @@ import ../tui/adapters
 import ../tui/widget/overview
 import ../tui/hex_labels
 import ../tui/widget/hexmap/symbols
+import ../tui/reports
 
 # Forward declaration for PlayerState sync helpers
 proc syncPlanetsRows*(model: var TuiModel, ps: PlayerState)
@@ -417,6 +418,9 @@ proc syncGameStateToModel*(
 
   let playerState = state.createPlayerState(viewingHouse)
   model.syncKnownEnemyColonies(playerState)
+
+  # Generate client-side narrative reports from PlayerState
+  model.view.reports = generateClientReports(playerState)
 
 proc hexDistance(
     visibleSystems: Table[SystemId, ps_types.VisibleSystem],
@@ -1231,6 +1235,9 @@ proc syncPlayerStateToModel*(
   model.ui.pristineFleets = model.view.fleets
   model.ui.pristineFleetConsoleFleetsBySystem =
     model.ui.fleetConsoleFleetsBySystem
+
+  # Generate client-side narrative reports from PlayerState
+  model.view.reports = generateClientReports(ps)
 
 # =============================================================================
 # Planets Table Sync (PlayerState-only)
