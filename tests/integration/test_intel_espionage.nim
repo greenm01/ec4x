@@ -15,7 +15,7 @@
 import std/[unittest, options, tables, sequtils, random]
 import ../../src/engine/engine
 import ../../src/engine/types/[
-  core, game_state, house, colony, ship, fleet, combat, facilities, player_state
+  core, game_state, house, colony, ship, fleet, combat, facilities, player_state, event
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
@@ -85,7 +85,8 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
     
     # Run starbase surveillance
     var rng = initRand(12345)
-    state.processStarbaseSurveillance(state.turn, rng)
+    var events: seq[GameEvent] = @[]
+    state.processStarbaseSurveillance(state.turn, rng, events)
     
     # Check that observer detected the enemy fleet
     check state.intel.hasKey(observer)
@@ -117,7 +118,8 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
     
     # Run starbase surveillance
     var rng = initRand(12345)
-    state.processStarbaseSurveillance(state.turn, rng)
+    var events: seq[GameEvent] = @[]
+    state.processStarbaseSurveillance(state.turn, rng, events)
     
     # Check that no intel was gathered (crippled starbase can't surveil)
     if state.intel.hasKey(observer):
@@ -158,8 +160,9 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
         state.intel[observer].fleetObservations.clear()
       
       var rng = initRand(seed)
-      state.processStarbaseSurveillance(state.turn, rng)
-      
+      var events: seq[GameEvent] = @[]
+      state.processStarbaseSurveillance(state.turn, rng, events)
+
       # Check if detected
       if state.intel.hasKey(observer):
         let intelDb = state.intel[observer]
@@ -169,7 +172,7 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
           evasionCount += 1
       else:
         evasionCount += 1
-    
+
     # Scouts should evade at least sometimes (not 100% detection)
     # With 3 scouts and ELI bonuses, they should evade some rolls
     check evasionCount > 0
@@ -212,8 +215,9 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
         state.intel[observer].fleetObservations.clear()
       
       var rng = initRand(seed)
-      state.processStarbaseSurveillance(state.turn, rng)
-      
+      var events: seq[GameEvent] = @[]
+      state.processStarbaseSurveillance(state.turn, rng, events)
+
       # Check if detected
       if state.intel.hasKey(observer):
         let intelDb = state.intel[observer]
@@ -223,7 +227,7 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
           evasionCount += 1
       else:
         evasionCount += 1
-    
+
     # Raiders with CLK should evade sometimes
     check evasionCount > 0
     check detectionCount > 0
@@ -247,7 +251,8 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
     
     # Run starbase surveillance
     var rng = initRand(12345)
-    state.processStarbaseSurveillance(state.turn, rng)
+    var events: seq[GameEvent] = @[]
+    state.processStarbaseSurveillance(state.turn, rng, events)
     
     # Check that own fleet is NOT in intel reports
     if state.intel.hasKey(observer):
@@ -267,7 +272,8 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
     
     # Run surveillance
     var rng = initRand(12345)
-    state.processStarbaseSurveillance(state.turn, rng)
+    var events: seq[GameEvent] = @[]
+    state.processStarbaseSurveillance(state.turn, rng, events)
     
     # Verify Visual quality (not Perfect)
     check state.intel.hasKey(observer)

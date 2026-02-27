@@ -161,7 +161,7 @@ proc resolveConflictPhase*(
   # Per docs/specs/09-intel-espionage.md Section 9.1.4
   logInfo("Espionage", "[CON1f.iv] Starbase surveillance...")
   var survRng = initRand(state.turn.int64 + 12345)
-  state.processStarbaseSurveillance(state.turn, survRng)
+  state.processStarbaseSurveillance(state.turn, survRng, events)
   logInfo("Espionage", "[CON1f.iv] Starbase surveillance complete")
 
   # ===================================================================

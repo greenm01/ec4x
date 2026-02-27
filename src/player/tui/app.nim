@@ -507,7 +507,15 @@ proc runTui*(gameId: string = "") =
   # Sync player state to model (only after joining a game)
   if initialModel.ui.appPhase == AppPhase.InGame and
       initialModel.view.playerStateLoaded:
-    syncPlayerStateToModel(initialModel, playerState)
+    var initPrevPs =
+      none(ps_types.PlayerState)
+    if activeGameId.len > 0 and
+        playerState.turn > 1:
+      initPrevPs = tuiCache.loadPlayerState(
+        activeGameId, int(viewingHouse),
+        int(playerState.turn) - 1)
+    syncPlayerStateToModel(
+      initialModel, playerState, initPrevPs)
     syncCachedIntelNotes(initialModel)
     syncCachedMessages(initialModel)
     syncBuildModalData(initialModel, playerState)
@@ -550,15 +558,25 @@ proc runTui*(gameId: string = "") =
             sam.model.view.turn = int(appliedTurnOpt.get())
             sam.model.view.playerStateLoaded = true
             sam.model.ui.statusMessage = "Delta applied"
+            # Load prev-turn snapshot before caching current
+            var deltaPrevPs =
+              none(ps_types.PlayerState)
+            if activeGameId.len > 0 and
+                playerState.turn > 1:
+              deltaPrevPs = tuiCache.loadPlayerState(
+                activeGameId, int(viewingHouse),
+                int(playerState.turn) - 1)
             # Sync PlayerState to model after delta
-            syncPlayerStateToModel(sam.model, playerState)
+            syncPlayerStateToModel(
+              sam.model, playerState, deltaPrevPs)
             syncCachedIntelNotes(sam.model)
             syncCachedMessages(sam.model)
             # Sync build modal data if active
             syncBuildModalData(sam.model, playerState)
             # Cache the updated state
             if activeGameId.len > 0:
-              tuiCache.savePlayerState(activeGameId, int(viewingHouse),
+              tuiCache.savePlayerState(
+                activeGameId, int(viewingHouse),
                 playerState.turn, playerState)
           else:
             sam.model.ui.statusMessage =
@@ -626,8 +644,17 @@ proc runTui*(gameId: string = "") =
             sam.model.ui.statusMessage = "Full state received"
             if sam.model.ui.nostrEnabled:
               sam.model.ui.nostrStatus = "connected"
+            # Load prev-turn snapshot for diff reports
+            var fullPrevPs =
+              none(ps_types.PlayerState)
+            if activeGameId.len > 0 and
+                playerState.turn > 1:
+              fullPrevPs = tuiCache.loadPlayerState(
+                activeGameId, int(viewingHouse),
+                int(playerState.turn) - 1)
             # Sync PlayerState to model
-            syncPlayerStateToModel(sam.model, playerState)
+            syncPlayerStateToModel(
+              sam.model, playerState, fullPrevPs)
             syncCachedIntelNotes(sam.model)
             syncCachedMessages(sam.model)
             syncBuildModalData(sam.model, playerState)
@@ -1824,8 +1851,16 @@ proc runTui*(gameId: string = "") =
           sam.model.view.viewingHouse = int(houseId)
           sam.model.view.turn = playerState.turn
           sam.model.ui.mode = ViewMode.Overview
+          # Load prev-turn snapshot for diff reports
+          var cachePrevPs =
+            none(ps_types.PlayerState)
+          if playerState.turn > 1:
+            cachePrevPs = tuiCache.loadPlayerState(
+              gameId, int(houseId),
+              int(playerState.turn) - 1)
           # Sync PlayerState to model (for Nostr games)
-          syncPlayerStateToModel(sam.model, playerState)
+          syncPlayerStateToModel(
+            sam.model, playerState, cachePrevPs)
           syncCachedIntelNotes(sam.model)
           syncCachedMessages(sam.model)
           syncBuildModalData(sam.model, playerState)

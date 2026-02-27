@@ -14,10 +14,18 @@
 
 import std/[options, random, tables]
 import ../../common/logger
-import ../types/[core, game_state, player_state, ship, fleet, facilities, combat]
+import ../types/[core, game_state, player_state, ship, fleet, facilities, combat, event]
 import ../state/[engine, iterators]
+import ../event_factory/[intel, military]
 import ./detection
 import ./generator
+
+type
+  DetectionOutcome = object
+    detected: bool
+    isRaider: bool
+    eliRoll: int
+    clkRoll: int
 
 proc countScoutsInFleet(state: GameState, fleet: Fleet): int32 =
   ## Count scout ships in a fleet
@@ -52,9 +60,9 @@ proc detectFleetByStarbase(
     starbaseOwner: HouseId,
     defenderELI: int32,
     rng: var Rand,
-): bool =
+): DetectionOutcome =
   ## Check if a fleet is detected by a starbase
-  ## Returns true if detected, false if evaded via stealth
+  ## Returns DetectionOutcome with detection result and stealth roll details
   ##
   ## Detection Rules (per docs/specs/02-assets.md):
   ## - Scout fleets: Use scout detection formula (Section 2.4.2)
@@ -64,8 +72,6 @@ proc detectFleetByStarbase(
   # Check if fleet has scouts (uses scout stealth mechanics)
   let scoutCount = state.countScoutsInFleet(fleet)
   if scoutCount > 0:
-    # Scout detection: Target = 15 - numScouts + (defenderELI + starbaseBonus)
-    # Starbase gets +2 bonus (already included in calculateEffectiveELI)
     let starbaseBonus = 2
     let detectionResult = detectScouts(
       int(scoutCount), int(defenderELI), starbaseBonus, rng
@@ -81,12 +87,14 @@ proc detectFleetByStarbase(
         " roll=", $detectionResult.roll,
         " threshold=", $detectionResult.threshold,
       )
-      return false
+      return DetectionOutcome(
+        detected: false, isRaider: false,
+        eliRoll: detectionResult.roll, clkRoll: 0,
+      )
 
   # Check if fleet has raiders (uses raider cloaking mechanics)
   let raiderCount = state.countRaidersInFleet(fleet)
   if raiderCount > 0:
-    # Raider detection: Attacker rolls 1d10 + CLK vs Defender rolls 1d10 + ELI
     let attackerCLK = state.fleetCLKLevel(fleet)
     let starbaseBonus = 2
     let detectionResult = detectRaider(
@@ -104,13 +112,23 @@ proc detectFleetByStarbase(
         " defenderRoll=", $detectionResult.roll,
         " attackerRoll=", $detectionResult.threshold,
       )
-      return false
+      return DetectionOutcome(
+        detected: false, isRaider: true,
+        eliRoll: detectionResult.roll, clkRoll: detectionResult.threshold,
+      )
+
+    # Raider detected
+    return DetectionOutcome(
+      detected: true, isRaider: true,
+      eliRoll: detectionResult.roll, clkRoll: detectionResult.threshold,
+    )
 
   # All other fleets (or scouts/raiders that failed stealth): Detected
-  return true
+  return DetectionOutcome(detected: true, isRaider: false, eliRoll: 0, clkRoll: 0)
 
 proc processStarbaseSurveillance*(
-    state: GameState, turn: int32, rng: var Rand
+    state: GameState, turn: int32, rng: var Rand,
+    events: var seq[GameEvent]
 ) =
   ## Process all starbase surveillance for the turn
   ## Called during Conflict Phase CON1f.iv
@@ -120,6 +138,7 @@ proc processStarbaseSurveillance*(
   ## 2. For each starbase system, detect enemy fleets
   ## 3. Apply stealth checks (scouts and raiders can evade)
   ## 4. Store successful detections in IntelDatabase.fleetObservations
+  ## 5. Emit detection/stealth events
 
   logInfo("Surveillance", "[CON1f.iv] Processing starbase surveillance...")
 
@@ -135,11 +154,13 @@ proc processStarbaseSurveillance*(
       # Get all starbases at this colony
       let kastras = state.kastrasAtColony(colony.id)
       var hasOperationalStarbase = false
+      var starbaseId = ""
 
       for kastra in kastras:
         if kastra.kastraClass == KastraClass.Starbase and
             kastra.state != CombatState.Crippled:
           hasOperationalStarbase = true
+          starbaseId = $kastra.id
           break
 
       if not hasOperationalStarbase:
@@ -167,18 +188,19 @@ proc processStarbaseSurveillance*(
         continue
 
       # Check each enemy fleet for stealth capability
-      var allFleetsEvaded = true
+      var detectedCount = 0
+      var undetectedCount = 0
       for fleet in state.fleetsInSystem(systemId):
         if fleet.houseId == houseId:
           continue
 
         # Attempt detection (checks stealth for scouts/raiders)
-        let detected = state.detectFleetByStarbase(
+        let outcome = state.detectFleetByStarbase(
           fleet, houseId, defenderELI, rng
         )
 
-        if detected:
-          allFleetsEvaded = false
+        if outcome.detected:
+          detectedCount += 1
           logDebug(
             "Surveillance",
             "Starbase detected fleet",
@@ -187,8 +209,30 @@ proc processStarbaseSurveillance*(
             " owner=", $fleet.houseId,
           )
 
+          # Emit raider detected event
+          if outcome.isRaider:
+            events.add(military.raiderDetected(
+              fleet.id, fleet.houseId, houseId, "Starbase",
+              systemId, outcome.eliRoll, outcome.clkRoll
+            ))
+        else:
+          undetectedCount += 1
+
+          # Emit raider stealth success event
+          if outcome.isRaider:
+            events.add(military.raiderStealthSuccess(
+              fleet.id, fleet.houseId, houseId, "Starbase",
+              systemId, outcome.eliRoll, outcome.clkRoll
+            ))
+
       # If at least one fleet was detected, generate system intel package
-      if not allFleetsEvaded:
+      if detectedCount > 0:
+        # Emit starbase surveillance detection summary event
+        events.add(intel.starbaseSurveillanceDetection(
+          starbaseId, houseId, systemId,
+          detectedCount, undetectedCount
+        ))
+
         # Use existing generator to create proper SystemObservation with Visual quality
         let intelPackage = generateSystemObservation(
           state, houseId, systemId, IntelQuality.Visual

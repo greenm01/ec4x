@@ -6,7 +6,7 @@
 import std/[options, tables]
 import msgpack4nim
 import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_state,
-  progression, capacity, tech, diplomacy]
+  progression, capacity, tech, diplomacy, event]
 import ../../../engine/types/game_state
 import ../../../engine/state/fog_of_war
 import ../../../engine/globals
@@ -62,6 +62,8 @@ type
     eliminatedHouses*: EntityDelta[HouseId]
     actProgressionChanged*: bool
     actProgression*: Option[ActProgressionState]
+    # Events are not diffed — full set for the turn is always sent
+    turnEvents*: seq[GameEvent]
 
   PlayerStateDeltaEnvelope* = object
     delta*: PlayerStateDelta
@@ -407,6 +409,7 @@ proc diffPlayerState*(
     result.techLevels = current.techLevels
     result.researchPointsChanged = true
     result.researchPoints = current.researchPoints
+    result.turnEvents = current.turnEvents
     return
 
   let oldSnapshot = oldSnapshotOpt.get()
@@ -501,6 +504,9 @@ proc diffPlayerState*(
   if oldSnapshot.researchPoints != current.researchPoints:
     result.researchPointsChanged = true
     result.researchPoints = current.researchPoints
+
+  # Events are always the full set for this turn (not diffed)
+  result.turnEvents = current.turnEvents
 
 # =============================================================================
 # Msgpack Serialization

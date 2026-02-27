@@ -92,6 +92,7 @@ proc resolveTurn*(
     logInfo("TurnCycle",
       &"Victory achieved: {result.victoryCheck.status.description}")
     # Still advance turn but skip remaining phases
+    state.lastTurnEvents = result.events
     state.turn += 1
     result.turnAdvanced = true
     return result
@@ -126,6 +127,8 @@ proc resolveTurn*(
   # =========================================================================
   # TURN ADVANCEMENT
   # =========================================================================
+  # Store events for PlayerState creation (fog-of-war filtering per house)
+  state.lastTurnEvents = result.events
   state.turn += 1
   result.turnAdvanced = true
 

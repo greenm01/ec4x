@@ -140,6 +140,9 @@ proc resolveScoutMissions*(
       events.add(intel.scoutDetected(
         fleet.houseId, defender, targetSystem, "Scout"
       ))
+      events.add(intel.scoutDestroyed(
+        fleet.houseId, defender, targetSystem
+      ))
 
     else:
       # UNDETECTED: Mission succeeds - fleet already has all mission data
@@ -217,6 +220,9 @@ proc resolveScoutMissions*(
       # Generate detection event + diplomatic escalation
       events.add(intel.scoutDetected(
         fleet.houseId, defender, targetSystem, "Scout"
+      ))
+      events.add(intel.scoutDestroyed(
+        fleet.houseId, defender, targetSystem
       ))
 
     else:

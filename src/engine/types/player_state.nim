@@ -17,7 +17,8 @@
 ## - Client generates human-readable reports from PlayerState deltas + GameEvents
 
 import std/[tables, options]
-import ./[core, colony, fleet, ship, diplomacy, progression, ground_unit, tech, facilities, starmap]
+import ./[core, colony, fleet, ship, diplomacy, progression,
+  ground_unit, tech, facilities, starmap, event]
 
 type
   # =============================================================================
@@ -237,3 +238,11 @@ type
 
     # === Starmap Topology (Universal Knowledge) ===
     jumpLanes*: seq[JumpLane]
+
+    # === Turn Events (Filtered for This House) ===
+    # Fog-of-war filtered GameEvents from the most recent turn.
+    # Note: Per docs/architecture/intel.md the event stream was
+    # originally intended as a separate data channel; embedding
+    # it in PlayerState is a pragmatic tradeoff (one payload
+    # per turn instead of two separate Nostr event kinds).
+    turnEvents*: seq[GameEvent]

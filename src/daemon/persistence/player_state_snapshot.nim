@@ -7,7 +7,7 @@ import std/[tables, base64, options]
 import msgpack4nim
 import ../../engine/types/player_state
 import ../../engine/types/[core, colony, fleet, ship, ground_unit, diplomacy,
-  progression, tech]
+  progression, tech, event]
 import ./msgpack_state
 
 # =============================================================================
@@ -72,6 +72,7 @@ type
     pendingProposals*: seq[PendingProposal]
     eliminatedHouses*: seq[HouseId]
     actProgression*: ActProgressionState
+    turnEvents*: seq[GameEvent]
 
 # =============================================================================
 # Snapshot Conversion
@@ -117,6 +118,7 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.pendingProposals = ps.pendingProposals
   result.eliminatedHouses = ps.eliminatedHouses
   result.actProgression = ps.actProgression
+  result.turnEvents = ps.turnEvents
 
 proc snapshotToMsgpack*(snapshot: PlayerStateSnapshot): string =
   ## Serialize PlayerStateSnapshot to msgpack binary

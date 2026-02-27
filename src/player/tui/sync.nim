@@ -863,13 +863,22 @@ proc bfsDistance(
 
 proc syncPlayerStateToModel*(
     model: var TuiModel,
-    ps: ps_types.PlayerState
+    ps: ps_types.PlayerState,
+    prevPs: Option[ps_types.PlayerState] =
+      none(ps_types.PlayerState)
 ) =
-  ## Sync PlayerState (fog-of-war filtered) into the SAM TuiModel
-  ## Used for Nostr games where we only have PlayerState, not full GameState
+  ## Sync PlayerState (fog-of-war filtered) into the SAM TuiModel.
+  ## Used for Nostr games where we only have PlayerState, not
+  ## full GameState.
   ##
-  ## Note: PlayerState has limited visibility data. Some model fields
-  ## (treasury, production, system names/details) may not be available.
+  ## prevPs: optional previous-turn PlayerState loaded from
+  ## TuiCache by the caller. When provided, enables diff-based
+  ## narrative report generation (colony/fleet/intel/economy
+  ## changes). Pass none() for turn 1 or when cache is unavailable.
+  ##
+  ## Note: PlayerState has limited visibility data. Some model
+  ## fields (treasury, production, system names/details) may not
+  ## be available.
   
   model.view.turn = ps.turn
   model.view.viewingHouse = int(ps.viewingHouse)
@@ -1236,8 +1245,9 @@ proc syncPlayerStateToModel*(
   model.ui.pristineFleetConsoleFleetsBySystem =
     model.ui.fleetConsoleFleetsBySystem
 
-  # Generate client-side narrative reports from PlayerState
-  model.view.reports = generateClientReports(ps)
+  # Generate client-side narrative reports from PlayerState.
+  # prevPs enables diff-based reports for turns > 1.
+  model.view.reports = generateClientReports(ps, prevPs)
 
 # =============================================================================
 # Planets Table Sync (PlayerState-only)

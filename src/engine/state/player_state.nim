@@ -14,7 +14,7 @@ import std/[tables, options, sets]
 import
   ../types/[colony, core, diplomacy, fleet, game_state, house, player_state,
     starmap, facilities, tech]
-import ./[engine, iterators]
+import ./[engine, iterators, event_filter]
 import ../systems/capacity/construction_docks
 
 # ============================================================================
@@ -383,3 +383,13 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
 
   # === Starmap Topology (Universal Knowledge) ===
   result.jumpLanes = state.starMap.lanes.data
+
+  # === Turn Events (Fog-of-War Filtered) ===
+  # Filter engine events to only those visible to this house.
+  # state.lastTurnEvents is populated by turn_cycle/engine.nim
+  # after each turn resolution.
+  result.turnEvents = filterEventsForHouse(
+    state.lastTurnEvents,
+    houseId,
+    result.visibleSystems
+  )
