@@ -462,6 +462,8 @@ type
     Build
     Repair
     Scrap
+    PopulationTransfer
+    Terraform
     ColonyManagement
     EspionageBudget
     EspionageAction
@@ -2241,6 +2243,16 @@ proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
     result.add(StagedCommandEntry(kind: StagedCommandKind.Repair, index: idx))
   for idx in 0 ..< model.ui.stagedScrapCommands.len:
     result.add(StagedCommandEntry(kind: StagedCommandKind.Scrap, index: idx))
+  for idx in 0 ..< model.ui.stagedPopulationTransfers.len:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.PopulationTransfer,
+      index: idx
+    ))
+  for idx in 0 ..< model.ui.stagedTerraformCommands.len:
+    result.add(StagedCommandEntry(
+      kind: StagedCommandKind.Terraform,
+      index: idx
+    ))
   for idx in 0 ..< model.ui.stagedColonyManagement.len:
     result.add(StagedCommandEntry(
       kind: StagedCommandKind.ColonyManagement, index: idx))
@@ -2287,6 +2299,37 @@ proc formatBuildOrder*(cmd: BuildCommand): string =
 
   if cmd.quantity != 1:
     result.add(" x" & $cmd.quantity)
+
+proc formatPopulationTransferOrder*(
+    model: TuiModel,
+    cmd: PopulationTransferCommand
+): string =
+  let sourceId = int(cmd.sourceColony)
+  let destId = int(cmd.destColony)
+  let sourceNameOpt = model.colonyInfoById(sourceId)
+  let destNameOpt = model.colonyInfoById(destId)
+  let sourceLabel = if sourceNameOpt.isSome:
+      sourceNameOpt.get().systemName
+    else:
+      "Colony " & $sourceId
+  let destLabel = if destNameOpt.isSome:
+      destNameOpt.get().systemName
+    else:
+      "Colony " & $destId
+  "Transfer " & $cmd.ptuAmount & " PTU: " & sourceLabel &
+    " -> " & destLabel
+
+proc formatTerraformOrder*(
+    model: TuiModel,
+    cmd: TerraformCommand
+): string =
+  let colonyId = int(cmd.colonyId)
+  let colonyNameOpt = model.colonyInfoById(colonyId)
+  let colonyLabel = if colonyNameOpt.isSome:
+      colonyNameOpt.get().systemName
+    else:
+      "Colony " & $colonyId
+  "Terraform: " & colonyLabel
 
 proc formatColonyManagementOrder*(cmd: ColonyManagementCommand): string =
   ## Format colony automation toggle command for display
@@ -2358,6 +2401,16 @@ proc stagedCommandsSummary*(model: TuiModel): string =
         "Repair command " & $entry.index
       of StagedCommandKind.Scrap:
         "Scrap command " & $entry.index
+      of StagedCommandKind.PopulationTransfer:
+        formatPopulationTransferOrder(
+          model,
+          model.ui.stagedPopulationTransfers[entry.index]
+        )
+      of StagedCommandKind.Terraform:
+        formatTerraformOrder(
+          model,
+          model.ui.stagedTerraformCommands[entry.index]
+        )
       of StagedCommandKind.ColonyManagement:
         formatColonyManagementOrder(
           model.ui.stagedColonyManagement[entry.index])
@@ -2396,6 +2449,14 @@ proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   of StagedCommandKind.Scrap:
     if entry.index < model.ui.stagedScrapCommands.len:
       model.ui.stagedScrapCommands.delete(entry.index)
+      return true
+  of StagedCommandKind.PopulationTransfer:
+    if entry.index < model.ui.stagedPopulationTransfers.len:
+      model.ui.stagedPopulationTransfers.delete(entry.index)
+      return true
+  of StagedCommandKind.Terraform:
+    if entry.index < model.ui.stagedTerraformCommands.len:
+      model.ui.stagedTerraformCommands.delete(entry.index)
       return true
   of StagedCommandKind.ColonyManagement:
     if entry.index < model.ui.stagedColonyManagement.len:
