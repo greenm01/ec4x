@@ -1233,6 +1233,123 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
     auxShips: ""
   )
 
+proc fleetToDetailDataFromOwn*(
+    ownFleetsById: Table[int, Fleet],
+    ownShipsById: Table[int, Ship],
+    visibleSystems: Table[SystemId, VisibleSystem],
+    fleetId: FleetId
+): FleetDetailData =
+  ## Fallback adapter for optimistic temp fleets not yet in PlayerState.
+  ## Builds FleetDetailData from model.view tables instead of ps.ownFleets.
+  let fid = int(fleetId)
+  if fid notin ownFleetsById:
+    return FleetDetailData(
+      fleetId: fid,
+      fleetName: "??",
+      location: "Fleet Not Found",
+      targetLabel: "-",
+      ships: @[],
+      auxShips: ""
+    )
+  let fleet = ownFleetsById[fid]
+
+  # Location name
+  var locationName = "Unknown"
+  if visibleSystems.hasKey(fleet.location):
+    let visSys = visibleSystems[fleet.location]
+    locationName = visSys.name
+    if visSys.coordinates.isSome:
+      let coords = visSys.coordinates.get()
+      let label = coordLabel(coords.q.int, coords.r.int)
+      locationName &= " (" & label & ")"
+
+  # Command label
+  let cmdNum = fleetCommandNumber(fleet.command.commandType)
+  let commandStr = commandLabel(cmdNum)
+
+  # Target label (coord if known)
+  var targetLabel = "-"
+  if fleet.command.commandType == FleetCommandType.JoinFleet and
+      fleet.command.targetFleet.isSome:
+    let targetId = fleet.command.targetFleet.get()
+    var targetName = ""
+    for candidate in ownFleetsById.values:
+      if candidate.id == targetId:
+        targetName = candidate.name
+        break
+    if targetName.len > 0:
+      targetLabel = "Fleet " & targetName
+    else:
+      targetLabel = "Fleet " & $targetId
+  elif fleet.command.targetSystem.isSome:
+    let targetId = fleet.command.targetSystem.get()
+    if visibleSystems.hasKey(targetId):
+      let target = visibleSystems[targetId]
+      if target.coordinates.isSome:
+        let coords = target.coordinates.get()
+        targetLabel = coordLabel(coords.q.int, coords.r.int)
+    else:
+      targetLabel = $targetId
+
+  # Build status string
+  var statusStr = "Active"
+  case fleet.status:
+  of FleetStatus.Active:
+    statusStr = "Active"
+  of FleetStatus.Reserve:
+    statusStr = "Reserve"
+  of FleetStatus.Mothballed:
+    statusStr = "Mothballed"
+
+  # Build ship rows
+  var shipRows: seq[ShipDetailRow] = @[]
+  var totalAS = 0
+  var totalDS = 0
+  var etacCount = 0
+  var ttCount = 0
+  for shipId in fleet.ships:
+    let sid = int(shipId)
+    if sid in ownShipsById:
+      let ship = ownShipsById[sid]
+      if ship.state != CombatState.Destroyed:
+        shipRows.add(shipToRow(ship))
+        totalAS += ship.stats.attackStrength.int
+        totalDS += ship.stats.defenseStrength.int
+        case ship.shipClass
+        of ShipClass.ETAC:
+          etacCount += 1
+        of ShipClass.TroopTransport:
+          ttCount += 1
+        else:
+          discard
+
+  # Aux ships summary
+  var auxShipsStr = ""
+  if etacCount > 0 or ttCount > 0:
+    var parts: seq[string] = @[]
+    if etacCount > 0:
+      parts.add($etacCount & " ETAC")
+    if ttCount > 0:
+      parts.add($ttCount & " Troop Transport")
+    auxShipsStr = parts.join(", ")
+
+  FleetDetailData(
+    fleetId: fid,
+    fleetName: fleet.name,
+    location: locationName,
+    systemId: fleet.location.int,
+    shipCount: shipRows.len,
+    totalAttack: totalAS,
+    totalDefense: totalDS,
+    command: commandStr,
+    commandType: fleet.command.commandType.int,
+    targetLabel: targetLabel,
+    status: statusStr,
+    roe: fleet.roe.int,
+    ships: shipRows,
+    auxShips: auxShipsStr
+  )
+
 proc colonyToDetailDataFromPS*(
   ps: PlayerState,
   colonyId: ColonyId,

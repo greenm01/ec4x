@@ -3780,10 +3780,17 @@ proc renderDashboard*(
       renderFleetsModal(canvasArea, buf, model, playerState,
         model.ui.fleetsScroll)
       let fleetDetailWidget = newFleetDetailModalWidget()
-      var fleetData = fleetToDetailDataFromPS(
-        playerState, FleetId(model.ui.fleetDetailModal.fleetId)
-      )
       let fid = int(model.ui.fleetDetailModal.fleetId)
+      var fleetData: FleetDetailData
+      if fid in model.view.ownFleetsById:
+        fleetData = fleetToDetailDataFromOwn(
+          model.view.ownFleetsById, model.view.ownShipsById,
+          playerState.visibleSystems,
+          FleetId(fid))
+      else:
+        fleetData = fleetToDetailDataFromPS(
+          playerState, FleetId(fid)
+        )
       if fid in model.ui.stagedFleetCommands:
         let staged = model.ui.stagedFleetCommands[fid]
         let cmdNum = sam_pkg.fleetCommandNumber(

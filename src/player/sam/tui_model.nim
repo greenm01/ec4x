@@ -926,6 +926,7 @@ type
     pristineFleets*: seq[FleetInfo]
     pristineFleetConsoleFleetsBySystem*:
       Table[int, seq[FleetConsoleFleet]]
+    pristineOwnFleetsById*: Table[int, Fleet]
 
     # Fleet list state (ListView mode)
     fleetListState*: FleetListState
@@ -1271,6 +1272,7 @@ proc initTuiUiState*(): TuiUiState =
     pristineFleets: @[],
     pristineFleetConsoleFleetsBySystem:
       initTable[int, seq[FleetConsoleFleet]](),
+    pristineOwnFleetsById: initTable[int, Fleet](),
     fleetListState: FleetListState(
       sortState: initTableSortState(12),
       searchActive: false,
@@ -2776,6 +2778,15 @@ proc applyZeroTurnCommandOptimistically*(
     if cmd.sourceFleetId.isNone:
       return
     let fid = int(cmd.sourceFleetId.get())
+    
+    # Update ownFleetsById: set status to Active and command to Hold
+    if fid in model.view.ownFleetsById:
+      model.view.ownFleetsById[fid].status = FleetStatus.Active
+      model.view.ownFleetsById[fid].command = FleetCommand(
+        commandType: FleetCommandType.Hold,
+        fleetId: FleetId(fid.uint32)
+      )
+
     for fleet in model.view.fleets.mitems:
       if fleet.id == fid:
         fleet.statusLabel = "Active"
@@ -2796,6 +2807,17 @@ proc applyZeroTurnCommandOptimistically*(
     let srcId = int(cmd.sourceFleetId.get())
     let tgtId = int(cmd.targetFleetId.get())
     let srcStats = model.fleetStatsFromOwn(srcId)
+    
+    # Update ownFleetsById: move ALL ships from source to target and delete source
+    if srcId in model.view.ownFleetsById:
+      let srcOwnFleet = model.view.ownFleetsById[srcId]
+      if tgtId in model.view.ownFleetsById:
+        var tgtOwnFleet = model.view.ownFleetsById[tgtId]
+        for sid in srcOwnFleet.ships:
+          tgtOwnFleet.ships.add(sid)
+        model.view.ownFleetsById[tgtId] = tgtOwnFleet
+      model.view.ownFleetsById.del(srcId)
+
     # Update target FleetInfo
     for fleet in model.view.fleets.mitems:
       if fleet.id == tgtId:
@@ -2827,6 +2849,22 @@ proc applyZeroTurnCommandOptimistically*(
     let srcId = int(cmd.sourceFleetId.get())
     let tgtId = int(cmd.targetFleetId.get())
     let xferStats = model.shipStatsForIds(cmd.shipIds)
+    
+    # Update ownFleetsById: move transferred ships from source fleet to target fleet
+    let shipIdSet = cmd.shipIds.toHashSet()
+    if srcId in model.view.ownFleetsById:
+      var srcOwnFleet = model.view.ownFleetsById[srcId]
+      srcOwnFleet.ships = srcOwnFleet.ships.filterIt(it notin shipIdSet)
+      if srcOwnFleet.ships.len == 0:
+        model.view.ownFleetsById.del(srcId)
+      else:
+        model.view.ownFleetsById[srcId] = srcOwnFleet
+    if tgtId in model.view.ownFleetsById:
+      var tgtOwnFleet = model.view.ownFleetsById[tgtId]
+      for sid in cmd.shipIds:
+        tgtOwnFleet.ships.add(sid)
+      model.view.ownFleetsById[tgtId] = tgtOwnFleet
+
     # Update source FleetInfo
     var srcShipCount = 0
     for fleet in model.view.fleets.mitems:
@@ -2885,6 +2923,19 @@ proc applyZeroTurnCommandOptimistically*(
       return
     let srcId = int(cmd.sourceFleetId.get())
     let detachStats = model.shipStatsForIds(cmd.shipIds)
+
+    # Update ownFleetsById: remove detached ships from source fleet
+    let shipIdSet = cmd.shipIds.toHashSet()
+    var srcOwnFleet: Fleet  # keep a copy for temp fleet creation
+    if srcId in model.view.ownFleetsById:
+      srcOwnFleet = model.view.ownFleetsById[srcId]
+      var updatedSrc = srcOwnFleet
+      updatedSrc.ships = updatedSrc.ships.filterIt(it notin shipIdSet)
+      if updatedSrc.ships.len == 0:
+        model.view.ownFleetsById.del(srcId)
+      else:
+        model.view.ownFleetsById[srcId] = updatedSrc
+
     var srcFleetForDetach = none(FleetInfo)
     var srcShipCount = 0
     for fleet in model.view.fleets.mitems:
@@ -2966,6 +3017,16 @@ proc applyZeroTurnCommandOptimistically*(
         needsAttention: true
       )
     )
+
+    # Add temp fleet to ownFleetsById so detail modal can find it
+    var tempFleet = srcOwnFleet
+    tempFleet.id = FleetId(tempFleetId)
+    tempFleet.name = newFleetName
+    tempFleet.ships = cmd.shipIds
+    tempFleet.command = FleetCommand(commandType: FleetCommandType.Hold,
+      fleetId: FleetId(tempFleetId))
+    model.view.ownFleetsById[tempFleetId] = tempFleet
+
     if srcShipCount <= 0:
       model.removeFleetFromViews(srcId)
 
@@ -2984,6 +3045,7 @@ proc reapplyAllOptimisticUpdates*(model: var TuiModel) =
   model.view.fleets = model.ui.pristineFleets
   model.ui.fleetConsoleFleetsBySystem =
     model.ui.pristineFleetConsoleFleetsBySystem
+  model.view.ownFleetsById = model.ui.pristineOwnFleetsById
   # ZTCs execute first during CMD5
   for cmd in model.ui.stagedZeroTurnCommands:
     model.applyZeroTurnCommandOptimistically(cmd)
