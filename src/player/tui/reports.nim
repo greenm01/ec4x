@@ -1560,6 +1560,231 @@ proc generateIntelPayloadReports(
       discard
 
 # =============================================================================
+# Diplomacy Event Reports
+# =============================================================================
+
+proc generateDiplomacyEventReports(
+    events: seq[GameEvent],
+    ps: ps_types.PlayerState
+): seq[ReportEntry] =
+  ## Generate reports from diplomatic events (treaty lifecycle
+  ## and relation changes). These carry structured narrative
+  ## not reliably inferable from pendingProposals diffs alone.
+  result = @[]
+  let us = ps.viewingHouse
+
+  for evt in events:
+    case evt.eventType
+
+    of GameEventType.TreatyProposed:
+      # Only report if we are the proposer or the target
+      let isProposer = evt.sourceHouseId == some(us)
+      let isTarget   = evt.targetHouseId == some(us)
+      if not isProposer and not isTarget:
+        continue
+      let otherHouseId =
+        if isProposer: evt.targetHouseId
+        else: evt.sourceHouseId
+      let otherName =
+        if otherHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            otherHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let proposalDesc =
+        evt.proposalType.get("De-escalation")
+      let (title, summary) =
+        if isProposer:
+          ("Treaty Proposed — " & otherName,
+           "Your " & proposalDesc &
+             " proposal has been sent to House " &
+             otherName & ".")
+        else:
+          ("Treaty Offer Received — " & otherName,
+           "House " & otherName &
+             " has proposed a " & proposalDesc &
+             ". Respond via the Diplomacy panel.")
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Diplomacy,
+        title: title,
+        summary: summary,
+        detail: @[
+          summary,
+          "Proposal type: " & proposalDesc,
+          "Expires if not answered.",
+        ],
+        isUnread: true,
+        linkView: 7, linkLabel: "Diplomacy",
+      ))
+
+    of GameEventType.TreatyAccepted:
+      let otherHouseId =
+        if evt.sourceHouseId == some(us):
+          evt.targetHouseId
+        else: evt.sourceHouseId
+      let otherName =
+        if otherHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            otherHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let proposalDesc =
+        evt.proposalType.get("De-escalation")
+      var lines = @[
+        "House " & otherName &
+          " accepted the " & proposalDesc &
+          " proposal.",
+      ]
+      if evt.newState.isSome:
+        lines.add("New relation: " & $evt.newState.get())
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Diplomacy,
+        title: "Treaty Accepted — " & otherName,
+        summary: "The " & proposalDesc &
+          " with House " & otherName &
+          " has been accepted.",
+        detail: lines,
+        isUnread: true,
+        linkView: 7, linkLabel: "Diplomacy",
+      ))
+
+    of GameEventType.TreatyBroken:
+      let otherHouseId =
+        if evt.sourceHouseId == some(us):
+          evt.targetHouseId
+        else: evt.sourceHouseId
+      let otherName =
+        if otherHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            otherHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let reason =
+        evt.changeReason.get("Expired or violated")
+      var lines = @[reason]
+      if evt.newState.isSome:
+        lines.add("New relation: " & $evt.newState.get())
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Diplomacy,
+        title: "Treaty Broken — " & otherName,
+        summary: "Agreement with House " & otherName &
+          " has ended: " & reason,
+        detail: lines,
+        isUnread: true,
+        linkView: 7, linkLabel: "Diplomacy",
+      ))
+
+    of GameEventType.WarDeclared:
+      # Public event — visible to all houses
+      let attackerName =
+        if evt.sourceHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            evt.sourceHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let defenderName =
+        if evt.targetHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            evt.targetHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let isUs =
+        evt.sourceHouseId == some(us) or
+        evt.targetHouseId == some(us)
+      let summary =
+        if isUs:
+          if evt.sourceHouseId == some(us):
+            "You have declared war on House " &
+              defenderName & "."
+          else:
+            "House " & attackerName &
+              " has declared war on you!"
+        else:
+          "House " & attackerName &
+            " has declared war on House " &
+            defenderName & "."
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Diplomacy,
+        title: "War Declared — " & attackerName &
+          " vs " & defenderName,
+        summary: summary,
+        detail: @[summary, evt.description],
+        isUnread: true,
+        linkView: 7, linkLabel: "Diplomacy",
+      ))
+
+    of GameEventType.PeaceSigned:
+      # Public event — visible to all houses
+      let houseAName =
+        if evt.sourceHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            evt.sourceHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let houseBName =
+        if evt.targetHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            evt.targetHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Diplomacy,
+        title: "Peace Signed — " & houseAName &
+          " & " & houseBName,
+        summary: "Houses " & houseAName & " and " &
+          houseBName & " have ceased hostilities.",
+        detail: @[evt.description],
+        isUnread: true,
+        linkView: 7, linkLabel: "Diplomacy",
+      ))
+
+    of GameEventType.DiplomaticRelationChanged:
+      # Only report if we are directly involved; the
+      # diff-based generator already covers this for all
+      # houses so we restrict to avoid double-reporting
+      # for third-party observers.
+      let weAreInvolved =
+        evt.sourceHouseId == some(us) or
+        evt.targetHouseId == some(us)
+      if not weAreInvolved:
+        continue
+      let otherHouseId =
+        if evt.sourceHouseId == some(us):
+          evt.targetHouseId
+        else: evt.sourceHouseId
+      let otherName =
+        if otherHouseId.isSome:
+          ps.houseNames.getOrDefault(
+            otherHouseId.get(), "Unknown House")
+        else: "Unknown House"
+      let reason =
+        evt.changeReason.get("")
+      var lines: seq[string] = @[]
+      if evt.oldState.isSome and evt.newState.isSome:
+        lines.add($evt.oldState.get() & " → " &
+          $evt.newState.get())
+      if reason.len > 0:
+        lines.add("Reason: " & reason)
+      if evt.description.len > 0:
+        lines.add(evt.description)
+      result.add(ReportEntry(
+        id: nextId(),
+        turn: int(ps.turn),
+        category: ReportCategory.Diplomacy,
+        title: "Diplomatic Change — " & otherName,
+        summary: evt.description,
+        detail: lines,
+        isUnread: true,
+        linkView: 7, linkLabel: "Diplomacy",
+      ))
+
+    else:
+      discard
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -1607,3 +1832,5 @@ proc generateClientReports*(
     result.add(generateEspionageReports(ps.turnEvents, ps))
     result.add(generateCommandReports(ps.turnEvents, ps))
     result.add(generateIntelPayloadReports(ps.turnEvents, ps))
+    result.add(
+      generateDiplomacyEventReports(ps.turnEvents, ps))
