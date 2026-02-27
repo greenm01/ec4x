@@ -36,6 +36,26 @@ Building the infrastructure to actually play the game:
 
 Once we can play real games, we'll know what needs adjustment.
 
+## Player TUI Gameplay Readiness
+
+Goal: make the player TUI command surface feature-complete for practical
+playtesting and bug discovery.
+
+Reference audit:
+- `docs/architecture/player-tui-command-audit.md`
+
+Priority backlog:
+
+1. Implement normal TUI staging + submit support for
+   `populationTransfers`.
+2. Implement normal TUI staging + submit support for
+   `terraformCommands`.
+3. Complete normal TUI staging flows for `repairCommands` and
+   `scrapCommands`.
+4. Ensure all command categories persist/restore in order drafts.
+5. Add integration tests proving TUI can produce full canonical
+   `CommandPacket` coverage.
+
 ## Future (Post-Playtesting)
 
 - **AI opponents** - Neural network trained on LLM-bot generated games (see `docs/ai/neural_network_training.md`)

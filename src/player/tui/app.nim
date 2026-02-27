@@ -198,6 +198,8 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedBuildCommands = @[]
     model.ui.stagedRepairCommands = @[]
     model.ui.stagedScrapCommands = @[]
+    model.ui.stagedPopulationTransfers = @[]
+    model.ui.stagedTerraformCommands = @[]
     model.ui.stagedColonyManagement = @[]
     model.ui.stagedDiplomaticCommands = @[]
     model.ui.stagedEspionageActions = @[]
@@ -210,6 +212,8 @@ proc runTui*(gameId: string = "") =
     model.ui.stagedBuildCommands = normalized.buildCommands
     model.ui.stagedRepairCommands = normalized.repairCommands
     model.ui.stagedScrapCommands = normalized.scrapCommands
+    model.ui.stagedPopulationTransfers = normalized.populationTransfers
+    model.ui.stagedTerraformCommands = normalized.terraformCommands
     model.ui.stagedColonyManagement = normalized.colonyManagement
     model.ui.stagedDiplomaticCommands = normalized.diplomaticCommand
     model.ui.stagedEspionageActions = normalized.espionageActions

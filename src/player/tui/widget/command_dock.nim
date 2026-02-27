@@ -126,7 +126,8 @@ proc planetDetailContextActions*(): seq[ContextAction] =
     ContextAction(key: "Tab", label: "Next section", enabled: true),
     ContextAction(key: "1-5", label: "Switch tab", enabled: true),
     ContextAction(key: "B", label: "Build", enabled: true),
-    ContextAction(key: "G", label: "Garrison", enabled: true),
+    ContextAction(key: "T", label: "Transfer", enabled: true),
+    ContextAction(key: "V", label: "Terraform", enabled: true),
     ContextAction(key: "Esc", label: "Back", enabled: true),
   ]
 

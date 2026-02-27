@@ -50,6 +50,7 @@ type
     ExpertMode    ## Expert command mode
     BuildModal    ## Build command modal
     QueueModal    ## Queue modal
+    PopulationTransferModal ## Population transfer staging modal
 
   Binding* = object
     key*: actions.KeyCode
@@ -265,6 +266,7 @@ proc contextToViewMode*(ctx: BindingContext): Option[ViewMode] =
   of BindingContext.PlanetDetail: some(ViewMode.PlanetDetail)
   of BindingContext.FleetDetail: some(ViewMode.FleetDetail)
   of BindingContext.QueueModal: none(ViewMode)
+  of BindingContext.PopulationTransferModal: none(ViewMode)
   else: none(ViewMode)
 
 # =============================================================================
@@ -633,6 +635,18 @@ proc initBindings*() =
     actionKind: ActionKind.toggleAutoLoadFighters,
     context: BindingContext.PlanetDetail,
     longLabel: "AUTO FIGHTERS", shortLabel: "Fighters", priority: 32))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyT, modifier: KeyModifier.None,
+    actionKind: ActionKind.openPopulationTransferModal,
+    context: BindingContext.PlanetDetail,
+    longLabel: "TRANSFER", shortLabel: "Xfer", priority: 33))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyV, modifier: KeyModifier.None,
+    actionKind: ActionKind.stageTerraformCommand,
+    context: BindingContext.PlanetDetail,
+    longLabel: "TERRAFORM", shortLabel: "Ter", priority: 34))
 
   registerBinding(Binding(
     key: KeyCode.KeyEscape, modifier: KeyModifier.None,
@@ -1603,6 +1617,70 @@ proc initBindings*() =
     longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
 
   # =========================================================================
+  # Population Transfer Modal Context
+  # =========================================================================
+
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferFocusNext,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "NEXT FIELD", shortLabel: "Tab", priority: 1))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyShiftTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferFocusPrev,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "PREV FIELD", shortLabel: "S-Tab", priority: 2))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferDestPrev,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "DEST-", shortLabel: "←", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferDestPrev,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "DEST-", shortLabel: "H", priority: 3))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferDestNext,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "DEST+", shortLabel: "→", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferDestNext,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "DEST+", shortLabel: "L", priority: 4))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferAmountInc,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "PTU+", shortLabel: "+", priority: 5))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferAmountDec,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "PTU-", shortLabel: "-", priority: 6))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.populationTransferConfirm,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "STAGE", shortLabel: "OK", priority: 10))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEscape, modifier: KeyModifier.None,
+    actionKind: ActionKind.closePopulationTransferModal,
+    context: BindingContext.PopulationTransferModal,
+    longLabel: "CLOSE", shortLabel: "Esc", priority: 90))
+
+  # =========================================================================
   # Expert Mode Context
   # =========================================================================
 
@@ -1880,6 +1958,26 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionQueueListPageDown())
   of ActionKind.queueDelete:
     return some(actionQueueDelete())
+  of ActionKind.openPopulationTransferModal:
+    return some(actionOpenPopulationTransferModal())
+  of ActionKind.closePopulationTransferModal:
+    return some(actionClosePopulationTransferModal())
+  of ActionKind.populationTransferFocusNext:
+    return some(actionPopulationTransferFocusNext())
+  of ActionKind.populationTransferFocusPrev:
+    return some(actionPopulationTransferFocusPrev())
+  of ActionKind.populationTransferDestPrev:
+    return some(actionPopulationTransferDestPrev())
+  of ActionKind.populationTransferDestNext:
+    return some(actionPopulationTransferDestNext())
+  of ActionKind.populationTransferAmountInc:
+    return some(actionPopulationTransferAmountInc())
+  of ActionKind.populationTransferAmountDec:
+    return some(actionPopulationTransferAmountDec())
+  of ActionKind.populationTransferConfirm:
+    return some(actionPopulationTransferConfirm())
+  of ActionKind.stageTerraformCommand:
+    return some(actionStageTerraformCommand())
   
   # Fleet console pane navigation
   of ActionKind.fleetConsoleNextPane:
@@ -2049,6 +2147,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     return some(actionIntelFleetPopupClose())
   if model.ui.queueModal.active:
     return some(actionCloseQueueModal())
+  if model.ui.populationTransferModal.active:
+    return some(actionClosePopulationTransferModal())
   if model.ui.buildModal.active:
     return some(actionCloseBuildModal())
   if model.ui.mode == ViewMode.FleetDetail:
@@ -2138,6 +2238,18 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       )
       if queueResult.isSome:
         return queueResult
+      return none(Proposal)
+
+  if model.ui.populationTransferModal.active and
+      modifier == KeyModifier.None:
+    if key != KeyCode.KeyEscape:
+      let transferResult = lookupAndDispatch(
+        key, KeyModifier.None,
+        BindingContext.PopulationTransferModal,
+        model
+      )
+      if transferResult.isSome:
+        return transferResult
       return none(Proposal)
 
   # Build modal mode: use registry

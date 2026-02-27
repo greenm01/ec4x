@@ -511,6 +511,75 @@ proc renderSubmitConfirmation*(buf: var CellBuffer, model: TuiModel) =
       $(revN + 1) & ")"
     discard buf.setString(labelX, y, revText, revStyle)
 
+proc renderPopulationTransferModal*(
+    area: Rect,
+    buf: var CellBuffer,
+    model: TuiModel
+) =
+  if not model.ui.populationTransferModal.active:
+    return
+  if area.width < 50 or area.height < 10:
+    return
+
+  let modal = model.ui.populationTransferModal
+  let width = min(72, area.width - 4)
+  let height = 10
+  let x = area.x + (area.width - width) div 2
+  let y = area.y + (area.height - height) div 2
+  let modalArea = rect(x, y, width, height)
+
+  let m = newModal()
+    .title("Population Transfer")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+  m.renderWithFooter(
+    modalArea,
+    buf,
+    "[Tab] Field  [< >] Change  [+/-] PTU  [Enter] Stage  [Esc] Close"
+  )
+
+  let content = m.contentArea(modalArea, hasFooter = true)
+  if content.isEmpty:
+    return
+
+  let sourceLine = "Source: " & modal.sourceColonyName
+  var destLine = "Destination: -"
+  if modal.destinationIdx >= 0 and
+      modal.destinationIdx < modal.destinationIds.len:
+    let destId = modal.destinationIds[modal.destinationIdx]
+    let destOpt = model.colonyInfoById(destId)
+    if destOpt.isSome:
+      destLine = "Destination: " & destOpt.get().systemName
+    else:
+      destLine = "Destination: Colony " & $destId
+
+  let maxPtu =
+    block:
+      let srcOpt = model.colonyInfoById(modal.sourceColonyId)
+      if srcOpt.isSome:
+        max(0, srcOpt.get().populationUnits - 1)
+      else:
+        0
+
+  let amountLine = "PTU: " & $modal.ptuAmount & " (max " & $maxPtu & ")"
+
+  let normal = modalBgStyle()
+  let selected = selectedStyle()
+  let destinationStyle = if modal.focus == TransferModalFocus.Destination:
+      selected
+    else:
+      normal
+  let amountStyle = if modal.focus == TransferModalFocus.Amount:
+      selected
+    else:
+      normal
+
+  discard buf.setString(content.x + 1, content.y + 1, sourceLine, normal)
+  discard buf.setString(content.x + 1, content.y + 3, destLine, destinationStyle)
+  discard buf.setString(content.x + 1, content.y + 4, amountLine, amountStyle)
+
 proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
   ## Render list of player's colonies from SAM model
   if area.isEmpty:
@@ -3841,6 +3910,7 @@ proc renderDashboard*(
   if model.ui.queueModal.active:
     let queueModalWidget = newQueueModalWidget()
     queueModalWidget.render(model.ui.queueModal, canvasArea, buf)
+  renderPopulationTransferModal(canvasArea, buf, model)
   renderIntelNoteEditor(canvasArea, buf, model)
 
   if model.ui.expertModeActive:

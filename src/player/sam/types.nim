@@ -169,6 +169,16 @@ type
     queueListPageUp
     queueListPageDown
     queueDelete
+    openPopulationTransferModal
+    closePopulationTransferModal
+    populationTransferFocusNext
+    populationTransferFocusPrev
+    populationTransferDestPrev
+    populationTransferDestNext
+    populationTransferAmountInc
+    populationTransferAmountDec
+    populationTransferConfirm
+    stageTerraformCommand
     fleetConsoleNextPane
     fleetConsolePrevPane
     openFleetDetailModal

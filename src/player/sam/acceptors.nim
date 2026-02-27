@@ -25,7 +25,7 @@ import ../../engine/systems/diplomacy/proposals as dip_proposals
 import ../../common/logger
 import ../../engine/globals
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
-  fleet, command, tech, espionage, combat]
+  fleet, command, tech, espionage, combat, colony]
 import ../../engine/systems/capacity/construction_docks
 import ../../engine/systems/tech/costs
 import ../tui/data/research_projection
@@ -3177,6 +3177,217 @@ proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   else:
     discard
 
+proc selectedColonyIdForCommand(model: var TuiModel): int =
+  if model.ui.mode == ViewMode.Planets:
+    let selectedOpt = model.selectedColony()
+    if selectedOpt.isNone:
+      return 0
+    model.ui.selectedColonyId = selectedOpt.get().colonyId
+  model.ui.selectedColonyId
+
+proc transferModalMaxPtu(model: TuiModel, sourceColonyId: int): int =
+  let sourceOpt = model.colonyInfoById(sourceColonyId)
+  if sourceOpt.isNone:
+    return 0
+  max(0, sourceOpt.get().populationUnits - 1)
+
+proc refreshTransferModalStatus(model: var TuiModel) =
+  if not model.ui.populationTransferModal.active:
+    return
+  let maxPtu = transferModalMaxPtu(
+    model, model.ui.populationTransferModal.sourceColonyId
+  )
+  if maxPtu <= 0:
+    model.ui.populationTransferModal.ptuAmount = 0
+  else:
+    model.ui.populationTransferModal.ptuAmount = clamp(
+      model.ui.populationTransferModal.ptuAmount,
+      1,
+      maxPtu
+    )
+
+proc populationTransferModalAcceptor*(
+    model: var TuiModel,
+    proposal: Proposal
+) =
+  if proposal.kind != ProposalKind.pkGameAction:
+    return
+
+  case proposal.actionKind
+  of ActionKind.openPopulationTransferModal:
+    if model.ui.mode notin {ViewMode.Planets, ViewMode.PlanetDetail}:
+      return
+    let colonyId = selectedColonyIdForCommand(model)
+    if colonyId <= 0:
+      model.ui.statusMessage = "No colony selected"
+      return
+
+    var destinationIds: seq[int] = @[]
+    for row in model.view.planetsRows:
+      if row.isOwned and row.colonyId.isSome:
+        let did = row.colonyId.get()
+        if did != colonyId:
+          destinationIds.add(did)
+
+    if destinationIds.len == 0:
+      model.ui.statusMessage = "No destination colony available"
+      return
+
+    var sourceName = "Colony " & $colonyId
+    let sourceOpt = model.colonyInfoById(colonyId)
+    if sourceOpt.isSome:
+      sourceName = sourceOpt.get().systemName
+
+    model.ui.populationTransferModal.active = true
+    model.ui.populationTransferModal.sourceColonyId = colonyId
+    model.ui.populationTransferModal.sourceColonyName = sourceName
+    model.ui.populationTransferModal.destinationIds = destinationIds
+    model.ui.populationTransferModal.destinationIdx = 0
+    model.ui.populationTransferModal.ptuAmount = 1
+    model.ui.populationTransferModal.focus = TransferModalFocus.Destination
+    refreshTransferModalStatus(model)
+    model.ui.statusMessage = "Population transfer: choose destination and PTU"
+
+  of ActionKind.closePopulationTransferModal:
+    model.ui.populationTransferModal.active = false
+
+  of ActionKind.populationTransferFocusNext:
+    if not model.ui.populationTransferModal.active:
+      return
+    case model.ui.populationTransferModal.focus
+    of TransferModalFocus.Destination:
+      model.ui.populationTransferModal.focus = TransferModalFocus.Amount
+    of TransferModalFocus.Amount:
+      model.ui.populationTransferModal.focus = TransferModalFocus.Destination
+
+  of ActionKind.populationTransferFocusPrev:
+    if not model.ui.populationTransferModal.active:
+      return
+    case model.ui.populationTransferModal.focus
+    of TransferModalFocus.Destination:
+      model.ui.populationTransferModal.focus = TransferModalFocus.Amount
+    of TransferModalFocus.Amount:
+      model.ui.populationTransferModal.focus = TransferModalFocus.Destination
+
+  of ActionKind.populationTransferDestPrev:
+    if not model.ui.populationTransferModal.active:
+      return
+    if model.ui.populationTransferModal.focus != TransferModalFocus.Destination:
+      return
+    let n = model.ui.populationTransferModal.destinationIds.len
+    if n <= 0:
+      return
+    if model.ui.populationTransferModal.destinationIdx > 0:
+      model.ui.populationTransferModal.destinationIdx -= 1
+    else:
+      model.ui.populationTransferModal.destinationIdx = n - 1
+
+  of ActionKind.populationTransferDestNext:
+    if not model.ui.populationTransferModal.active:
+      return
+    if model.ui.populationTransferModal.focus != TransferModalFocus.Destination:
+      return
+    let n = model.ui.populationTransferModal.destinationIds.len
+    if n <= 0:
+      return
+    if model.ui.populationTransferModal.destinationIdx < n - 1:
+      model.ui.populationTransferModal.destinationIdx += 1
+    else:
+      model.ui.populationTransferModal.destinationIdx = 0
+
+  of ActionKind.populationTransferAmountInc:
+    if not model.ui.populationTransferModal.active:
+      return
+    if model.ui.populationTransferModal.focus != TransferModalFocus.Amount:
+      return
+    model.ui.populationTransferModal.ptuAmount += 1
+    refreshTransferModalStatus(model)
+
+  of ActionKind.populationTransferAmountDec:
+    if not model.ui.populationTransferModal.active:
+      return
+    if model.ui.populationTransferModal.focus != TransferModalFocus.Amount:
+      return
+    model.ui.populationTransferModal.ptuAmount -= 1
+    refreshTransferModalStatus(model)
+
+  of ActionKind.populationTransferConfirm:
+    if not model.ui.populationTransferModal.active:
+      return
+    let sourceId = model.ui.populationTransferModal.sourceColonyId
+    let idx = model.ui.populationTransferModal.destinationIdx
+    let n = model.ui.populationTransferModal.destinationIds.len
+    if sourceId <= 0 or idx < 0 or idx >= n:
+      model.ui.statusMessage = "Invalid transfer destination"
+      return
+
+    let maxPtu = transferModalMaxPtu(model, sourceId)
+    if maxPtu <= 0:
+      model.ui.statusMessage = "Source must retain at least 1 PU"
+      return
+
+    let amount = clamp(model.ui.populationTransferModal.ptuAmount, 1, maxPtu)
+    let destId = model.ui.populationTransferModal.destinationIds[idx]
+    if sourceId == destId:
+      model.ui.statusMessage = "Destination must differ from source"
+      return
+
+    let cmd = PopulationTransferCommand(
+      houseId: HouseId(model.view.viewingHouse),
+      sourceColony: ColonyId(sourceId.uint32),
+      destColony: ColonyId(destId.uint32),
+      ptuAmount: int32(amount)
+    )
+
+    var replaced = false
+    for i in 0 ..< model.ui.stagedPopulationTransfers.len:
+      if model.ui.stagedPopulationTransfers[i].sourceColony == cmd.sourceColony and
+          model.ui.stagedPopulationTransfers[i].destColony == cmd.destColony:
+        model.ui.stagedPopulationTransfers[i] = cmd
+        replaced = true
+        break
+    if not replaced:
+      model.ui.stagedPopulationTransfers.add(cmd)
+
+    model.ui.modifiedSinceSubmit = true
+    model.ui.populationTransferModal.active = false
+    model.ui.statusMessage = "Staged transfer: " & $amount & " PTU"
+
+  of ActionKind.stageTerraformCommand:
+    if model.ui.mode notin {ViewMode.Planets, ViewMode.PlanetDetail}:
+      return
+    let colonyId = selectedColonyIdForCommand(model)
+    if colonyId <= 0:
+      model.ui.statusMessage = "No colony selected"
+      return
+
+    for colony in model.view.ownColoniesBySystem.values:
+      if int(colony.id) == colonyId and colony.activeTerraforming.isSome:
+        model.ui.statusMessage = "Terraforming already active"
+        return
+
+    let colonyKey = ColonyId(colonyId.uint32)
+    for idx, cmd in model.ui.stagedTerraformCommands:
+      if cmd.colonyId == colonyKey:
+        model.ui.stagedTerraformCommands.delete(idx)
+        model.ui.modifiedSinceSubmit = true
+        model.ui.statusMessage = "Removed staged terraforming"
+        return
+
+    model.ui.stagedTerraformCommands.add(TerraformCommand(
+      houseId: HouseId(model.view.viewingHouse),
+      colonyId: colonyKey,
+      startTurn: int32(model.view.turn),
+      turnsRemaining: 0,
+      ppCost: 0,
+      targetClass: 0
+    ))
+    model.ui.modifiedSinceSubmit = true
+    model.ui.statusMessage = "Staged terraforming"
+
+  else:
+    discard
+
 # ============================================================================
 # Fleet Detail Modal Acceptor
 # ============================================================================
@@ -4595,6 +4806,7 @@ proc createAcceptors*(): seq[AcceptorProc[TuiModel]] =
   ## Create the standard set of acceptors for the TUI
   @[
     navigationAcceptor, selectionAcceptor, viewportAcceptor, gameActionAcceptor,
-    buildModalAcceptor, queueModalAcceptor, fleetDetailModalAcceptor,
+    buildModalAcceptor, queueModalAcceptor,
+    populationTransferModalAcceptor, fleetDetailModalAcceptor,
     fleetListInputAcceptor, quitAcceptor, errorAcceptor,
   ]

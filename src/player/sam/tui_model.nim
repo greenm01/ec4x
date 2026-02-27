@@ -245,6 +245,19 @@ type
     stagedBuildCommands*: seq[BuildCommand]
     scroll*: ScrollState
 
+  TransferModalFocus* {.pure.} = enum
+    Destination
+    Amount
+
+  PopulationTransferModalState* = object
+    active*: bool
+    sourceColonyId*: int
+    sourceColonyName*: string
+    destinationIds*: seq[int]
+    destinationIdx*: int
+    ptuAmount*: int
+    focus*: TransferModalFocus
+
   FleetConsoleSystem* = object
     ## System with fleets for fleet console (cached from PlayerState)
     systemId*: int
@@ -953,6 +966,8 @@ type
     stagedBuildCommands*: seq[BuildCommand]
     stagedRepairCommands*: seq[RepairCommand]
     stagedScrapCommands*: seq[ScrapCommand]
+    stagedPopulationTransfers*: seq[PopulationTransferCommand]
+    stagedTerraformCommands*: seq[TerraformCommand]
     stagedColonyManagement*: seq[ColonyManagementCommand]
     turnSubmissionPending*: bool
     submitConfirmActive*: bool
@@ -1046,6 +1061,7 @@ type
     buildModal*: BuildModalState
     # Queue modal state
     queueModal*: QueueModalState
+    populationTransferModal*: PopulationTransferModalState
 
     # Fleet detail modal state
     fleetDetailModal*: FleetDetailModalState
@@ -1295,6 +1311,8 @@ proc initTuiUiState*(): TuiUiState =
     stagedBuildCommands: @[],
     stagedRepairCommands: @[],
     stagedScrapCommands: @[],
+    stagedPopulationTransfers: @[],
+    stagedTerraformCommands: @[],
     stagedColonyManagement: @[],
     turnSubmissionPending: false,
     submitConfirmActive: false,
@@ -1387,6 +1405,15 @@ proc initTuiUiState*(): TuiUiState =
       selectedIdx: 0,
       stagedBuildCommands: @[],
       scroll: initScrollState()
+    ),
+    populationTransferModal: PopulationTransferModalState(
+      active: false,
+      sourceColonyId: 0,
+      sourceColonyName: "",
+      destinationIds: @[],
+      destinationIdx: 0,
+      ptuAmount: 1,
+      focus: TransferModalFocus.Destination
     ),
     fleetDetailModal: FleetDetailModalState(
       active: false,
@@ -2075,6 +2102,8 @@ proc stagedCommandCount*(model: TuiModel): int =
     model.ui.stagedBuildCommands.len +
     model.ui.stagedRepairCommands.len +
     model.ui.stagedScrapCommands.len +
+    model.ui.stagedPopulationTransfers.len +
+    model.ui.stagedTerraformCommands.len +
     model.ui.stagedColonyManagement.len
   if model.ui.stagedEbpInvestment > 0:
     count.inc
@@ -2107,6 +2136,12 @@ proc stagedCommandCategorySummary*(
   let scrapN = model.ui.stagedScrapCommands.len
   if scrapN > 0:
     result.add(("Scrap orders", $scrapN))
+  let transferN = model.ui.stagedPopulationTransfers.len
+  if transferN > 0:
+    result.add(("Population transfers", $transferN))
+  let terraformN = model.ui.stagedTerraformCommands.len
+  if terraformN > 0:
+    result.add(("Terraform orders", $terraformN))
   let colonyN = model.ui.stagedColonyManagement.len
   if colonyN > 0:
     result.add(("Colony management", $colonyN))
@@ -3183,8 +3218,8 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
     scrapCommands: model.ui.stagedScrapCommands,
     researchAllocation: model.ui.researchAllocation,
     diplomaticCommand: model.ui.stagedDiplomaticCommands,
-    populationTransfers: @[],
-    terraformCommands: @[],
+    populationTransfers: model.ui.stagedPopulationTransfers,
+    terraformCommands: model.ui.stagedTerraformCommands,
     colonyManagement: colonyMgmt,
     espionageActions: model.ui.stagedEspionageActions,
     ebpInvestment: model.ui.stagedEbpInvestment,

@@ -38,6 +38,7 @@ Located in `architecture/`:
 - **[tea-implementation.md](architecture/tea-implementation.md)** - TEA pattern implementation
 - **[transport.md](architecture/transport.md)** - Nostr network protocol
 - **[daemon.md](architecture/daemon.md)** - Game server architecture
+- **[player-tui-command-audit.md](architecture/player-tui-command-audit.md)** - TUI command surface audit and gameplay-readiness backlog
 
 ### Engine Implementation Details
 

@@ -1418,6 +1418,46 @@ proc actionQueueDelete*(): Proposal =
     gameActionData: ""
   )
 
+proc actionOpenPopulationTransferModal*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.openPopulationTransferModal,
+    gameActionData: ""
+  )
+
+proc actionClosePopulationTransferModal*(): Proposal =
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.closePopulationTransferModal,
+    gameActionData: ""
+  )
+
+proc actionPopulationTransferFocusNext*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferFocusNext, "")
+
+proc actionPopulationTransferFocusPrev*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferFocusPrev, "")
+
+proc actionPopulationTransferDestPrev*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferDestPrev, "")
+
+proc actionPopulationTransferDestNext*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferDestNext, "")
+
+proc actionPopulationTransferAmountInc*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferAmountInc, "")
+
+proc actionPopulationTransferAmountDec*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferAmountDec, "")
+
+proc actionPopulationTransferConfirm*(): Proposal =
+  gameActionProposal(ActionKind.populationTransferConfirm, "")
+
+proc actionStageTerraformCommand*(): Proposal =
+  gameActionProposal(ActionKind.stageTerraformCommand, "")
+
 # ============================================================================
 # Order Entry Actions
 # ============================================================================
