@@ -2615,8 +2615,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     if jumpChar != '\0':
       return some(actionIntelDigitJump(jumpChar))
 
-  # Planets jump: type 2-char sector label (e.g. A01, B03) to jump
-  # Excludes B (build), Q (queue)
+  # Planets jump: type 2-char sector label (e.g. A01, B03) to jump.
+  # Reserve direct action keys for colony workflows.
+  # Excludes B/Q/T/V/P/X (build/queue/transfer/terraform/repair/scrap)
   if model.ui.mode == ViewMode.Planets and
       not model.ui.expertModeActive and
       modifier == KeyModifier.None:
@@ -2643,14 +2644,10 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.KeyM: 'M'
       of KeyCode.KeyN: 'N'
       of KeyCode.KeyO: 'O'
-      of KeyCode.KeyP: 'P'
       of KeyCode.KeyR: 'R'
       of KeyCode.KeyS: 'S'
-      of KeyCode.KeyT: 'T'
       of KeyCode.KeyU: 'U'
-      of KeyCode.KeyV: 'V'
       of KeyCode.KeyW: 'W'
-      of KeyCode.KeyX: 'X'
       of KeyCode.KeyY: 'Y'
       of KeyCode.KeyZ: 'Z'
       else: '\0'
