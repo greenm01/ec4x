@@ -463,17 +463,26 @@ proc executeDetachShips*(
   var sourceFleet = sourceFleetOpt.get()
   let systemId = sourceFleet.location
 
-  # Extract ships to detach based on indices
-  # Convert to HashSet for O(1) lookup (avoids O(n²) with seq.contains)
-  let indicesSet = cmd.shipIndices.toHashSet()
+  # Extract ships to detach — prefer shipIds (immune to index staleness from
+  # prior ZTCs reordering the ship list), fall back to shipIndices for
+  # backward compatibility with old saved commands.
   var shipsToDetach: seq[ShipId] = @[]
   var remainingShips: seq[ShipId] = @[]
 
-  for i, shipId in sourceFleet.ships:
-    if i in indicesSet:
-      shipsToDetach.add(shipId)
-    else:
-      remainingShips.add(shipId)
+  if cmd.shipIds.len > 0:
+    let shipIdSet = cmd.shipIds.toHashSet()
+    for shipId in sourceFleet.ships:
+      if shipId in shipIdSet:
+        shipsToDetach.add(shipId)
+      else:
+        remainingShips.add(shipId)
+  else:
+    let indicesSet = cmd.shipIndices.toHashSet()
+    for i, shipId in sourceFleet.ships:
+      if i in indicesSet:
+        shipsToDetach.add(shipId)
+      else:
+        remainingShips.add(shipId)
 
   # Create new fleet with proper index registration (fleet_ops handles all indexes)
   # Note: createFleet() generates ID internally, ignoring cmd.newFleetId if provided
@@ -555,17 +564,26 @@ proc executeTransferShips*(
   var targetFleet = targetFleetOpt.get()
   let systemId = sourceFleet.location
 
-  # Extract ships to transfer based on indices
-  # Convert to HashSet for O(1) lookup (avoids O(n²) with seq.contains)
-  let indicesSet = cmd.shipIndices.toHashSet()
+  # Extract ships to transfer — prefer shipIds (immune to index staleness from
+  # prior ZTCs reordering the ship list), fall back to shipIndices for
+  # backward compatibility with old saved commands.
   var shipsToTransfer: seq[ShipId] = @[]
   var remainingShips: seq[ShipId] = @[]
 
-  for i, shipId in sourceFleet.ships:
-    if i in indicesSet:
-      shipsToTransfer.add(shipId)
-    else:
-      remainingShips.add(shipId)
+  if cmd.shipIds.len > 0:
+    let shipIdSet = cmd.shipIds.toHashSet()
+    for shipId in sourceFleet.ships:
+      if shipId in shipIdSet:
+        shipsToTransfer.add(shipId)
+      else:
+        remainingShips.add(shipId)
+  else:
+    let indicesSet = cmd.shipIndices.toHashSet()
+    for i, shipId in sourceFleet.ships:
+      if i in indicesSet:
+        shipsToTransfer.add(shipId)
+      else:
+        remainingShips.add(shipId)
 
   let shipsTransferred = shipsToTransfer.len
 

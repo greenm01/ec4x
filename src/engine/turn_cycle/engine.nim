@@ -103,7 +103,8 @@ proc resolveTurn*(
   # Commissions completed assets, processes auto-repair, colony automation,
   # then processes player-submitted commands for this turn.
   logInfo("TurnCycle", "[Phase 3/4] Command Phase")
-  resolveCommandPhase(state, commands, result.events, rng)
+  var mutableCommands = commands
+  resolveCommandPhase(state, mutableCommands, result.events, rng)
 
   # =========================================================================
   # PHASE 4: PRODUCTION PHASE
@@ -113,7 +114,7 @@ proc resolveTurn*(
   # and research advancement.
   logInfo("TurnCycle", "[Phase 4/4] Production Phase")
   let completedProjects = resolveProductionPhase(
-    state, result.events, commands, rng
+    state, result.events, mutableCommands, rng
   )
 
   # Store completed military projects for next turn's Command Phase

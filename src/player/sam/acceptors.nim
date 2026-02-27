@@ -3718,6 +3718,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           return
         model.ui.fleetDetailModal.subModal = FleetSubModal.FleetPicker
       elif ztcType == ZeroTurnCommandType.DetachShips:
+        let tempId = model.nextTemporaryFleetId()
         let cmd = ZeroTurnCommand(
           houseId: houseId,
           commandType: ZeroTurnCommandType.DetachShips,
@@ -3732,7 +3733,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           carrierShipId: none(ShipId),
           sourceCarrierShipId: none(ShipId),
           targetCarrierShipId: none(ShipId),
-          newFleetId: none(FleetId),
+          newFleetId: some(FleetId(tempId)),
         )
         model.stageZeroTurnCommand(cmd, "Staged Detach Ships")
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker:

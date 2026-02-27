@@ -225,7 +225,7 @@ proc processColonyAutomation(
 
 proc processPlayerSubmissions(
     state: GameState,
-    orders: Table[HouseId, CommandPacket],
+    orders: var Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
   ## [CMD5] Process player-submitted administrative commands
@@ -244,7 +244,18 @@ proc processPlayerSubmissions(
       # Zero-turn administrative commands (execute immediately).
       for ztc in orders[houseId].zeroTurnCommands:
         let result = submitZeroTurnCommand(state, ztc, events)
-        if not result.success:
+        if result.success:
+          # Remap temporary fleet IDs in fleet commands so CMD6 finds
+          # the real fleet created by DetachShips.
+          if ztc.commandType == ZeroTurnCommandType.DetachShips and
+              result.newFleetId.isSome and ztc.newFleetId.isSome:
+            let tempId = ztc.newFleetId.get()
+            let realId = result.newFleetId.get()
+            if tempId != realId:
+              for cmd in orders[houseId].fleetCommands.mitems:
+                if cmd.fleetId == tempId:
+                  cmd.fleetId = realId
+        else:
           events.add(
             orderRejected(
               houseId,
@@ -616,7 +627,7 @@ proc processOrderValidation(
 
 proc resolveCommandPhase*(
     state: GameState,
-    orders: Table[HouseId, CommandPacket],
+    orders: var Table[HouseId, CommandPacket],
     events: var seq[GameEvent],
     rng: var Rand,
 ) =

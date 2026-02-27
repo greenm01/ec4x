@@ -2731,7 +2731,7 @@ proc removeFleetFromViews(model: var TuiModel, fleetId: int) =
   for systemId, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
     fleets.keepItIf(it.fleetId != fleetId)
 
-proc nextTemporaryFleetId(model: TuiModel): int =
+proc nextTemporaryFleetId*(model: TuiModel): int =
   ## Create deterministic temporary IDs for optimistic detached fleets.
   ## Uses the lowest existing FleetId and decrements by one.
   var minFleetId = 0
@@ -2914,7 +2914,8 @@ proc applyZeroTurnCommandOptimistically*(
       return
 
     let srcFleet = srcFleetForDetach.get()
-    let tempFleetId = model.nextTemporaryFleetId()
+    let tempFleetId = if cmd.newFleetId.isSome: int(cmd.newFleetId.get())
+                      else: model.nextTemporaryFleetId()
     let newFleetName = model.nextAvailableFleetLabel(srcFleet.owner)
     let detachedFleet = FleetInfo(
       id: tempFleetId,
