@@ -3013,7 +3013,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
     ])
   var fleetRows = 0
   var fleetMeta: seq[tuple[isOwn: bool, fleetId: int]] = @[]
-  for fleet in ps.ownFleets:
+  for fleet in model.view.ownFleetsById.values:
     if fleet.location == systemId:
       var attackStr, defenseStr = 0
       for shipId in fleet.ships:
@@ -3405,7 +3405,7 @@ proc renderIntelDetailModal*(canvas: Rect, buf: var CellBuffer,
       ])
 
     if meta.isOwn:
-      for fleet in ps.ownFleets:
+      for fleet in model.view.ownFleetsById.values:
         if int(fleet.id) == meta.fleetId:
           var cmdLabel: string
           var roeLabel: string

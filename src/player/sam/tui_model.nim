@@ -1539,9 +1539,13 @@ proc currentListLength*(model: TuiModel): int =
   of ViewMode.Economy: 0   # Economy has no list
   of ViewMode.IntelDb: model.view.intelRows.len
   of ViewMode.Messages: model.view.inboxItems.len
-  of ViewMode.PlanetDetail: 0
-  of ViewMode.FleetDetail: 0
-  of ViewMode.IntelDetail: 0
+  of ViewMode.PlanetDetail: model.view.planetsRows.len
+  of ViewMode.FleetDetail:
+    if model.ui.fleetViewMode == FleetViewMode.ListView:
+      model.filteredFleets().len
+    else:
+      model.view.fleets.len
+  of ViewMode.IntelDetail: model.view.intelRows.len
 
 proc idleFleetsCount*(model: TuiModel): int =
   ## Count fleets with Hold command (awaiting orders)

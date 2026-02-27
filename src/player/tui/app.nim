@@ -190,23 +190,28 @@ proc runTui*(gameId: string = "") =
   proc applyOrderDraft(model: var TuiModel, packet: CommandPacket) =
     ## Replace staged UI orders with restored draft content.
     let normalized = normalizeDraftPacket(packet)
+    let hasFleetOptimisticData =
+      normalized.zeroTurnCommands.len > 0 or
+      normalized.fleetCommands.len > 0
     model.ui.stagedFleetCommands.clear()
     model.ui.stagedZeroTurnCommands = @[]
     model.ui.stagedBuildCommands = @[]
     model.ui.stagedRepairCommands = @[]
     model.ui.stagedScrapCommands = @[]
     model.ui.stagedColonyManagement = @[]
+    model.ui.stagedDiplomaticCommands = @[]
     model.ui.stagedEspionageActions = @[]
     model.ui.stagedEbpInvestment = 0
     model.ui.stagedCipInvestment = 0
     model.ui.stagedTaxRate = none(int)
     model.ui.stagedZeroTurnCommands = normalized.zeroTurnCommands
     for cmd in normalized.fleetCommands:
-      model.stageFleetCommand(cmd)
+      model.ui.stagedFleetCommands[int(cmd.fleetId)] = cmd
     model.ui.stagedBuildCommands = normalized.buildCommands
     model.ui.stagedRepairCommands = normalized.repairCommands
     model.ui.stagedScrapCommands = normalized.scrapCommands
     model.ui.stagedColonyManagement = normalized.colonyManagement
+    model.ui.stagedDiplomaticCommands = normalized.diplomaticCommand
     model.ui.stagedEspionageActions = normalized.espionageActions
     model.ui.stagedEbpInvestment = normalized.ebpInvestment
     model.ui.stagedCipInvestment = normalized.cipInvestment
@@ -215,6 +220,8 @@ proc runTui*(gameId: string = "") =
       if cmd.taxRate.isSome:
         model.ui.stagedTaxRate = some(int(cmd.taxRate.get()))
         break
+    if hasFleetOptimisticData:
+      model.reapplyAllOptimisticUpdates()
     model.ui.modifiedSinceSubmit = false
 
   # Initialize terminal
