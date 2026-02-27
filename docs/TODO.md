@@ -32,12 +32,13 @@ Building the infrastructure to actually play the game:
 
 1. **Player client** - Human interface for viewing state and submitting commands
 2. **Playtesting** - Run actual games to validate mechanics and balance
+3. **LLM Bot Integration** - Build a headless Nostr client that condenses `PlayerState` to prompt an LLM (Claude/Gemini) to play the game and submit orders.
 
 Once we can play real games, we'll know what needs adjustment.
 
 ## Future (Post-Playtesting)
 
-- **AI opponents** - Neural network trained on human games (only if warranted)
+- **AI opponents** - Neural network trained on LLM-bot generated games (see `docs/ai/neural_network_training.md`)
 
 ---
 

@@ -1,25 +1,25 @@
-# Neural Network Training from Claude Games
+# Neural Network Training from LLM Bot Games
 
 **Status:** Design Document (Post Play-Testing Phase)
-**Last Updated:** 2025-12-25
-**Dependencies:** Claude play-testing system, GPU infrastructure
+**Last Updated:** 2026-02-27
+**Dependencies:** LLM Playtesting Bot (`ec4x-bot`), GPU infrastructure
 
 ---
 
 ## Overview
 
-We can train neural networks directly from high-quality games played against Claude. This approach leverages modern imitation learning techniques pioneered by AlphaGo and similar systems.
+We can train neural networks directly from high-quality games played by automated LLM bots (Claude, Gemini, Codex). This approach leverages modern imitation learning techniques pioneered by AlphaGo and similar systems. Instead of playing manually, we use `ec4x-bot` to parse the game state, prompt the LLM, and submit orders automatically (see `docs/bot/README.md`).
 
-**Key Insight:** You don't need millions of expert games. Start with 10-20 high-quality Claude games, then bootstrap via self-play.
+**Key Insight:** You don't need millions of expert games. Start with 10-20 high-quality LLM bot games, then bootstrap via self-play.
 
 ---
 
-## Why Claude Games?
+## Why LLM Bot Games?
 
-Claude games provide high-quality "expert demonstrations" for imitation learning, while also serving as engine validation. They offer:
-- Expert-level strategic play
-- Explicit reasoning (KDL comments explain WHY)
-- Varied approaches to same situations
+LLM-driven games provide high-quality "expert demonstrations" for imitation learning, while also serving as engine validation. They offer:
+- Expert-level strategic play derived from foundation models
+- Explicit reasoning (LLM chain-of-thought explains WHY)
+- Varied approaches to same situations (by changing prompts/models)
 - High play-test value (validates engine balance)
 
 ---
@@ -28,9 +28,9 @@ Claude games provide high-quality "expert demonstrations" for imitation learning
 
 ### Phase 1: Supervised Learning (Imitation)
 
-**Goal:** Train network to mimic Claude's decisions
+**Goal:** Train network to mimic the LLM Bot's decisions
 
-**Input:** Fog-of-war game state (what Claude sees)
+**Input:** Fog-of-war game state (what the LLM sees)
 **Output:** Predicted orders (fleet movements, builds, research allocation)
 **Loss Function:** How closely do predicted orders match Claude's actual orders?
 

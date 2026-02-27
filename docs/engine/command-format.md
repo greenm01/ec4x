@@ -8,7 +8,7 @@ for both human readability and cross-language compatibility.
 
 **Benefits:**
 - Human-readable and editable
-- Claude/AI agents can generate orders directly
+- Claude/AI agents can generate orders directly (see [Bot Architecture](../bot/README.md) and [LLM Prompt Schema](../bot/llm_prompt_schema.md))
 - Cross-language support (Rust, Python, Go, JS, Nim implementations exist)
 - Type-safe with annotations
 - Consistent format for localhost and Nostr transports

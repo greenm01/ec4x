@@ -65,10 +65,11 @@ Located in `engine/`:
 Located in `tools/`:
 - **[ec4x-play.md](tools/ec4x-play.md)** - Dev player CLI/TUI for playtesting and Claude/LLM integration
 
-### AI (Future)
+### Bot & AI
 
-Located in `ai/`:
-- **[neural_network_training.md](ai/neural_network_training.md)** - Train neural networks from game data (AlphaGo-style)
+Located in `bot/` and `ai/`:
+- **[bot/README.md](bot/README.md)** - LLM Bot Playtesting Architecture
+- **[ai/neural_network_training.md](ai/neural_network_training.md)** - Train neural networks from game data (AlphaGo-style)
 
 ### Features & Development
 
