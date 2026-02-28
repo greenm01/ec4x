@@ -1,7 +1,7 @@
 # Player TUI Command Audit
 
-**Date:** 2026-02-27
-**Status:** In progress (P0 implementation underway)
+**Date:** 2026-02-28
+**Status:** In progress (P1/P2 validation and ergonomics)
 **Goal:** Make the player TUI capable of producing the full canonical
 turn command queue for practical human playtesting and bug hunting.
 
@@ -18,6 +18,15 @@ Primary references:
 - `src/player/sam/tui_model.nim`
 - `src/player/sam/acceptors.nim`
 - `src/player/tui/app.nim`
+- `src/player/tui/draft_apply.nim`
+
+Related regression coverage:
+- `tests/unit/test_tui_command_staging.nim`
+- `tests/unit/test_tui_cache_config_snapshot.nim`
+- `tests/unit/test_tui_modal_acceptors.nim`
+- `tests/unit/test_tui_colony_action_parity.nim`
+- `tests/unit/test_tui_draft_apply_resume.nim`
+- `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
 
 ---
 
@@ -45,14 +54,15 @@ Legend: `Complete`, `Partial`, `Missing`
 
 ## Key Findings
 
-1. The TUI is strong for fleet, ZTC, build, research, diplomacy, and
-   espionage play loops.
-2. The engine resolves population transfer and terraforming command queues,
-   but the TUI does not currently produce those command types.
-3. Repair/scrap plumbing exists in packet and draft paths, but user-facing
-   staging UX is incomplete for gameplay readiness.
-4. Some command-dock labels imply actions that are not yet backed by a full
-   command staging workflow.
+1. Canonical `CommandPacket` command-surface coverage is now available in
+   standard TUI flows, including population transfer, terraforming,
+   repair, and scrap.
+2. Draft save/load and optimistic replay coverage have been expanded, with
+   dedicated restore helpers extracted to `src/player/tui/draft_apply.nim`.
+3. Fleet batch operations now use snapshot semantics for X-selected fleets
+   across ROE/command/ZTC flows, avoiding cursor/selection drift issues.
+4. Primary remaining work is validation depth and playtesting ergonomics
+   (full end-to-end submit/resume smoke paths and UI polish).
 
 ---
 
@@ -73,8 +83,8 @@ draft-restored, and submitted through `CommandPacket`.
 - [x] Implement terraforming staging in normal TUI flow.
 - [x] Implement complete repair command staging flow in normal TUI flow.
 - [x] Implement complete scrap command staging flow in normal TUI flow.
-- [ ] Add focused integration tests for submit/resume UX paths
-  (beyond unit packet/draft coverage).
+- [x] Add focused integration-style tests for submit/resume UX paths
+  (packet/draft restore + optimistic replay regression coverage).
 
 ### P1 - Validation and quality
 
@@ -84,6 +94,8 @@ draft-restored, and submitted through `CommandPacket`.
 - Add submit-summary UI rows for all staged categories so players can verify
   intent pre-submit.
 - Ensure command dock labels map to real, reachable actions.
+- Add fleet batch smoke coverage for ZTC execution submission path
+  (beyond picker applicability and staging).
 
 ### P2 - Playtesting ergonomics
 
@@ -91,6 +103,8 @@ draft-restored, and submitted through `CommandPacket`.
 - Add expert-mode parity checks to avoid unsupported command variants.
 - Add one focused regression test for optimistic replay after draft restore
   whenever fleet-affecting commands are present.
+- Add visual/layout polish for narrow terminals where command labels are
+  prone to truncation.
 
 ---
 
