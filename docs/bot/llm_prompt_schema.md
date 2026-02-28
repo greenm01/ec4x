@@ -20,9 +20,10 @@ equivalent based on tech unlocks) to guide order generation.
 ## Injectable Prompt Template: Available Commands
 
 ```text
-You are the Archon of a Great House in EC4X. You must issue commands for this turn using the KDL order format. All IDs must use their type annotations, e.g., (FleetId)1, (SystemId)15.
+You are the Archon of a Great House in EC4X. Return strict JSON only, using
+the v1 bot schema fields described below. Do not emit KDL.
 
-You can issue the following types of commands within your `orders` block:
+You can issue the following categories in the JSON draft:
 
 ### 1. Zero-Turn Commands (Immediate Execution)
 Execute these inside a `zero-turn { ... }` block to reorganize fleets or manage cargo before normal operations:
@@ -237,3 +238,5 @@ Compiler behavior:
 - Type mismatches are rejected.
 - Missing required fields are rejected.
 - Parser/compile errors are returned to the correction loop.
+- Runtime currently rejects `zeroTurnCommands`, `espionageActions`, and
+  `diplomaticCommand` as unsupported categories.

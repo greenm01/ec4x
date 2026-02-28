@@ -15,6 +15,9 @@ type
     attempt*: int
     stage*: string
     details*: seq[string]
+    outcome*: string
+    llmRequestMs*: int
+    llmResponseBytes*: int
 
   DraftGenerator* = proc(prompt: string): BotLlmResult
   PacketSubmitter* = proc(packet: CommandPacket): tuple[
@@ -29,6 +32,21 @@ type
     attempts*: int
     errors*: seq[string]
     trace*: seq[RetryTraceEntry]
+
+proc classifyRetryResult*(retry: RetryResult): string =
+  if retry.ok:
+    return "success"
+  if retry.trace.len == 0:
+    return "unknown"
+
+  let stage = retry.trace[^1].stage
+  if stage == "submit":
+    return "transport"
+  if stage == "llm_request":
+    return "llm_request"
+  if stage == "schema_parse" or stage == "compile":
+    return "validation"
+  "unknown"
 
 proc shouldSubmitTurn*(runtime: BotRuntimeState): bool =
   runtime.hasActionableTurn()
@@ -60,7 +78,10 @@ proc generatePacketWithRetries*(
       trace.add(RetryTraceEntry(
         attempt: attempt,
         stage: "llm_request",
-        details: @[llm.error]
+        details: @[llm.error],
+        outcome: "retry",
+        llmRequestMs: llm.requestMs,
+        llmResponseBytes: llm.responseBytes
       ))
       prompt = appendFeedbackPrompt(basePrompt, @[llm.error])
       continue
@@ -71,7 +92,10 @@ proc generatePacketWithRetries*(
       trace.add(RetryTraceEntry(
         attempt: attempt,
         stage: "schema_parse",
-        details: parsed.errors
+        details: parsed.errors,
+        outcome: "retry",
+        llmRequestMs: llm.requestMs,
+        llmResponseBytes: llm.responseBytes
       ))
       prompt = appendFeedbackPrompt(basePrompt, parsed.errors)
       continue
@@ -82,7 +106,10 @@ proc generatePacketWithRetries*(
       trace.add(RetryTraceEntry(
         attempt: attempt,
         stage: "compile",
-        details: compiled.errors
+        details: compiled.errors,
+        outcome: "retry",
+        llmRequestMs: llm.requestMs,
+        llmResponseBytes: llm.responseBytes
       ))
       prompt = appendFeedbackPrompt(basePrompt, compiled.errors)
       continue
@@ -122,7 +149,10 @@ proc generateAndSubmitWithRetries*(
       trace.add(RetryTraceEntry(
         attempt: attempt,
         stage: "llm_request",
-        details: errors
+        details: errors,
+        outcome: "retry",
+        llmRequestMs: llm.requestMs,
+        llmResponseBytes: llm.responseBytes
       ))
       prompt = appendFeedbackPrompt(basePrompt, errors)
       continue
@@ -133,7 +163,10 @@ proc generateAndSubmitWithRetries*(
       trace.add(RetryTraceEntry(
         attempt: attempt,
         stage: "schema_parse",
-        details: parsed.errors
+        details: parsed.errors,
+        outcome: "retry",
+        llmRequestMs: llm.requestMs,
+        llmResponseBytes: llm.responseBytes
       ))
       prompt = appendFeedbackPrompt(basePrompt, errors)
       continue
@@ -144,7 +177,10 @@ proc generateAndSubmitWithRetries*(
       trace.add(RetryTraceEntry(
         attempt: attempt,
         stage: "compile",
-        details: compiled.errors
+        details: compiled.errors,
+        outcome: "retry",
+        llmRequestMs: llm.requestMs,
+        llmResponseBytes: llm.responseBytes
       ))
       prompt = appendFeedbackPrompt(basePrompt, errors)
       continue
@@ -164,7 +200,10 @@ proc generateAndSubmitWithRetries*(
     trace.add(RetryTraceEntry(
       attempt: attempt,
       stage: "submit",
-      details: errors
+      details: errors,
+      outcome: "retry",
+      llmRequestMs: llm.requestMs,
+      llmResponseBytes: llm.responseBytes
     ))
     prompt = appendFeedbackPrompt(basePrompt, errors)
 

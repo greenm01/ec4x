@@ -1,6 +1,6 @@
 # EC4X Bot Architecture (LLM Playtesting)
 
-**Status:** MVP Scaffold Implemented (WIP)
+**Status:** MVP Runtime Loop Active (WIP)
 **Last Updated:** 2026-02-28
 
 ## Overview
@@ -61,10 +61,10 @@ Locked v1 decisions:
 - Direct KDL emission is deferred.
 
 Immediate next steps:
-1. Wire full live Nostr bot loop in `src/bot/main.nim`.
-2. Run reproducible human-vs-LLM sessions and capture traces.
-3. Validate 20+ turn stability and update acceptance checklist.
-4. Expand unsupported command categories in compiler.
+1. Run reproducible human-vs-LLM sessions and capture traces.
+2. Validate 20+ turn stability and update acceptance checklist.
+3. Expand unsupported command categories in compiler.
+4. Add trace analysis tooling for batch playtests.
 
 ## Local Playtest Runner (MVP)
 
@@ -77,3 +77,12 @@ Use:
    to have the script launch local relay/daemon processes.
 
 Runtime traces are written under `BOT_LOG_DIR` (default `logs/bot`).
+Each run appends `session_start` metadata and per-turn records to
+`bot_trace_<gameId>.jsonl`.
+
+## Runtime behavior notes
+
+- Bot reconnects to relays indefinitely with capped backoff.
+- Duplicate Nostr event IDs are ignored during state ingestion.
+- Compiler currently rejects `zeroTurnCommands`, `espionageActions`, and
+  `diplomaticCommand` in the runtime path.

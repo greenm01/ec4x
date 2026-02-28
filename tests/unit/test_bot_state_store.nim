@@ -83,3 +83,45 @@ suite "bot state store":
 
     runtime.markTurnSubmitted()
     check not runtime.hasActionableTurn()
+
+  test "ignores duplicate event IDs":
+    var runtime = initBotRuntimeState()
+    let state = PlayerState(
+      viewingHouse: HouseId(1),
+      turn: 5'i32
+    )
+    let envelope = PlayerStateEnvelope(
+      playerState: state,
+      authoritativeConfig: TuiRulesSnapshot(
+        schemaVersion: ConfigSchemaVersion,
+        configHash: "cfg-v1"
+      )
+    )
+
+    check runtime.applyFullStatePayload(
+      serializePlayerStateEnvelope(envelope),
+      "evt-same"
+    )
+    check not runtime.applyFullStatePayload(
+      serializePlayerStateEnvelope(envelope),
+      "evt-same"
+    )
+
+    let delta = PlayerStateDelta(
+      viewingHouse: HouseId(1),
+      turn: 6'i32
+    )
+    let deltaEnvelope = PlayerStateDeltaEnvelope(
+      delta: delta,
+      configSchemaVersion: ConfigSchemaVersion,
+      configHash: "cfg-v1"
+    )
+
+    check runtime.applyDeltaPayload(
+      serializePlayerStateDeltaEnvelope(deltaEnvelope),
+      "evt-delta-same"
+    )
+    check not runtime.applyDeltaPayload(
+      serializePlayerStateDeltaEnvelope(deltaEnvelope),
+      "evt-delta-same"
+    )

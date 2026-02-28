@@ -76,7 +76,12 @@ compiled into `CommandPacket`.
 ## Acceptance Criteria
 
 - [ ] Bot can complete 20+ consecutive turns without manual correction.
+  - Evidence: trace file shows 20+ sequential submitted turns.
 - [ ] Bot emits valid `CommandPacket` in common scenarios.
-- [ ] Retry loop recovers from malformed LLM output within attempt budget.
+  - Evidence: integration smoke + live playtest traces.
+- [x] Retry loop recovers from malformed LLM output within attempt budget.
+  - Evidence: `tests/unit/test_bot_runner_retry.nim`.
 - [ ] Human-vs-LLM games are reproducible with per-turn logs.
-- [ ] Prompt generation is fog-of-war compliant.
+  - Evidence: `session_start` + per-turn records in JSONL traces.
+- [x] Prompt generation is fog-of-war compliant.
+  - Evidence: `src/bot/prompt_context.nim` uses PlayerState view data only.

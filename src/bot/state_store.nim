@@ -10,6 +10,10 @@ proc applyFullStatePayload*(
     payload: string,
     eventId: string = ""
 ): bool =
+  if eventId.len > 0 and runtime.lastEventId.isSome and
+      runtime.lastEventId.get() == eventId:
+    return false
+
   let envelopeOpt = parseFullStateMsgpack(payload)
   if envelopeOpt.isNone:
     return false
@@ -30,6 +34,10 @@ proc applyDeltaPayload*(
     payload: string,
     eventId: string = ""
 ): bool =
+  if eventId.len > 0 and runtime.lastEventId.isSome and
+      runtime.lastEventId.get() == eventId:
+    return false
+
   if not runtime.hasState:
     return false
 
