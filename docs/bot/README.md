@@ -64,8 +64,8 @@ Locked v1 decisions:
 Immediate next steps:
 1. Run reproducible human-vs-LLM sessions and capture traces.
 2. Validate 20+ turn stability and update acceptance checklist.
-3. Expand unsupported command categories in compiler.
-4. Add trace analysis tooling for batch playtests.
+3. Build scenario-specific game setups for matrix execution.
+4. Run acceptance gates and iterate on failures.
 
 ## Local Playtest Runner (MVP)
 
