@@ -306,6 +306,8 @@ type
     systemId*: int
     name*: string
     coordLabel*: string      ## Ring+position label ("H", "A1", "B3")
+    etaLabel*: string
+    etaSortMin*: int
 
   ShipSelectorRow* = object
     ## Ship entry for Zero-Turn ship selector table.
@@ -2504,22 +2506,85 @@ proc buildCommandPickerList*(model: TuiModel): seq[FleetCommandType] =
   ## Applicability is validated at selection/stage time.
   allFleetCommands()
 
+proc estimateETA*(model: TuiModel,
+    fromSys: int, toSys: int,
+    etacOnly: bool = false): int
+
 # =============================================================================
 # System Picker Helpers
 # =============================================================================
 
+proc fleetIsEtacOnly(model: TuiModel, fleet: Fleet): bool =
+  if fleet.ships.len == 0:
+    return false
+  for shipId in fleet.ships:
+    let sid = int(shipId)
+    if sid notin model.view.ownShipsById:
+      return false
+    let ship = model.view.ownShipsById[sid]
+    if ship.shipClass != ShipClass.Etac:
+      return false
+  true
+
+proc etaInfoForTarget(
+    model: TuiModel,
+    sourceFleetIds: seq[int],
+    targetSystemId: int
+): tuple[label: string, sortMin: int] =
+  if sourceFleetIds.len == 0:
+    return ("-", high(int))
+
+  var etas: seq[int] = @[]
+  for fleetId in sourceFleetIds:
+    if fleetId notin model.view.ownFleetsById:
+      continue
+    let fleet = model.view.ownFleetsById[fleetId]
+    let fromSystemId = int(fleet.location)
+    let eta = model.estimateETA(
+      fromSystemId,
+      targetSystemId,
+      etacOnly = model.fleetIsEtacOnly(fleet)
+    )
+    if eta == 0 and fromSystemId != targetSystemId:
+      continue
+    etas.add(eta)
+
+  if etas.len == 0:
+    return ("N/A", high(int))
+
+  var minEta = etas[0]
+  var maxEta = etas[0]
+  for eta in etas:
+    if eta < minEta:
+      minEta = eta
+    if eta > maxEta:
+      maxEta = eta
+  if etas.len == 1:
+    return ($minEta, minEta)
+  if minEta == maxEta:
+    return ($minEta, minEta)
+  ($minEta & "-" & $maxEta, minEta)
+
 proc buildSystemPickerList*(
-    model: TuiModel): seq[SystemPickerEntry] =
+    model: TuiModel,
+    sourceFleetIds: seq[int] = @[]
+): seq[SystemPickerEntry] =
   ## Build a sorted list of all known systems for the
   ## SystemPicker sub-modal.
   result = @[]
   for coord, sys in model.view.systems.pairs:
+    let etaInfo = model.etaInfoForTarget(sourceFleetIds, sys.id)
     result.add(SystemPickerEntry(
       systemId: sys.id,
       name: sys.name,
-      coordLabel: coordLabel(coord)
+      coordLabel: coordLabel(coord),
+      etaLabel: etaInfo.label,
+      etaSortMin: etaInfo.sortMin
     ))
   result.sort(proc(a, b: SystemPickerEntry): int =
+    let etaCmp = cmp(a.etaSortMin, b.etaSortMin)
+    if etaCmp != 0:
+      return etaCmp
     cmp(a.coordLabel, b.coordLabel)
   )
 
@@ -2534,9 +2599,10 @@ proc filterSystemsBySet(
 
 proc buildSystemPickerListForCommand*(
     model: TuiModel,
-    cmdType: FleetCommandType
+    cmdType: FleetCommandType,
+    sourceFleetIds: seq[int] = @[]
 ): SystemPickerFilterResult =
-  let allSystems = model.buildSystemPickerList()
+  let allSystems = model.buildSystemPickerList(sourceFleetIds)
   result.systems = allSystems
   result.emptyMessage = ""
 

@@ -3,6 +3,7 @@
 import std/unittest
 import std/[options, tables]
 import std/strutils
+import std/sets
 
 import ../../src/player/sam/tui_model
 import ../../src/engine/types/[core, fleet, ship, facilities, ground_unit,
@@ -415,3 +416,91 @@ suite "TUI command staging":
     check summaryValue(summary, "Espionage actions") == "1"
     check summaryValue(summary, "EBP investment") == "4 credits"
     check summaryValue(summary, "CIP investment") == "2 credits"
+
+  test "system picker entries include pathfinding ETA labels":
+    var model = initTuiModel()
+    model.view.systems[(0, 0)] = SystemInfo(id: 11, name: "A")
+    model.view.systems[(1, 0)] = SystemInfo(id: 12, name: "B")
+    model.view.systems[(2, 0)] = SystemInfo(id: 13, name: "C")
+    model.view.systemCoords[11] = (0, 0)
+    model.view.systemCoords[12] = (1, 0)
+    model.view.systemCoords[13] = (2, 0)
+    model.view.laneNeighbors[11] = @[12]
+    model.view.laneNeighbors[12] = @[11, 13]
+    model.view.laneNeighbors[13] = @[12]
+    model.view.laneTypes[(11, 12)] = 0
+    model.view.laneTypes[(12, 11)] = 0
+    model.view.laneTypes[(12, 13)] = 0
+    model.view.laneTypes[(13, 12)] = 0
+    model.view.ownedSystemIds.incl(11)
+    model.view.ownedSystemIds.incl(12)
+    model.view.ownedSystemIds.incl(13)
+    model.view.ownFleetsById[100] = Fleet(
+      id: FleetId(100),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      ships: @[ShipId(500)]
+    )
+    model.view.ownShipsById[500] = Ship(
+      id: ShipId(500),
+      houseId: HouseId(1),
+      shipClass: ShipClass.Destroyer
+    )
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.Move,
+      @[100]
+    )
+    var found11 = false
+    var found12 = false
+    for row in picker.systems:
+      if row.systemId == 11:
+        found11 = true
+        check row.etaLabel == "0"
+      if row.systemId == 12:
+        found12 = true
+        check row.etaLabel.len > 0
+        check row.etaLabel != "-"
+        check row.etaLabel != "N/A"
+    check found11
+    check found12
+
+  test "system picker is sorted by shortest ETA":
+    var model = initTuiModel()
+    model.view.systems[(9, 0)] = SystemInfo(id: 21, name: "Home")
+    model.view.systems[(0, 0)] = SystemInfo(id: 22, name: "Near")
+    model.view.systems[(1, 0)] = SystemInfo(id: 23, name: "Far")
+    model.view.systemCoords[21] = (9, 0)
+    model.view.systemCoords[22] = (0, 0)
+    model.view.systemCoords[23] = (1, 0)
+    model.view.laneNeighbors[21] = @[22]
+    model.view.laneNeighbors[22] = @[21, 23]
+    model.view.laneNeighbors[23] = @[22]
+    model.view.laneTypes[(21, 22)] = 0
+    model.view.laneTypes[(22, 21)] = 0
+    model.view.laneTypes[(22, 23)] = 0
+    model.view.laneTypes[(23, 22)] = 0
+    model.view.ownedSystemIds.incl(21)
+    model.view.ownedSystemIds.incl(22)
+    model.view.ownedSystemIds.incl(23)
+    model.view.ownFleetsById[101] = Fleet(
+      id: FleetId(101),
+      houseId: HouseId(1),
+      location: SystemId(21),
+      ships: @[ShipId(501)]
+    )
+    model.view.ownShipsById[501] = Ship(
+      id: ShipId(501),
+      houseId: HouseId(1),
+      shipClass: ShipClass.Destroyer
+    )
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.Move,
+      @[101]
+    )
+    check picker.systems.len == 3
+    check picker.systems[0].systemId == 21
+    check picker.systems[0].etaLabel == "0"
+    check picker.systems[0].etaSortMin <= picker.systems[1].etaSortMin
+    check picker.systems[1].etaSortMin <= picker.systems[2].etaSortMin

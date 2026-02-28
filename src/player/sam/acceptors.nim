@@ -389,13 +389,24 @@ proc ensureIntelCursorVisible(model: var TuiModel) =
   let viewportLines = max(1, model.ui.termHeight - 16)
   model.ui.intelNoteEditor.ensureCursorVisibleLines(viewportLines)
 
+proc fleetCommandSourceFleetIds(model: TuiModel): seq[int] =
+  if model.ui.fleetDetailModal.batchFleetIds.len > 0:
+    return model.ui.fleetDetailModal.batchFleetIds
+  if model.ui.fleetDetailModal.fleetId > 0:
+    return @[model.ui.fleetDetailModal.fleetId]
+  if model.ui.selectedFleetIds.len > 0:
+    return model.ui.selectedFleetIds
+  @[]
+
 proc openSystemPickerForCommand(
     model: var TuiModel,
     cmdType: FleetCommandType,
     returnSubModal: FleetSubModal
 ) =
+  let sourceFleetIds = model.fleetCommandSourceFleetIds()
   let filtered = model.buildSystemPickerListForCommand(
-    cmdType
+    cmdType,
+    sourceFleetIds
   )
   if filtered.systems.len == 0 and
       filtered.emptyMessage.len > 0:

@@ -358,22 +358,24 @@ proc renderSystemPicker(state: FleetDetailModalState,
                         area: Rect,
                         buf: var CellBuffer) =
   ## Render system picker using Table widget.
-  ## Two-column table: Coord (6 wide) | System Name (fill).
+  ## Three-column table: Coord | System Name | ETA.
   ## Filter input jumps selection silently.
   if area.isEmpty:
     return
 
-  let headers = @["Coord", "System"]
+  let headers = @["Coord", "System", "ETA"]
   var rows: seq[seq[string]] = @[]
   for sys in state.systemPickerSystems:
-    rows.add(@[sys.coordLabel, sys.name])
-  let widths = measuredColumnWidths(headers, rows, @[5, 6])
+    rows.add(@[sys.coordLabel, sys.name, sys.etaLabel])
+  let widths = measuredColumnWidths(headers, rows, @[5, 6, 3])
 
   var sysTable = table([
     tableColumn("Coord", width = widths[0],
       minWidth = widths[0], align = table.Alignment.Left),
     tableColumn("System", width = widths[1],
-      minWidth = widths[1], align = table.Alignment.Left)
+      minWidth = widths[1], align = table.Alignment.Left),
+    tableColumn("ETA", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Right)
   ])
     .showBorders(true)
     .showHeader(true)
@@ -531,6 +533,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     .showSeparator(true)
 
   let maxWidth = max(4, viewport.width - 4)
+  let maxInnerWidth = max(4, maxWidth - 2)
   let tableWidth = shipTableBase.renderWidth(maxWidth)
   let line1 = "Fleet " & fleetData.fleetName & " at " & fleetData.location
   let line2 = "Command: " & fleetData.command & "  " &
@@ -569,8 +572,9 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.SystemPicker:
       var rows: seq[seq[string]] = @[]
       for sys in state.systemPickerSystems:
-        rows.add(@[sys.coordLabel, sys.name])
-      measuredTableInnerWidth(@["Coord", "System"], rows, @[5, 6])
+        rows.add(@[sys.coordLabel, sys.name, sys.etaLabel])
+      measuredTableInnerWidth(@["Coord", "System", "ETA"], rows,
+        @[5, 6, 3])
     of FleetSubModal.FleetPicker:
       var rows: seq[seq[string]] = @[]
       for fleet in state.fleetPickerCandidates:
@@ -715,9 +719,17 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.FleetPicker:
       (true, "[↑↓]Select [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.SystemPicker:
-      (true,
-        "[↑↓←→]Nav [type]Filter [PgUp/Dn] " &
-        "[Enter]Select [Esc]Back")
+      if maxInnerWidth >= 52:
+        (true,
+          "[↑↓←→]Nav [type]Filter [PgUp/Dn] " &
+          "[Enter]Select [Esc]Back")
+      elif maxInnerWidth >= 36:
+        (true,
+          "[↑↓←→] [type] [Enter]Select [Esc]Back")
+      elif maxInnerWidth >= 24:
+        (true, "Arrows type Enter Esc")
+      else:
+        (true, "Enter Esc")
     of FleetSubModal.ShipSelector:
       (true, "[↑↓]Nav [X/Space]Toggle [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.CargoParams:
@@ -727,7 +739,13 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     else:
       (false, "")
 
-  let finalInnerWidth = max(subModalInnerWidth, max(title.len, footerText.len))
+  let footerWidthHint =
+    if hasFooter and state.subModal == FleetSubModal.SystemPicker:
+      min(maxInnerWidth, footerText.len)
+    else:
+      0
+  let finalInnerWidth = max(subModalInnerWidth,
+    max(title.len, footerWidthHint))
   
   var modalArea = modal.calculateArea(
     viewport,
