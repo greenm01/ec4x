@@ -504,3 +504,25 @@ suite "TUI command staging":
     check picker.systems[0].etaLabel == "0"
     check picker.systems[0].etaSortMin <= picker.systems[1].etaSortMin
     check picker.systems[1].etaSortMin <= picker.systems[2].etaSortMin
+
+  test "colonize picker excludes known colonized systems":
+    var model = initTuiModel()
+    model.view.systems[(0, 0)] = SystemInfo(id: 31, name: "Owned")
+    model.view.systems[(1, 0)] = SystemInfo(id: 32, name: "Enemy")
+    model.view.systems[(2, 0)] = SystemInfo(id: 33, name: "Free")
+    model.view.planetsRows = @[
+      PlanetRow(
+        systemId: 31,
+        colonyId: some(1),
+        systemName: "Owned",
+        isOwned: true
+      )
+    ]
+    model.view.knownEnemyColonySystemIds.incl(32)
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.Colonize,
+      @[]
+    )
+    check picker.systems.len == 1
+    check picker.systems[0].systemId == 33

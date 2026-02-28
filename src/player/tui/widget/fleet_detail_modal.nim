@@ -367,7 +367,12 @@ proc renderSystemPicker(state: FleetDetailModalState,
   var rows: seq[seq[string]] = @[]
   for sys in state.systemPickerSystems:
     rows.add(@[sys.coordLabel, sys.name, sys.etaLabel])
-  let widths = measuredColumnWidths(headers, rows, @[5, 6, 3])
+  let baseWidths = measuredColumnWidths(headers, rows, @[5, 6, 3])
+  var widths = baseWidths
+  let tableInnerWidth = measuredTableInnerWidth(headers, rows, @[5, 6, 3])
+  let slack = area.width - tableInnerWidth
+  if slack > 0:
+    widths[1] = widths[1] + slack
 
   var sysTable = table([
     tableColumn("Coord", width = widths[0],
@@ -533,7 +538,6 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     .showSeparator(true)
 
   let maxWidth = max(4, viewport.width - 4)
-  let maxInnerWidth = max(4, maxWidth - 2)
   let tableWidth = shipTableBase.renderWidth(maxWidth)
   let line1 = "Fleet " & fleetData.fleetName & " at " & fleetData.location
   let line2 = "Command: " & fleetData.command & "  " &
@@ -719,17 +723,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.FleetPicker:
       (true, "[↑↓]Select [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.SystemPicker:
-      if maxInnerWidth >= 52:
-        (true,
-          "[↑↓←→]Nav [type]Filter [PgUp/Dn] " &
-          "[Enter]Select [Esc]Back")
-      elif maxInnerWidth >= 36:
-        (true,
-          "[↑↓←→] [type] [Enter]Select [Esc]Back")
-      elif maxInnerWidth >= 24:
-        (true, "Arrows type Enter Esc")
-      else:
-        (true, "Enter Esc")
+      (true, "[↑↓]Nav [A-Z0-9]Jump [PgUp/Dn/ESC]")
     of FleetSubModal.ShipSelector:
       (true, "[↑↓]Nav [X/Space]Toggle [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.CargoParams:
@@ -741,7 +735,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
 
   let footerWidthHint =
     if hasFooter and state.subModal == FleetSubModal.SystemPicker:
-      min(maxInnerWidth, footerText.len)
+      footerText.len
     else:
       0
   let finalInnerWidth = max(subModalInnerWidth,

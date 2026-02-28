@@ -2597,6 +2597,15 @@ proc filterSystemsBySet(
     if sys.systemId in allowed:
       result.add(sys)
 
+proc filterSystemsExcludingSet(
+    systems: seq[SystemPickerEntry],
+    excluded: HashSet[int]
+): seq[SystemPickerEntry] =
+  result = @[]
+  for sys in systems:
+    if sys.systemId notin excluded:
+      result.add(sys)
+
 proc buildSystemPickerListForCommand*(
     model: TuiModel,
     cmdType: FleetCommandType,
@@ -2609,14 +2618,19 @@ proc buildSystemPickerListForCommand*(
   var ownedColonies = initHashSet[int]()
   var ownedStarbases = initHashSet[int]()
   var salvageSystems = initHashSet[int]()
+  var knownColonizedSystems = initHashSet[int]()
 
   for row in model.view.planetsRows:
     if row.isOwned:
       ownedColonies.incl(row.systemId)
+      knownColonizedSystems.incl(row.systemId)
       if row.starbaseCount > 0:
         ownedStarbases.incl(row.systemId)
       if row.cdTotal.isSome and row.cdTotal.get > 0:
         salvageSystems.incl(row.systemId)
+
+  for systemId in model.view.knownEnemyColonySystemIds.items:
+    knownColonizedSystems.incl(systemId)
 
   var knownEnemyStarbases = initHashSet[int]()
   for row in model.view.intelRows:
@@ -2660,6 +2674,12 @@ proc buildSystemPickerListForCommand*(
       allSystems, knownEnemyStarbases
     )
     result.emptyMessage = "No known enemy starbases to hack"
+  of FleetCommandType.Colonize:
+    result.systems = filterSystemsExcludingSet(
+      allSystems, knownColonizedSystems
+    )
+    result.emptyMessage =
+      "No known uncolonized systems available"
   of FleetCommandType.Salvage:
     result.systems = filterSystemsBySet(
       allSystems, salvageSystems
