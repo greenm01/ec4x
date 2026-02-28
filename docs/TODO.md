@@ -57,6 +57,15 @@ All readiness gate checks pass:
 3. Track and prioritize gameplay-facing polish items that impact command
    confidence, especially around clarity of staged intent and summaries.
 
+
+## Combat Engine Optimization & AAR Polish
+Goal: Improve server-side calculation efficiency for large fleet battles and generate more narrative-rich After-Action Reports (AAR) for the player.
+
+1. [ ] **Cascading Overkill:** Implement "Overwhelming Force" hit application bypass in `src/engine/systems/combat/hits.nim` to prevent doomstacks from spending wasted computational rounds chewing through tiny patrol screens.
+2. [ ] **Pursuit Volleys:** Add a final `0.5x CER` attack phase against fleeing task forces in `src/engine/systems/combat/retreat.nim` to increase the risk/reward tension of ROE thresholds.
+3. [ ] **Stalemate Detection:** Replace the 5-round wait with instantaneous mathematical stalemate detection to trigger Desperation (+2 DRM) or mutual withdrawal immediately.
+4. [ ] **Targeted Criticals:** Update critical hit logic to prioritize highest-value assets and generate specific "High-Value Asset Destroyed" log strings for the AAR.
+
 ## Future (Post-Playtesting)
 
 - AI opponents and automation:

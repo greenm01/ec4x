@@ -125,16 +125,21 @@ Remaining 40 hits lost (cannot destroy Cruisers while Battleship 3 undamaged)
 Result: 3 Battleships (all Crippled), 2 Cruisers (still Crippled)
 ```
 
-**Rule 2: Critical Hits Bypass Protection**
+**Rule 2: Critical Hits Bypass Protection & Target High-Value Assets**
 
 Natural roll of 9 (before modifiers) = Critical Hit
-- Can destroy crippled ships even with full-strength ships present
-- Represents catastrophic damage (magazine explosion, reactor breach)
-- If insufficient hits for normal damage, still inflicts 1 ship crippled/destroyed
+- Can destroy crippled ships even with full-strength ships present.
+- Explicitly targets the highest-value or most specialized asset available (e.g., Planet-Breakers, Carriers, Starbases, or highest AS Capital ship).
+- Represents catastrophic damage (magazine explosion, reactor breach, bridge strike).
+- If insufficient hits for normal damage, still inflicts 1 ship crippled/destroyed.
+- Triggers a specific log event for the After-Action Report (AAR) to highlight the tactical victory.
 
-**Rule 3: Excess Hits Lost**
+**Rule 3: Cascading Overkill (Overwhelming Force)**
 
-If hits cannot be applied due to protection rules, they are lost. No "overkill" carry-over between rounds.
+Under normal circumstances, excess hits are lost after crippling available targets. However, if a task force generates hits that exceed **1.5× the Total Defense Strength (DS)** of the enemy force, the "Cripple First" protection is shattered.
+- This represents overwhelming, inescapable firepower (a "Doomstack" annihilating a small patrol).
+- Excess hits cascade directly into destroying the crippled ships in the same round.
+- This prevents small screens from acting as mathematical "sponges" and optimizes server-side resolution by avoiding empty calculation rounds.
 
 ### 7.2.3 Rules of Engagement (ROE)
 
@@ -335,9 +340,10 @@ Follow hit application rules (Section 7.2.2):
 Each fleet independently checks current AS ratio vs enemy AS:
 - Calculate: Fleet current AS / Enemy total AS
 - Compare to fleet ROE threshold
-- If below threshold: Fleet retreats (unless explicit command or homeworld defense)
-- Retreating fleet moves to nearest friendly system
-- Auxiliary vessels (ETACs, Troop Transports) suffer proportional losses during retreat:
+- If below threshold: Fleet retreats (unless explicit command or homeworld defense).
+- **Pursuit Volley:** Before the retreating fleet escapes, the victorious (non-retreating) task force gets one final, free attack against them. This pursuit volley is resolved at **0.5× CER** to simulate firing at fleeing targets.
+- Retreating fleet then moves to the nearest friendly system.
+- Auxiliary vessels (ETACs, Troop Transports) suffer proportional losses based on total escort casualties (including those from the pursuit volley):
   - Calculate escort loss ratio: (starting escorts - surviving escorts) / starting escorts
   - Destroy same proportion of auxiliary vessels (rounded up)
   - Example: Fleet started with 10 escorts, 4 destroyed (40% loss) → 40% of auxiliary vessels destroyed
@@ -563,12 +569,13 @@ Repeat steps 2-7, but:
 
 Continue until: one side destroyed, one side retreated, or maximum 20 rounds.
 
-**Desperation Mechanic:**
+**Instant Stalemate / Desperation Mechanic:**
 
-If 5 consecutive rounds occur with no ship state changes (stalemate):
-- Both sides get +2 DRM next round (desperation attack)
-- Represents all-out effort to break deadlock
-- After desperation round, combat continues normally
+To optimize server calculations, if the engine detects an immediate mathematical stalemate at the start of a round (e.g., Attacker Max Possible Hits < Defender Minimum DS, and vice versa), it bypasses empty rounds.
+- The engine instantly flags the stalemate.
+- Both sides immediately receive a **+2 DRM** for the next round (desperation attack).
+- Represents an all-out, risk-everything maneuver to break the deadlock.
+- If the stalemate persists after desperation, the engine forces a mutual withdrawal.
 
 ### 7.5.3 Victory Conditions
 

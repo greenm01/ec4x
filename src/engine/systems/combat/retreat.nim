@@ -5,11 +5,12 @@
 ##
 ## Per docs/specs/07-combat.md Section 7.2.3
 
-import std/[options, sequtils]
+import std/[options, sequtils, logging]
 import ../../types/[core, game_state, combat, fleet, ship]
 import ../../state/engine
 import ./strength
 import ./screened
+import ./hits
 
 proc applyRetreatLossesToScreenedUnits*(state: GameState, fleetId: FleetId) =
   ## Apply proportional losses to screened units during retreat
@@ -126,6 +127,13 @@ proc checkFleetRetreats*(
       # Fleet retreats
       battle.attackerRetreatedFleets.add(fleetId)
 
+      # Pursuit Volley: enemy gets one final attack at 0.5x CER against fleeing ships
+      let pursuitHits = int32(float32(defenderAS) * 0.5)
+      if pursuitHits > 0:
+        info "Fleet " & $fleetId & " retreated and suffered a pursuit volley of " & $pursuitHits & " hits."
+        let retreatingShips = combatShipsInFleet(state, fleetId)
+        applyHits(state, retreatingShips, pursuitHits)
+
       # Apply proportional losses to screened units
       applyRetreatLossesToScreenedUnits(state, fleetId)
 
@@ -156,6 +164,13 @@ proc checkFleetRetreats*(
     if ratio < threshold:
       # Fleet retreats
       battle.defenderRetreatedFleets.add(fleetId)
+
+      # Pursuit Volley: enemy gets one final attack at 0.5x CER against fleeing ships
+      let pursuitHits = int32(float32(attackerAS) * 0.5)
+      if pursuitHits > 0:
+        info "Fleet " & $fleetId & " retreated and suffered a pursuit volley of " & $pursuitHits & " hits."
+        let retreatingShips = combatShipsInFleet(state, fleetId)
+        applyHits(state, retreatingShips, pursuitHits)
 
       # Apply proportional losses to screened units
       applyRetreatLossesToScreenedUnits(state, fleetId)

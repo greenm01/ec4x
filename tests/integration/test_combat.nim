@@ -218,7 +218,7 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     check dd1After.state == CombatState.Crippled
     check dd2After.state == CombatState.Destroyed
 
-  test "excess hits are lost":
+  test "excess hits are lost if below overkill threshold":
     let game = newGame()
     var owner: HouseId
     for house in game.allHouses():
@@ -233,14 +233,38 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     let destroyerDS = dd1.stats.defenseStrength
     
-    # Apply way more hits than needed
+    # Apply slightly more hits than needed, but less than 1.5x
     let shipIds = @[dd1.id]
-    applyHits(game, shipIds, destroyerDS * 10, isCriticalHit = false)
+    applyHits(game, shipIds, int32(float(destroyerDS) * 1.4), isCriticalHit = false)
     
     let dd1After = game.ship(dd1.id).get()
     
     # Ship should only be crippled (no double-damage)
     check dd1After.state == CombatState.Crippled
+
+  test "cascading overkill destroys targets instantly":
+    let game = newGame()
+    var owner: HouseId
+    for house in game.allHouses():
+      owner = house.id
+      break
+    
+    let fleet = game.createFleet(owner, SystemId(1))
+    
+    # Single ship
+    let dd1 = createTestShip(game, owner, fleet.id, ShipClass.Destroyer,
+                               CombatState.Nominal)
+    
+    let destroyerDS = dd1.stats.defenseStrength
+    
+    # Apply overwhelming force (>= 1.5x)
+    let shipIds = @[dd1.id]
+    applyHits(game, shipIds, int32(float(destroyerDS) * 2.0), isCriticalHit = false)
+    
+    let dd1After = game.ship(dd1.id).get()
+    
+    # Overkill shatters cripple-first rule, destroying the ship
+    check dd1After.state == CombatState.Destroyed
 
 # =============================================================================
 # Section 7.2.1: Fighter Exception (Glass Cannons)

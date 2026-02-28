@@ -5,7 +5,7 @@
 ##
 ## Per docs/specs/07-combat.md Section 7.2.1
 
-import std/[options, sets]
+import std/[options, sets, algorithm, logging]
 import ../../types/[core, game_state, combat, ship]
 import ../../state/engine
 import ./strength
@@ -34,15 +34,23 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
   # This determines Phase 2 eligibility and valid targets
   var hadNominalAtStart = false
   var wasCrippledAtStart: HashSet[ShipId]
+  var totalDS: int32 = 0
   
   for shipId in targetShips:
     let shipOpt = state.ship(shipId)
     if shipOpt.isSome:
       let ship = shipOpt.get()
+      totalDS += calculateShipDS(state, ship)
       if ship.state == CombatState.Nominal:
         hadNominalAtStart = true
       elif ship.state == CombatState.Crippled:
         wasCrippledAtStart.incl(shipId)
+
+  # Overwhelming Force (Cascading Overkill) Check
+  let isCascadingOverkill = (totalDS > 0 and hits >= int32(float(totalDS) * 1.5))
+  if isCascadingOverkill:
+    # Bypass the cripple-first rule entirely - hits will cascade
+    hadNominalAtStart = false
 
   # Phase 1: Cripple all undamaged ships
   for shipId in targetShips:
@@ -86,7 +94,25 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
     let canDestroyOriginallyCrippled = isCriticalHit
 
     if canDestroyAnyCrippled or canDestroyOriginallyCrippled:
-      for shipId in targetShips:
+      # Prioritize targets for Phase 2 (High value first for criticals/overkill)
+      var p2Targets = targetShips
+      if isCriticalHit:
+        p2Targets.sort(proc(a, b: ShipId): int =
+          let shipA = state.ship(a).get()
+          let shipB = state.ship(b).get()
+          
+          # Priority 1: High value classes
+          let aValue = if shipA.shipClass in {ShipClass.PlanetBreaker, ShipClass.Carrier}: 2 else: 1
+          let bValue = if shipB.shipClass in {ShipClass.PlanetBreaker, ShipClass.Carrier}: 2 else: 1
+          if aValue != bValue: return bValue - aValue
+          
+          # Priority 2: Highest AS
+          let aAs = calculateShipAS(state, shipA)
+          let bAs = calculateShipAS(state, shipB)
+          return bAs - aAs
+        )
+
+      for shipId in p2Targets:
         if remainingHits <= 0:
           break
 
@@ -113,6 +139,8 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
           ship.state = CombatState.Destroyed
           remainingHits -= hitsNeeded
           state.updateShip(shipId, ship)
+          if isCriticalHit and ship.shipClass in {ShipClass.PlanetBreaker, ShipClass.Carrier, ShipClass.Battleship}:
+            info "Critical Hit! High-value asset destroyed: " & $ship.shipClass
 
 ## Design Notes:
 ##

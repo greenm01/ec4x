@@ -5,10 +5,20 @@
 ##
 ## Per docs/specs/07-combat.md
 
-import std/random
-import ../../types/[game_state, combat]
+import std/[random, logging, options]
+import ../../types/[game_state, combat, ship]
 import ../../state/engine
 import ./[strength, cer, drm, hits, retreat]
+
+proc getCombatStateSignature(state: GameState, force: HouseCombatForce): int =
+  result = 0
+  for fleetId in force.fleets:
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isSome:
+      for shipId in fleetOpt.get().ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isSome:
+          result += ord(shipOpt.get().state)
 
 proc determineOutcome*(state: GameState, battle: Battle): CombatResult =
   ## Determine battle outcome based on survivors
@@ -44,6 +54,7 @@ proc resolveBattle*(
 
   var round = 1
   let maxRounds = 20
+  var isDesperation = false
 
   while round <= maxRounds:
     # Calculate total AS for each side
@@ -55,8 +66,12 @@ proc resolveBattle*(
     )
 
     # Calculate DRM for each side (theater-specific)
-    let attackerDRM = calculateDRM(state, battle, isAttacker = true, round)
-    let defenderDRM = calculateDRM(state, battle, isAttacker = false, round)
+    var attackerDRM = calculateDRM(state, battle, isAttacker = true, round)
+    var defenderDRM = calculateDRM(state, battle, isAttacker = false, round)
+    
+    if isDesperation:
+      attackerDRM += 2
+      defenderDRM += 2
 
     # Roll CER (theater-specific table)
     let attackerCERResult = rollCER(rng, attackerDRM, battle.theater)
@@ -70,8 +85,27 @@ proc resolveBattle*(
     let attackerShips = allShips(state, battle.attacker.fleets)
     let defenderShips = allShips(state, battle.defender.fleets)
 
+    let sigBefore = getCombatStateSignature(state, battle.attacker) + getCombatStateSignature(state, battle.defender)
+
     applyHits(state, defenderShips, attackerHits, attackerCERResult.isCriticalHit)
     applyHits(state, attackerShips, defenderHits, defenderCERResult.isCriticalHit)
+
+    let sigAfter = getCombatStateSignature(state, battle.attacker) + getCombatStateSignature(state, battle.defender)
+
+    if sigBefore == sigAfter:
+      if isDesperation:
+        info "Stalemate persists after desperation round. Forcing mutual withdrawal."
+        # Force retreat of all remaining fleets
+        for f in battle.attacker.fleets: battle.attackerRetreatedFleets.add(f)
+        for f in battle.defender.fleets: battle.defenderRetreatedFleets.add(f)
+        battle.attacker.fleets = @[]
+        battle.defender.fleets = @[]
+        break
+      else:
+        info "Instant stalemate detected! Triggering Desperation (+2 DRM) for next round."
+        isDesperation = true
+    else:
+      isDesperation = false
 
     # Check retreat PER FLEET
     checkFleetRetreats(state, battle, attackerAS, defenderAS)
