@@ -355,6 +355,31 @@ suite "TUI modal acceptors":
     ))
     check model.ui.selectedFleetIds.len == 0
 
+  test "fleet toggle proposal keeps selected fleet id stable":
+    initBindings()
+    var model = initTuiModel()
+    model.ui.appPhase = AppPhase.InGame
+    model.ui.mode = ViewMode.Fleets
+    model.ui.fleetViewMode = FleetViewMode.ListView
+    model.ui.selectedIdx = 0
+    model.view.fleets = @[
+      FleetInfo(id: 5, name: "A5", shipCount: 1),
+      FleetInfo(id: 6, name: "A6", shipCount: 1)
+    ]
+    model.view.ownFleetsById[5] = Fleet(id: FleetId(5), houseId: HouseId(1))
+    model.view.ownFleetsById[6] = Fleet(id: FleetId(6), houseId: HouseId(1))
+
+    let proposalOpt = mapKeyToAction(KeyCode.KeyX, KeyModifier.None, model)
+    check proposalOpt.isSome
+    let proposal = proposalOpt.get()
+    check proposal.selectIdx == 5
+
+    # Move cursor before accepting; selection should still apply to A5.
+    model.ui.selectedIdx = 1
+    selectionAcceptor(model, proposal)
+    check 5 in model.ui.selectedFleetIds
+    check 6 notin model.ui.selectedFleetIds
+
   test "maintenance scrap sets queue-loss acknowledgement when needed":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets

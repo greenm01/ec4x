@@ -1897,7 +1897,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
   of ActionKind.deselect:
     return some(actionDeselect())
   of ActionKind.toggleFleetSelect:
-    return some(actionToggleFleetSelect(model.ui.selectedIdx))
+    let fleetIdOpt = model.getCursorFleetId()
+    if fleetIdOpt.isSome:
+      return some(actionToggleFleetSelect(fleetIdOpt.get()))
+    return none(Proposal)
   of ActionKind.fleetSortToggle:
     return some(actionFleetSortToggle())
   of ActionKind.fleetBatchCommand:

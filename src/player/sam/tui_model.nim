@@ -1825,7 +1825,7 @@ proc getCursorFleetId*(model: TuiModel): Option[int] =
   ## SystemView: uses fleetConsoleSystemIdx + fleetConsoleFleetIdx
   if model.ui.fleetViewMode == FleetViewMode.ListView:
     let fleets = model.filteredFleets()
-    if model.ui.selectedIdx < fleets.len:
+    if model.ui.selectedIdx >= 0 and model.ui.selectedIdx < fleets.len:
       return some(fleets[model.ui.selectedIdx].id)
   elif model.ui.fleetViewMode == FleetViewMode.SystemView:
     let systems = model.ui.fleetConsoleSystems
@@ -1843,7 +1843,7 @@ proc getCursorFleetRoe*(model: TuiModel): int =
   ## Returns the ROE of the fleet under the cursor (default 6 if not found)
   if model.ui.fleetViewMode == FleetViewMode.ListView:
     let fleets = model.filteredFleets()
-    if model.ui.selectedIdx < fleets.len:
+    if model.ui.selectedIdx >= 0 and model.ui.selectedIdx < fleets.len:
       return fleets[model.ui.selectedIdx].roe
   elif model.ui.fleetViewMode == FleetViewMode.SystemView:
     let systems = model.ui.fleetConsoleSystems

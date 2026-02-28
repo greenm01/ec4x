@@ -792,24 +792,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           model.ui.statusMessage = "Message is empty"
   of ActionKind.toggleFleetSelect:
-    if model.ui.mode == ViewMode.Fleets:
-      if model.ui.fleetViewMode == FleetViewMode.ListView:
-        let fleets = model.filteredFleets()
-        if model.ui.selectedIdx >= 0 and model.ui.selectedIdx < fleets.len:
-          let fleetId = fleets[model.ui.selectedIdx].id
-          model.toggleFleetSelection(fleetId)
-      elif model.ui.fleetViewMode == FleetViewMode.SystemView:
-        if model.ui.fleetConsoleFocus == FleetConsoleFocus.FleetsPane:
-          let systems = model.ui.fleetConsoleSystems
-          if systems.len > 0:
-            let sysIdx = clamp(model.ui.fleetConsoleSystemIdx, 0, systems.len - 1)
-            let systemId = systems[sysIdx].systemId
-            if model.ui.fleetConsoleFleetsBySystem.hasKey(systemId):
-              let fleets = model.ui.fleetConsoleFleetsBySystem[systemId]
-              let fleetIdx = model.ui.fleetConsoleFleetIdx
-              if fleetIdx >= 0 and fleetIdx < fleets.len:
-                let fleetId = fleets[fleetIdx].fleetId
-                model.toggleFleetSelection(fleetId)
+    if model.ui.mode == ViewMode.Fleets and proposal.selectIdx >= 0:
+      if proposal.selectIdx in model.view.ownFleetsById:
+        model.toggleFleetSelection(proposal.selectIdx)
   of ActionKind.deselect:
     model.ui.mapState.selected = none(HexCoord)
     if model.ui.mode == ViewMode.FleetDetail:
