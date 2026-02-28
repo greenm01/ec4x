@@ -863,6 +863,8 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   
   var x = area.x
   
+  let compactFooter = area.width < 64
+
   # [Up/Dn] Navigate
   let width1 = buf.setString(x, area.y, "[", dimStyle)
   x += width1
@@ -875,7 +877,6 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   
   case focus
   of EntryModalFocus.GameList:
-    # [Enter] Play
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
     discard buf.setString(x, area.y, "Enter", keyStyle)
@@ -885,7 +886,6 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     discard buf.setString(x, area.y, " Play  ", textStyle)
     x += 7
   of EntryModalFocus.InviteCode:
-    # [Enter] Join
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
     discard buf.setString(x, area.y, "Enter", keyStyle)
@@ -895,7 +895,6 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     discard buf.setString(x, area.y, " Join  ", textStyle)
     x += 7
   of EntryModalFocus.AdminMenu:
-    # [Enter] Select
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
     discard buf.setString(x, area.y, "Enter", keyStyle)
@@ -905,7 +904,6 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     discard buf.setString(x, area.y, " Select  ", textStyle)
     x += 9
   of EntryModalFocus.RelayUrl:
-    # [Enter] Edit
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
     discard buf.setString(x, area.y, "Enter", keyStyle)
@@ -915,7 +913,7 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
     discard buf.setString(x, area.y, " Edit  ", textStyle)
     x += 7
   
-  if mode == EntryModalMode.Normal:
+  if mode == EntryModalMode.Normal and not compactFooter:
     # [Ctrl+W] Wallet
     discard buf.setString(x, area.y, "[", dimStyle)
     x += 1
@@ -944,9 +942,10 @@ proc renderFooter(buf: var CellBuffer, area: Rect, focus: EntryModalFocus,
   x += 1
   discard buf.setString(x, area.y, " Quit", textStyle)
   
-  # Version on the right
+  # Version on the right (only if it won't overlap hints)
   let versionX = area.right - Version.len
-  discard buf.setString(versionX, area.y, Version, dimStyle)
+  if versionX > x + 2:
+    discard buf.setString(versionX, area.y, Version, dimStyle)
 
 proc renderAdminSection(buf: var CellBuffer, area: Rect,
                         selectedIdx: int, managedGamesCount: int,
@@ -1507,7 +1506,8 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     let rowCount = max(1, gameCount)
     let tableWidth = tableWidget.renderWidth(ModalMaxWidth - 2)
     let tableHeight = tableWidget.renderHeight(rowCount)
-    let contentWidth = max(tableWidth, "MY GAMES ".len)
+    let footerLine = "[↑↓] Nav  [Enter] Play  [Esc] Back"
+    let contentWidth = max(tableWidth, max("MY GAMES ".len, footerLine.len))
     let contentHeight = 1 + tableHeight
     let managerFooterHeight = 2
     let managerModal = modal
