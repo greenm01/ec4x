@@ -54,6 +54,9 @@ Steps:
      (`llm_request`, `schema_parse`, `compile`, `submit`).
    - Whether 20+ consecutive turns without manual correction was achieved.
    - Top 3 issues and recommended next fixes.
+5) Gate check:
+   - Run `scripts/bot/run_acceptance_gates.sh logs/bot scripts/bot/scenario_matrix.example.json`
+     and include pass/fail output in the report.
 
 Important:
 - If the bot exits due to connection issues, restart and continue.

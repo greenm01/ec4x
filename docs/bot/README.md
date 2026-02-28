@@ -95,6 +95,8 @@ Use `scripts/bot/run_trace_matrix.py --matrix scripts/bot/scenario_matrix.exampl
 to evaluate scenario coverage/stability gates and emit pass/fail results.
 Use `scripts/bot/evaluate_trace_quality.py <trace-dir-or-file>` for
 stability checks (20+ streak, success rate, retry rate).
+Use `scripts/bot/run_acceptance_gates.sh <trace-path> <matrix-path>` to run
+coverage + quality + matrix gates together.
 
 ## Runtime behavior notes
 
