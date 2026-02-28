@@ -69,7 +69,10 @@ proc validateConfig(cfg: BotConfig): bool =
 proc waitForConnection(client: PlayerNostrClient, timeoutMs: int): bool =
   let startedAt = getMonoTime()
   while (getMonoTime() - startedAt).inMilliseconds < timeoutMs:
-    poll(loopPollMs)
+    try:
+      poll(loopPollMs)
+    except ValueError:
+      sleep(loopPollMs)
     if client.isConnected():
       return true
   false
@@ -172,7 +175,10 @@ proc runBot*() =
 
   var nextDecisionAt = getMonoTime()
   while not shutdownRequested:
-    poll(loopPollMs)
+    try:
+      poll(loopPollMs)
+    except ValueError:
+      sleep(loopPollMs)
 
     if client.isNil or not client.isConnected():
       if getMonoTime() < nextReconnectAt:
