@@ -351,7 +351,7 @@ proc resolveSystemCombat*(
 
     for intent in bombardments:
       discard planetary.resolveBombardment(
-        state, @[intent.fleetId], colonyId, rng
+        state, @[intent.fleetId], colonyId, rng, events
       )
       logCombat(
         "[THEATER] Bombardment executed",
@@ -400,9 +400,9 @@ proc resolveSystemCombat*(
       var invasionResult: CombatResult
       case intent.assaultType
       of FleetCommandType.Invade:
-        invasionResult = planetary.resolveInvasion(state, @[intent.fleetId], colonyId, rng)
+        invasionResult = planetary.resolveInvasion(state, @[intent.fleetId], colonyId, rng, events)
       of FleetCommandType.Blitz:
-        invasionResult = planetary.resolveBlitz(state, @[intent.fleetId], colonyId, rng)
+        invasionResult = planetary.resolveBlitz(state, @[intent.fleetId], colonyId, rng, events)
       else:
         continue
 

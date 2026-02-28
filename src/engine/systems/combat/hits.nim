@@ -7,10 +7,11 @@
 
 import std/[options, sets, algorithm, logging]
 import ../../types/[core, game_state, combat, ship]
+import ../../event_factory/military
 import ../../state/engine
 import ./strength
 
-proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriticalHit: bool = false) =
+proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, systemId: SystemId, events: var seq[GameEvent], isCriticalHit: bool = false, killedByHouse: HouseId = HouseId(0)) =
   ## Apply hits to ships following hit application rules
   ## Per docs/specs/07-combat.md Section 7.2.1 and 7.2.2
   ##
@@ -76,6 +77,7 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
         ship.state = CombatState.Destroyed
       else:
         ship.state = CombatState.Crippled
+        events.add(military.shipDamaged($ship.id, ship.houseId, hitsNeeded, "Crippled", calculateShipDS(state, ship), systemId))
 
       remainingHits -= hitsNeeded
       state.updateShip(shipId, ship)
@@ -139,6 +141,8 @@ proc applyHits*(state: GameState, targetShips: seq[ShipId], hits: int32, isCriti
           ship.state = CombatState.Destroyed
           remainingHits -= hitsNeeded
           state.updateShip(shipId, ship)
+          let overkill = remainingHits
+          events.add(military.shipDestroyed($ship.id, ship.houseId, killedByHouse, isCriticalHit, overkill, systemId))
           if isCriticalHit and ship.shipClass in {ShipClass.PlanetBreaker, ShipClass.Carrier, ShipClass.Battleship}:
             info "Critical Hit! High-value asset destroyed: " & $ship.shipClass
 

@@ -6,7 +6,7 @@
 ## Per docs/specs/07-combat.md Section 7.7-7.8
 
 import std/[random, options, tables, sequtils, strformat]
-import ../../types/[core, game_state, combat, ship, facilities, colony, ground_unit]
+import ../../types/[core, game_state, combat, ship, facilities, colony, ground_unit, event]
 import ../../state/engine
 import ../../globals
 import ./strength
@@ -553,7 +553,8 @@ proc resolveBombardment*(
   state: GameState,
   attackerFleets: seq[FleetId],
   targetColony: ColonyId,
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[GameEvent]
 ): CombatResult =
   ## Bombardment: Fleet vs Ground Batteries + Shields
   ## Per docs/specs/07-combat.md Section 7.7
@@ -647,7 +648,8 @@ proc resolveBombardment*(
         attackerShips.add(fleet.ships)
 
     # Apply hits using standard hit application rules
-    applyHits(state, attackerShips, defenderHits)
+    let systemId = state.colony(targetColony).get().systemId
+    applyHits(state, attackerShips, defenderHits, systemId, events, false, state.colony(targetColony).get().owner)
 
     # Check if batteries destroyed
     if allBatteriesDestroyed(state, targetColony):
@@ -664,7 +666,8 @@ proc resolveInvasion*(
   state: GameState,
   attackerFleets: seq[FleetId],
   targetColony: ColonyId,
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[GameEvent]
 ): CombatResult =
   ## Standard Invasion: Marines vs Ground Forces
   ## Per docs/specs/07-combat.md Section 7.8.1
@@ -791,7 +794,8 @@ proc resolveBlitz*(
   state: GameState,
   attackerFleets: seq[FleetId],
   targetColony: ColonyId,
-  rng: var Rand
+  rng: var Rand,
+  events: var seq[GameEvent]
 ): CombatResult =
   ## Blitz: One bombardment round + immediate invasion
   ## Marines land under fire (risky but preserves infrastructure)
@@ -878,7 +882,8 @@ proc resolveBlitz*(
   # Apply hits to ALL fleet ships (including transports!)
   # Per docs/specs/07-combat.md Section 7.8.2 line 1011
   # "Ground batteries fire at ALL fleet ships (including Troop Transports!)"
-  applyHits(state, allShips, defenderHits)
+  let systemId = state.colony(targetColony).get().systemId
+  applyHits(state, allShips, defenderHits, systemId, events, false, state.colony(targetColony).get().owner)
 
   # Propagate transport damage to marines aboard
   # If transport crippled/destroyed, marines aboard also crippled/destroyed

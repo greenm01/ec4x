@@ -37,7 +37,7 @@ proc determineOutcome*(state: GameState, battle: Battle): CombatResult =
   )
 
 proc resolveBattle*(
-  state: GameState, battle: var Battle, rng: var Rand
+  state: GameState, battle: var Battle, rng: var Rand, events: var seq[GameEvent]
 ): CombatResult =
   ## Main combat resolution - works for Space, Orbital, or Planetary
   ## Per docs/specs/07-combat.md Section 7.4
@@ -87,8 +87,8 @@ proc resolveBattle*(
 
     let sigBefore = getCombatStateSignature(state, battle.attacker) + getCombatStateSignature(state, battle.defender)
 
-    applyHits(state, defenderShips, attackerHits, attackerCERResult.isCriticalHit)
-    applyHits(state, attackerShips, defenderHits, defenderCERResult.isCriticalHit)
+    applyHits(state, defenderShips, attackerHits, battle.systemId, events, attackerCERResult.isCriticalHit, battle.attacker.houseId)
+    applyHits(state, attackerShips, defenderHits, battle.systemId, events, defenderCERResult.isCriticalHit, battle.defender.houseId)
 
     let sigAfter = getCombatStateSignature(state, battle.attacker) + getCombatStateSignature(state, battle.defender)
 
@@ -108,7 +108,7 @@ proc resolveBattle*(
       isDesperation = false
 
     # Check retreat PER FLEET
-    checkFleetRetreats(state, battle, attackerAS, defenderAS)
+    checkFleetRetreats(state, battle, attackerAS, defenderAS, events)
 
     # Check if combat ends
     if noCombatantsRemain(state, battle):

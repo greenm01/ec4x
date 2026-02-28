@@ -19,7 +19,7 @@ import std/[unittest, options, tables, random]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, ship, fleet, combat, ground_unit,
-  facilities, diplomacy, config
+  facilities, diplomacy, config, event
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
@@ -147,7 +147,8 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     # Apply enough hits to cripple one nominal ship but not enough to 
     # destroy any crippled ships (should be blocked by protection rule)
     let shipIds = @[dd1.id, dd2.id, dd3.id]
-    applyHits(game, shipIds, destroyerDS, isCriticalHit = false)
+    var dummy: seq[GameEvent] = @[]
+    applyHits(game, shipIds, destroyerDS, SystemId(1), dummy, false, HouseId(0))
     
     # dd1 should be crippled, dd2 nominal, dd3 still crippled (not destroyed)
     let dd1After = game.ship(dd1.id).get()
@@ -178,7 +179,8 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     # Apply enough to destroy one crippled ship
     let shipIds = @[dd1.id, dd2.id]
-    applyHits(game, shipIds, crippledDS, isCriticalHit = false)
+    var dummy: seq[GameEvent] = @[]
+    applyHits(game, shipIds, crippledDS, SystemId(1), dummy, false, HouseId(0))
     
     let dd1After = game.ship(dd1.id).get()
     let dd2After = game.ship(dd2.id).get()
@@ -209,7 +211,8 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     # Critical hit should allow destroying crippled even with undamaged present
     let shipIds = @[dd1.id, dd2.id]
     # Apply enough to cripple undamaged AND destroy crippled
-    applyHits(game, shipIds, undamagedDS + crippledDS, isCriticalHit = true)
+    var dummy: seq[GameEvent] = @[]
+    applyHits(game, shipIds, undamagedDS + crippledDS, SystemId(1), dummy, true, HouseId(0))
     
     let dd1After = game.ship(dd1.id).get()
     let dd2After = game.ship(dd2.id).get()
@@ -235,7 +238,8 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     # Apply slightly more hits than needed, but less than 1.5x
     let shipIds = @[dd1.id]
-    applyHits(game, shipIds, int32(float(destroyerDS) * 1.4), isCriticalHit = false)
+    var dummy: seq[GameEvent] = @[]
+    applyHits(game, shipIds, int32(float(destroyerDS) * 1.4), SystemId(1), dummy, false, HouseId(0))
     
     let dd1After = game.ship(dd1.id).get()
     
@@ -259,7 +263,8 @@ suite "Combat: Hit Application Rules (Section 7.2.2)":
     
     # Apply overwhelming force (>= 1.5x)
     let shipIds = @[dd1.id]
-    applyHits(game, shipIds, int32(float(destroyerDS) * 2.0), isCriticalHit = false)
+    var dummy: seq[GameEvent] = @[]
+    applyHits(game, shipIds, int32(float(destroyerDS) * 2.0), SystemId(1), dummy, false, HouseId(0))
     
     let dd1After = game.ship(dd1.id).get()
     
@@ -295,7 +300,8 @@ suite "Combat: Fighter Exception (Section 7.2.1)":
     
     # Apply exactly enough hits to "cripple" - but fighters go straight to destroyed
     let shipIds = @[fighter.id]
-    applyHits(game, shipIds, fighterDS, isCriticalHit = false)
+    var dummy: seq[GameEvent] = @[]
+    applyHits(game, shipIds, fighterDS, SystemId(1), dummy, false, HouseId(0))
     
     let fighterAfter = game.ship(fighter.id).get()
     

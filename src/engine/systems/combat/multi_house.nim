@@ -590,7 +590,7 @@ proc resolveMultiHouseBattle*(
 
         # Apply hits using existing hit application system with critical hit flag
         let isCritical = houseCriticalHits.getOrDefault(shooter.houseId, false)
-        applyHits(state, targetShips, hits, isCritical)
+        applyHits(state, targetShips, hits, battle.systemId, events, isCritical, shooter.houseId)
 
     # Phase 4: Check retreat for each fleet (per-fleet ROE evaluation)
     for participantIdx in 0 ..< battle.participants.len:

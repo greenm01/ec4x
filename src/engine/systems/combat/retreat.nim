@@ -7,6 +7,7 @@
 
 import std/[options, sequtils, logging]
 import ../../types/[core, game_state, combat, fleet, ship]
+import ../../event_factory/military
 import ../../state/engine
 import ./strength
 import ./screened
@@ -95,7 +96,7 @@ proc roeThreshold*(roe: int32): float =
     1.0 # Default to even odds
 
 proc checkFleetRetreats*(
-  state: GameState, battle: var Battle, attackerAS: int32, defenderAS: int32
+  state: GameState, battle: var Battle, attackerAS: int32, defenderAS: int32, events: var seq[GameEvent]
 ) =
   ## Check retreat for each fleet individually
   ## Per docs/specs/07-combat.md Section 7.2.3
@@ -126,13 +127,15 @@ proc checkFleetRetreats*(
     if ratio < threshold:
       # Fleet retreats
       battle.attackerRetreatedFleets.add(fleetId)
+      let casualties = 0 # Can compute if needed
+      events.add(military.fleetRetreat(fleetId, fleet.houseId, "ROE", int(threshold * 100), casualties, battle.systemId))
 
       # Pursuit Volley: enemy gets one final attack at 0.5x CER against fleeing ships
       let pursuitHits = int32(float32(defenderAS) * 0.5)
       if pursuitHits > 0:
         info "Fleet " & $fleetId & " retreated and suffered a pursuit volley of " & $pursuitHits & " hits."
         let retreatingShips = combatShipsInFleet(state, fleetId)
-        applyHits(state, retreatingShips, pursuitHits)
+        applyHits(state, retreatingShips, pursuitHits, battle.systemId, events, false, battle.defender.houseId)
 
       # Apply proportional losses to screened units
       applyRetreatLossesToScreenedUnits(state, fleetId)
@@ -164,13 +167,15 @@ proc checkFleetRetreats*(
     if ratio < threshold:
       # Fleet retreats
       battle.defenderRetreatedFleets.add(fleetId)
+      let casualties = 0
+      events.add(military.fleetRetreat(fleetId, fleet.houseId, "ROE", int(threshold * 100), casualties, battle.systemId))
 
       # Pursuit Volley: enemy gets one final attack at 0.5x CER against fleeing ships
       let pursuitHits = int32(float32(attackerAS) * 0.5)
       if pursuitHits > 0:
         info "Fleet " & $fleetId & " retreated and suffered a pursuit volley of " & $pursuitHits & " hits."
         let retreatingShips = combatShipsInFleet(state, fleetId)
-        applyHits(state, retreatingShips, pursuitHits)
+        applyHits(state, retreatingShips, pursuitHits, battle.systemId, events, false, battle.attacker.houseId)
 
       # Apply proportional losses to screened units
       applyRetreatLossesToScreenedUnits(state, fleetId)
