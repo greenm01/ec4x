@@ -1,7 +1,7 @@
 import std/[unittest, options]
 
 import ../../src/bot/[order_schema, order_compiler]
-import ../../src/engine/types/[fleet, production, ship, colony]
+import ../../src/engine/types/[fleet, production, ship, colony, zero_turn]
 
 suite "bot order compiler":
   test "compiles fleet move and ship build":
@@ -131,24 +131,23 @@ suite "bot order compiler":
     check int(compiled.packet.populationTransfers[0].sourceColony) == 7
     check int(compiled.packet.terraformCommands[0].colonyId) == 7
 
-  test "rejects unsupported command categories explicitly":
+  test "rejects invalid espionage and diplomatic variants":
     let draft = BotOrderDraft(
       turn: 11,
       houseId: 1,
       fleetCommands: @[],
       buildCommands: @[],
-      zeroTurnCommands: @[
-        BotZeroTurnOrder(commandType: "reactivate")
-      ],
+      zeroTurnCommands: @[],
       populationTransfers: @[],
       terraformCommands: @[],
       colonyManagement: @[],
       espionageActions: @[
-        BotEspionageOrder(operation: "tech-theft", targetHouseId: some(2))
+        BotEspionageOrder(operation: "unknown-op", targetHouseId: some(2))
       ],
       diplomaticCommand: some(BotDiplomaticOrder(
         targetHouseId: 2,
-        action: "declare-hostile"
+        action: "accept-proposal",
+        proposalId: none(int)
       )),
       researchAllocation: none(BotResearchAllocation),
       ebpInvestment: none(int),
@@ -157,4 +156,178 @@ suite "bot order compiler":
 
     let compiled = compileCommandPacket(draft)
     check not compiled.ok
-    check compiled.errors.len >= 3
+    check compiled.errors.len >= 2
+
+  test "compiles espionage and diplomatic commands":
+    let draft = BotOrderDraft(
+      turn: 11,
+      houseId: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      zeroTurnCommands: @[],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[
+        BotEspionageOrder(
+          operation: "sabotage-high",
+          targetHouseId: some(2),
+          targetSystemId: some(7)
+        )
+      ],
+      diplomaticCommand: some(BotDiplomaticOrder(
+        targetHouseId: 2,
+        action: "propose-deescalate",
+        proposedState: some("hostile")
+      )),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: none(int),
+      cipInvestment: none(int)
+    )
+
+    let compiled = compileCommandPacket(draft)
+    check compiled.ok
+    check compiled.packet.espionageActions.len == 1
+    check compiled.packet.diplomaticCommand.len == 1
+
+  test "compiles supported zero-turn commands":
+    let draft = BotOrderDraft(
+      turn: 12,
+      houseId: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      zeroTurnCommands: @[
+        BotZeroTurnOrder(
+          commandType: "reactivate",
+          sourceFleetId: some(20),
+          targetFleetId: none(int),
+          shipIndices: @[],
+          cargoType: none(string),
+          quantity: none(int)
+        ),
+        BotZeroTurnOrder(
+          commandType: "detach-ships",
+          sourceFleetId: some(21),
+          targetFleetId: none(int),
+          shipIndices: @[0, 2],
+          cargoType: none(string),
+          quantity: none(int)
+        ),
+        BotZeroTurnOrder(
+          commandType: "load-cargo",
+          sourceFleetId: some(22),
+          targetFleetId: none(int),
+          shipIndices: @[],
+          cargoType: some("marines"),
+          quantity: some(5)
+        )
+      ],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      diplomaticCommand: none(BotDiplomaticOrder),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: none(int),
+      cipInvestment: none(int)
+    )
+
+    let compiled = compileCommandPacket(draft)
+    check compiled.ok
+    check compiled.packet.zeroTurnCommands.len == 3
+    check compiled.packet.zeroTurnCommands[0].commandType ==
+      ZeroTurnCommandType.Reactivate
+    check compiled.packet.zeroTurnCommands[1].commandType ==
+      ZeroTurnCommandType.DetachShips
+    check compiled.packet.zeroTurnCommands[2].commandType ==
+      ZeroTurnCommandType.LoadCargo
+    check compiled.packet.zeroTurnCommands[2].cargoType.isSome
+    check compiled.packet.zeroTurnCommands[2].cargoQuantity.isSome
+
+  test "compiles fighter zero-turn commands":
+    let draft = BotOrderDraft(
+      turn: 13,
+      houseId: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      zeroTurnCommands: @[
+        BotZeroTurnOrder(
+          commandType: "load-fighters",
+          sourceFleetId: some(22),
+          targetFleetId: none(int),
+          shipIndices: @[],
+          fighterShipIds: @[1001, 1002],
+          carrierShipId: some(501),
+          sourceCarrierShipId: none(int),
+          targetCarrierShipId: none(int),
+          cargoType: none(string),
+          quantity: none(int)
+        ),
+        BotZeroTurnOrder(
+          commandType: "transfer-fighters",
+          sourceFleetId: some(22),
+          targetFleetId: some(23),
+          shipIndices: @[],
+          fighterShipIds: @[1002],
+          carrierShipId: none(int),
+          sourceCarrierShipId: some(501),
+          targetCarrierShipId: some(502),
+          cargoType: none(string),
+          quantity: none(int)
+        )
+      ],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      diplomaticCommand: none(BotDiplomaticOrder),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: none(int),
+      cipInvestment: none(int)
+    )
+
+    let compiled = compileCommandPacket(draft)
+    check compiled.ok
+    check compiled.packet.zeroTurnCommands.len == 2
+    check compiled.packet.zeroTurnCommands[0].commandType ==
+      ZeroTurnCommandType.LoadFighters
+    check compiled.packet.zeroTurnCommands[0].carrierShipId.isSome
+    check compiled.packet.zeroTurnCommands[0].fighterIds.len == 2
+    check compiled.packet.zeroTurnCommands[1].commandType ==
+      ZeroTurnCommandType.TransferFighters
+    check compiled.packet.zeroTurnCommands[1].sourceCarrierShipId.isSome
+    check compiled.packet.zeroTurnCommands[1].targetCarrierShipId.isSome
+
+  test "rejects fighter commands with missing required fields":
+    let draft = BotOrderDraft(
+      turn: 14,
+      houseId: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      zeroTurnCommands: @[
+        BotZeroTurnOrder(
+          commandType: "load-fighters",
+          sourceFleetId: some(22),
+          targetFleetId: none(int),
+          shipIndices: @[],
+          fighterShipIds: @[],
+          carrierShipId: none(int),
+          sourceCarrierShipId: none(int),
+          targetCarrierShipId: none(int),
+          cargoType: none(string),
+          quantity: none(int)
+        )
+      ],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      diplomaticCommand: none(BotDiplomaticOrder),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: none(int),
+      cipInvestment: none(int)
+    )
+
+    let compiled = compileCommandPacket(draft)
+    check not compiled.ok
+    check compiled.errors.len > 0

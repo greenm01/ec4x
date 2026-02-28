@@ -86,7 +86,7 @@ logs/
 *.dll
 .aider*
 .env
-!scripts/bot/session.env.example
+!scripts/bot/*.env.example
 
 secrets.fish 
 nimble.develop

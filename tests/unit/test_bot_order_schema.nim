@@ -60,3 +60,28 @@ suite "bot order schema":
     let parsed = parseBotOrderDraft(raw)
     check not parsed.ok
     check parsed.errors.len > 0
+
+  test "parses zero-turn fighter fields":
+    let raw = """
+    {
+      "turn": 5,
+      "houseId": 1,
+      "zeroTurnCommands": [
+        {
+          "commandType": "transfer-fighters",
+          "sourceFleetId": 10,
+          "targetFleetId": 11,
+          "fighterShipIds": [1001, 1002],
+          "sourceCarrierShipId": 2001,
+          "targetCarrierShipId": 2002
+        }
+      ]
+    }
+    """
+    let parsed = parseBotOrderDraft(raw)
+    check parsed.ok
+    check parsed.draft.zeroTurnCommands.len == 1
+    let cmd = parsed.draft.zeroTurnCommands[0]
+    check cmd.fighterShipIds.len == 2
+    check cmd.sourceCarrierShipId.isSome
+    check cmd.targetCarrierShipId.isSome

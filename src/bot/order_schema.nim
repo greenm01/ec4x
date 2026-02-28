@@ -23,6 +23,10 @@ type
     sourceFleetId*: Option[int]
     targetFleetId*: Option[int]
     shipIndices*: seq[int]
+    fighterShipIds*: seq[int]
+    carrierShipId*: Option[int]
+    sourceCarrierShipId*: Option[int]
+    targetCarrierShipId*: Option[int]
     cargoType*: Option[string]
     quantity*: Option[int]
 
@@ -198,6 +202,14 @@ proc parseZeroTurnCommands(node: JsonNode,
       sourceFleetId: parseOptionalInt(item, "sourceFleetId", errors),
       targetFleetId: parseOptionalInt(item, "targetFleetId", errors),
       shipIndices: parseIntArray(item, "shipIndices", errors),
+      fighterShipIds: parseIntArray(item, "fighterShipIds", errors),
+      carrierShipId: parseOptionalInt(item, "carrierShipId", errors),
+      sourceCarrierShipId: parseOptionalInt(
+        item, "sourceCarrierShipId", errors
+      ),
+      targetCarrierShipId: parseOptionalInt(
+        item, "targetCarrierShipId", errors
+      ),
       cargoType: parseOptionalString(item, "cargoType", errors),
       quantity: parseOptionalInt(item, "quantity", errors)
     ))

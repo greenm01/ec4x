@@ -91,3 +91,45 @@ suite "bot runner retry loop":
     check result.trace.len == 1
     check result.trace[0].stage == "submit"
     check result.trace[0].outcome == "retry"
+
+  test "recovers from compile errors in advanced commands":
+    var calls = 0
+    let generator: DraftGenerator = proc(prompt: string): BotLlmResult =
+      discard prompt
+      calls.inc
+      if calls == 1:
+        return BotLlmResult(ok: true, content: """
+        {
+          "turn": 6,
+          "houseId": 1,
+          "diplomaticCommand": {
+            "targetHouseId": 2,
+            "action": "accept-proposal"
+          }
+        }
+        """)
+      BotLlmResult(ok: true, content: """
+      {
+        "turn": 6,
+        "houseId": 1,
+        "diplomaticCommand": {
+          "targetHouseId": 2,
+          "action": "accept-proposal",
+          "proposalId": 9
+        },
+        "espionageActions": [
+          {
+            "operation": "tech-theft",
+            "targetHouseId": 2
+          }
+        ]
+      }
+      """)
+
+    let result = generatePacketWithRetries("base", 2, generator)
+    check result.ok
+    check result.attempts == 2
+    check result.packet.diplomaticCommand.len == 1
+    check result.packet.espionageActions.len == 1
+    check result.trace.len == 1
+    check result.trace[0].stage == "compile"

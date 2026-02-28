@@ -4,7 +4,7 @@ import std/[options, strutils, tables, sets]
 
 import ./order_schema
 import ../engine/types/[core, fleet, ship, production, facilities,
-  ground_unit, colony, command, tech]
+  ground_unit, colony, command, tech, zero_turn, espionage, diplomacy]
 
 type
   BotCompileResult* = object
@@ -104,6 +104,64 @@ proc parseTechField(token: string): Option[TechField] =
   of "aco": some(TechField.AdvancedCarrierOps)
   else: none(TechField)
 
+proc parseZeroTurnCommandType(token: string): Option[ZeroTurnCommandType] =
+  case normalizeToken(token)
+  of "detachships": some(ZeroTurnCommandType.DetachShips)
+  of "transferships": some(ZeroTurnCommandType.TransferShips)
+  of "mergefleets": some(ZeroTurnCommandType.MergeFleets)
+  of "loadcargo": some(ZeroTurnCommandType.LoadCargo)
+  of "unloadcargo": some(ZeroTurnCommandType.UnloadCargo)
+  of "loadfighters": some(ZeroTurnCommandType.LoadFighters)
+  of "unloadfighters": some(ZeroTurnCommandType.UnloadFighters)
+  of "transferfighters": some(ZeroTurnCommandType.TransferFighters)
+  of "reactivate": some(ZeroTurnCommandType.Reactivate)
+  else: none(ZeroTurnCommandType)
+
+proc parseCargoClass(token: string): Option[CargoClass] =
+  case normalizeToken(token)
+  of "marines": some(CargoClass.Marines)
+  of "colonists": some(CargoClass.Colonists)
+  of "none": some(CargoClass.None)
+  else: none(CargoClass)
+
+proc parseEspionageAction(token: string): Option[EspionageAction] =
+  case normalizeToken(token)
+  of "techtheft": some(EspionageAction.TechTheft)
+  of "sabotagelow": some(EspionageAction.SabotageLow)
+  of "sabotagehigh": some(EspionageAction.SabotageHigh)
+  of "assassination": some(EspionageAction.Assassination)
+  of "cyberattack": some(EspionageAction.CyberAttack)
+  of "economicmanipulation": some(EspionageAction.EconomicManipulation)
+  of "psyops", "psyopscampaign": some(EspionageAction.PsyopsCampaign)
+  of "counterintelsweep": some(EspionageAction.CounterIntelSweep)
+  of "inteltheft": some(EspionageAction.IntelTheft)
+  of "plantdisinfo", "plantdisinformation":
+    some(EspionageAction.PlantDisinformation)
+  else: none(EspionageAction)
+
+proc espionageRequiresSystem(action: EspionageAction): bool =
+  action in {
+    EspionageAction.SabotageLow,
+    EspionageAction.SabotageHigh,
+    EspionageAction.CyberAttack
+  }
+
+proc parseDiplomaticActionType(token: string): Option[DiplomaticActionType] =
+  case normalizeToken(token)
+  of "declarehostile": some(DiplomaticActionType.DeclareHostile)
+  of "declareenemy": some(DiplomaticActionType.DeclareEnemy)
+  of "setneutral": some(DiplomaticActionType.SetNeutral)
+  of "proposedeescalate": some(DiplomaticActionType.ProposeDeescalation)
+  of "acceptproposal": some(DiplomaticActionType.AcceptProposal)
+  of "rejectproposal": some(DiplomaticActionType.RejectProposal)
+  else: none(DiplomaticActionType)
+
+proc parseProposalType(token: string): Option[ProposalType] =
+  case normalizeToken(token)
+  of "neutral": some(ProposalType.DeescalateToNeutral)
+  of "hostile": some(ProposalType.DeescalateToHostile)
+  else: none(ProposalType)
+
 proc commandNeedsSystemTarget(commandType: FleetCommandType): bool =
   commandType in {
     FleetCommandType.Move,
@@ -161,12 +219,197 @@ proc compileCommandPacket*(draft: BotOrderDraft): BotCompileResult =
     cipInvestment: int32(draft.cipInvestment.get(0))
   )
 
-  if draft.zeroTurnCommands.len > 0:
-    errors.add("zeroTurnCommands are not supported by compiler yet")
-  if draft.espionageActions.len > 0:
-    errors.add("espionageActions are not supported by compiler yet")
+  for order in draft.zeroTurnCommands:
+    let cmdTypeOpt = parseZeroTurnCommandType(order.commandType)
+    if cmdTypeOpt.isNone:
+      errors.add("Unknown zeroTurn command type: " & order.commandType)
+      continue
+
+    let cmdType = cmdTypeOpt.get()
+    var cmd = ZeroTurnCommand(
+      houseId: HouseId(draft.houseId),
+      commandType: cmdType,
+      colonySystem: none(SystemId),
+      sourceFleetId: none(FleetId),
+      targetFleetId: none(FleetId),
+      shipIndices: order.shipIndices,
+      shipIds: @[],
+      cargoType: none(CargoClass),
+      cargoQuantity: none(int),
+      fighterIds: @[],
+      carrierShipId: none(ShipId),
+      sourceCarrierShipId: none(ShipId),
+      targetCarrierShipId: none(ShipId),
+      newFleetId: none(FleetId)
+    )
+
+    if order.sourceFleetId.isSome:
+      cmd.sourceFleetId = some(FleetId(order.sourceFleetId.get()))
+    if order.targetFleetId.isSome:
+      cmd.targetFleetId = some(FleetId(order.targetFleetId.get()))
+    if order.quantity.isSome:
+      cmd.cargoQuantity = some(order.quantity.get())
+    if order.carrierShipId.isSome:
+      cmd.carrierShipId = some(ShipId(order.carrierShipId.get()))
+    if order.sourceCarrierShipId.isSome:
+      cmd.sourceCarrierShipId =
+        some(ShipId(order.sourceCarrierShipId.get()))
+    if order.targetCarrierShipId.isSome:
+      cmd.targetCarrierShipId =
+        some(ShipId(order.targetCarrierShipId.get()))
+    for fighterId in order.fighterShipIds:
+      cmd.fighterIds.add(ShipId(fighterId))
+
+    case cmdType
+    of ZeroTurnCommandType.Reactivate:
+      if cmd.sourceFleetId.isNone:
+        errors.add("reactivate requires sourceFleetId")
+        continue
+    of ZeroTurnCommandType.DetachShips:
+      if cmd.sourceFleetId.isNone:
+        errors.add("detach-ships requires sourceFleetId")
+        continue
+      if cmd.shipIndices.len == 0:
+        errors.add("detach-ships requires shipIndices")
+        continue
+    of ZeroTurnCommandType.TransferShips:
+      if cmd.sourceFleetId.isNone:
+        errors.add("transfer-ships requires sourceFleetId")
+        continue
+      if cmd.targetFleetId.isNone:
+        errors.add("transfer-ships requires targetFleetId")
+        continue
+      if cmd.shipIndices.len == 0:
+        errors.add("transfer-ships requires shipIndices")
+        continue
+    of ZeroTurnCommandType.MergeFleets:
+      if cmd.sourceFleetId.isNone:
+        errors.add("merge-fleets requires sourceFleetId")
+        continue
+      if cmd.targetFleetId.isNone:
+        errors.add("merge-fleets requires targetFleetId")
+        continue
+    of ZeroTurnCommandType.LoadCargo:
+      if cmd.sourceFleetId.isNone:
+        errors.add("load-cargo requires sourceFleetId")
+        continue
+      if order.cargoType.isNone:
+        errors.add("load-cargo requires cargoType")
+        continue
+      let cargoTypeOpt = parseCargoClass(order.cargoType.get())
+      if cargoTypeOpt.isNone:
+        errors.add("Unknown cargoType: " & order.cargoType.get())
+        continue
+      if cargoTypeOpt.get() != CargoClass.Marines:
+        errors.add("load-cargo currently supports only Marines")
+        continue
+      cmd.cargoType = cargoTypeOpt
+    of ZeroTurnCommandType.UnloadCargo:
+      if cmd.sourceFleetId.isNone:
+        errors.add("unload-cargo requires sourceFleetId")
+        continue
+      if order.cargoType.isSome:
+        let cargoTypeOpt = parseCargoClass(order.cargoType.get())
+        if cargoTypeOpt.isNone:
+          errors.add("Unknown cargoType: " & order.cargoType.get())
+          continue
+        cmd.cargoType = cargoTypeOpt
+    of ZeroTurnCommandType.LoadFighters,
+        ZeroTurnCommandType.UnloadFighters:
+      if cmd.sourceFleetId.isNone:
+        errors.add("fighter command requires sourceFleetId")
+        continue
+      if cmd.carrierShipId.isNone:
+        errors.add("fighter command requires carrierShipId")
+        continue
+      if cmd.fighterIds.len == 0:
+        errors.add("fighter command requires fighterShipIds")
+        continue
+    of ZeroTurnCommandType.TransferFighters:
+      if cmd.sourceFleetId.isNone:
+        errors.add("transfer-fighters requires sourceFleetId")
+        continue
+      if cmd.sourceCarrierShipId.isNone:
+        errors.add("transfer-fighters requires sourceCarrierShipId")
+        continue
+      if cmd.targetCarrierShipId.isNone:
+        errors.add("transfer-fighters requires targetCarrierShipId")
+        continue
+      if cmd.fighterIds.len == 0:
+        errors.add("transfer-fighters requires fighterShipIds")
+        continue
+
+    packet.zeroTurnCommands.add(cmd)
+
+  for action in draft.espionageActions:
+    let actionOpt = parseEspionageAction(action.operation)
+    if actionOpt.isNone:
+      errors.add("Unknown espionage operation: " & action.operation)
+      continue
+
+    if action.targetHouseId.isNone:
+      errors.add("espionage action requires targetHouseId")
+      continue
+
+    let parsedAction = actionOpt.get()
+    if espionageRequiresSystem(parsedAction) and action.targetSystemId.isNone:
+      errors.add("espionage action requires targetSystemId: " &
+        action.operation)
+      continue
+
+    packet.espionageActions.add(EspionageAttempt(
+      attacker: HouseId(draft.houseId),
+      target: HouseId(action.targetHouseId.get()),
+      action: parsedAction,
+      targetSystem:
+        if action.targetSystemId.isSome:
+          some(SystemId(action.targetSystemId.get()))
+        else:
+          none(SystemId)
+    ))
+
   if draft.diplomaticCommand.isSome:
-    errors.add("diplomaticCommand is not supported by compiler yet")
+    let cmd = draft.diplomaticCommand.get()
+    let actionTypeOpt = parseDiplomaticActionType(cmd.action)
+    if actionTypeOpt.isNone:
+      errors.add("Unknown diplomatic action: " & cmd.action)
+    else:
+      let actionType = actionTypeOpt.get()
+      var proposalId = none(ProposalId)
+      var proposalType = none(ProposalType)
+      var valid = true
+
+      case actionType
+      of DiplomaticActionType.ProposeDeescalation:
+        if cmd.proposedState.isNone:
+          errors.add("propose-deescalate requires proposedState")
+          valid = false
+        else:
+          let parsed = parseProposalType(cmd.proposedState.get())
+          if parsed.isNone:
+            errors.add("Invalid proposedState: " & cmd.proposedState.get())
+            valid = false
+          else:
+            proposalType = parsed
+      of DiplomaticActionType.AcceptProposal,
+          DiplomaticActionType.RejectProposal:
+        if cmd.proposalId.isNone:
+          errors.add("proposal action requires proposalId")
+          valid = false
+        else:
+          proposalId = some(ProposalId(cmd.proposalId.get()))
+      else:
+        discard
+
+      if valid:
+        packet.diplomaticCommand.add(DiplomaticCommand(
+          houseId: HouseId(draft.houseId),
+          targetHouse: HouseId(cmd.targetHouseId),
+          actionType: actionType,
+          proposalId: proposalId,
+          proposalType: proposalType,
+          message: none(string)
+        ))
 
   var seenFleetIds = initHashSet[int]()
   for order in draft.fleetCommands:

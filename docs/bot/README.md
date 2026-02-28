@@ -77,6 +77,12 @@ Use:
 3. Optional: set `BOT_START_RELAY=1` and `BOT_START_DAEMON=1`
    to have the script launch local relay/daemon processes.
 
+For multi-bot runs:
+
+1. Copy `scripts/bot/multi_session.env.example` to
+   `scripts/bot/multi_session.env` and fill values.
+2. Run `scripts/run_multi_bot_playtest.sh`.
+
 Runtime traces are written under `BOT_LOG_DIR` (default `logs/bot`).
 Each run appends `session_start` metadata and per-turn records to
 `bot_trace_<gameId>.jsonl`.
@@ -85,5 +91,8 @@ Each run appends `session_start` metadata and per-turn records to
 
 - Bot reconnects to relays indefinitely with capped backoff.
 - Duplicate Nostr event IDs are ignored during state ingestion.
-- Compiler currently rejects `zeroTurnCommands`, `espionageActions`, and
-  `diplomaticCommand` in the runtime path.
+- Runtime supports core zero-turn commands
+  (`reactivate`, `detach-ships`, `transfer-ships`, `merge-fleets`,
+  `load-cargo`, `unload-cargo`, `load-fighters`, `unload-fighters`,
+  `transfer-fighters`).
+- Runtime supports `espionageActions` and `diplomaticCommand`.

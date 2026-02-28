@@ -105,3 +105,36 @@ Output format:
 - Acceptance checklist with pass/fail
 - Top issues and next actions
 ```
+
+## Prompt 3: Multi-Bot Stress Playtest
+
+```text
+You are running a multi-bot EC4X stress playtest.
+
+Goal:
+- Launch multiple bot identities in the same game.
+- Observe stability, retries, and feature usage over extended turns.
+
+Constraints:
+- Do not modify engine/daemon logic.
+- Do not commit code.
+- Do not print secrets.
+
+Steps:
+1) Copy `scripts/bot/multi_session.env.example` to
+   `scripts/bot/multi_session.env`.
+2) Fill relay/game/daemon/API settings and per-bot keypairs.
+3) Set `BOT_COUNT` and optional per-bot models (`BOT_i_MODEL`).
+4) Run: `scripts/run_multi_bot_playtest.sh`.
+5) Let bots run for 20+ decision opportunities.
+
+Evidence:
+- Per-bot stdout: `logs/bot/multi/bot<N>.stdout.log`.
+- Per-bot trace JSONL: `logs/bot/multi/bot<N>/bot_trace_<gameId>.jsonl`.
+
+Report:
+- Number of bots launched and models used.
+- Turn throughput and failures by `errorClass`.
+- Most common retry stages and top recurring errors.
+- Recommended next fixes.
+```

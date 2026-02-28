@@ -85,3 +85,58 @@ compiled into `CommandPacket`.
   - Evidence: `session_start` + per-turn records in JSONL traces.
 - [x] Prompt generation is fog-of-war compliant.
   - Evidence: `src/bot/prompt_context.nim` uses PlayerState view data only.
+
+## Phase 8 - Full Command Surface Enablement
+
+- [x] Implement `zeroTurnCommands` compilation and validation.
+  - Map supported zero-turn variants into `CommandPacket`.
+  - Enforce per-command required fields and value bounds.
+  - Add unit tests for valid, invalid, and ambiguous payloads.
+- [x] Implement `espionageActions` compilation and validation.
+  - Enforce operation-specific target requirements.
+  - Enforce per-turn action limits and budget constraints.
+  - Add unit tests for each supported espionage operation.
+- [x] Implement `diplomaticCommand` compilation and validation.
+  - Support relation changes, proposals, and proposal responses.
+  - Validate proposal ids and required target fields.
+  - Add unit tests for accepted, rejected, and invalid flows.
+- [x] Extend correction-loop handling for new categories.
+  - Feed parser, compile, and preflight errors back to the model.
+  - Add retry tests that recover from malformed full-feature drafts.
+
+## Phase 9 - Full-Feature Playtest Harness and Coverage Gates
+
+- [ ] Add multi-bot orchestration script.
+  - Local launcher added: `scripts/run_multi_bot_playtest.sh`.
+  - Session template added: `scripts/bot/multi_session.env.example`.
+  - Launch relay, daemon, and N bot processes.
+  - Support per-bot env files, keypairs, and model settings.
+  - Persist run metadata (seed, game id, model list, config hash).
+- [ ] Add feature-coverage telemetry.
+  - Emit per-turn feature-family usage tags in trace logs.
+  - Add a coverage summary tool for hit/miss by command family.
+- [ ] Add scenario matrix for forced feature exercise.
+  - Define setups that trigger each command family path.
+  - Run matrix automatically and emit pass/fail report.
+- [ ] Add stability and reproducibility gates.
+  - 20+ consecutive turns without manual correction.
+  - Retry recovery rate above threshold.
+  - Re-run reproducibility from env + metadata + traces.
+
+## Full-Feature Playtest Readiness Criteria
+
+- [ ] All command families enabled in runtime compiler.
+- [ ] All command families executed at least once across matrix runs.
+- [ ] 20+ turn stability met in target proportion of runs.
+- [ ] Trace logs contain session metadata and per-turn feature tags.
+- [ ] Failed runs reproducible from saved run artifacts.
+
+## Execution Order (Recommended)
+
+1. `zeroTurnCommands` support.
+2. `espionageActions` support.
+3. `diplomaticCommand` support.
+4. Correction-loop and test expansion.
+5. Multi-bot orchestration.
+6. Coverage telemetry and reporting.
+7. Scenario matrix and acceptance gating.

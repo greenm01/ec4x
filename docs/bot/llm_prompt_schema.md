@@ -162,12 +162,28 @@ Rules:
   "sourceFleetId": 101,
   "targetFleetId": null,
   "shipIndices": [],
+  "fighterShipIds": [],
+  "carrierShipId": null,
+  "sourceCarrierShipId": null,
+  "targetCarrierShipId": null,
   "cargoType": null,
   "quantity": null
 }
 ```
 
-Only supported v1 subset should be emitted by model prompt.
+Rules:
+- `reactivate`: requires `sourceFleetId`.
+- `detach-ships`: requires `sourceFleetId` + `shipIndices`.
+- `transfer-ships`: requires `sourceFleetId` + `targetFleetId` +
+  `shipIndices`.
+- `merge-fleets`: requires `sourceFleetId` + `targetFleetId`.
+- `load-cargo`: requires `sourceFleetId` + `cargoType` (`marines`) and
+  optional `quantity`.
+- `unload-cargo`: requires `sourceFleetId`; optional `quantity`.
+- `load-fighters`/`unload-fighters`: require `sourceFleetId`,
+  `carrierShipId`, and `fighterShipIds`.
+- `transfer-fighters`: requires `sourceFleetId`, `sourceCarrierShipId`,
+  `targetCarrierShipId`, and `fighterShipIds`.
 
 ### populationTransfers[]
 
@@ -238,5 +254,6 @@ Compiler behavior:
 - Type mismatches are rejected.
 - Missing required fields are rejected.
 - Parser/compile errors are returned to the correction loop.
-- Runtime currently rejects `zeroTurnCommands`, `espionageActions`, and
-  `diplomaticCommand` as unsupported categories.
+- Runtime supports these zero-turn commands: `reactivate`, `detach-ships`,
+  `transfer-ships`, `merge-fleets`, `load-cargo`, `unload-cargo`,
+  `load-fighters`, `unload-fighters`, and `transfer-fighters`.
