@@ -65,6 +65,13 @@ Next focus:
    - `tests/unit/test_tui_modal_acceptors.nim`
    - `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
 
+Current focus:
+
+1. Add visual/layout polish for narrow terminals where command labels or
+   footer hints are still prone to truncation.
+2. Add one more integration-style smoke path for mixed submit confirmation
+   (fleet + ZTC + economy + diplomacy + espionage + colony commands).
+
 ## Future (Post-Playtesting)
 
 - **AI opponents** - Neural network trained on LLM-bot generated games (see `docs/ai/neural_network_training.md`)

@@ -9,6 +9,15 @@ import ../../src/engine/types/[core, fleet, ship, facilities, ground_unit,
   production, command, colony, tech, diplomacy, espionage, zero_turn]
 
 suite "TUI command staging":
+  proc summaryValue(
+      rows: seq[tuple[label: string, value: string]],
+      label: string
+  ): string =
+    for row in rows:
+      if row.label == label:
+        return row.value
+    ""
+
   test "staged entries include population transfer and terraform":
     var model = initTuiModel()
     model.ui.stagedPopulationTransfers = @[
@@ -297,3 +306,112 @@ suite "TUI command staging":
     check packet.ebpInvestment == 7
     check packet.cipInvestment == 3
     check packet.researchAllocation.technology[TechField.WeaponsTech] == 30
+
+  test "staged command category summary includes all staged categories":
+    var model = initTuiModel()
+
+    model.ui.stagedFleetCommands[1001] = FleetCommand(
+      fleetId: FleetId(1001),
+      commandType: FleetCommandType.Hold,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      roe: some(6'i32)
+    )
+    model.ui.stagedZeroTurnCommands = @[
+      ZeroTurnCommand(
+        houseId: HouseId(1),
+        commandType: ZeroTurnCommandType.Reactivate,
+        sourceFleetId: some(FleetId(1001)),
+        targetFleetId: none(FleetId)
+      )
+    ]
+    model.ui.stagedBuildCommands = @[
+      BuildCommand(
+        colonyId: ColonyId(88),
+        buildType: BuildType.Industrial,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 1
+      )
+    ]
+    model.ui.stagedRepairCommands = @[
+      RepairCommand(
+        colonyId: ColonyId(88),
+        targetType: RepairTargetType.Ship,
+        targetId: 501,
+        priority: 1
+      )
+    ]
+    model.ui.stagedScrapCommands = @[
+      ScrapCommand(
+        colonyId: ColonyId(88),
+        targetType: ScrapTargetType.Ship,
+        targetId: 502,
+        acknowledgeQueueLoss: false
+      )
+    ]
+    model.ui.stagedPopulationTransfers = @[
+      PopulationTransferCommand(
+        houseId: HouseId(1),
+        sourceColony: ColonyId(88),
+        destColony: ColonyId(89),
+        ptuAmount: 2
+      )
+    ]
+    model.ui.stagedTerraformCommands = @[
+      TerraformCommand(
+        houseId: HouseId(1),
+        colonyId: ColonyId(88),
+        startTurn: 14,
+        turnsRemaining: 0,
+        ppCost: 0,
+        targetClass: 0
+      )
+    ]
+    model.ui.stagedColonyManagement = @[
+      ColonyManagementCommand(
+        colonyId: ColonyId(88),
+        autoRepair: true,
+        autoLoadFighters: true,
+        autoLoadMarines: false,
+        taxRate: some(19'i32)
+      )
+    ]
+    model.ui.stagedTaxRate = some(19)
+    model.ui.stagedDiplomaticCommands = @[
+      DiplomaticCommand(
+        houseId: HouseId(1),
+        targetHouse: HouseId(2),
+        actionType: DiplomaticActionType.DeclareEnemy,
+        proposalId: none(ProposalId),
+        proposalType: none(ProposalType),
+        message: none(string)
+      )
+    ]
+    model.ui.stagedEspionageActions = @[
+      EspionageAttempt(
+        attacker: HouseId(1),
+        target: HouseId(2),
+        action: EspionageAction.TechTheft,
+        targetSystem: none(SystemId)
+      )
+    ]
+    model.ui.stagedEbpInvestment = 4
+    model.ui.stagedCipInvestment = 2
+
+    let summary = model.stagedCommandCategorySummary()
+    check summaryValue(summary, "Fleet orders") == "1"
+    check summaryValue(summary, "Zero-turn orders") == "1"
+    check summaryValue(summary, "Build orders") == "1"
+    check summaryValue(summary, "Repair orders") == "1"
+    check summaryValue(summary, "Scrap orders") == "1"
+    check summaryValue(summary, "Population transfers") == "1"
+    check summaryValue(summary, "Terraform orders") == "1"
+    check summaryValue(summary, "Colony management") == "1"
+    check summaryValue(summary, "Tax rate") == "19%"
+    check summaryValue(summary, "Diplomacy") == "1"
+    check summaryValue(summary, "Espionage actions") == "1"
+    check summaryValue(summary, "EBP investment") == "4 credits"
+    check summaryValue(summary, "CIP investment") == "2 credits"

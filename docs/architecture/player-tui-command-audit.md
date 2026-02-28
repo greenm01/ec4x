@@ -88,14 +88,19 @@ draft-restored, and submitted through `CommandPacket`.
 
 ### P1 - Validation and quality
 
-- Add packet coverage tests that verify all command categories can be
+- [x] Add packet coverage tests that verify all command categories can be
   produced by TUI staging and appear in submitted `CommandPacket`.
-- Add draft persistence tests for all staged command categories.
-- Add submit-summary UI rows for all staged categories so players can verify
-  intent pre-submit.
-- Ensure command dock labels map to real, reachable actions.
-- Add fleet batch smoke coverage for ZTC execution submission path
+  - `tests/unit/test_tui_command_staging.nim`
+- [x] Add draft persistence tests for all staged command categories.
+  - `tests/unit/test_tui_cache_config_snapshot.nim`
+  - `tests/unit/test_tui_draft_apply_resume.nim`
+- [x] Add submit-summary category verification coverage.
+  - `tests/unit/test_tui_command_staging.nim`
+- [x] Ensure command dock labels map to real, reachable actions.
+  - `tests/unit/test_tui_colony_action_parity.nim`
+- [x] Add fleet batch smoke coverage for ZTC execution submission path
   (beyond picker applicability and staging).
+  - `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
 
 ### P2 - Playtesting ergonomics
 

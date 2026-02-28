@@ -3,7 +3,7 @@
 import std/[unittest, options, tables]
 
 import ../../src/player/sam/sam_pkg
-import ../../src/engine/types/[core, fleet]
+import ../../src/engine/types/[core, fleet, colony]
 
 proc pressKey(
     sam: var SamInstance[TuiModel],
@@ -148,3 +148,63 @@ suite "Fleet batch keyboard smoke":
     check 1 notin sam.state.ui.stagedFleetCommands
     check sam.state.ui.stagedFleetCommands[5].commandType == FleetCommandType.Hold
     check sam.state.ui.stagedFleetCommands[6].commandType == FleetCommandType.Hold
+
+  test "batch ZTC execution uses X-selected fleets only":
+    var sam = initTuiSam()
+    var model = initTuiModel()
+    model.seedFleetListState()
+
+    # Shape data so Reactivate is the only shared ZTC option.
+    model.view.fleets[2].location = 11
+    model.view.fleets[2].statusLabel = "Reserve"
+    model.view.fleets[3].location = 12
+    model.view.fleets[3].statusLabel = "Reserve"
+    model.view.ownFleetsById[5] = Fleet(
+      id: FleetId(5),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      status: FleetStatus.Reserve,
+      ships: @[]
+    )
+    model.view.ownFleetsById[6] = Fleet(
+      id: FleetId(6),
+      houseId: HouseId(1),
+      location: SystemId(12),
+      status: FleetStatus.Reserve,
+      ships: @[]
+    )
+    model.view.ownColoniesBySystem[11] = Colony(
+      id: ColonyId(70),
+      owner: HouseId(1),
+      systemId: SystemId(11)
+    )
+    model.view.ownColoniesBySystem[12] = Colony(
+      id: ColonyId(71),
+      owner: HouseId(1),
+      systemId: SystemId(12)
+    )
+
+    sam.setInitialState(model)
+
+    # Select A5 (down twice) and A6 (down once).
+    sam.pressKey(KeyCode.KeyDown)
+    sam.pressKey(KeyCode.KeyDown)
+    sam.pressKey(KeyCode.KeyX)
+    sam.pressKey(KeyCode.KeyDown)
+    sam.pressKey(KeyCode.KeyX)
+
+    # Open ZTC picker in batch mode and commit first (Reactivate).
+    sam.pressKey(KeyCode.KeyZ)
+    check sam.state.ui.mode == ViewMode.FleetDetail
+    check sam.state.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker
+    check sam.state.ui.fleetDetailModal.batchFleetIds == @[5, 6]
+    sam.pressKey(KeyCode.KeyEnter)
+
+    check sam.state.ui.stagedZeroTurnCommands.len == 2
+    var stagedSources: seq[int] = @[]
+    for cmd in sam.state.ui.stagedZeroTurnCommands:
+      if cmd.sourceFleetId.isSome:
+        stagedSources.add(int(cmd.sourceFleetId.get()))
+    check 5 in stagedSources
+    check 6 in stagedSources
+    check 1 notin stagedSources
