@@ -2681,6 +2681,22 @@ proc buildSystemPickerListForCommand*(
       if row.systemId in model.view.knownEnemyColonySystemIds:
         knownEnemyStarbases.incl(row.systemId)
 
+  var sourceFleetSet = initHashSet[int]()
+  for fleetId in sourceFleetIds:
+    sourceFleetSet.incl(fleetId)
+
+  var colonizeTargetsByOthers = initHashSet[int]()
+  for fleet in model.view.fleets:
+    if fleet.owner != model.view.viewingHouse:
+      continue
+    if fleet.id in sourceFleetSet:
+      continue
+    if fleet.command != CmdColonize:
+      continue
+    if fleet.destinationSystemId <= 0:
+      continue
+    colonizeTargetsByOthers.incl(fleet.destinationSystemId)
+
   case cmdType
   of FleetCommandType.GuardStarbase:
     result.systems = filterSystemsBySet(
@@ -2718,8 +2734,11 @@ proc buildSystemPickerListForCommand*(
     )
     result.emptyMessage = "No known enemy starbases to hack"
   of FleetCommandType.Colonize:
+    var excludedColonizeTargets = knownColonizedSystems
+    for systemId in colonizeTargetsByOthers.items:
+      excludedColonizeTargets.incl(systemId)
     result.systems = filterSystemsExcludingSet(
-      allSystems, knownColonizedSystems
+      allSystems, excludedColonizeTargets
     )
     result.emptyMessage =
       "No known uncolonized systems available"

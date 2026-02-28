@@ -527,6 +527,41 @@ suite "TUI command staging":
     check picker.systems.len == 1
     check picker.systems[0].systemId == 33
 
+  test "colonize picker excludes systems targeted by other fleets":
+    var model = initTuiModel()
+    model.view.systems[(0, 0)] = SystemInfo(id: 41, name: "OpenA")
+    model.view.systems[(1, 0)] = SystemInfo(id: 42, name: "Taken")
+    model.view.systems[(2, 0)] = SystemInfo(id: 43, name: "OpenB")
+    model.view.fleets = @[
+      FleetInfo(
+        id: 401,
+        owner: 1,
+        command: CmdColonize,
+        destinationSystemId: 42
+      ),
+      FleetInfo(
+        id: 402,
+        owner: 1,
+        command: CmdColonize,
+        destinationSystemId: 43
+      )
+    ]
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.Colonize,
+      @[402]
+    )
+    var has41 = false
+    var has42 = false
+    var has43 = false
+    for row in picker.systems:
+      if row.systemId == 41: has41 = true
+      if row.systemId == 42: has42 = true
+      if row.systemId == 43: has43 = true
+    check has41
+    check has43
+    check not has42
+
   test "command picker filters irrelevant single-fleet missions":
     var model = initTuiModel()
     model.view.fleets = @[
