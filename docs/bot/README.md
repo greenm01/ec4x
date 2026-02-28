@@ -1,6 +1,6 @@
 # EC4X Bot Architecture (LLM Playtesting)
 
-**Status:** Conceptual Design / Playtesting Infrastructure
+**Status:** Active Implementation Plan
 **Last Updated:** 2026-02-27
 
 ## Overview
@@ -51,7 +51,17 @@ Once the single-turn loop is functional, we will build a simulation script (`scr
 
 ## Next Steps
 
-1. **State Contextualization Script:** Build a Nim module that takes a `PlayerState` and formats it into a clean, LLM-readable Markdown report.
-2. **Review the Command Schema:** Ensure the prompt generator uses the [LLM Command Prompt Schema](llm_prompt_schema.md) to define valid actions for the bot.
-3. **Manual LLM Testing:** Feed this report manually to an LLM to verify it can make coherent strategic decisions.
-4. **Bot Integration:** Build the headless Nostr loop and connect it to an LLM API.
+Implementation tracker:
+- `docs/bot/TODO.md`
+
+Locked v1 decisions:
+- Output contract is strict JSON parsed by bot schema, then compiled to
+  `CommandPacket`.
+- Provider target is OpenAI-compatible chat endpoint.
+- Direct KDL emission is deferred.
+
+Immediate next steps:
+1. Build state contextualization module from `PlayerState`.
+2. Implement strict JSON draft parser and compiler to `CommandPacket`.
+3. Add correction loop and bounded retries for invalid output.
+4. Run human-vs-LLM playtests and harvest regressions.

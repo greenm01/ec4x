@@ -4,9 +4,16 @@
 **Last Updated:** 2026-02-27
 
 ## Overview
-To ensure the automated LLM bot understands the full scope of actions it can take during a turn, the bot's prompt must include a concise, token-efficient summary of the available command schema. This schema maps directly to the KDL order format the game engine expects (detailed in `docs/engine/command-format.md`).
+To ensure the automated LLM bot understands the full scope of actions it can
+take during a turn, the bot prompt must include a concise, token-efficient
+summary of available commands.
 
-When prompting the LLM, inject the following text (or a dynamically generated equivalent based on tech unlocks) to guide its order generation.
+For v1 runtime integration, the LLM must return strict JSON that is parsed by
+the bot and compiled into `CommandPacket`. KDL examples remain useful as
+semantic reference, but direct KDL output is deferred.
+
+When prompting the LLM, inject the following command reference (or a dynamic
+equivalent based on tech unlocks) to guide order generation.
 
 ---
 
@@ -85,3 +92,148 @@ Inside `diplomacy { ... }` block.
 When we generate the system prompt for the LLM, we should append this schema text directly beneath the current turn's `PlayerState` summary. 
 
 **Note on Dynamic Context:** As an optimization to save tokens, the prompt generator script could filter out unavailable options based on the player's tech level (e.g., hiding `ship dreadnought` if the required Construction Tech level has not been reached).
+
+---
+
+## v1 JSON Output Contract (Runtime)
+
+The LLM output must be valid JSON with this top-level shape:
+
+```json
+{
+  "turn": 12,
+  "houseId": 1,
+  "fleetCommands": [],
+  "buildCommands": [],
+  "zeroTurnCommands": [],
+  "populationTransfers": [],
+  "terraformCommands": [],
+  "colonyManagement": [],
+  "espionageActions": [],
+  "diplomaticCommand": null,
+  "researchAllocation": null,
+  "ebpInvestment": 0,
+  "cipInvestment": 0
+}
+```
+
+### fleetCommands[]
+
+```json
+{
+  "fleetId": 101,
+  "commandType": "move",
+  "targetSystemId": 22,
+  "targetFleetId": null,
+  "roe": 6
+}
+```
+
+Rules:
+- `commandType` is required and must be known by compiler.
+- `targetSystemId` is required for system-target commands.
+- `targetFleetId` is required for `join-fleet`.
+- `roe` optional; if present must be 0-10.
+
+### buildCommands[]
+
+```json
+{
+  "colonyId": 12,
+  "buildType": "ship",
+  "shipClass": "destroyer",
+  "facilityClass": null,
+  "groundClass": null,
+  "quantity": 1
+}
+```
+
+Rules:
+- `buildType` one of `ship|facility|ground|industrial`.
+- Required class field depends on `buildType`.
+- `quantity` required for ship/ground/industrial; default 1 for facility.
+
+### zeroTurnCommands[]
+
+```json
+{
+  "commandType": "reactivate",
+  "sourceFleetId": 101,
+  "targetFleetId": null,
+  "shipIndices": [],
+  "cargoType": null,
+  "quantity": null
+}
+```
+
+Only supported v1 subset should be emitted by model prompt.
+
+### populationTransfers[]
+
+```json
+{
+  "sourceColonyId": 12,
+  "destColonyId": 13,
+  "ptuAmount": 1
+}
+```
+
+### terraformCommands[]
+
+```json
+{
+  "colonyId": 12
+}
+```
+
+### colonyManagement[]
+
+```json
+{
+  "colonyId": 12,
+  "taxRate": 20,
+  "autoRepair": true,
+  "autoLoadMarines": false,
+  "autoLoadFighters": false
+}
+```
+
+### diplomaticCommand
+
+```json
+{
+  "targetHouseId": 2,
+  "action": "declare-hostile",
+  "proposalId": null,
+  "proposedState": null
+}
+```
+
+### espionageActions[]
+
+```json
+{
+  "operation": "tech-theft",
+  "targetHouseId": 2,
+  "targetSystemId": null
+}
+```
+
+### researchAllocation
+
+```json
+{
+  "economic": 20,
+  "science": 10,
+  "fields": {
+    "cst": 5,
+    "wep": 5
+  }
+}
+```
+
+Compiler behavior:
+- Unknown fields are rejected.
+- Type mismatches are rejected.
+- Missing required fields are rejected.
+- Parser/compile errors are returned to the correction loop.
