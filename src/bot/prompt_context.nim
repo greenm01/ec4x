@@ -2,7 +2,7 @@
 
 import std/[algorithm, options, strformat, strutils, tables]
 
-import ../engine/types/[core, player_state]
+import ../engine/types/[core, player_state, event]
 
 proc optIntLabel(value: Option[int32], fallback: string = "?"): string =
   if value.isSome:
@@ -27,6 +27,63 @@ proc sortedVisibleSystems(state: PlayerState): seq[VisibleSystem] =
   result.sort(proc(a, b: VisibleSystem): int =
     cmp(int(a.systemId), int(b.systemId))
   )
+
+
+proc buildCombatSummary(state: PlayerState): string =
+  var combatEvents = 0
+  var lines: seq[string] = @[]
+  
+  var sysBuckets = initTable[SystemId, seq[GameEvent]]()
+  for evt in state.turnEvents:
+    if evt.systemId.isNone: continue
+    
+    let isCombat = case evt.eventType
+      of GameEventType.CombatTheaterBegan, GameEventType.CombatTheaterCompleted,
+         GameEventType.RaiderAmbush, GameEventType.ShipDestroyed,
+         GameEventType.FleetRetreat, GameEventType.BombardmentRoundCompleted,
+         GameEventType.SystemCaptured, GameEventType.ColonyCaptured,
+         GameEventType.InvasionRepelled, GameEventType.CombatResult:
+        true
+      else: false
+      
+    if isCombat:
+      combatEvents += 1
+      let sysId = evt.systemId.get()
+      if not sysBuckets.hasKey(sysId):
+        sysBuckets[sysId] = @[]
+      sysBuckets[sysId].add(evt)
+
+  if combatEvents == 0:
+    return "- No combat last turn."
+
+  for sysId, events in sysBuckets.pairs():
+    var outcome = "Ongoing"
+    var details: seq[string] = @[]
+    
+    for evt in events:
+      case evt.eventType
+      of GameEventType.CombatResult:
+        outcome = evt.outcome.get("Unknown")
+      of GameEventType.ShipDestroyed:
+        let sqd = evt.destroyedSquadronId.get("?")
+        let crit = if evt.criticalHit.get(false): " (CRITICAL)" else: ""
+        details.add("Lost " & sqd & crit)
+      of GameEventType.FleetRetreat:
+        let fId = evt.retreatingFleetId.get(FleetId(0))
+        let cas = evt.retreatCasualties.get(0)
+        details.add("Fleet " & $int(fId) & " retreated (pursuit casualties: " & $cas & ")")
+      of GameEventType.SystemCaptured, GameEventType.ColonyCaptured:
+        outcome = "Victory (Captured)"
+      of GameEventType.InvasionRepelled:
+        outcome = "Defeat (Repelled)"
+      else:
+        discard
+        
+    let sysName = if state.visibleSystems.hasKey(sysId): state.visibleSystems[sysId].name else: "System " & $int(sysId)
+    let detStr = if details.len > 0: " | " & details.join(", ") else: ""
+    lines.add("- Battle at " & sysName & ": " & outcome & detStr)
+
+  return lines.join("\n")
 
 proc buildTurnContext*(state: PlayerState): string =
   var lines: seq[string] = @[]
@@ -77,6 +134,7 @@ proc buildTurnContext*(state: PlayerState): string =
 
   lines.add("")
   lines.add("## Last Turn Events")
-  lines.add(&"- Event Count: {state.turnEvents.len}")
+  lines.add(buildCombatSummary(state))
+  lines.add(&"- Total Event Count (All Types): {state.turnEvents.len}")
 
   lines.join("\n")
