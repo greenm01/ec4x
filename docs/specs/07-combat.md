@@ -10,6 +10,10 @@ This section covers combat mechanics, engagement rules, and the progressive natu
 
 Planetary conquest requires methodical progression through three combat phases. Your attacking fleets must win each theater before advancing to the next—no shortcuts, no bypassing defenses.
 
+1. **Space Combat:** Deep space engagement against mobile defenders.
+2. **Orbital Combat:** Assault against fortified starbases and orbital guards.
+3. **Planetary Combat:** Bombardment of surface defenses and marine invasion.
+
 ### 7.1.1 Theater Progression
 
 **Space Combat** (First Theater)
