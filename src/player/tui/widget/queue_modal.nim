@@ -134,12 +134,15 @@ proc render*(
   )
   let tableHeight = tableView.renderHeight(visibleRows)
 
-  let modalArea = widget.modal.calculateArea(
-    viewport, tableWidth, tableHeight + 2
-  )
   let title = "QUEUE - " & state.colonyName
+  let footerText = "[PgUp/PgDn]Scroll  [D]elete  [Esc]Close"
+  let finalWidth = max(tableWidth, max(title.len, footerText.len))
+
+  let modalArea = widget.modal.calculateArea(
+    viewport, finalWidth, tableHeight + 2
+  )
   widget.modal.title(title).renderWithFooter(
-    modalArea, buf, "[PgUp/PgDn]Scroll  [D]elete  [Esc]Close"
+    modalArea, buf, footerText
   )
 
   let contentArea = widget.modal.contentArea(modalArea, hasFooter = true)

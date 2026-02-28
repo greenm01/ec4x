@@ -57,10 +57,13 @@ Priority backlog:
 
 Next focus:
 
-1. Add real TUI end-to-end smoke tests for fleet multi-select and batch
+1. [x] Add real TUI end-to-end smoke tests for fleet multi-select and batch
    operations under live keyboard event handling.
-2. Expand submit/resume regression tests for fleet-detail batch snapshot
+   - `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
+2. [x] Expand submit/resume regression tests for fleet-detail batch snapshot
    behavior (ROE/Command/ZTC) across cursor movement and sort changes.
+   - `tests/unit/test_tui_modal_acceptors.nim`
+   - `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
 
 ## Future (Post-Playtesting)
 

@@ -430,12 +430,15 @@ proc render*(
   let tableWidth = tableWidthFromColumns(
     columns, maxTableWidth, showBorders = true
   )
+  let title = "BUILD - " & state.colonyName
+  let footerText = "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab/→/L]Next  [←/H]Prev  [Esc]Close"
+  let finalWidth = max(tableWidth, max(title.len, footerText.len))
+
   let modalArea = widget.modal.calculateArea(
-    viewport, tableWidth, contentHeight
+    viewport, finalWidth, contentHeight
   )
 
   # Render modal frame with title
-  let title = "BUILD - " & state.colonyName
   widget.modal.title(title).renderWithSeparator(modalArea, buf, 2)
 
   # Get inner content area

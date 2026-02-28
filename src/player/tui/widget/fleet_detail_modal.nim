@@ -757,7 +757,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       FleetDetailFooterHeight
     if desiredContentHeight != contentHeight:
       effectiveModalArea = modal.calculateArea(viewport,
-        subModalInnerWidth,
+        finalInnerWidth,
         desiredContentHeight)
 
   if hasFooter:
