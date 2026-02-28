@@ -66,6 +66,9 @@ Goal: Improve server-side calculation efficiency for large fleet battles and gen
 3. [ ] **Stalemate Detection:** Replace the 5-round wait with instantaneous mathematical stalemate detection to trigger Desperation (+2 DRM) or mutual withdrawal immediately.
 4. [ ] **Targeted Criticals:** Update critical hit logic to prioritize highest-value assets and generate specific "High-Value Asset Destroyed" log strings for the AAR.
 
+
+5. [ ] **Narrative AAR Generation:** Build structured `GameEvent` logs during hit application and retreat phases to be transported over Nostr inside the 30403 (Turn Results) payload, so the `ec4x-player` TUI can render cinematic Battle Reports.
+
 ## Future (Post-Playtesting)
 
 - AI opponents and automation:
