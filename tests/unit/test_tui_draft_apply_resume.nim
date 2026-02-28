@@ -168,3 +168,107 @@ suite "TUI draft apply resume":
 
     # Optimistic replay should update displayed fleet command from Hold.
     check model.view.fleets[0].commandLabel != "Hold"
+
+  test "applyOrderDraft replays fleet-affecting commands deterministically":
+    var model = initTuiModel()
+    model.view.viewingHouse = 1
+    model.view.turn = 14
+    model.view.fleets = @[
+      FleetInfo(
+        id: 100,
+        name: "A1",
+        location: 11,
+        locationName: "Columba",
+        shipCount: 1,
+        command: int(FleetCommandType.Blockade),
+        commandLabel: "Blockade",
+        statusLabel: "Reserve",
+        destinationLabel: "-",
+        owner: 1,
+        roe: 6,
+        hasCombatShips: true
+      ),
+      FleetInfo(
+        id: 101,
+        name: "A2",
+        location: 11,
+        locationName: "Columba",
+        shipCount: 1,
+        command: int(FleetCommandType.Hold),
+        commandLabel: "Hold",
+        statusLabel: "Active",
+        destinationLabel: "-",
+        owner: 1,
+        roe: 6,
+        hasCombatShips: true
+      )
+    ]
+    model.view.ownFleetsById[100] = Fleet(
+      id: FleetId(100),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      ships: @[ShipId(201)],
+      status: FleetStatus.Reserve
+    )
+    model.view.ownFleetsById[101] = Fleet(
+      id: FleetId(101),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      ships: @[ShipId(202)],
+      status: FleetStatus.Active
+    )
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      model.ui.fleetConsoleFleetsBySystem
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+
+    var packet = CommandPacket(
+      houseId: HouseId(1),
+      turn: 14,
+      zeroTurnCommands: @[
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.Reactivate,
+          sourceFleetId: some(FleetId(100)),
+          targetFleetId: none(FleetId)
+        )
+      ],
+      fleetCommands: @[
+        FleetCommand(
+          fleetId: FleetId(100),
+          commandType: FleetCommandType.Move,
+          targetSystem: some(SystemId(12)),
+          targetFleet: none(FleetId),
+          roe: some(4'i32)
+        ),
+        FleetCommand(
+          fleetId: FleetId(101),
+          commandType: FleetCommandType.Rendezvous,
+          targetSystem: some(SystemId(13)),
+          targetFleet: none(FleetId),
+          roe: none(int32)
+        )
+      ]
+    )
+
+    model.applyOrderDraft(packet)
+
+    check model.ui.stagedZeroTurnCommands.len == 1
+    check model.ui.stagedFleetCommands.len == 2
+
+    var fleetA1 = none(FleetInfo)
+    var fleetA2 = none(FleetInfo)
+    for fleet in model.view.fleets:
+      if fleet.id == 100:
+        fleetA1 = some(fleet)
+      elif fleet.id == 101:
+        fleetA2 = some(fleet)
+
+    check fleetA1.isSome
+    check fleetA2.isSome
+    check fleetA1.get().statusLabel == "Active"
+    check fleetA1.get().commandLabel == "Move"
+    check fleetA1.get().destinationSystemId == 12
+    check fleetA1.get().roe == 4
+    check fleetA2.get().commandLabel == "Rendezvous"
+    check fleetA2.get().destinationSystemId == 13

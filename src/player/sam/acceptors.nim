@@ -2470,32 +2470,36 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = ""
     of ActionKind.expertSubmit:
       let inputStr = model.ui.expertModeInput.value()
-      let matches = getAutocompleteSuggestions(model, inputStr)
-      if matches.len > 0:
-        clampExpertPaletteSelection(model)
-        let selection = model.ui.expertPaletteSelection
-        if selection >= 0 and selection < matches.len:
-          let chosen = matches[selection]
-          
-          # Basic auto-complete insertion
-          let tokens = tokenize(inputStr)
-          if tokens.len > 0:
-            var targetToken = tokens[^1]
-            if inputStr.endsWith(" "): targetToken = ""
-            
-            var newInput = inputStr
-            if targetToken.len > 0:
-              newInput = inputStr[0 ..< inputStr.len - targetToken.len]
-            
-            let appendText = if chosen.text.contains(" "): "\"" & chosen.text & "\"" else: chosen.text
-            model.ui.expertModeInput.setText(newInput & appendText & " ")
-            model.clearExpertFeedback()
-            model.ui.expertPaletteSelection = 0
-            return
-
-      # Parse and execute expert mode command
       let cmdAst = parseExpertCommand(inputStr)
-      
+      if cmdAst.kind == ExpertCommandKind.ParseError:
+        let matches = getAutocompleteSuggestions(model, inputStr)
+        if matches.len > 0:
+          clampExpertPaletteSelection(model)
+          let selection = model.ui.expertPaletteSelection
+          if selection >= 0 and selection < matches.len:
+            let chosen = matches[selection]
+
+            # Basic auto-complete insertion
+            let tokens = tokenize(inputStr)
+            if tokens.len > 0:
+              var targetToken = tokens[^1]
+              if inputStr.endsWith(" "):
+                targetToken = ""
+
+              var newInput = inputStr
+              if targetToken.len > 0:
+                newInput = inputStr[0 ..< inputStr.len - targetToken.len]
+
+              let appendText =
+                if chosen.text.contains(" "):
+                  "\"" & chosen.text & "\""
+                else:
+                  chosen.text
+              model.ui.expertModeInput.setText(newInput & appendText & " ")
+              model.clearExpertFeedback()
+              model.ui.expertPaletteSelection = 0
+              return
+
       case cmdAst.kind
       of ExpertCommandKind.ParseError:
         model.setExpertFeedback("Error: " & cmdAst.errorMessage)
@@ -2504,11 +2508,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.addToExpertHistory(inputStr)
       of ExpertCommandKind.MetaClear:
         let count = model.stagedCommandCount()
-        model.ui.stagedFleetCommands.clear()
-        model.ui.stagedBuildCommands.setLen(0)
-        model.ui.stagedRepairCommands.setLen(0)
-        model.ui.stagedScrapCommands.setLen(0)
-        model.ui.stagedColonyManagement.setLen(0)
+        model.clearStagedCommands()
         model.ui.modifiedSinceSubmit = true
         model.setExpertFeedback("Cleared " & $count & " staged commands")
         model.addToExpertHistory(inputStr)
@@ -2882,6 +2882,25 @@ proc stagedBuildIdx(
         return idx
   -1
 
+proc syncStagedBuildMirrors(model: var TuiModel) =
+  model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
+  if model.ui.queueModal.active:
+    model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
+
+proc decrementStagedBuildAt(
+    model: var TuiModel,
+    idx: int
+): StageToggleResult =
+  if idx < 0 or idx >= model.ui.stagedBuildCommands.len:
+    return StageToggleResult.NoChange
+  if model.ui.stagedBuildCommands[idx].quantity > 1:
+    model.ui.stagedBuildCommands[idx].quantity -= 1
+    syncStagedBuildMirrors(model)
+    return StageToggleResult.Updated
+  model.ui.stagedBuildCommands.delete(idx)
+  syncStagedBuildMirrors(model)
+  StageToggleResult.Removed
+
 proc incSelectedQty(model: var TuiModel) =
   if model.ui.buildModal.focus != BuildModalFocus.BuildList:
     return
@@ -2932,9 +2951,7 @@ proc incSelectedQty(model: var TuiModel) =
     model.ui.stagedBuildCommands[existingIdx].quantity += 1
   else:
     model.ui.stagedBuildCommands.add(candidate)
-  model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
-  if model.ui.queueModal.active:
-    model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
+  syncStagedBuildMirrors(model)
   let c2Used = optimisticC2Used(
     model.view.commandUsed,
     model.ui.stagedBuildCommands,
@@ -2961,14 +2978,9 @@ proc decSelectedQty(model: var TuiModel) =
   let existingIdx = stagedBuildIdx(model.ui.buildModal, key)
   if existingIdx < 0:
     return
-  if model.ui.stagedBuildCommands[existingIdx].quantity > 1:
-    model.ui.stagedBuildCommands[existingIdx].quantity -= 1
-  else:
-    model.ui.stagedBuildCommands.delete(existingIdx)
-  model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
-  if model.ui.queueModal.active:
-    model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
-  model.ui.statusMessage = "Qty -1"
+  let result = decrementStagedBuildAt(model, existingIdx)
+  if result != StageToggleResult.NoChange:
+    model.ui.statusMessage = "Qty -1"
 
 proc switchBuildCategory(model: var TuiModel, reverse: bool) =
   if reverse:
@@ -3169,10 +3181,8 @@ proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.queueModal.selectedIdx >= indices.len:
       return
     let idx = indices[model.ui.queueModal.selectedIdx]
-    if model.ui.stagedBuildCommands[idx].quantity > 1:
-      model.ui.stagedBuildCommands[idx].quantity -= 1
-    else:
-      model.ui.stagedBuildCommands.delete(idx)
+    let result = decrementStagedBuildAt(model, idx)
+    if result == StageToggleResult.Removed:
       let newCount = max(0, indices.len - 1)
       if newCount == 0:
         model.ui.queueModal.selectedIdx = 0
@@ -3180,12 +3190,8 @@ proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.queueModal.selectedIdx = min(
           model.ui.queueModal.selectedIdx, newCount - 1
         )
-    model.ui.queueModal.stagedBuildCommands =
-      model.ui.stagedBuildCommands
-    if model.ui.buildModal.active:
-      model.ui.buildModal.stagedBuildCommands =
-        model.ui.stagedBuildCommands
-    model.ui.statusMessage = "Deleted"
+    if result != StageToggleResult.NoChange:
+      model.ui.statusMessage = "Qty -1"
   else:
     discard
 
@@ -3217,18 +3223,6 @@ proc refreshTransferModalStatus(model: var TuiModel) =
       1,
       maxPtu
     )
-
-proc findStagedTransferIdx(
-    model: TuiModel,
-    sourceId: int,
-    destId: int
-): int =
-  let sourceKey = ColonyId(sourceId.uint32)
-  let destKey = ColonyId(destId.uint32)
-  for i, staged in model.ui.stagedPopulationTransfers:
-    if staged.sourceColony == sourceKey and staged.destColony == destKey:
-      return i
-  -1
 
 proc colonyById(model: TuiModel, colonyId: int): Option[Colony] =
   for colony in model.view.ownColoniesBySystem.values:
@@ -3401,30 +3395,6 @@ proc buildMaintenanceCandidates(
       queueRisk: false
     ))
 
-proc findStagedRepairIdx(
-    model: TuiModel,
-    colonyId: ColonyId,
-    targetType: RepairTargetType,
-    targetId: uint32
-): int =
-  for i, cmd in model.ui.stagedRepairCommands:
-    if cmd.colonyId == colonyId and cmd.targetType == targetType and
-        cmd.targetId == targetId:
-      return i
-  -1
-
-proc findStagedScrapIdx(
-    model: TuiModel,
-    colonyId: ColonyId,
-    targetType: ScrapTargetType,
-    targetId: uint32
-): int =
-  for i, cmd in model.ui.stagedScrapCommands:
-    if cmd.colonyId == colonyId and cmd.targetType == targetType and
-        cmd.targetId == targetId:
-      return i
-  -1
-
 proc populationTransferModalAcceptor*(
     model: var TuiModel,
     proposal: Proposal
@@ -3585,17 +3555,11 @@ proc populationTransferModalAcceptor*(
       ptuAmount: int32(amount)
     )
 
-    var replaced = false
-    for i in 0 ..< model.ui.stagedPopulationTransfers.len:
-      if model.ui.stagedPopulationTransfers[i].sourceColony == cmd.sourceColony and
-          model.ui.stagedPopulationTransfers[i].destColony == cmd.destColony:
-        model.ui.stagedPopulationTransfers[i] = cmd
-        replaced = true
-        break
-    if not replaced:
-      model.ui.stagedPopulationTransfers.add(cmd)
+    let result = model.upsertPopulationTransferCommand(cmd)
+    if result == StageToggleResult.NoChange:
+      model.ui.statusMessage = "Transfer unchanged"
+      return
 
-    model.ui.modifiedSinceSubmit = true
     model.ui.populationTransferModal.active = false
     model.ui.statusMessage = "Staged transfer: " & $amount & " PTU"
 
@@ -3609,12 +3573,11 @@ proc populationTransferModalAcceptor*(
       model.ui.statusMessage = "Invalid transfer destination"
       return
     let destId = model.ui.populationTransferModal.destinationIds[idx]
-    let stagedIdx = findStagedTransferIdx(model, sourceId, destId)
-    if stagedIdx < 0:
+    let result = model.removePopulationTransferRoute(sourceId, destId)
+    if result != StageToggleResult.Removed:
       model.ui.statusMessage = "No staged transfer for route"
       return
-    model.ui.stagedPopulationTransfers.delete(stagedIdx)
-    model.ui.modifiedSinceSubmit = true
+
     model.ui.populationTransferModal.ptuAmount = 1
     refreshTransferModalStatus(model)
     model.ui.statusMessage = "Removed staged transfer"
@@ -3632,24 +3595,15 @@ proc populationTransferModalAcceptor*(
         model.ui.statusMessage = "Terraforming already active"
         return
 
-    let colonyKey = ColonyId(colonyId.uint32)
-    for idx, cmd in model.ui.stagedTerraformCommands:
-      if cmd.colonyId == colonyKey:
-        model.ui.stagedTerraformCommands.delete(idx)
-        model.ui.modifiedSinceSubmit = true
-        model.ui.statusMessage = "Removed staged terraforming"
-        return
-
-    model.ui.stagedTerraformCommands.add(TerraformCommand(
-      houseId: HouseId(model.view.viewingHouse),
-      colonyId: colonyKey,
-      startTurn: int32(model.view.turn),
-      turnsRemaining: 0,
-      ppCost: 0,
-      targetClass: 0
-    ))
-    model.ui.modifiedSinceSubmit = true
-    model.ui.statusMessage = "Staged terraforming"
+    let result = model.toggleTerraformCommandForColony(
+      HouseId(model.view.viewingHouse),
+      ColonyId(colonyId.uint32),
+      model.view.turn
+    )
+    if result == StageToggleResult.Removed:
+      model.ui.statusMessage = "Removed staged terraforming"
+    else:
+      model.ui.statusMessage = "Staged terraforming"
 
   else:
     discard
@@ -3766,49 +3720,30 @@ proc maintenanceModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     let colonyId = ColonyId(model.ui.maintenanceModal.colonyId.uint32)
 
     if model.ui.maintenanceModal.mode == MaintenanceMode.Repair:
-      let stagedIdx = findStagedRepairIdx(
-        model,
+      let stagedIdx = model.findStagedRepairIdx(
         colonyId,
         candidate.repairType,
         candidate.targetId
       )
       if stagedIdx >= 0:
-        model.ui.stagedRepairCommands.delete(stagedIdx)
-        model.ui.modifiedSinceSubmit = true
+        discard model.toggleRepairCommandForCandidate(colonyId, candidate)
         model.ui.statusMessage = "Removed staged repair command"
         return
       if availableRepairSlots(model, int(colonyId)) <= 0:
         model.ui.statusMessage = "No repair dock capacity available"
         return
-      model.ui.stagedRepairCommands.add(RepairCommand(
-        colonyId: colonyId,
-        targetType: candidate.repairType,
-        targetId: candidate.targetId,
-        priority: 1
-      ))
-      model.ui.modifiedSinceSubmit = true
+      discard model.toggleRepairCommandForCandidate(colonyId, candidate)
       model.ui.statusMessage = "Staged repair command"
       return
 
-    let stagedIdx = findStagedScrapIdx(
-      model,
+    let toggleResult = model.toggleScrapCommandForCandidate(
       colonyId,
-      candidate.scrapType,
-      candidate.targetId
+      candidate
     )
-    if stagedIdx >= 0:
-      model.ui.stagedScrapCommands.delete(stagedIdx)
-      model.ui.modifiedSinceSubmit = true
+    if toggleResult == StageToggleResult.Removed:
       model.ui.statusMessage = "Removed staged scrap command"
       return
 
-    model.ui.stagedScrapCommands.add(ScrapCommand(
-      colonyId: colonyId,
-      targetType: candidate.scrapType,
-      targetId: candidate.targetId,
-      acknowledgeQueueLoss: candidate.queueRisk
-    ))
-    model.ui.modifiedSinceSubmit = true
     if candidate.queueRisk:
       model.ui.statusMessage =
         "Staged scrap command (queue-loss acknowledged)"

@@ -708,3 +708,79 @@ suite "TUI command staging":
     check FleetCommandType.JoinFleet notin commands
     check FleetCommandType.Invade notin commands
     check FleetCommandType.Colonize notin commands
+
+  test "clearStagedCommands resets all categories and optimistic fleet view":
+    var model = initTuiModel()
+    model.view.fleets = @[
+      FleetInfo(
+        id: 801,
+        name: "A1",
+        location: 21,
+        command: int(FleetCommandType.Hold),
+        commandLabel: "Hold",
+        destinationLabel: "-",
+        owner: 1,
+        roe: 6,
+        hasCombatShips: true
+      )
+    ]
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      model.ui.fleetConsoleFleetsBySystem
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+
+    model.ui.stagedZeroTurnCommands = @[
+      ZeroTurnCommand(commandType: ZeroTurnCommandType.Reactivate)
+    ]
+    model.ui.stagedBuildCommands = @[
+      BuildCommand(colonyId: ColonyId(1), buildType: BuildType.Industrial)
+    ]
+    model.ui.stagedRepairCommands = @[
+      RepairCommand(colonyId: ColonyId(1), targetType: RepairTargetType.Ship)
+    ]
+    model.ui.stagedScrapCommands = @[
+      ScrapCommand(colonyId: ColonyId(1), targetType: ScrapTargetType.Ship)
+    ]
+    model.ui.stagedPopulationTransfers = @[
+      PopulationTransferCommand(houseId: HouseId(1))
+    ]
+    model.ui.stagedTerraformCommands = @[
+      TerraformCommand(houseId: HouseId(1))
+    ]
+    model.ui.stagedColonyManagement = @[
+      ColonyManagementCommand(colonyId: ColonyId(1))
+    ]
+    model.ui.stagedDiplomaticCommands = @[
+      DiplomaticCommand(houseId: HouseId(1), targetHouse: HouseId(2))
+    ]
+    model.ui.stagedEspionageActions = @[
+      EspionageAttempt(attacker: HouseId(1), target: HouseId(2))
+    ]
+    model.ui.stagedEbpInvestment = 4
+    model.ui.stagedCipInvestment = 3
+    model.ui.stagedTaxRate = some(18)
+
+    model.stageFleetCommand(FleetCommand(
+      fleetId: FleetId(801),
+      commandType: FleetCommandType.Move,
+      targetSystem: some(SystemId(22))
+    ))
+    check model.view.fleets[0].commandLabel == "Move"
+
+    model.clearStagedCommands()
+
+    check model.stagedCommandCount() == 0
+    check model.ui.stagedFleetCommands.len == 0
+    check model.ui.stagedZeroTurnCommands.len == 0
+    check model.ui.stagedBuildCommands.len == 0
+    check model.ui.stagedRepairCommands.len == 0
+    check model.ui.stagedScrapCommands.len == 0
+    check model.ui.stagedPopulationTransfers.len == 0
+    check model.ui.stagedTerraformCommands.len == 0
+    check model.ui.stagedColonyManagement.len == 0
+    check model.ui.stagedDiplomaticCommands.len == 0
+    check model.ui.stagedEspionageActions.len == 0
+    check model.ui.stagedEbpInvestment == 0
+    check model.ui.stagedCipInvestment == 0
+    check model.ui.stagedTaxRate.isNone
+    check model.view.fleets[0].commandLabel == "Hold"

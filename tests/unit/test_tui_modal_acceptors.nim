@@ -4,7 +4,7 @@ import std/[unittest, options, tables]
 
 import ../../src/player/sam/sam_pkg
 import ../../src/engine/types/[core, fleet, ship, colony, production,
-  combat, facilities, command]
+  combat, facilities, command, diplomacy, espionage, zero_turn]
 
 suite "TUI modal acceptors":
   test "population transfer modal stages command":
@@ -613,3 +613,63 @@ suite "TUI modal acceptors":
 
     populationTransferModalAcceptor(model, actionStageTerraformCommand())
     check model.ui.stagedTerraformCommands.len == 0
+
+  test "expert clear uses shared staged command clearing":
+    var model = initTuiModel()
+    model.ui.stagedFleetCommands[11] = FleetCommand(
+      fleetId: FleetId(11),
+      commandType: FleetCommandType.Move,
+      targetSystem: some(SystemId(101))
+    )
+    model.ui.stagedZeroTurnCommands = @[
+      ZeroTurnCommand(commandType: ZeroTurnCommandType.Reactivate)
+    ]
+    model.ui.stagedBuildCommands = @[
+      BuildCommand(colonyId: ColonyId(21), buildType: BuildType.Industrial)
+    ]
+    model.ui.stagedRepairCommands = @[
+      RepairCommand(colonyId: ColonyId(21), targetType: RepairTargetType.Ship)
+    ]
+    model.ui.stagedScrapCommands = @[
+      ScrapCommand(colonyId: ColonyId(21), targetType: ScrapTargetType.Ship)
+    ]
+    model.ui.stagedPopulationTransfers = @[
+      PopulationTransferCommand(
+        houseId: HouseId(1),
+        sourceColony: ColonyId(21),
+        destColony: ColonyId(22),
+        ptuAmount: 1
+      )
+    ]
+    model.ui.stagedTerraformCommands = @[
+      TerraformCommand(houseId: HouseId(1), colonyId: ColonyId(21))
+    ]
+    model.ui.stagedColonyManagement = @[
+      ColonyManagementCommand(colonyId: ColonyId(21))
+    ]
+    model.ui.stagedDiplomaticCommands = @[
+      DiplomaticCommand(houseId: HouseId(1), targetHouse: HouseId(2))
+    ]
+    model.ui.stagedEspionageActions = @[
+      EspionageAttempt(attacker: HouseId(1), target: HouseId(2))
+    ]
+    model.ui.stagedEbpInvestment = 5
+    model.ui.stagedCipInvestment = 4
+    model.ui.stagedTaxRate = some(15)
+    model.ui.expertModeInput.setText("clear")
+
+    gameActionAcceptor(model, actionExpertSubmit())
+
+    check model.stagedCommandCount() == 0
+    check model.ui.stagedZeroTurnCommands.len == 0
+    check model.ui.stagedBuildCommands.len == 0
+    check model.ui.stagedRepairCommands.len == 0
+    check model.ui.stagedScrapCommands.len == 0
+    check model.ui.stagedPopulationTransfers.len == 0
+    check model.ui.stagedTerraformCommands.len == 0
+    check model.ui.stagedColonyManagement.len == 0
+    check model.ui.stagedDiplomaticCommands.len == 0
+    check model.ui.stagedEspionageActions.len == 0
+    check model.ui.stagedEbpInvestment == 0
+    check model.ui.stagedCipInvestment == 0
+    check model.ui.stagedTaxRate.isNone

@@ -262,6 +262,12 @@ type
     Repair
     Scrap
 
+  StageToggleResult* {.pure.} = enum
+    NoChange
+    Added
+    Updated
+    Removed
+
   MaintenanceCandidate* = object
     label*: string
     targetId*: uint32
@@ -2273,6 +2279,141 @@ proc stagedCommandEntries*(model: TuiModel): seq[StagedCommandEntry] =
     result.add(StagedCommandEntry(
       kind: StagedCommandKind.EspionageAction, index: idx))
 
+proc findStagedTransferIdx*(
+    model: TuiModel,
+    sourceColonyId: int,
+    destColonyId: int
+): int =
+  for i, cmd in model.ui.stagedPopulationTransfers:
+    if int(cmd.sourceColony) == sourceColonyId and
+        int(cmd.destColony) == destColonyId:
+      return i
+  -1
+
+proc upsertPopulationTransferCommand*(
+    model: var TuiModel,
+    cmd: PopulationTransferCommand
+): StageToggleResult =
+  for i, existing in model.ui.stagedPopulationTransfers:
+    if existing.sourceColony == cmd.sourceColony and
+        existing.destColony == cmd.destColony:
+      if existing.ptuAmount == cmd.ptuAmount:
+        return StageToggleResult.NoChange
+      model.ui.stagedPopulationTransfers[i] = cmd
+      model.ui.modifiedSinceSubmit = true
+      return StageToggleResult.Updated
+  model.ui.stagedPopulationTransfers.add(cmd)
+  model.ui.modifiedSinceSubmit = true
+  StageToggleResult.Added
+
+proc removePopulationTransferRoute*(
+    model: var TuiModel,
+    sourceColonyId: int,
+    destColonyId: int
+): StageToggleResult =
+  let idx = model.findStagedTransferIdx(sourceColonyId, destColonyId)
+  if idx < 0:
+    return StageToggleResult.NoChange
+  model.ui.stagedPopulationTransfers.delete(idx)
+  model.ui.modifiedSinceSubmit = true
+  StageToggleResult.Removed
+
+proc toggleTerraformCommandForColony*(
+    model: var TuiModel,
+    houseId: HouseId,
+    colonyId: ColonyId,
+    turn: int
+): StageToggleResult =
+  for idx, cmd in model.ui.stagedTerraformCommands:
+    if cmd.colonyId == colonyId:
+      model.ui.stagedTerraformCommands.delete(idx)
+      model.ui.modifiedSinceSubmit = true
+      return StageToggleResult.Removed
+
+  model.ui.stagedTerraformCommands.add(TerraformCommand(
+    houseId: houseId,
+    colonyId: colonyId,
+    startTurn: int32(turn),
+    turnsRemaining: 0,
+    ppCost: 0,
+    targetClass: 0
+  ))
+  model.ui.modifiedSinceSubmit = true
+  StageToggleResult.Added
+
+proc findStagedRepairIdx*(
+    model: TuiModel,
+    colonyId: ColonyId,
+    targetType: RepairTargetType,
+    targetId: uint32
+): int =
+  for i, cmd in model.ui.stagedRepairCommands:
+    if cmd.colonyId == colonyId and cmd.targetType == targetType and
+        cmd.targetId == targetId:
+      return i
+  -1
+
+proc findStagedScrapIdx*(
+    model: TuiModel,
+    colonyId: ColonyId,
+    targetType: ScrapTargetType,
+    targetId: uint32
+): int =
+  for i, cmd in model.ui.stagedScrapCommands:
+    if cmd.colonyId == colonyId and cmd.targetType == targetType and
+        cmd.targetId == targetId:
+      return i
+  -1
+
+proc toggleRepairCommandForCandidate*(
+    model: var TuiModel,
+    colonyId: ColonyId,
+    candidate: MaintenanceCandidate,
+    priority: int32 = 1
+): StageToggleResult =
+  let stagedIdx = model.findStagedRepairIdx(
+    colonyId,
+    candidate.repairType,
+    candidate.targetId
+  )
+  if stagedIdx >= 0:
+    model.ui.stagedRepairCommands.delete(stagedIdx)
+    model.ui.modifiedSinceSubmit = true
+    return StageToggleResult.Removed
+
+  model.ui.stagedRepairCommands.add(RepairCommand(
+    colonyId: colonyId,
+    targetType: candidate.repairType,
+    targetId: candidate.targetId,
+    priority: priority
+  ))
+  model.ui.modifiedSinceSubmit = true
+  StageToggleResult.Added
+
+proc toggleScrapCommandForCandidate*(
+    model: var TuiModel,
+    colonyId: ColonyId,
+    candidate: MaintenanceCandidate
+): StageToggleResult =
+  let stagedIdx = model.findStagedScrapIdx(
+    colonyId,
+    candidate.scrapType,
+    candidate.targetId
+  )
+  if stagedIdx >= 0:
+    model.ui.stagedScrapCommands.delete(stagedIdx)
+    model.ui.modifiedSinceSubmit = true
+    return StageToggleResult.Removed
+
+  model.ui.stagedScrapCommands.add(ScrapCommand(
+    colonyId: colonyId,
+    targetType: candidate.scrapType,
+    targetId: candidate.targetId,
+    acknowledgeQueueLoss: candidate.queueRisk
+  ))
+  model.ui.modifiedSinceSubmit = true
+  StageToggleResult.Added
+
 proc formatFleetOrder*(cmd: FleetCommand): string =
   ## Format a fleet command for display
   result = "Fleet " & $cmd.fleetId & ": "
@@ -3450,6 +3591,24 @@ proc reapplyAllOptimisticUpdates*(model: var TuiModel) =
   # Fleet commands (movement/ROE) apply after ZTCs
   for _, cmd in model.ui.stagedFleetCommands.pairs:
     model.updateFleetInfoFromStagedCommand(cmd)
+
+proc clearStagedCommands*(model: var TuiModel) =
+  ## Clear all staged command categories and restore pristine optimistic
+  ## fleet views.
+  model.ui.stagedFleetCommands.clear()
+  model.ui.stagedZeroTurnCommands.setLen(0)
+  model.ui.stagedBuildCommands.setLen(0)
+  model.ui.stagedRepairCommands.setLen(0)
+  model.ui.stagedScrapCommands.setLen(0)
+  model.ui.stagedPopulationTransfers.setLen(0)
+  model.ui.stagedTerraformCommands.setLen(0)
+  model.ui.stagedColonyManagement.setLen(0)
+  model.ui.stagedDiplomaticCommands.setLen(0)
+  model.ui.stagedEspionageActions.setLen(0)
+  model.ui.stagedEbpInvestment = 0
+  model.ui.stagedCipInvestment = 0
+  model.ui.stagedTaxRate = none(int)
+  model.reapplyAllOptimisticUpdates()
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
   ## Stage a fleet command and optimistically update fleet display data.
