@@ -85,6 +85,12 @@ For multi-bot runs:
    launch local relay/daemon.
 3. Run `scripts/run_multi_bot_playtest.sh`.
 
+For one-command bootstrap (clean + new game + key generation + invite claim +
+env file generation):
+
+1. Export API key in your shell (`BOT_API_KEY` or `OPENAI_API_KEY`).
+2. Run `scripts/bot/bootstrap_multi_playtest.py --bots 2 --run-seconds 120`.
+
 Runtime traces are written under `BOT_LOG_DIR` (default `logs/bot`).
 Each run appends `session_start` metadata and per-turn records to
 `bot_trace_<gameId>.jsonl`.
