@@ -16,6 +16,7 @@ type
     apiKey*: string
     maxRetries*: int
     requestTimeoutSec*: int
+    logDir*: string
 
   BotRuntimeState* = object
     hasState*: bool

@@ -161,6 +161,13 @@ proc compileCommandPacket*(draft: BotOrderDraft): BotCompileResult =
     cipInvestment: int32(draft.cipInvestment.get(0))
   )
 
+  if draft.zeroTurnCommands.len > 0:
+    errors.add("zeroTurnCommands are not supported by compiler yet")
+  if draft.espionageActions.len > 0:
+    errors.add("espionageActions are not supported by compiler yet")
+  if draft.diplomaticCommand.isSome:
+    errors.add("diplomaticCommand is not supported by compiler yet")
+
   var seenFleetIds = initHashSet[int]()
   for order in draft.fleetCommands:
     if order.fleetId in seenFleetIds:

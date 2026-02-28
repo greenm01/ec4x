@@ -1,4 +1,4 @@
-import std/[unittest, options, tables]
+import std/[unittest, options]
 
 import ../../src/bot/[order_schema, order_compiler]
 import ../../src/engine/types/[fleet, production, ship, colony]
@@ -130,3 +130,31 @@ suite "bot order compiler":
     check compiled.packet.colonyManagement[0].taxRate.isSome
     check int(compiled.packet.populationTransfers[0].sourceColony) == 7
     check int(compiled.packet.terraformCommands[0].colonyId) == 7
+
+  test "rejects unsupported command categories explicitly":
+    let draft = BotOrderDraft(
+      turn: 11,
+      houseId: 1,
+      fleetCommands: @[],
+      buildCommands: @[],
+      zeroTurnCommands: @[
+        BotZeroTurnOrder(commandType: "reactivate")
+      ],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[
+        BotEspionageOrder(operation: "tech-theft", targetHouseId: some(2))
+      ],
+      diplomaticCommand: some(BotDiplomaticOrder(
+        targetHouseId: 2,
+        action: "declare-hostile"
+      )),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: none(int),
+      cipInvestment: none(int)
+    )
+
+    let compiled = compileCommandPacket(draft)
+    check not compiled.ok
+    check compiled.errors.len >= 3

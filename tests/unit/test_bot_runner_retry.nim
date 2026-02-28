@@ -31,6 +31,8 @@ suite "bot runner retry loop":
     check result.packet.fleetCommands.len == 1
     check result.packet.fleetCommands[0].commandType ==
       FleetCommandType.Hold
+    check result.trace.len == 1
+    check result.trace[0].stage == "schema_parse"
 
   test "fails when retry budget exhausted":
     let generator: DraftGenerator = proc(prompt: string): BotLlmResult =
@@ -41,6 +43,9 @@ suite "bot runner retry loop":
     check not result.ok
     check result.attempts == 2
     check result.errors.len > 0
+    check result.trace.len == 2
+    check result.trace[0].stage == "schema_parse"
+    check result.trace[1].stage == "schema_parse"
 
   test "retries when submission is rejected":
     var genCalls = 0
@@ -81,3 +86,5 @@ suite "bot runner retry loop":
     check result.attempts == 2
     check genCalls == 2
     check submitCalls == 2
+    check result.trace.len == 1
+    check result.trace[0].stage == "submit"

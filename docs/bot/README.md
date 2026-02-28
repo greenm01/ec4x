@@ -1,7 +1,7 @@
 # EC4X Bot Architecture (LLM Playtesting)
 
-**Status:** Active Implementation Plan
-**Last Updated:** 2026-02-27
+**Status:** MVP Scaffold Implemented (WIP)
+**Last Updated:** 2026-02-28
 
 ## Overview
 
@@ -61,7 +61,19 @@ Locked v1 decisions:
 - Direct KDL emission is deferred.
 
 Immediate next steps:
-1. Build state contextualization module from `PlayerState`.
-2. Implement strict JSON draft parser and compiler to `CommandPacket`.
-3. Add correction loop and bounded retries for invalid output.
-4. Run human-vs-LLM playtests and harvest regressions.
+1. Wire full live Nostr bot loop in `src/bot/main.nim`.
+2. Run reproducible human-vs-LLM sessions and capture traces.
+3. Validate 20+ turn stability and update acceptance checklist.
+4. Expand unsupported command categories in compiler.
+
+## Local Playtest Runner (MVP)
+
+Use:
+
+1. Copy `scripts/bot/session.env.example` to `scripts/bot/session.env`
+   and fill credentials/ids.
+2. Run `scripts/run_bot_playtest.sh`.
+3. Optional: set `BOT_START_RELAY=1` and `BOT_START_DAEMON=1`
+   to have the script launch local relay/daemon processes.
+
+Runtime traces are written under `BOT_LOG_DIR` (default `logs/bot`).

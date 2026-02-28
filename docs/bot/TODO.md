@@ -43,20 +43,25 @@ compiled into `CommandPacket`.
   `CommandPacket`.
 - [x] Enforce one fleet command per fleet.
 - [x] Enforce id presence/type checks and ROE bounds.
-- [ ] Reject ambiguous or unsupported command variants.
+- [x] Reject ambiguous or unsupported command variants.
 
 ## Phase 5 - Validation and Correction Loop
 
 - [x] Add preflight checks using available PlayerState data.
 - [x] Submit serialized packet with bounded retry loop on failure.
 - [x] Feed parser/compiler/preflight errors back to LLM for correction.
-- [ ] Persist per-turn correction traces.
+- [x] Persist per-turn correction traces.
+  - `src/bot/trace_log.nim`
+  - `tests/unit/test_bot_trace_log.nim`
 
 ## Phase 6 - Playtest Harness
 
-- [ ] Add a local script to run daemon + relay + bot process.
-- [ ] Add bot run log output directory conventions.
-- [ ] Add reproducible session config for game/model/relay/key.
+- [x] Add a local script to run daemon + relay + bot process.
+  - `scripts/run_bot_playtest.sh`
+- [x] Add bot run log output directory conventions.
+  - `BOT_LOG_DIR` (default `logs/bot`)
+- [x] Add reproducible session config for game/model/relay/key.
+  - `scripts/bot/session.env.example`
 
 ## Phase 7 - Test Coverage
 

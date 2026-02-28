@@ -23,7 +23,8 @@ proc loadBotConfig*(): BotConfig =
     baseUrl: getEnv("BOT_BASE_URL", ""),
     apiKey: getEnv("BOT_API_KEY", ""),
     maxRetries: parseInt(getEnv("BOT_MAX_RETRIES", "2")),
-    requestTimeoutSec: parseInt(getEnv("BOT_REQUEST_TIMEOUT_SEC", "45"))
+    requestTimeoutSec: parseInt(getEnv("BOT_REQUEST_TIMEOUT_SEC", "45")),
+    logDir: getEnv("BOT_LOG_DIR", "logs/bot")
   )
 
 proc validateConfig(cfg: BotConfig): bool =

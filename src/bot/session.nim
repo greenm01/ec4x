@@ -6,6 +6,7 @@ import ./types
 import ./state_store
 import ./prompt_context
 import ./runner
+import ./trace_log
 
 type
   BotSession* = object
@@ -56,6 +57,12 @@ proc decidePacket*(
     session.config.maxRetries,
     generator
   )
+  persistTurnTrace(
+    session.config.logDir,
+    session.config.gameId,
+    int(session.runtime.playerState.turn),
+    decision
+  )
   if decision.ok:
     session.runtime.markTurnSubmitted()
   decision
@@ -77,6 +84,12 @@ proc decideAndSubmitPacket*(
     session.config.maxRetries,
     generator,
     submitter
+  )
+  persistTurnTrace(
+    session.config.logDir,
+    session.config.gameId,
+    int(session.runtime.playerState.turn),
+    decision
   )
   if decision.ok:
     session.runtime.markTurnSubmitted()
