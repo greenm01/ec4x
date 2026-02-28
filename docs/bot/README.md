@@ -88,6 +88,8 @@ Each run appends `session_start` metadata and per-turn records to
 `bot_trace_<gameId>.jsonl`.
 Use `scripts/bot/summarize_trace_coverage.py <trace-dir-or-file>` to
 summarize feature-family coverage from traces.
+Use `scripts/bot/run_trace_matrix.py --matrix scripts/bot/scenario_matrix.example.json`
+to evaluate scenario coverage/stability gates and emit pass/fail results.
 
 ## Runtime behavior notes
 

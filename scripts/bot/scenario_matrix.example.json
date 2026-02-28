@@ -1,0 +1,38 @@
+{
+  "scenarios": [
+    {
+      "name": "econ-fleet-baseline",
+      "trace": "logs/bot/scenarios/econ-fleet/bot_trace_game-id.jsonl",
+      "requiredTags": [
+        "fleet",
+        "build",
+        "research",
+        "investment"
+      ],
+      "minTurns": 10,
+      "minConsecutiveSuccess": 5
+    },
+    {
+      "name": "ztc-operations",
+      "trace": "logs/bot/scenarios/ztc/bot_trace_game-id.jsonl",
+      "requiredTags": [
+        "zero_turn",
+        "ztc_detach_ships",
+        "ztc_transfer_ships",
+        "ztc_reactivate"
+      ],
+      "minTurns": 8,
+      "minConsecutiveSuccess": 4
+    },
+    {
+      "name": "intel-diplomacy",
+      "trace": "logs/bot/scenarios/intel-diplomacy/bot_trace_game-id.jsonl",
+      "requiredTags": [
+        "espionage",
+        "diplomacy"
+      ],
+      "minTurns": 8,
+      "minConsecutiveSuccess": 4
+    }
+  ]
+}

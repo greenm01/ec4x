@@ -133,6 +133,8 @@ Steps:
 Evidence:
 - Per-bot stdout: `logs/bot/multi/bot<N>.stdout.log`.
 - Per-bot trace JSONL: `logs/bot/multi/bot<N>/bot_trace_<gameId>.jsonl`.
+- Scenario matrix evaluation:
+  `scripts/bot/run_trace_matrix.py --matrix scripts/bot/scenario_matrix.example.json`.
 
 Report:
 - Number of bots launched and models used.

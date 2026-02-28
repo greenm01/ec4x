@@ -115,7 +115,9 @@ compiled into `CommandPacket`.
 - [x] Add feature-coverage telemetry.
   - Emit per-turn feature-family usage tags in trace logs.
   - Add a coverage summary tool for hit/miss by command family.
-- [ ] Add scenario matrix for forced feature exercise.
+- [x] Add scenario matrix for forced feature exercise.
+  - Added `scripts/bot/scenario_matrix.example.json` template.
+  - Added `scripts/bot/run_trace_matrix.py` automated pass/fail evaluator.
   - Define setups that trigger each command family path.
   - Run matrix automatically and emit pass/fail report.
 - [ ] Add stability and reproducibility gates.

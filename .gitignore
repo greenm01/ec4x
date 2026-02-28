@@ -17,6 +17,7 @@
 !*.fish
 !*.sh
 !scripts/bot/*.py
+!scripts/bot/*.json
 
 # Whitelist assets
 !*.png
