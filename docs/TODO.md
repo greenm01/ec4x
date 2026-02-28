@@ -1,128 +1,67 @@
 # EC4X Roadmap
 
-**Last Updated:** 2026-01-17
+**Last Updated:** 2026-02-28
 
-## Engine Status
+## Current Status
 
-The game engine is stable and tested. Ready for client development and playtesting.
+- Engine command surface is stable and playable through the Player TUI.
+- Player TUI command staging is feature-complete for canonical
+  `CommandPacket` fields.
+- Current priority is P2 gameplay ergonomics and confidence hardening.
+- Detailed command/target audit lives in:
+  - `docs/architecture/player-tui-command-audit.md`
 
-**Test Coverage:**
-- Unit Tests: 9 suites passing
-- Integration Tests: 310 tests passing
-- Stress Tests: 24 tests passing
-- **Total: 343+ tests passing**
+## Player TUI Gameplay Readiness (Active)
 
-**What Works:**
-- Full turn cycle (Conflict → Income → Command → Production)
-- All 13 game systems operational (combat, economy, research, diplomacy, etc.)
-- Config-driven architecture (KDL format, no hardcoded values)
-- Fog-of-war intelligence system
-- Entity management (houses, colonies, fleets, ships, facilities, ground units)
-- Command validation and execution
-- State persistence ready (GameState structure stable)
+Goal: make normal Player TUI flows robust for sustained human playtesting.
 
-**Known Gaps:**
-- No AI opponents (by design - social game for humans first)
-- Balance untested (needs playtesting with real games)
-- Some edge cases may surface during play (stress tests found several we fixed)
+### Open P2 Work
 
-## What's Next
+1. [ ] Add visual/layout polish for narrow terminals where modal/table
+   labels and footer hints still truncate or clip.
+2. [ ] Add consistent drop/edit interactions across all staged command
+   categories (uniform behavior and status messaging).
+3. [ ] Add expert-mode parity checks so expert command flows match normal
+   TUI validation/staging behavior.
+4. [ ] Add one focused regression test for optimistic replay after draft
+   restore when fleet-affecting staged commands are present.
 
-Building the infrastructure to actually play the game:
+## Next Milestones (Execution Order)
 
-1. **Player client** - Human interface for viewing state and submitting commands
-2. **Playtesting** - Run actual games to validate mechanics and balance
-3. **LLM Bot Integration** - Build a headless Nostr client that condenses `PlayerState` to prompt an LLM (Claude/Gemini) to play the game and submit orders.
+### Milestone 1: Narrow-Terminal UX Polish
 
-Once we can play real games, we'll know what needs adjustment.
+- Normalize modal/footer width behavior in fleet/detail pickers.
+- Ensure no footer clipping and no table/footer mismatch at small widths.
+- Verify stable rendering under compact viewport constraints.
 
-## Player TUI Gameplay Readiness
+### Milestone 2: Staged Command UX Consistency
 
-Goal: make the player TUI command surface feature-complete for practical
-playtesting and bug discovery.
+- Unify staged command drop/edit behavior across command categories.
+- Centralize shared handling to reduce category-specific drift (DRY).
 
-Reference audit:
-- `docs/architecture/player-tui-command-audit.md`
+### Milestone 3: Expert-Mode Parity Hardening
 
-Priority backlog:
+- Ensure expert parser/executor paths use the same validation and staging
+  semantics as normal TUI actions.
+- Add parity coverage for representative fleet and colony commands.
 
-1. [x] Add integration tests proving submit/resume behavior for all
-   command categories in normal TUI flows.
-   - `tests/unit/test_tui_draft_apply_resume.nim`
-2. [x] Expand UI-level regression coverage for maintenance and transfer
-   modal interactions.
-   - `tests/unit/test_tui_modal_acceptors.nim`
-3. [x] Validate command-dock/action-hint parity across all colony actions.
-   - `tests/unit/test_tui_colony_action_parity.nim`
+### Milestone 4: Draft Restore + Replay Confidence
 
-Next focus:
+- Add targeted regression coverage for draft restore + optimistic replay
+  involving fleet-affecting commands and batch contexts.
+- Confirm replay ordering and post-restore visual state consistency.
 
-1. [x] Add real TUI end-to-end smoke tests for fleet multi-select and batch
-   operations under live keyboard event handling.
-   - `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
-2. [x] Expand submit/resume regression tests for fleet-detail batch snapshot
-   behavior (ROE/Command/ZTC) across cursor movement and sort changes.
-   - `tests/unit/test_tui_modal_acceptors.nim`
-   - `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
+## Validation Gate
 
-Current focus:
+Run after each milestone:
 
-1. Add visual/layout polish for narrow terminals where command labels or
-   footer hints are still prone to truncation.
-2. [x] Implement spec-aligned smart target filtering for fleet system
-   pickers with DRY policy plumbing.
-   - `src/player/sam/tui_model.nim`
-   - `docs/architecture/player-tui-command-audit.md`
-3. [x] Expand fleet target filter regression coverage (colonize/view/scout/
-   blockade + reachability semantics).
-   - `tests/unit/test_tui_command_staging.nim`
-4. [x] Add one more integration-style smoke path for mixed submit
-   confirmation (fleet + ZTC + economy + diplomacy + espionage +
-   colony commands).
-   - `tests/unit/test_tui_mixed_submit_smoke.nim`
+- `nim c -r tests/unit/test_tui_command_staging.nim`
+- `nim c -r tests/unit/test_tui_modal_acceptors.nim`
+- `nim c -r tests/unit/test_tui_draft_apply_resume.nim`
+- `nim c -r tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
+- `nimble buildTui`
 
 ## Future (Post-Playtesting)
 
-- **AI opponents** - Neural network trained on LLM-bot generated games (see `docs/ai/neural_network_training.md`)
-
----
-
-## Documentation
-- **Game Management**: [Chat Bot Admin Guide](guides/game-management-chatbot.md)
-
-- **Game Rules:** [docs/specs/index.md](specs/index.md) - Complete gameplay specification
-- **Architecture:** [docs/architecture/](architecture/) - System design
-- **Engine Details:** [docs/engine/](engine/) - Implementation details
-- **Play-Testing:** [docs/play_testing/](play_testing/) - Testing approach
-
----
-
-## Recent Major Work
-
-**Nostr Transport Integration (2026-01-17):**
-- Wired daemon to Nostr relays with encrypted command ingestion and delta publishing
-- Added slot claim handling with pubkey persistence in houses table
-- Implemented PlayerState snapshot persistence + diff-based delta KDL generation
-- Added 30405 full-state serialization + publish-on-claim
-
-**Code Style Cleanup (2026-01-10):**
-- Removed 130+ `get` prefixes from function names (NEP-1 compliance)
-- Fixed all UFCS violations (uniform function call syntax)
-- Removed all unnecessary import aliases
-- Updated CLAUDE.md with enforced style guidelines
-
-**Test Suite Expansion (2026-01-10):**
-- Added 4 missing integration test suites (234 tests)
-- Created 3 new integration tests (economy, diplomacy, elimination)
-- Fixed stress test framework false positive (eliminated house validation)
-- Expanded from 51 to 310 integration tests (6x increase)
-
-**Stress Test Fixes (2026-01-10):**
-- Removed SQLite dependencies from all nimble tasks (no longer needed)
-- Fixed CommandPacket structure in stress tests
-- Fixed turn validation logic in test_engine_stress.nim
-- All 24 stress tests now passing
-
----
-
-**For detailed history:** See git log - this file focuses on current status and next steps.
+- AI opponents and automation:
+  - `docs/ai/neural_network_training.md`

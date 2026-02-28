@@ -1,7 +1,7 @@
 # Player TUI Command Audit
 
 **Date:** 2026-02-28
-**Status:** In progress (P1/P2 validation and ergonomics)
+**Status:** In progress (P2 ergonomics + confidence hardening)
 **Goal:** Make the player TUI capable of producing the full canonical
 turn command queue for practical human playtesting and bug hunting.
 
@@ -61,8 +61,9 @@ Legend: `Complete`, `Partial`, `Missing`
    dedicated restore helpers extracted to `src/player/tui/draft_apply.nim`.
 3. Fleet batch operations now use snapshot semantics for X-selected fleets
    across ROE/command/ZTC flows, avoiding cursor/selection drift issues.
-4. Primary remaining work is validation depth and playtesting ergonomics
-   (full end-to-end submit/resume smoke paths and UI polish).
+4. Primary remaining work is P2 ergonomics and confidence hardening:
+   narrow-terminal polish, drop/edit interaction consistency,
+   expert-mode parity, and draft-restore replay regression coverage.
 
 ---
 
