@@ -374,17 +374,17 @@ After all hits applied and retreats resolved:
 
 **Bombardment:**
 - Planet-Breaker (all rounds): +4 (attacker, if Planet-Breaker ships present)
-- Morale (all rounds): ±1 or ±2 (both sides)
+- Morale (first round): ±1 or ±2 (both sides)
 
 **Invasion (Standard):**
 - Prepared Defenses (all rounds): +2 (defender, entrenched colony)
 - Homeworld Defense (all rounds): +1 (defender, if house homeworld)
-- Morale (all rounds): ±1 or ±2 (both sides)
+- Morale (first round): ±1 or ±2 (both sides)
 
 **Blitz:**
 - Landing Under Fire (all rounds): +3 (defender, marines landing under battery fire)
 - Homeworld Defense (all rounds): +1 (defender, if house homeworld)
-- Morale (all rounds): ±1 or ±2 (both sides)
+- Morale (first round): ±1 or ±2 (both sides)
 
 ### 7.4.3 Fighter Superiority
 
@@ -1273,15 +1273,21 @@ House C wins by attrition.
 
 ## 7.10 Combat Example
 
-**Scenario**: House Valerian (CLK 3, ELI 2) raids House Stratos mining colony defended by a starbase.
+**Scenario**: House Valerian (CLK 3, ELI 2, High Morale +1 DRM) raids House Stratos (Low Morale -1 DRM) mining colony defended by a starbase.
 
-**Space Combat**: Valerian Raiders (45 AS) + Destroyers (40 AS) vs Stratos Cruisers (60 AS). Detection: Valerian wins by 4 → Surprise (+3 DRM). Valerian DRM +4, Stratos DRM +1 (starbase sensors). Both roll CER 1.0× and 0.5×. Valerian inflicts 85 hits (cripples both cruisers), Stratos inflicts 30 hits (cripples 2 raiders). Stratos retreats (0.39:1 ratio below ROE 6 threshold).
+**Space Combat**: Valerian Raiders (45 AS) + Destroyers (40 AS) vs Stratos Cruisers (60 AS). 
+*   **Detection:** Valerian wins by 4 → Surprise (+3 DRM). 
+*   **Round 1:** Valerian total DRM is +4 (+3 Surprise, +1 Morale). Stratos total DRM is +0 (+1 Starbase sensors, -1 Morale). Both roll 5. Valerian modifies to 9 (1.0× CER + Critical Hit), Stratos modifies to 5 (0.50× CER). 
+*   **Hits:** Valerian inflicts 85 hits. A **Targeted Critical** instantly destroys a Stratos Cruiser! Stratos inflicts 30 hits, crippling 2 Raiders.
+*   **Retreat:** Stratos checks ROE. With 1 Cruiser destroyed, their ratio plummets below their ROE 6 threshold. The fleet breaks orbit.
+*   **Pursuit Volley:** Valerian fires a parting shot at the fleeing ships (0.5× CER), scoring 42 pursuit hits, crippling the remaining Stratos Cruiser before it jumps to safety.
 
-**Orbital Combat**: Valerian engages Stratos starbases (AS 80, DS 100) + guard cruisers. Starbase provides +1 DRM. Critical hit from defender destroys multiple Valerian destroyers despite undamaged ships present. Valerian wins at heavy cost, proceeds to bombardment.
+**Orbital Combat**: Valerian engages the Stratos Starbase (AS 80, DS 100). Valerian brings up their main reserve fleet, bringing an overwhelming 250 AS to bear.
+*   **Cascading Overkill:** Valerian rolls a 1.0x CER (250 hits). Because 250 is greater than 1.5× the Starbase's DS (150), the **Cascading Overkill** rule triggers. The "Cripple First" protection shatters, and the Starbase is instantly destroyed in a single devastating volley.
 
-**Bombardment**: Valerian fleet (150 AS) vs ground batteries (60 AS) + SLD 5 shields (45% reduction). Shields reduce 150 hits to 83 effective hits. Two rounds required to destroy batteries. Excess 29 hits damage infrastructure.
+**Bombardment**: Valerian fleet (200 AS) vs ground batteries (60 AS) + SLD 5 shields (45% reduction). Shields reduce 200 hits to 110 effective hits. One round required to destroy the batteries. The excess 50 hits cascade down to the planet surface, splitting evenly to destroy 25 Infrastructure Units and kill 25 PTU of population.
 
-**Invasion**: Marines (40 AS) land. Defender gets +2 Prepared Defenses DRM. Ground Combat CRT produces 1.5× and 1.0× CER. Marines eliminate ground forces with minimal casualties. Colony captured with 50% IU destroyed (invasion penalty).
+**Invasion**: Marines (40 AS) land safely now that batteries are neutralized. Defender gets +2 Prepared Defenses DRM. Ground Combat CRT produces 1.5× and 1.0× CER. Marines eliminate ground forces with minimal casualties. Colony captured with 50% remaining IU destroyed by loyalist sabotage (invasion penalty).
 
 ---
 
