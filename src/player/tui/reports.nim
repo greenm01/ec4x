@@ -990,6 +990,131 @@ proc generateTurnSummary(
 # Event-Based Report Generators (Phase 2)
 # =============================================================================
 
+
+proc generateCinematicBattleReports*(
+    events: seq[GameEvent],
+    ps: ps_types.PlayerState
+): seq[ReportEntry] =
+  ## Groups combat events by SystemId and generates a single, multi-act cinematic
+  ## battle report for each system where combat occurred.
+  result = @[]
+  
+  # 1. Bucket events by SystemId
+  var systemBuckets = initTable[SystemId, seq[GameEvent]]()
+  for evt in events:
+    if evt.systemId.isNone: continue
+    
+    let isCombatEvent = case evt.eventType
+      of GameEventType.CombatTheaterBegan, GameEventType.CombatTheaterCompleted,
+         GameEventType.RaiderAmbush, GameEventType.WeaponFired,
+         GameEventType.ShipDamaged, GameEventType.ShipDestroyed,
+         GameEventType.FleetRetreat, GameEventType.BombardmentRoundBegan,
+         GameEventType.BombardmentRoundCompleted, GameEventType.InvasionBegan,
+         GameEventType.BlitzBegan, GameEventType.GroundCombatRound,
+         GameEventType.SystemCaptured, GameEventType.ColonyCaptured,
+         GameEventType.InvasionRepelled, GameEventType.CombatResult:
+        true
+      else: false
+      
+    if isCombatEvent:
+      let sysId = evt.systemId.get()
+      if not systemBuckets.hasKey(sysId):
+        systemBuckets[sysId] = @[]
+      systemBuckets[sysId].add(evt)
+
+  # 2. Render each bucket into a single ReportEntry
+  for sysId, sysEvents in systemBuckets.pairs():
+    let sysName = ps.visibleSystems.getOrDefault(sysId).name
+    var detailLines: seq[string] = @[]
+    var outcomeStr = "Unknown"
+    var titleStr = "Battle Report — " & sysName
+    
+    for evt in sysEvents:
+      case evt.eventType
+      of GameEventType.CombatTheaterBegan:
+        let theater = evt.theater.get("Unknown")
+        detailLines.add("")
+        detailLines.add("═══ " & theater.toUpperAscii() & " ═══")
+      
+      of GameEventType.RaiderAmbush:
+        let bonus = evt.ambushBonus.get(0)
+        detailLines.add(">> AMBUSH! Raiders execute devastating first strike (+" & $bonus & " DRM)")
+        
+      of GameEventType.WeaponFired:
+        let atk = evt.attackerSquadronId.get("?")
+        let tgt = evt.targetSquadronId.get("?")
+        let dmg = evt.damageDealt.get(0)
+        detailLines.add(" - " & atk & " fired on " & tgt & " (" & $dmg & " hits)")
+        
+      of GameEventType.ShipDamaged:
+        let sqd = evt.damagedSquadronId.get("?")
+        let dmg = evt.damageAmount.get(0)
+        let state = evt.shipNewState.get("?")
+        detailLines.add("   * " & sqd & " took " & $dmg & " damage (Status: " & state & ")")
+        
+      of GameEventType.ShipDestroyed:
+        let sqd = evt.destroyedSquadronId.get("?")
+        let crit = if evt.criticalHit.get(false): "[CRITICAL HIT] " else: ""
+        let killerId = evt.killedBy.get(HouseId(0))
+        let killerName = ps.houseNames.getOrDefault(killerId, "Unknown")
+        detailLines.add("   " & crit & "FATAL: " & sqd & " destroyed by " & killerName & "!")
+        
+      of GameEventType.FleetRetreat:
+        let fId = evt.retreatingFleetId.get(FleetId(0))
+        let reason = evt.retreatReason.get("?")
+        let cas = evt.retreatCasualties.get(0)
+        detailLines.add("<< Fleet " & $fId & " broke and retreated! (Reason: " & reason & ", Casualties: " & $cas & ")")
+        
+      of GameEventType.BombardmentRoundCompleted:
+        let hits = evt.shieldBlockedHits.get(0)
+        let batD = evt.batteriesDestroyed.get(0)
+        let batC = evt.batteriesCrippled.get(0)
+        let pop = evt.populationKilled.get(0)
+        let inf = evt.infrastructureDestroyed.get(0)
+        detailLines.add(" - Bombardment Volley Completed:")
+        if hits > 0: detailLines.add("   * Planetary shields absorbed " & $hits & " hits")
+        if batD > 0 or batC > 0: detailLines.add("   * Ground Batteries: " & $batD & " destroyed, " & $batC & " crippled")
+        if inf > 0 or pop > 0: detailLines.add("   * Collateral: " & $inf & " IU destroyed, " & $pop & " PTU killed")
+        
+      of GameEventType.InvasionBegan:
+        let mar = evt.marinesLanding.get(0)
+        detailLines.add(">> GROUND ASSAULT: " & $mar & " marines deployed to surface")
+        
+      of GameEventType.GroundCombatRound:
+        let aRoll = evt.attackerRoll.get(0)
+        let dRoll = evt.defenderRoll.get(0)
+        detailLines.add(" - Fierce ground fighting (Attacker CER: " & $aRoll & " | Defender CER: " & $dRoll & ")")
+        
+      of GameEventType.CombatResult:
+        outcomeStr = evt.outcome.get("Unknown")
+        detailLines.add("")
+        detailLines.add("--- BATTLE CONCLUDED ---")
+        detailLines.add("Outcome: " & outcomeStr)
+        if evt.attackerLosses.isSome: detailLines.add("Attacker losses: " & $evt.attackerLosses.get())
+        if evt.defenderLosses.isSome: detailLines.add("Defender losses: " & $evt.defenderLosses.get())
+        
+      of GameEventType.SystemCaptured, GameEventType.ColonyCaptured:
+        detailLines.add(">> TERRITORY CAPTURED: " & evt.description)
+        titleStr = "Victory — " & sysName
+        
+      of GameEventType.InvasionRepelled:
+        detailLines.add(">> INVASION REPELLED: " & evt.description)
+        titleStr = "Defended — " & sysName
+        
+      else:
+        discard
+        
+    result.add(ReportEntry(
+      id: nextId(),
+      turn: int(ps.turn),
+      category: ReportCategory.Combat,
+      title: titleStr,
+      summary: outcomeStr & " at " & sysName,
+      detail: detailLines,
+      isUnread: true,
+      linkView: 2, linkLabel: "Starmap",
+    ))
+
 proc generateCombatReports(
     events: seq[GameEvent],
     ps: ps_types.PlayerState
@@ -999,86 +1124,6 @@ proc generateCombatReports(
   let us = ps.viewingHouse
   for evt in events:
     case evt.eventType
-    of GameEventType.CombatResult:
-      let sysName =
-        if evt.systemId.isSome:
-          ps.visibleSystems.getOrDefault(
-            evt.systemId.get()).name
-        else: "Unknown System"
-      let outcomeStr = evt.outcome.get("Unknown")
-      var lines: seq[string] = @[
-        "System: " & sysName,
-        "Outcome: " & outcomeStr,
-      ]
-      if evt.attackerLosses.isSome:
-        lines.add("Attacker losses: " &
-          $evt.attackerLosses.get())
-      if evt.defenderLosses.isSome:
-        lines.add("Defender losses: " &
-          $evt.defenderLosses.get())
-      if evt.description.len > 0:
-        lines.add(evt.description)
-      result.add(ReportEntry(
-        id: nextId(),
-        turn: int(ps.turn),
-        category: ReportCategory.Combat,
-        title: "Battle — " & sysName,
-        summary: "Combat resolved: " & outcomeStr,
-        detail: lines,
-        isUnread: true,
-        linkView: 2, linkLabel: "Starmap",
-      ))
-    of GameEventType.SystemCaptured:
-      let sysName =
-        if evt.systemId.isSome:
-          ps.visibleSystems.getOrDefault(
-            evt.systemId.get()).name
-        else: "Unknown System"
-      result.add(ReportEntry(
-        id: nextId(),
-        turn: int(ps.turn),
-        category: ReportCategory.Combat,
-        title: "System Captured — " & sysName,
-        summary: evt.description,
-        detail: @[evt.description],
-        isUnread: true,
-        linkView: 2, linkLabel: "Starmap",
-      ))
-    of GameEventType.ColonyCaptured:
-      let sysName =
-        if evt.systemId.isSome:
-          ps.visibleSystems.getOrDefault(
-            evt.systemId.get()).name
-        else: "Unknown System"
-      result.add(ReportEntry(
-        id: nextId(),
-        turn: int(ps.turn),
-        category: ReportCategory.Combat,
-        title: "Colony Captured — " & sysName,
-        summary: evt.description,
-        detail: @[evt.description],
-        isUnread: true,
-        linkView: 3, linkLabel: "Planets",
-      ))
-    of GameEventType.InvasionRepelled:
-      let sysName =
-        if evt.systemId.isSome:
-          ps.visibleSystems.getOrDefault(
-            evt.systemId.get()).name
-        else: "Unknown System"
-      result.add(ReportEntry(
-        id: nextId(),
-        turn: int(ps.turn),
-        category: ReportCategory.Combat,
-        title: "Invasion Repelled — " & sysName,
-        summary: evt.description,
-        detail: @[
-          "System: " & sysName,
-          evt.description,
-        ],
-        isUnread: true,
-        linkView: 3, linkLabel: "Planets",
-      ))
     of GameEventType.BlockadeSuccessful:
       let sysName =
         if evt.systemId.isSome:
@@ -1097,25 +1142,6 @@ proc generateCombatReports(
         ],
         isUnread: true,
         linkView: 3, linkLabel: "Planets",
-      ))
-    of GameEventType.FleetDestroyed:
-      let sysName =
-        if evt.systemId.isSome:
-          ps.visibleSystems.getOrDefault(
-            evt.systemId.get()).name
-        else: "Unknown System"
-      result.add(ReportEntry(
-        id: nextId(),
-        turn: int(ps.turn),
-        category: ReportCategory.Combat,
-        title: "Fleet Destroyed — " & sysName,
-        summary: evt.description,
-        detail: @[
-          "System: " & sysName,
-          evt.description,
-        ],
-        isUnread: true,
-        linkView: 4, linkLabel: "Fleets",
       ))
     of GameEventType.FleetEncounter:
       let sysName =
@@ -1971,6 +1997,7 @@ proc generateClientReports*(
   # PlayerState diffs alone: combat details, espionage
   # outcomes, command rejections, etc.
   if ps.turnEvents.len > 0:
+    result.add(generateCinematicBattleReports(ps.turnEvents, ps))
     result.add(generateCombatReports(ps.turnEvents, ps))
     result.add(generateEspionageReports(ps.turnEvents, ps))
     result.add(generateCommandReports(ps.turnEvents, ps))
