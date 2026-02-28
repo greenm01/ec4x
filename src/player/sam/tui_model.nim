@@ -2875,7 +2875,8 @@ proc nextTemporaryFleetId*(model: TuiModel): int =
   ## Uses the lowest existing FleetId and decrements by one.
   var minFleetId = 0
   for fleet in model.view.fleets:
-    minFleetId = min(minFleetId, fleet.id)
+    let signedId = cast[int32](uint32(fleet.id))
+    minFleetId = min(minFleetId, int(signedId))
   minFleetId - 1
 
 proc fleetLabelFromIndex(index: int): string =
@@ -3109,8 +3110,19 @@ proc applyZeroTurnCommandOptimistically*(
       return
 
     let srcFleet = srcFleetForDetach.get()
-    let tempFleetId = if cmd.newFleetId.isSome: int(cmd.newFleetId.get())
+    var tempFleetId = if cmd.newFleetId.isSome: int(cmd.newFleetId.get())
                       else: model.nextTemporaryFleetId()
+                      
+    # Ensure ID uniqueness (handles corrupted drafts with duplicate IDs)
+    while true:
+      var found = false
+      for f in model.view.fleets:
+        if f.id == tempFleetId:
+          found = true
+          break
+      if not found: break
+      tempFleetId -= 1
+
     let newFleetName = model.nextAvailableFleetLabel(srcFleet.owner)
     let detachedFleet = FleetInfo(
       id: tempFleetId,
