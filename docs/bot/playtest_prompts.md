@@ -127,8 +127,10 @@ Steps:
    `scripts/bot/multi_session.env`.
 2) Fill relay/game/daemon/API settings and per-bot keypairs.
 3) Set `BOT_COUNT` and optional per-bot models (`BOT_i_MODEL`).
-4) Run: `scripts/run_multi_bot_playtest.sh`.
-5) Let bots run for 20+ decision opportunities.
+4) Optional: set `BOT_START_RELAY=1` and `BOT_START_DAEMON=1`
+   for local process orchestration.
+5) Run: `scripts/run_multi_bot_playtest.sh`.
+6) Let bots run for 20+ decision opportunities.
 
 Evidence:
 - Per-bot stdout: `logs/bot/multi/bot<N>.stdout.log`.

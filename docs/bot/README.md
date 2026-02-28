@@ -81,11 +81,14 @@ For multi-bot runs:
 
 1. Copy `scripts/bot/multi_session.env.example` to
    `scripts/bot/multi_session.env` and fill values.
-2. Run `scripts/run_multi_bot_playtest.sh`.
+2. Optional: set `BOT_START_RELAY=1` and `BOT_START_DAEMON=1` to
+   launch local relay/daemon.
+3. Run `scripts/run_multi_bot_playtest.sh`.
 
 Runtime traces are written under `BOT_LOG_DIR` (default `logs/bot`).
 Each run appends `session_start` metadata and per-turn records to
 `bot_trace_<gameId>.jsonl`.
+Multi-bot runs also write `run_metadata.json` under `BOT_LOG_ROOT`.
 Use `scripts/bot/summarize_trace_coverage.py <trace-dir-or-file>` to
 summarize feature-family coverage from traces.
 Use `scripts/bot/run_trace_matrix.py --matrix scripts/bot/scenario_matrix.example.json`

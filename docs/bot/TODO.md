@@ -106,7 +106,7 @@ compiled into `CommandPacket`.
 
 ## Phase 9 - Full-Feature Playtest Harness and Coverage Gates
 
-- [ ] Add multi-bot orchestration script.
+- [x] Add multi-bot orchestration script.
   - Local launcher added: `scripts/run_multi_bot_playtest.sh`.
   - Session template added: `scripts/bot/multi_session.env.example`.
   - Launch relay, daemon, and N bot processes.
@@ -131,7 +131,7 @@ compiled into `CommandPacket`.
 - [ ] All command families enabled in runtime compiler.
 - [ ] All command families executed at least once across matrix runs.
 - [ ] 20+ turn stability met in target proportion of runs.
-- [ ] Trace logs contain session metadata and per-turn feature tags.
+- [x] Trace logs contain session metadata and per-turn feature tags.
 - [ ] Failed runs reproducible from saved run artifacts.
 
 ## Execution Order (Recommended)
