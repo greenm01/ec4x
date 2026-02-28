@@ -339,6 +339,22 @@ suite "TUI modal acceptors":
     check model.ui.stagedRepairCommands[0].colonyId == ColonyId(21)
     check model.ui.stagedRepairCommands[0].targetId == 500
 
+  test "fleet list toggle select ignores negative cursor index":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Fleets
+    model.ui.fleetViewMode = FleetViewMode.ListView
+    model.ui.selectedIdx = -1
+    model.view.fleets = @[
+      FleetInfo(id: 1, name: "A1", shipCount: 1),
+      FleetInfo(id: 2, name: "A2", shipCount: 1)
+    ]
+
+    gameActionAcceptor(model, Proposal(
+      kind: ProposalKind.pkGameAction,
+      actionKind: ActionKind.toggleFleetSelect
+    ))
+    check model.ui.selectedFleetIds.len == 0
+
   test "maintenance scrap sets queue-loss acknowledgement when needed":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets

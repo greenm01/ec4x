@@ -795,7 +795,7 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.ui.mode == ViewMode.Fleets:
       if model.ui.fleetViewMode == FleetViewMode.ListView:
         let fleets = model.filteredFleets()
-        if model.ui.selectedIdx < fleets.len:
+        if model.ui.selectedIdx >= 0 and model.ui.selectedIdx < fleets.len:
           let fleetId = fleets[model.ui.selectedIdx].id
           model.toggleFleetSelection(fleetId)
       elif model.ui.fleetViewMode == FleetViewMode.SystemView:
@@ -3859,7 +3859,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Fleets and model.ui.fleetViewMode == FleetViewMode.ListView:
       # ListView: Get fleet from filtered list
       let fleets = model.filteredFleets()
-      if model.ui.selectedIdx < fleets.len:
+      if model.ui.selectedIdx >= 0 and model.ui.selectedIdx < fleets.len:
         let fleet = fleets[model.ui.selectedIdx]
         let fleetId = fleet.id
         # Transition to FleetDetail ViewMode with breadcrumb
