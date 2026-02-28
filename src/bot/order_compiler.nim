@@ -162,6 +162,22 @@ proc parseProposalType(token: string): Option[ProposalType] =
   of "hostile": some(ProposalType.DeescalateToHostile)
   else: none(ProposalType)
 
+proc parseRepairTargetType(token: string): Option[RepairTargetType] =
+  case normalizeToken(token)
+  of "ship": some(RepairTargetType.Ship)
+  of "starbase": some(RepairTargetType.Starbase)
+  of "ground", "groundunit": some(RepairTargetType.GroundUnit)
+  of "facility", "neoria": some(RepairTargetType.Facility)
+  else: none(RepairTargetType)
+
+proc parseScrapTargetType(token: string): Option[ScrapTargetType] =
+  case normalizeToken(token)
+  of "ship": some(ScrapTargetType.Ship)
+  of "ground", "groundunit": some(ScrapTargetType.GroundUnit)
+  of "facility", "neoria": some(ScrapTargetType.Neoria)
+  of "starbase", "kastra": some(ScrapTargetType.Kastra)
+  else: none(ScrapTargetType)
+
 proc commandNeedsSystemTarget(commandType: FleetCommandType): bool =
   commandType in {
     FleetCommandType.Move,
@@ -506,6 +522,32 @@ proc compileCommandPacket*(draft: BotOrderDraft): BotCompileResult =
       discard
 
     packet.buildCommands.add(build)
+
+  for order in draft.repairCommands:
+    let targetTypeOpt = parseRepairTargetType(order.targetType)
+    if targetTypeOpt.isNone:
+      errors.add("Unknown repair targetType: " & order.targetType)
+      continue
+
+    packet.repairCommands.add(RepairCommand(
+      colonyId: ColonyId(order.colonyId),
+      targetType: targetTypeOpt.get(),
+      targetId: uint32(order.targetId),
+      priority: int32(order.priority.get(0))
+    ))
+
+  for order in draft.scrapCommands:
+    let targetTypeOpt = parseScrapTargetType(order.targetType)
+    if targetTypeOpt.isNone:
+      errors.add("Unknown scrap targetType: " & order.targetType)
+      continue
+
+    packet.scrapCommands.add(ScrapCommand(
+      colonyId: ColonyId(order.colonyId),
+      targetType: targetTypeOpt.get(),
+      targetId: uint32(order.targetId),
+      acknowledgeQueueLoss: order.acknowledgeQueueLoss.get(false)
+    ))
 
   for order in draft.populationTransfers:
     packet.populationTransfers.add(PopulationTransferCommand(

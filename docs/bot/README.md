@@ -105,3 +105,4 @@ stability checks (20+ streak, success rate, retry rate).
   `load-cargo`, `unload-cargo`, `load-fighters`, `unload-fighters`,
   `transfer-fighters`).
 - Runtime supports `espionageActions` and `diplomaticCommand`.
+- Runtime supports `repairCommands` and `scrapCommands`.

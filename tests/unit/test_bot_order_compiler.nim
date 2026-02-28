@@ -27,6 +27,8 @@ suite "bot order compiler":
           quantity: some(2)
         )
       ],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[],
       populationTransfers: @[],
       terraformCommands: @[],
@@ -74,6 +76,8 @@ suite "bot order compiler":
         )
       ],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[],
       populationTransfers: @[],
       terraformCommands: @[],
@@ -95,6 +99,8 @@ suite "bot order compiler":
       houseId: 2,
       fleetCommands: @[],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[],
       populationTransfers: @[
         BotPopulationTransfer(
@@ -131,12 +137,52 @@ suite "bot order compiler":
     check int(compiled.packet.populationTransfers[0].sourceColony) == 7
     check int(compiled.packet.terraformCommands[0].colonyId) == 7
 
+  test "compiles repair and scrap commands":
+    let draft = BotOrderDraft(
+      turn: 10,
+      houseId: 2,
+      fleetCommands: @[],
+      buildCommands: @[],
+      repairCommands: @[
+        BotRepairOrder(
+          colonyId: 7,
+          targetType: "ship",
+          targetId: 301,
+          priority: some(2)
+        )
+      ],
+      scrapCommands: @[
+        BotScrapOrder(
+          colonyId: 7,
+          targetType: "facility",
+          targetId: 33,
+          acknowledgeQueueLoss: some(true)
+        )
+      ],
+      zeroTurnCommands: @[],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      diplomaticCommand: none(BotDiplomaticOrder),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: none(int),
+      cipInvestment: none(int)
+    )
+
+    let compiled = compileCommandPacket(draft)
+    check compiled.ok
+    check compiled.packet.repairCommands.len == 1
+    check compiled.packet.scrapCommands.len == 1
+
   test "rejects invalid espionage and diplomatic variants":
     let draft = BotOrderDraft(
       turn: 11,
       houseId: 1,
       fleetCommands: @[],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[],
       populationTransfers: @[],
       terraformCommands: @[],
@@ -164,6 +210,8 @@ suite "bot order compiler":
       houseId: 1,
       fleetCommands: @[],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[],
       populationTransfers: @[],
       terraformCommands: @[],
@@ -196,6 +244,8 @@ suite "bot order compiler":
       houseId: 1,
       fleetCommands: @[],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[
         BotZeroTurnOrder(
           commandType: "reactivate",
@@ -250,6 +300,8 @@ suite "bot order compiler":
       houseId: 1,
       fleetCommands: @[],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[
         BotZeroTurnOrder(
           commandType: "load-fighters",
@@ -304,6 +356,8 @@ suite "bot order compiler":
       houseId: 1,
       fleetCommands: @[],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       zeroTurnCommands: @[
         BotZeroTurnOrder(
           commandType: "load-fighters",

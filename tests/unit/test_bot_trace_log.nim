@@ -77,6 +77,8 @@ suite "bot trace log":
         )
       ],
       buildCommands: @[],
+      repairCommands: @[],
+      scrapCommands: @[],
       populationTransfers: @[],
       terraformCommands: @[],
       colonyManagement: @[],

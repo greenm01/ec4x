@@ -85,3 +85,31 @@ suite "bot order schema":
     check cmd.fighterShipIds.len == 2
     check cmd.sourceCarrierShipId.isSome
     check cmd.targetCarrierShipId.isSome
+
+  test "parses repair and scrap arrays":
+    let raw = """
+    {
+      "turn": 6,
+      "houseId": 1,
+      "repairCommands": [
+        {
+          "colonyId": 7,
+          "targetType": "ship",
+          "targetId": 11,
+          "priority": 2
+        }
+      ],
+      "scrapCommands": [
+        {
+          "colonyId": 7,
+          "targetType": "facility",
+          "targetId": 3,
+          "acknowledgeQueueLoss": true
+        }
+      ]
+    }
+    """
+    let parsed = parseBotOrderDraft(raw)
+    check parsed.ok
+    check parsed.draft.repairCommands.len == 1
+    check parsed.draft.scrapCommands.len == 1

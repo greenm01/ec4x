@@ -128,7 +128,7 @@ compiled into `CommandPacket`.
 
 ## Full-Feature Playtest Readiness Criteria
 
-- [ ] All command families enabled in runtime compiler.
+- [x] All command families enabled in runtime compiler.
 - [ ] All command families executed at least once across matrix runs.
 - [ ] 20+ turn stability met in target proportion of runs.
 - [x] Trace logs contain session metadata and per-turn feature tags.

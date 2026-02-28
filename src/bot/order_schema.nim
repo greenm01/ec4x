@@ -30,6 +30,18 @@ type
     cargoType*: Option[string]
     quantity*: Option[int]
 
+  BotRepairOrder* = object
+    colonyId*: int
+    targetType*: string
+    targetId*: int
+    priority*: Option[int]
+
+  BotScrapOrder* = object
+    colonyId*: int
+    targetType*: string
+    targetId*: int
+    acknowledgeQueueLoss*: Option[bool]
+
   BotPopulationTransfer* = object
     sourceColonyId*: int
     destColonyId*: int
@@ -66,6 +78,8 @@ type
     houseId*: int
     fleetCommands*: seq[BotFleetOrder]
     buildCommands*: seq[BotBuildOrder]
+    repairCommands*: seq[BotRepairOrder]
+    scrapCommands*: seq[BotScrapOrder]
     zeroTurnCommands*: seq[BotZeroTurnOrder]
     populationTransfers*: seq[BotPopulationTransfer]
     terraformCommands*: seq[BotTerraformOrder]
@@ -171,6 +185,44 @@ proc parseBuildCommands(node: JsonNode,
       facilityClass: parseOptionalString(item, "facilityClass", errors),
       groundClass: parseOptionalString(item, "groundClass", errors),
       quantity: parseOptionalInt(item, "quantity", errors)
+    ))
+
+proc parseRepairCommands(node: JsonNode,
+    errors: var seq[string]): seq[BotRepairOrder] =
+  if node.kind != JArray:
+    errors.add("repairCommands must be an array")
+    return @[]
+  result = @[]
+  for idx in 0 ..< node.len:
+    let item = node[idx]
+    if item.kind != JObject:
+      errors.add("repairCommands[" & $idx & "] must be an object")
+      continue
+    result.add(BotRepairOrder(
+      colonyId: parseRequiredInt(item, "colonyId", errors),
+      targetType: parseRequiredString(item, "targetType", errors),
+      targetId: parseRequiredInt(item, "targetId", errors),
+      priority: parseOptionalInt(item, "priority", errors)
+    ))
+
+proc parseScrapCommands(node: JsonNode,
+    errors: var seq[string]): seq[BotScrapOrder] =
+  if node.kind != JArray:
+    errors.add("scrapCommands must be an array")
+    return @[]
+  result = @[]
+  for idx in 0 ..< node.len:
+    let item = node[idx]
+    if item.kind != JObject:
+      errors.add("scrapCommands[" & $idx & "] must be an object")
+      continue
+    result.add(BotScrapOrder(
+      colonyId: parseRequiredInt(item, "colonyId", errors),
+      targetType: parseRequiredString(item, "targetType", errors),
+      targetId: parseRequiredInt(item, "targetId", errors),
+      acknowledgeQueueLoss: parseOptionalBool(
+        item, "acknowledgeQueueLoss", errors
+      )
     ))
 
 proc parseIntArray(node: JsonNode, key: string,
@@ -338,6 +390,8 @@ proc parseBotOrderDraft*(jsonText: string): BotOrderParseResult =
     houseId: parseRequiredInt(root, "houseId", errors),
     fleetCommands: @[],
     buildCommands: @[],
+    repairCommands: @[],
+    scrapCommands: @[],
     zeroTurnCommands: @[],
     populationTransfers: @[],
     terraformCommands: @[],
@@ -353,6 +407,11 @@ proc parseBotOrderDraft*(jsonText: string): BotOrderParseResult =
     draft.fleetCommands = parseFleetCommands(root["fleetCommands"], errors)
   if "buildCommands" in root:
     draft.buildCommands = parseBuildCommands(root["buildCommands"], errors)
+  if "repairCommands" in root:
+    draft.repairCommands = parseRepairCommands(
+      root["repairCommands"], errors)
+  if "scrapCommands" in root:
+    draft.scrapCommands = parseScrapCommands(root["scrapCommands"], errors)
   if "zeroTurnCommands" in root:
     draft.zeroTurnCommands = parseZeroTurnCommands(
       root["zeroTurnCommands"], errors)

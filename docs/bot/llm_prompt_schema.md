@@ -106,6 +106,8 @@ The LLM output must be valid JSON with this top-level shape:
   "houseId": 1,
   "fleetCommands": [],
   "buildCommands": [],
+  "repairCommands": [],
+  "scrapCommands": [],
   "zeroTurnCommands": [],
   "populationTransfers": [],
   "terraformCommands": [],
@@ -153,6 +155,36 @@ Rules:
 - `buildType` one of `ship|facility|ground|industrial`.
 - Required class field depends on `buildType`.
 - `quantity` required for ship/ground/industrial; default 1 for facility.
+
+### repairCommands[]
+
+```json
+{
+  "colonyId": 12,
+  "targetType": "ship",
+  "targetId": 501,
+  "priority": 2
+}
+```
+
+Rules:
+- `targetType` one of `ship|starbase|ground-unit|facility`.
+- `targetId` is the typed entity id encoded as integer.
+
+### scrapCommands[]
+
+```json
+{
+  "colonyId": 12,
+  "targetType": "facility",
+  "targetId": 88,
+  "acknowledgeQueueLoss": true
+}
+```
+
+Rules:
+- `targetType` one of `ship|ground-unit|facility|starbase`.
+- Set `acknowledgeQueueLoss=true` when scrapping queued facilities.
 
 ### zeroTurnCommands[]
 
