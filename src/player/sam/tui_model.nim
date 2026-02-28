@@ -1903,6 +1903,8 @@ proc ztcDescription*(ztc: ZeroTurnCommandType): string =
 
 proc ztcSourceFleetIds*(model: TuiModel): seq[int] =
   ## Source fleets for ZTC operations (batch selection or current fleet).
+  if model.ui.fleetDetailModal.batchFleetIds.len > 0:
+    return model.ui.fleetDetailModal.batchFleetIds
   if model.ui.selectedFleetIds.len > 0:
     return model.ui.selectedFleetIds
   if model.ui.fleetDetailModal.fleetId > 0:

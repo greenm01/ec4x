@@ -412,6 +412,72 @@ suite "TUI modal acceptors":
     check model.ui.stagedFleetCommands[5].roe.get() == 3
     check model.ui.stagedFleetCommands[6].roe.get() == 3
 
+  test "fleet batch ZTC uses X-selected snapshot despite selection drift":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Fleets
+    model.ui.fleetViewMode = FleetViewMode.ListView
+    model.ui.selectedIdx = 0
+    model.view.fleets = @[
+      FleetInfo(
+        id: 1,
+        name: "A1",
+        location: 11,
+        locationName: "Columba",
+        statusLabel: "Active"
+      ),
+      FleetInfo(
+        id: 5,
+        name: "A5",
+        location: 11,
+        locationName: "Columba",
+        statusLabel: "Reserve"
+      ),
+      FleetInfo(
+        id: 6,
+        name: "A6",
+        location: 11,
+        locationName: "Columba",
+        statusLabel: "Reserve"
+      )
+    ]
+    model.view.ownColoniesBySystem[11] = Colony(
+      id: ColonyId(70),
+      owner: HouseId(1),
+      systemId: SystemId(11)
+    )
+    model.view.ownFleetsById[1] = Fleet(
+      id: FleetId(1),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      status: FleetStatus.Active
+    )
+    model.view.ownFleetsById[5] = Fleet(
+      id: FleetId(5),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      status: FleetStatus.Reserve
+    )
+    model.view.ownFleetsById[6] = Fleet(
+      id: FleetId(6),
+      houseId: HouseId(1),
+      location: SystemId(11),
+      status: FleetStatus.Reserve
+    )
+
+    model.ui.selectedFleetIds = @[5, 6]
+    gameActionAcceptor(model, actionFleetBatchZeroTurn())
+
+    check model.ui.mode == ViewMode.FleetDetail
+    check model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker
+    check model.ui.fleetDetailModal.batchFleetIds == @[5, 6]
+    check ZeroTurnCommandType.Reactivate in
+      model.ui.fleetDetailModal.ztcPickerCommands
+
+    # Drift live selected ids; source fleets must remain snapshot based.
+    model.ui.selectedFleetIds = @[1, 5]
+    let refreshed = model.buildZtcPickerList()
+    check ZeroTurnCommandType.Reactivate in refreshed
+
   test "maintenance scrap sets queue-loss acknowledgement when needed":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets
