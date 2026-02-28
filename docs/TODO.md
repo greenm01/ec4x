@@ -11,11 +11,11 @@
 - Detailed command/target audit lives in:
   - `docs/architecture/player-tui-command-audit.md`
 
-## Player TUI Gameplay Readiness (Active)
+## Player TUI Gameplay Readiness (Complete)
 
 Goal: make normal Player TUI flows robust for sustained human playtesting.
 
-### Open P2 Work
+### P2 Completion
 
 1. [x] Add visual/layout polish for narrow terminals where modal/table
    labels and footer hints still truncate or clip.
@@ -34,40 +34,26 @@ Evidence:
 - `tests/unit/test_tui_expert_parity.nim`
 - `tests/unit/test_tui_draft_apply_resume.nim`
 
-## Next Milestones (Execution Order)
+## Validation Gate (Latest Run)
 
-### Milestone 1: Narrow-Terminal UX Polish
-
-- Normalize modal/footer width behavior in fleet/detail pickers.
-- Ensure no footer clipping and no table/footer mismatch at small widths.
-- Verify stable rendering under compact viewport constraints.
-
-### Milestone 2: Staged Command UX Consistency
-
-- Unify staged command drop/edit behavior across command categories.
-- Centralize shared handling to reduce category-specific drift (DRY).
-
-### Milestone 3: Expert-Mode Parity Hardening
-
-- Ensure expert parser/executor paths use the same validation and staging
-  semantics as normal TUI actions.
-- Add parity coverage for representative fleet and colony commands.
-
-### Milestone 4: Draft Restore + Replay Confidence
-
-- Add targeted regression coverage for draft restore + optimistic replay
-  involving fleet-affecting commands and batch contexts.
-- Confirm replay ordering and post-restore visual state consistency.
-
-## Validation Gate
-
-Run after each milestone:
+All readiness gate checks pass:
 
 - `nim c -r tests/unit/test_tui_command_staging.nim`
 - `nim c -r tests/unit/test_tui_modal_acceptors.nim`
 - `nim c -r tests/unit/test_tui_draft_apply_resume.nim`
 - `nim c -r tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
+- `nim c -r tests/unit/test_tui_expert_parity.nim`
+- `nim c -r tests/unit/test_tui_modal_layout.nim`
 - `nimble buildTui`
+
+## Next Focus (Post-P2)
+
+1. Run structured human playtest sessions and capture UX friction points
+   from real command submission loops.
+2. Add targeted regressions for issues found during playtests, keeping
+   coverage near the modal/acceptor path where the bug occurs.
+3. Track and prioritize gameplay-facing polish items that impact command
+   confidence, especially around clarity of staged intent and summaries.
 
 ## Future (Post-Playtesting)
 

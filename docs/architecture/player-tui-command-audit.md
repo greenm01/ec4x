@@ -186,3 +186,15 @@ draft-restored, and submitted through `CommandPacket`.
 
 Current evidence:
 - `tests/unit/test_tui_mixed_submit_smoke.nim`
+
+## Validation Gate Results
+
+Latest readiness gate run is fully green:
+
+- `tests/unit/test_tui_command_staging.nim`
+- `tests/unit/test_tui_modal_acceptors.nim`
+- `tests/unit/test_tui_draft_apply_resume.nim`
+- `tests/unit/test_tui_fleet_batch_keyboard_smoke.nim`
+- `tests/unit/test_tui_expert_parity.nim`
+- `tests/unit/test_tui_modal_layout.nim`
+- `nimble buildTui`
