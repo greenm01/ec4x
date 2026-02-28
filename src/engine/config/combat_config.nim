@@ -105,57 +105,10 @@ proc parseDamageRules(node: KdlNode, ctx: var KdlConfigContext): DamageRulesConf
   )
 
 proc parseRetreatRules(node: KdlNode, ctx: var KdlConfigContext): RetreatRulesConfig =
-  # Find moraleRoeModifiers child node
-  var moraleModifiers: MoraleRoeModifiersConfig
-  
-  for child in node.children:
-    if child.name == "moraleRoeModifiers":
-      ctx.withNode("moraleRoeModifiers"):
-        # Parse each tier from children
-        for tier in child.children:
-          case tier.name
-          of "crisis":
-            moraleModifiers.crisis = MoraleTierThreshold(
-              maxPercent: tier.requireInt32("maxPercent", ctx),
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          of "veryLow":
-            moraleModifiers.veryLow = MoraleTierThreshold(
-              maxPercent: tier.requireInt32("maxPercent", ctx),
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          of "low":
-            moraleModifiers.low = MoraleTierThreshold(
-              maxPercent: tier.requireInt32("maxPercent", ctx),
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          of "average":
-            moraleModifiers.average = MoraleTierThreshold(
-              maxPercent: tier.requireInt32("maxPercent", ctx),
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          of "good":
-            moraleModifiers.good = MoraleTierThreshold(
-              maxPercent: tier.requireInt32("maxPercent", ctx),
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          of "high":
-            moraleModifiers.high = MoraleTierThreshold(
-              maxPercent: tier.requireInt32("maxPercent", ctx),
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          of "veryHigh":
-            moraleModifiers.veryHigh = MoraleTierThreshold(
-              maxPercent: 100'i32,  # No maxPercent for highest tier
-              roeModifier: tier.requireInt32("roeModifier", ctx)
-            )
-          else: discard
-  
   result = RetreatRulesConfig(
     fightersNeverRetreat: node.requireBool("fightersNeverRetreat", ctx),
     spaceliftDestroyedIfEscortLost: node.requireBool("spaceliftDestroyedIfEscortLost", ctx),
-    retreatToNearestFriendly: node.requireBool("retreatToNearestFriendly", ctx),
-    moraleRoeModifiers: moraleModifiers
+    retreatToNearestFriendly: node.requireBool("retreatToNearestFriendly", ctx)
   )
 
 proc parseBlockade(node: KdlNode, ctx: var KdlConfigContext): BlockadeConfig =

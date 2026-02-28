@@ -156,34 +156,6 @@ Set your fleet's aggression level with Rules of Engagement—a 0-10 scale determ
 | 9   | 0.33      | Fight even at 1:3 disadvantage | Desperate defense                       |
 | 10  | 0.0       | Fight regardless of odds       | Suicidal last stands, homeworld defense |
 
-**Morale Modifies Effective ROE:**
-
-Your house's morale is determined by your **relative standing to the leading house**. Morale affects effective ROE during combat:
-
-| Morale Tier | % of Leader's Prestige | ROE Modifier | Effect on ROE                                     |
-|-------------|------------------------|--------------|---------------------------------------------------|
-| Crisis      | ≤10%                   | -2           | Fleets retreat much earlier (ROE 8 becomes ROE 6) |
-| VeryLow     | ≤25%                   | -1           | Fleets retreat earlier (ROE 8 becomes ROE 7)      |
-| Low         | ≤40%                   | -1           | Fleets retreat earlier (ROE 8 becomes ROE 7)      |
-| Average     | ≤60%                   | 0            | No change                                         |
-| Good        | ≤80%                   | +1           | Fleets fight longer (ROE 6 becomes ROE 7)         |
-| High        | ≤95%                   | +2           | Fleets fight much longer (ROE 6 becomes ROE 8)    |
-| VeryHigh    | >95%                   | +2           | Fleets fight much longer (ROE 6 becomes ROE 8)    |
-
-**Relative Morale System:**
-
-- Your morale tier = `your_prestige / max_prestige_among_all_houses × 100`
-- The leading house (highest prestige) is always at 100% = VeryHigh morale
-- Houses close to the leader maintain high morale
-- Houses far behind the leader suffer morale penalties
-- Naturally scales with zero-sum competition and map size
-- Configuration: `config/combat.kdl` retreat.moraleRoeModifiers section
-
-**Examples:**
-
-- **Turn 1:** All houses at 100 prestige → Everyone at 100% = VeryHigh morale
-- **Mid-game:** Leader at 500, you at 300 → 60% of leader = Average morale
-- **Late-game:** Leader at 10,000, you at 1,500 → 15% of leader = VeryLow morale (-1 ROE)
 
 **Homeworld Defense Exception**: Fleets defending their homeworld NEVER retreat regardless of ROE or losses.
 
@@ -440,20 +412,34 @@ As fighters are destroyed, superiority shifts. Losing fighters hurts twice:
 
 ### 7.4.4 Morale Effects
 
-House prestige affects combat morale, providing die roll modifiers:
+Your house's morale is determined by your **relative standing to the leading house**. Morale provides a powerful Die Roll Modifier (DRM) to combat rolls during the **first round only**.
 
-**Morale Die Roll Modifier:**
-| Prestige Level | Morale DRM | Effect |
-|----------------|------------|--------|
-| 0 or less | -2 | Poor morale, worse combat rolls |
-| 1-20 | -1 | Low morale |
-| 21-60 | 0 | Normal morale |
-| 61-80 | +1 | High morale, better combat rolls |
-| 81+ | +2 | Exceptional morale |
+**Morale Tier and DRM:**
+| Morale Tier | % of Leader's Prestige | DRM | Effect |
+|-------------|------------------------|-----|--------|
+| Crisis      | ≤10%                   | -2  | Poor morale, worse combat rolls |
+| VeryLow     | ≤25%                   | -1  | Low morale |
+| Low         | ≤40%                   | -1  | Low morale |
+| Average     | ≤60%                   | 0   | Normal morale |
+| Good        | ≤80%                   | +1  | High morale, better combat rolls |
+| High        | ≤95%                   | +2  | Exceptional morale |
+| VeryHigh    | >95%                   | +2  | Exceptional morale |
 
-Morale applies to ALL combat rounds (not just first round like detection bonuses).
+**Relative Morale System:**
+- Your morale tier = `your_prestige / max_prestige_among_all_houses × 100`
+- The leading house (highest prestige) is always at 100% = VeryHigh morale
+- Houses close to the leader maintain high morale
+- Houses far behind the leader suffer morale penalties
+- Naturally scales with zero-sum competition and map size
+- Configuration: `config/combat.kdl` cer.modifiers.moraleDRM section
 
-High prestige houses fight more effectively AND retreat less often (morale modifies ROE too).
+**Examples:**
+- **Turn 1:** All houses at 100 prestige → Everyone at 100% = VeryHigh morale (+2 DRM)
+- **Mid-game:** Leader at 500, you at 300 → 60% of leader = Average morale (0 DRM)
+- **Late-game:** Leader at 10,000, you at 1,500 → 15% of leader = VeryLow morale (-1 DRM)
+
+**First Round Only:**
+Morale represents the psychological advantage or hesitation during the initial engagement. After the first round, raw survival instincts and tactics take over, and the Morale DRM no longer applies. Morale does NOT modify Rules of Engagement—commanders always maintain strict control over when their fleets retreat.
 
 ---
 

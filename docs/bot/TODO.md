@@ -14,41 +14,42 @@ compiled into `CommandPacket`.
 
 ## Phase 1 - Runtime Skeleton and Transport
 
-- [ ] Create `src/bot/main.nim` for CLI and env configuration.
-- [ ] Create `src/bot/runner.nim` for turn loop orchestration.
-- [ ] Create `src/bot/state_store.nim` for full+delta state handling.
-- [ ] Reuse player-side Nostr transport from `src/player/nostr/client.nim`.
-- [ ] Handle `30405` full state and `30403` delta events.
-- [ ] Add actionable-turn debounce to avoid duplicate submissions.
+- [x] Create `src/bot/main.nim` for CLI and env configuration.
+- [x] Create `src/bot/runner.nim` for turn loop orchestration.
+- [x] Create `src/bot/state_store.nim` for full+delta state handling.
+- [x] Reuse player-side Nostr transport from `src/player/nostr/client.nim`.
+  - `src/bot/transport.nim`
+- [x] Handle `30405` full state and `30403` delta events.
+- [x] Add actionable-turn debounce to avoid duplicate submissions.
 
 ## Phase 2 - Prompt Context Generation
 
-- [ ] Create `src/bot/prompt_context.nim`.
-- [ ] Produce deterministic, token-efficient markdown context from
+- [x] Create `src/bot/prompt_context.nim`.
+- [x] Produce deterministic, token-efficient markdown context from
   PlayerState.
-- [ ] Include only fog-of-war-safe known data.
-- [ ] Add section summaries for economy, fleets, intel, and events.
+- [x] Include only fog-of-war-safe known data.
+- [x] Add section summaries for economy, fleets, intel, and events.
 
 ## Phase 3 - LLM Client
 
-- [ ] Create `src/bot/llm_client.nim` with provider-agnostic interface.
-- [ ] Implement one OpenAI-compatible adapter for v1.
+- [x] Create `src/bot/llm_client.nim` with provider-agnostic interface.
+- [x] Implement one OpenAI-compatible adapter for v1.
 - [ ] Add timeout, retry, and request metadata logging.
 
 ## Phase 4 - JSON Schema and Compiler
 
-- [ ] Create `src/bot/order_schema.nim` with strict parser.
-- [ ] Create `src/bot/order_compiler.nim` mapping JSON draft to
+- [x] Create `src/bot/order_schema.nim` with strict parser.
+- [x] Create `src/bot/order_compiler.nim` mapping JSON draft to
   `CommandPacket`.
-- [ ] Enforce one fleet command per fleet.
-- [ ] Enforce id presence/type checks and ROE bounds.
+- [x] Enforce one fleet command per fleet.
+- [x] Enforce id presence/type checks and ROE bounds.
 - [ ] Reject ambiguous or unsupported command variants.
 
 ## Phase 5 - Validation and Correction Loop
 
-- [ ] Add preflight checks using available PlayerState data.
-- [ ] Submit serialized packet with bounded retry loop on failure.
-- [ ] Feed parser/compiler/preflight errors back to LLM for correction.
+- [x] Add preflight checks using available PlayerState data.
+- [x] Submit serialized packet with bounded retry loop on failure.
+- [x] Feed parser/compiler/preflight errors back to LLM for correction.
 - [ ] Persist per-turn correction traces.
 
 ## Phase 6 - Playtest Harness
@@ -59,12 +60,13 @@ compiled into `CommandPacket`.
 
 ## Phase 7 - Test Coverage
 
-- [ ] Unit: schema parsing (`tests/unit/test_bot_order_schema.nim`).
-- [ ] Unit: compiler mapping (`tests/unit/test_bot_order_compiler.nim`).
-- [ ] Unit: prompt context (`tests/unit/test_bot_prompt_context.nim`).
-- [ ] Unit: state store (`tests/unit/test_bot_state_store.nim`).
-- [ ] Unit: retry loop (`tests/unit/test_bot_runner_retry.nim`).
-- [ ] Integration smoke: ingest state and submit one turn.
+- [x] Unit: schema parsing (`tests/unit/test_bot_order_schema.nim`).
+- [x] Unit: compiler mapping (`tests/unit/test_bot_order_compiler.nim`).
+- [x] Unit: prompt context (`tests/unit/test_bot_prompt_context.nim`).
+- [x] Unit: state store (`tests/unit/test_bot_state_store.nim`).
+- [x] Unit: retry loop (`tests/unit/test_bot_runner_retry.nim`).
+- [x] Integration smoke: ingest state and submit one turn.
+  - `tests/unit/test_bot_integration_smoke.nim`
 
 ## Acceptance Criteria
 

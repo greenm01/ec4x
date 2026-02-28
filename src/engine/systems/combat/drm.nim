@@ -68,8 +68,9 @@ proc calculateDRM*(
   let force = if isAttacker: battle.attacker else: battle.defender
   let enemyForce = if isAttacker: battle.defender else: battle.attacker
 
-  # Morale (all theaters, all rounds)
-  result += force.morale
+  # Morale (all theaters, first round only)
+  if round == 1:
+    result += force.morale
 
   case battle.theater
   of CombatTheater.Space, CombatTheater.Orbital:
@@ -124,7 +125,7 @@ proc calculateDRM*(
 ## - Morale DRM comes from prestige system
 ## - Calculated before combat starts
 ## - Stored in HouseCombatForce.morale field
-## - Applied every round (not just first)
+## - Applied first round only
 ##
 ## **Fighter Superiority:**
 ## - Recalculated each round (fighters can be destroyed)

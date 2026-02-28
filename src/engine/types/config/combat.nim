@@ -9,6 +9,7 @@ type
 
   CerModifiersConfig* = object
     ambush*: int32
+    moraleDRM*: MoraleDrmConfig
 
   CerTableConfig* = object
     veryPoorMax*: int32
@@ -42,9 +43,9 @@ type
   MoraleTierThreshold* = object
     ## Single morale tier configuration
     maxPercent*: int32      # Max % of leader's prestige (0-100), omit for highest tier
-    roeModifier*: int32     # ROE adjustment for this tier
+    drm*: int32     # ROE adjustment for this tier
 
-  MoraleRoeModifiersConfig* = object
+  MoraleDrmConfig* = object
     ## ROE modifiers based on morale tier relative to leading house (per spec 7.2.3)
     ## Each tier defines percentage threshold and ROE modifier
     crisis*: MoraleTierThreshold
@@ -59,7 +60,6 @@ type
     fightersNeverRetreat*: bool
     spaceliftDestroyedIfEscortLost*: bool
     retreatToNearestFriendly*: bool
-    moraleRoeModifiers*: MoraleRoeModifiersConfig
 
   BlockadeConfig* = object
     blockadePrestigePenalty*: int32

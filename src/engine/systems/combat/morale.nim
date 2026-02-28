@@ -23,8 +23,8 @@ proc maxPrestige*(state: GameState): int32 =
     if house.prestige > result:
       result = house.prestige
 
-proc moraleROEModifier*(state: GameState, houseId: HouseId): int32 =
-  ## Calculate ROE modifier based on house's morale tier
+proc moraleDRM*(state: GameState, houseId: HouseId): int32 =
+  ## Calculate DRM based on house's morale tier
   ## Morale tier determined by house prestige relative to leading house
   ## Per docs/specs/07-combat.md Section 7.2.3
   
@@ -39,23 +39,23 @@ proc moraleROEModifier*(state: GameState, houseId: HouseId): int32 =
   let percentOfLeader = int32((float32(house.prestige) / float32(maxPrestige)) * 100.0)
   
   # Get morale tier thresholds from config
-  let config = gameConfig.combat.retreatRules.moraleRoeModifiers
+  let config = gameConfig.combat.cerModifiers.moraleDRM
   
   # Determine tier based on percentage thresholds
   if percentOfLeader <= config.crisis.maxPercent:
-    return config.crisis.roeModifier
+    return config.crisis.drm
   elif percentOfLeader <= config.veryLow.maxPercent:
-    return config.veryLow.roeModifier
+    return config.veryLow.drm
   elif percentOfLeader <= config.low.maxPercent:
-    return config.low.roeModifier
+    return config.low.drm
   elif percentOfLeader <= config.average.maxPercent:
-    return config.average.roeModifier
+    return config.average.drm
   elif percentOfLeader <= config.good.maxPercent:
-    return config.good.roeModifier
+    return config.good.drm
   elif percentOfLeader <= config.high.maxPercent:
-    return config.high.roeModifier
+    return config.high.drm
   else:  # Above high threshold = VeryHigh
-    return config.veryHigh.roeModifier
+    return config.veryHigh.drm
 
 proc moraleTier*(state: GameState, houseId: HouseId): MoraleTier =
   ## Get the morale tier for a house based on relative prestige
@@ -72,7 +72,7 @@ proc moraleTier*(state: GameState, houseId: HouseId): MoraleTier =
   let percentOfLeader = int32((float32(house.prestige) / float32(maxPrestige)) * 100.0)
   
   # Get morale tier thresholds from config
-  let config = gameConfig.combat.retreatRules.moraleRoeModifiers
+  let config = gameConfig.combat.cerModifiers.moraleDRM
   
   # Determine tier based on percentage thresholds
   if percentOfLeader <= config.crisis.maxPercent:

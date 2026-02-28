@@ -8,7 +8,7 @@
 import std/[tables, random, options, algorithm, sequtils]
 import ../../types/[core, game_state, combat, diplomacy, fleet, event]
 import ../../state/[engine, iterators]
-import ../../prestige/effects
+import ./morale
 import ../../event_factory/init
 import ./strength
 import ./cer
@@ -314,7 +314,7 @@ proc buildMultiHouseBattle*(
     let house = houseOpt.get()
 
     # Calculate morale modifier from prestige
-    let morale = moraleCERModifier(house.prestige.int)
+    let morale = moraleDRM(state, houseId)
 
     participants.add(HouseCombatForce(
       houseId: houseId,
@@ -551,7 +551,9 @@ proc resolveMultiHouseBattle*(
       let totalAS = houseAS[participant.houseId]
 
       # Calculate DRM (simplified - would need full DRM calculation)
-      var drm = participant.morale
+      var drm = 0'i32
+      if round == 1:
+        drm += participant.morale
       
       # Detection bonus (first round only, applies to winner)
       let detectionOutcome = battle.detection[participant.houseId]

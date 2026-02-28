@@ -18,7 +18,18 @@ cer {
     modifiers {
         (docs)"docs/specs/07-combat.md#section-7-2-4"
         ambushBonus 4 // +4 for undetected Raider first-strike (replaces surprise/ambush)
-        // Morale modifiers are handled in-game based on prestige
+        
+        // Morale tiers relative to leading house's prestige (per Section 7.4.4)
+        // Each tier defines max % of leader's prestige and DRM for the first round
+        moraleDRM {
+            crisis { maxPercent 10; drm -2 }      // ≤10% of leader: -2 DRM
+            veryLow { maxPercent 25; drm -1 }     // ≤25% of leader: -1 DRM
+            low { maxPercent 40; drm -1 }         // ≤40% of leader: -1 DRM
+            average { maxPercent 60; drm 0 }      // ≤60% of leader: 0 DRM
+            good { maxPercent 80; drm 1 }         // ≤80% of leader: +1 DRM
+            high { maxPercent 95; drm 2 }         // ≤95% of leader: +2 DRM
+            veryHigh { drm 2 }                    // >95% of leader: +2 DRM
+        }
     }
 
     spaceCombatTable {
@@ -126,17 +137,6 @@ retreat {
     spaceliftDestroyedIfEscortLost #true
     retreatToNearestFriendly #true
     
-    // Morale tiers relative to leading house's prestige (per Section 7.2.3)
-    // Each tier defines max % of leader's prestige and ROE modifier
-    moraleRoeModifiers {
-        crisis { maxPercent 10; roeModifier -2 }      // ≤10% of leader: Fleets retreat much earlier
-        veryLow { maxPercent 25; roeModifier -1 }     // ≤25% of leader: Fleets retreat earlier
-        low { maxPercent 40; roeModifier -1 }         // ≤40% of leader: Fleets retreat earlier
-        average { maxPercent 60; roeModifier 0 }      // ≤60% of leader: No change
-        good { maxPercent 80; roeModifier 1 }         // ≤80% of leader: Fleets fight longer
-        high { maxPercent 95; roeModifier 2 }         // ≤95% of leader: Fleets fight much longer
-        veryHigh { roeModifier 2 }                    // >95% of leader: Fleets fight much longer
-    }
 }
 
 // --- Blockade Mechanics ---
