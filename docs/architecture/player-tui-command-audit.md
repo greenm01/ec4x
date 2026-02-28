@@ -122,3 +122,6 @@ draft-restored, and submitted through `CommandPacket`.
 - At least one end-to-end integration test covers mixed-category submission:
   fleet + ZTC + economy + diplomacy + espionage + population transfer +
   terraforming + repair/scrap.
+
+Current evidence:
+- `tests/unit/test_tui_mixed_submit_smoke.nim`

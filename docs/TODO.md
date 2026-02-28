@@ -69,8 +69,10 @@ Current focus:
 
 1. Add visual/layout polish for narrow terminals where command labels or
    footer hints are still prone to truncation.
-2. Add one more integration-style smoke path for mixed submit confirmation
-   (fleet + ZTC + economy + diplomacy + espionage + colony commands).
+2. [x] Add one more integration-style smoke path for mixed submit
+   confirmation (fleet + ZTC + economy + diplomacy + espionage +
+   colony commands).
+   - `tests/unit/test_tui_mixed_submit_smoke.nim`
 
 ## Future (Post-Playtesting)
 
