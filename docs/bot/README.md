@@ -53,6 +53,7 @@ Once the single-turn loop is functional, we will build a simulation script (`scr
 
 Implementation tracker:
 - `docs/bot/TODO.md`
+- `docs/bot/playtest_prompts.md`
 
 Locked v1 decisions:
 - Output contract is strict JSON parsed by bot schema, then compiled to
