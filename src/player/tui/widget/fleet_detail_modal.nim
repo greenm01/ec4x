@@ -691,15 +691,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
         shipTable.renderHeight(visibleRows)
       FleetDetailInfoHeight + FleetDetailSeparatorHeight +
         shipsContentHeight + FleetDetailFooterHeight
-  
-  var modalArea = modal.calculateArea(
-    viewport,
-    subModalInnerWidth,
-    contentHeight
-  )
-  var effectiveModalArea = modalArea
 
-  # Render modal frame with title
   # Determine footer text per sub-modal (pickers get bordered footers too)
   # Title reflects ZTC context even for shared sub-modals like FleetPicker
   let isZtcContext = state.ztcType.isSome or
@@ -734,6 +726,17 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       (true, "[↑↓]Qty [0-9]Qty [Enter]Confirm [Esc]Cancel")
     else:
       (false, "")
+
+  let finalInnerWidth = max(subModalInnerWidth, max(title.len, footerText.len))
+  
+  var modalArea = modal.calculateArea(
+    viewport,
+    finalInnerWidth,
+    contentHeight
+  )
+  var effectiveModalArea = modalArea
+
+  # Render modal frame with title
 
   if state.subModal == FleetSubModal.None:
     let estimatedInnerHeight = max(1,

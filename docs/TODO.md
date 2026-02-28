@@ -46,11 +46,21 @@ Reference audit:
 
 Priority backlog:
 
-1. Add integration tests proving submit/resume behavior for all
+1. [x] Add integration tests proving submit/resume behavior for all
    command categories in normal TUI flows.
-2. Expand UI-level regression coverage for maintenance and transfer
+   - `tests/unit/test_tui_draft_apply_resume.nim`
+2. [x] Expand UI-level regression coverage for maintenance and transfer
    modal interactions.
-3. Validate command-dock/action-hint parity across all colony actions.
+   - `tests/unit/test_tui_modal_acceptors.nim`
+3. [x] Validate command-dock/action-hint parity across all colony actions.
+   - `tests/unit/test_tui_colony_action_parity.nim`
+
+Next focus:
+
+1. Add real TUI end-to-end smoke tests for fleet multi-select and batch
+   operations under live keyboard event handling.
+2. Expand submit/resume regression tests for fleet-detail batch snapshot
+   behavior (ROE/Command/ZTC) across cursor movement and sort changes.
 
 ## Future (Post-Playtesting)
 
