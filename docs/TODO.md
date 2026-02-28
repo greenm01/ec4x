@@ -50,6 +50,8 @@ All readiness gate checks pass:
 
 1. Run structured human playtest sessions and capture UX friction points
    from real command submission loops.
+   - `docs/guides/player-tui-playtest-checklist.md`
+   - `docs/guides/player-tui-issue-template.md`
 2. Add targeted regressions for issues found during playtests, keeping
    coverage near the modal/acceptor path where the bug occurs.
 3. Track and prioritize gameplay-facing polish items that impact command

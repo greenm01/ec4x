@@ -66,6 +66,12 @@ Located in `engine/`:
 Located in `tools/`:
 - **[ec4x-play.md](tools/ec4x-play.md)** - Dev player CLI/TUI for playtesting and Claude/LLM integration
 
+### Playtesting Guides
+
+Located in `guides/`:
+- **[player-tui-playtest-checklist.md](guides/player-tui-playtest-checklist.md)** - Structured session checklist for TUI playtests
+- **[player-tui-issue-template.md](guides/player-tui-issue-template.md)** - Issue capture template for playtest findings
+
 ### Bot & AI
 
 Located in `bot/` and `ai/`:
