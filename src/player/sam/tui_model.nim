@@ -2502,9 +2502,52 @@ proc needsTargetSystem*(cmdType: int): bool =
               CmdReserve, CmdMothball, CmdView]
 
 proc buildCommandPickerList*(model: TuiModel): seq[FleetCommandType] =
-  ## Always show full 00-19 command set in picker.
-  ## Applicability is validated at selection/stage time.
-  allFleetCommands()
+  ## Filter picker commands to relevant options for the active
+  ## fleet selection context (single or batch).
+  let commands = allFleetCommands()
+
+  var sourceFleetIds: seq[int] = @[]
+  if model.ui.fleetDetailModal.batchFleetIds.len > 0:
+    sourceFleetIds = model.ui.fleetDetailModal.batchFleetIds
+  elif model.ui.fleetDetailModal.fleetId > 0:
+    sourceFleetIds = @[model.ui.fleetDetailModal.fleetId]
+  elif model.ui.selectedFleetIds.len > 0:
+    sourceFleetIds = model.ui.selectedFleetIds
+
+  if sourceFleetIds.len == 0:
+    return commands
+
+  var fleetById = initTable[int, FleetInfo]()
+  for fleet in model.view.fleets:
+    fleetById[fleet.id] = fleet
+
+  if sourceFleetIds.len > 1:
+    result = @[]
+    for cmdType in commands:
+      if cmdType == FleetCommandType.JoinFleet:
+        continue
+      var validForAll = true
+      for fleetId in sourceFleetIds:
+        if fleetId notin fleetById:
+          validForAll = false
+          break
+        let fleet = fleetById[fleetId]
+        if validateFleetCommand(fleet, cmdType).len > 0:
+          validForAll = false
+          break
+      if validForAll:
+        result.add(cmdType)
+    return result
+
+  let fleetId = sourceFleetIds[0]
+  if fleetId notin fleetById:
+    return commands
+
+  let fleet = fleetById[fleetId]
+  result = @[]
+  for cmdType in commands:
+    if validateFleetCommand(fleet, cmdType).len == 0:
+      result.add(cmdType)
 
 proc estimateETA*(model: TuiModel,
     fromSys: int, toSys: int,

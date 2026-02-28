@@ -526,3 +526,52 @@ suite "TUI command staging":
     )
     check picker.systems.len == 1
     check picker.systems[0].systemId == 33
+
+  test "command picker filters irrelevant single-fleet missions":
+    var model = initTuiModel()
+    model.view.fleets = @[
+      FleetInfo(
+        id: 200,
+        name: "A1",
+        hasCombatShips: true,
+        hasTroopTransports: false,
+        hasEtacs: false,
+        isScoutOnly: false
+      )
+    ]
+    model.ui.fleetDetailModal.fleetId = 200
+
+    let commands = model.buildCommandPickerList()
+    check FleetCommandType.Move in commands
+    check FleetCommandType.GuardColony in commands
+    check FleetCommandType.Blitz notin commands
+    check FleetCommandType.Colonize notin commands
+    check FleetCommandType.ScoutSystem notin commands
+
+  test "batch command picker excludes join and invalid missions":
+    var model = initTuiModel()
+    model.view.fleets = @[
+      FleetInfo(
+        id: 301,
+        name: "A1",
+        hasCombatShips: true,
+        hasTroopTransports: true,
+        hasEtacs: false,
+        isScoutOnly: false
+      ),
+      FleetInfo(
+        id: 302,
+        name: "A2",
+        hasCombatShips: true,
+        hasTroopTransports: false,
+        hasEtacs: false,
+        isScoutOnly: false
+      )
+    ]
+    model.ui.fleetDetailModal.batchFleetIds = @[301, 302]
+
+    let commands = model.buildCommandPickerList()
+    check FleetCommandType.GuardColony in commands
+    check FleetCommandType.JoinFleet notin commands
+    check FleetCommandType.Invade notin commands
+    check FleetCommandType.Colonize notin commands
