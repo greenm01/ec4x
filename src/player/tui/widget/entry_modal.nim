@@ -623,6 +623,25 @@ proc renderIdentitySection(buf: var CellBuffer, area: Rect,
       # Removed redundant hints from under IDENTITY to save vertical space.
       discard
 
+proc adaptiveFooterHint(
+    width: int,
+    full: string,
+    medium: string,
+    compact: string,
+    minimal: string
+): string =
+  if full.len <= width:
+    return full
+  if medium.len <= width:
+    return medium
+  if compact.len <= width:
+    return compact
+  if minimal.len <= width:
+    return minimal
+  if width <= 0:
+    return ""
+  minimal[0 ..< min(width, minimal.len)]
+
 proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                            state: EntryModalState, tableHeight: int) =
   ## Render identity manager table.
@@ -663,69 +682,15 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
     tableWidget.render(tableArea, buf)
 
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
-  let dimStyle = modalDimStyle()
-  let keyStyle = CellStyle(
-    fg: color(KeyHintColor),
-    bg: color(TrueBlackColor),
-    attrs: {StyleAttr.Bold}
+  let footerHint = adaptiveFooterHint(
+    footerArea.width,
+    "[↑↓]Select [Enter]Use [I]Import [N]New [D]Del [P]Password [Esc]Back",
+    "[↑↓]Select [Enter]Use [I]Import [N]New [D]Del [Esc]Back",
+    "[↑↓] [Enter] [I] [N] [D] [Esc]",
+    "[↑↓] [Enter] [Esc]"
   )
-  let textStyle = modalBgStyle()
-  var x = footerArea.x
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "↑↓", keyStyle)
-  x += 2
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Select  ", textStyle)
-  x += 9
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "Enter", keyStyle)
-  x += 5
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Use  ", textStyle)
-  x += 6
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "I", keyStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Import  ", textStyle)
-  x += 9
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "N", keyStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " New  ", textStyle)
-  x += 6
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "D", keyStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Del  ", textStyle)
-  x += 6
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "P", keyStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Password  ", textStyle)
-  x += 11
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "Esc", keyStyle)
-  x += 3
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Back", textStyle)
+  discard buf.setString(footerArea.x, footerArea.y,
+    footerHint, modalBgStyle())
 
   if state.walletStatusMsg.len > 0:
     let statusStyle = CellStyle(
@@ -1331,7 +1296,13 @@ proc renderCreateGameMode(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   
   # Footer
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
-  let footerHint = "[↑↓] Navigate  [←→] Adjust  [Enter] Select  [Esc] Cancel"
+  let footerHint = adaptiveFooterHint(
+    footerArea.width,
+    "[↑↓] Navigate  [←→] Adjust  [Enter] Select  [Esc] Cancel",
+    "[↑↓] Navigate  [Enter] Select  [Esc] Cancel",
+    "[↑↓] [Enter] [Esc]",
+    "[Enter] [Esc]"
+  )
   discard buf.setString(footerArea.x, footerArea.y, footerHint, footerStyle)
 
 proc renderPlayerGamesManager(buf: var CellBuffer, inner: Rect,
@@ -1385,37 +1356,15 @@ proc renderPlayerGamesManager(buf: var CellBuffer, inner: Rect,
   tableWidget.render(tableArea, buf)
 
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
-  let dimStyle = modalDimStyle()
-  let keyStyle = CellStyle(
-    fg: color(KeyHintColor),
-    bg: color(TrueBlackColor),
-    attrs: {StyleAttr.Bold}
+  let footerHint = adaptiveFooterHint(
+    footerArea.width,
+    "[↑↓] Nav  [Enter] Play  [Esc] Back",
+    "[↑↓] Nav [Enter] Play [Esc] Back",
+    "[↑↓] [Enter] [Esc]",
+    "[Enter] [Esc]"
   )
-  let textStyle = modalBgStyle()
-  var x = footerArea.x
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "↑↓", keyStyle)
-  x += 2
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Nav  ", textStyle)
-  x += 6
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "Enter", keyStyle)
-  x += 5
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Play  ", textStyle)
-  x += 7
-  discard buf.setString(x, footerArea.y, "[", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, "Esc", keyStyle)
-  x += 3
-  discard buf.setString(x, footerArea.y, "]", dimStyle)
-  x += 1
-  discard buf.setString(x, footerArea.y, " Back", textStyle)
+  discard buf.setString(footerArea.x, footerArea.y,
+    footerHint, modalBgStyle())
 
 proc calculateContentHeight(state: EntryModalState, gamesHeight: int): int =
   ## Calculate content height with a specific games section size
@@ -1475,9 +1424,7 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     let tableWidth = tableWidget.renderWidth(ModalMaxWidth - 2)
     let tableHeight = tableWidget.renderHeight(rowCount)
     let headerLine = "MANAGE WALLET (max " & $MaxIdentityCount & ")"
-    let footerLine = "[↑↓] Select  [Enter] Use  [I] Import  [N] New  " &
-      "[D] Del  [P] Password  [Esc] Back"
-    let contentWidth = max(tableWidth, max(headerLine.len, footerLine.len))
+    let contentWidth = max(tableWidth, headerLine.len)
     let contentHeight = 1 + tableHeight
     let managerFooterHeight = 2  # separator row + footer text row
     let managerModal = modal
@@ -1506,8 +1453,7 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     let rowCount = max(1, gameCount)
     let tableWidth = tableWidget.renderWidth(ModalMaxWidth - 2)
     let tableHeight = tableWidget.renderHeight(rowCount)
-    let footerLine = "[↑↓] Nav  [Enter] Play  [Esc] Back"
-    let contentWidth = max(tableWidth, max("MY GAMES ".len, footerLine.len))
+    let contentWidth = max(tableWidth, "MY GAMES ".len)
     let contentHeight = 1 + tableHeight
     let managerFooterHeight = 2
     let managerModal = modal

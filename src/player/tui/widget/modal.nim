@@ -121,18 +121,22 @@ proc calculateArea*(m: Modal, viewport: Rect, contentHeight: int): Rect =
   ## Calculate the modal's area within the viewport (height-only version).
   ## Centers the modal and respects min/max constraints.
   ## Width is determined by maxWidth setting.
-  
-  # Calculate width: min(viewport.width - 4, maxWidth), clamped to minWidth
-  let effectiveMaxWidth = min(viewport.width - 4, m.maxWidth)
-  let width = max(m.minWidth, effectiveMaxWidth)
-  
-  # Calculate height: contentHeight + 2 for borders, clamped to minHeight
-  let height = max(m.minHeight, contentHeight + 2)
-  
+
+  # Keep one-cell margin where possible, but never exceed viewport.
+  let maxWidth = max(4, viewport.width - 2)
+  let preferredWidth = max(m.minWidth,
+    min(m.maxWidth, max(4, viewport.width - 4)))
+  let width = min(preferredWidth, maxWidth)
+
+  # Height: content + 2 (borders), clamped to available viewport.
+  let maxHeight = max(3, viewport.height)
+  let preferredHeight = max(m.minHeight, contentHeight + 2)
+  let height = min(preferredHeight, maxHeight)
+
   # Center within viewport
   let x = viewport.x + (viewport.width - width) div 2
   let y = viewport.y + (viewport.height - height) div 2
-  
+
   rect(x, y, width, height)
 
 proc calculateArea*(m: Modal, viewport: Rect,
@@ -141,20 +145,22 @@ proc calculateArea*(m: Modal, viewport: Rect,
   ## Centers the modal and sizes it to fit actual content dimensions.
   ## Both width and height are based on content size.
   
-  # Width: content + 2 (borders), clamped to viewport and min/max
+  # Width: content + 2 (borders), clamped to viewport and min/max.
   let desiredWidth = contentWidth + 2
-  let maxAvailableWidth = viewport.width - 4
-  let width = clamp(desiredWidth, m.minWidth,
-                    min(maxAvailableWidth, m.maxWidth))
-  
-  # Height: content + 2 (borders), clamped to viewport and minHeight
-  let maxAvailableHeight = viewport.height - 2
-  let height = clamp(contentHeight + 2, m.minHeight, maxAvailableHeight)
-  
+  let maxAvailableWidth = max(4, viewport.width - 2)
+  let maxConfiguredWidth = min(maxAvailableWidth, m.maxWidth)
+  let width = min(maxConfiguredWidth, max(desiredWidth, m.minWidth))
+
+  # Height: content + 2 (borders), clamped to viewport and minHeight.
+  let desiredHeight = contentHeight + 2
+  let maxAvailableHeight = max(3, viewport.height)
+  let maxConfiguredHeight = maxAvailableHeight
+  let height = min(maxConfiguredHeight, max(desiredHeight, m.minHeight))
+
   # Center within viewport
   let x = viewport.x + (viewport.width - width) div 2
   let y = viewport.y + (viewport.height - height) div 2
-  
+
   rect(x, y, width, height)
 
 proc inner*(m: Modal, modalArea: Rect): Rect =
