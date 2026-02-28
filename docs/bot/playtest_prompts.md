@@ -135,6 +135,8 @@ Evidence:
 - Per-bot trace JSONL: `logs/bot/multi/bot<N>/bot_trace_<gameId>.jsonl`.
 - Scenario matrix evaluation:
   `scripts/bot/run_trace_matrix.py --matrix scripts/bot/scenario_matrix.example.json`.
+- Stability gate evaluation:
+  `scripts/bot/evaluate_trace_quality.py logs/bot/multi --require-session-record`.
 
 Report:
 - Number of bots launched and models used.

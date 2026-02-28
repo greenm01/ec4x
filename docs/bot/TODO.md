@@ -121,6 +121,7 @@ compiled into `CommandPacket`.
   - Define setups that trigger each command family path.
   - Run matrix automatically and emit pass/fail report.
 - [ ] Add stability and reproducibility gates.
+  - Added `scripts/bot/evaluate_trace_quality.py` gate evaluator.
   - 20+ consecutive turns without manual correction.
   - Retry recovery rate above threshold.
   - Re-run reproducibility from env + metadata + traces.

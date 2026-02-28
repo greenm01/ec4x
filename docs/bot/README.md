@@ -90,6 +90,8 @@ Use `scripts/bot/summarize_trace_coverage.py <trace-dir-or-file>` to
 summarize feature-family coverage from traces.
 Use `scripts/bot/run_trace_matrix.py --matrix scripts/bot/scenario_matrix.example.json`
 to evaluate scenario coverage/stability gates and emit pass/fail results.
+Use `scripts/bot/evaluate_trace_quality.py <trace-dir-or-file>` for
+stability checks (20+ streak, success rate, retry rate).
 
 ## Runtime behavior notes
 
