@@ -66,6 +66,59 @@ Legend: `Complete`, `Partial`, `Missing`
 
 ---
 
+## Fleet Target Filtering Matrix (Spec-aligned)
+
+Goal: system target pickers should only present destinations that are
+both strategically meaningful and executable for the selected fleet
+context, while respecting fog-of-war.
+
+Principles:
+- Fog-of-war safe: target policies use only known/visible player intel.
+- Executable first: unreachable systems are filtered out.
+- Batch-safe: multi-fleet pickers use intersection semantics.
+- No duplicate colonize intent: colonize excludes systems already
+  targeted by other friendly colonize missions.
+
+| Command | Target filter policy | Data source |
+|---|---|---|
+| Move (01) | Reachable systems only | ETA/pathfinding |
+| Patrol (03) | Reachable systems only | ETA/pathfinding |
+| Guard Starbase (04) | Friendly starbase systems + reachable | Planets/intel |
+| Guard Colony (05) | Friendly colony systems + reachable | Planets |
+| Blockade (06) | Known enemy colonies + known uncolonized visible + reachable | Intel/visibility |
+| Bombard (07) | Known enemy colonies + reachable | Intel |
+| Invade (08) | Known enemy colonies + reachable | Intel |
+| Blitz (09) | Known enemy colonies + reachable | Intel |
+| Colonize (10) | Known uncolonized; exclude known colonized and other friendly colonize targets; reachable | Planets/intel/fleet intents |
+| Scout Colony (11) | Known enemy colonies + reachable | Intel |
+| Scout System (12) | Visible non-owned systems + reachable | Intel visibility |
+| Hack Starbase (13) | Known enemy starbases + reachable | Intel |
+| Rendezvous (15) | Reachable systems only | ETA/pathfinding |
+| Salvage (16) | Friendly colony systems with salvage support + reachable | Planets |
+| Reserve (17) | Friendly colony systems + reachable | Planets |
+| Mothball (18) | Friendly colony systems + reachable | Planets |
+| View (19) | Visible non-owned systems + reachable | Intel visibility |
+
+### DRY Implementation Rules
+
+- Keep all fleet system-target filtering in one pipeline inside
+  `buildSystemPickerListForCommand`.
+- Precompute reusable filter sets once per picker build, then reuse.
+- Keep command-specific policy mapping centralized in one `case` block.
+- Apply reachability filtering through one shared helper.
+- Keep empty-state messages centralized and consistent.
+
+### Implementation Checklist
+
+- [x] Document command-to-target policy matrix for Player TUI.
+- [x] Add DRY rules for target filtering implementation.
+- [x] Add shared helper for reachability filtering.
+- [x] Expand command-specific filters for Scout/View/Blockade.
+- [x] Keep Colonize duplicate-target prevention in policy pipeline.
+- [x] Add regression tests for new target filter policies.
+
+---
+
 ## Gameplay Readiness Definition
 
 The player TUI is considered gameplay-ready when a human can complete a full

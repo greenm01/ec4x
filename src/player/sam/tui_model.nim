@@ -2649,6 +2649,56 @@ proc filterSystemsExcludingSet(
     if sys.systemId notin excluded:
       result.add(sys)
 
+proc fleetReachableTarget(
+    model: TuiModel,
+    fleetId: int,
+    targetSystemId: int
+): bool =
+  var fromSystemId = 0
+  var found = false
+
+  if fleetId in model.view.ownFleetsById:
+    fromSystemId = int(model.view.ownFleetsById[fleetId].location)
+    found = true
+
+  if not found:
+    for fleet in model.view.fleets:
+      if fleet.id == fleetId:
+        fromSystemId = fleet.location
+        found = true
+        break
+
+  if not found:
+    return false
+
+  var etacOnly = false
+  if fleetId in model.view.ownFleetsById:
+    etacOnly = model.fleetIsEtacOnly(model.view.ownFleetsById[fleetId])
+
+  let eta = model.estimateETA(
+    fromSystemId,
+    targetSystemId,
+    etacOnly = etacOnly
+  )
+  eta > 0 or fromSystemId == targetSystemId
+
+proc filterSystemsReachableForAll(
+    model: TuiModel,
+    systems: seq[SystemPickerEntry],
+    sourceFleetIds: seq[int]
+): seq[SystemPickerEntry] =
+  if sourceFleetIds.len == 0:
+    return systems
+  result = @[]
+  for sys in systems:
+    var reachableForAll = true
+    for fleetId in sourceFleetIds:
+      if not model.fleetReachableTarget(fleetId, sys.systemId):
+        reachableForAll = false
+        break
+    if reachableForAll:
+      result.add(sys)
+
 proc buildSystemPickerListForCommand*(
     model: TuiModel,
     cmdType: FleetCommandType,
@@ -2686,6 +2736,9 @@ proc buildSystemPickerListForCommand*(
     sourceFleetSet.incl(fleetId)
 
   var colonizeTargetsByOthers = initHashSet[int]()
+  var visibleNonOwnedSystems = initHashSet[int]()
+  var knownUncolonizedVisibleSystems = initHashSet[int]()
+
   for fleet in model.view.fleets:
     if fleet.owner != model.view.viewingHouse:
       continue
@@ -2696,6 +2749,17 @@ proc buildSystemPickerListForCommand*(
     if fleet.destinationSystemId <= 0:
       continue
     colonizeTargetsByOthers.incl(fleet.destinationSystemId)
+
+  for intel in model.view.intelRows:
+    if intel.systemId in ownedColonies:
+      continue
+    visibleNonOwnedSystems.incl(intel.systemId)
+    if intel.systemId notin knownColonizedSystems:
+      knownUncolonizedVisibleSystems.incl(intel.systemId)
+
+  var blockadeTargets = model.view.knownEnemyColonySystemIds
+  for systemId in knownUncolonizedVisibleSystems.items:
+    blockadeTargets.incl(systemId)
 
   case cmdType
   of FleetCommandType.GuardStarbase:
@@ -2710,9 +2774,10 @@ proc buildSystemPickerListForCommand*(
     result.emptyMessage = "No friendly colonies found"
   of FleetCommandType.Blockade:
     result.systems = filterSystemsBySet(
-      allSystems, model.view.knownEnemyColonySystemIds
+      allSystems, blockadeTargets
     )
-    result.emptyMessage = "No known enemy colonies to blockade"
+    result.emptyMessage =
+      "No known enemy or uncolonized systems to blockade"
   of FleetCommandType.Bombard:
     result.systems = filterSystemsBySet(
       allSystems, model.view.knownEnemyColonySystemIds
@@ -2742,6 +2807,25 @@ proc buildSystemPickerListForCommand*(
     )
     result.emptyMessage =
       "No known uncolonized systems available"
+  of FleetCommandType.ScoutColony:
+    result.systems = filterSystemsBySet(
+      allSystems, model.view.knownEnemyColonySystemIds
+    )
+    result.emptyMessage = "No known enemy colonies to scout"
+  of FleetCommandType.ScoutSystem:
+    result.systems = filterSystemsBySet(
+      allSystems, visibleNonOwnedSystems
+    )
+    result.emptyMessage = "No visible non-owned systems to scout"
+  of FleetCommandType.View:
+    result.systems = filterSystemsBySet(
+      allSystems, visibleNonOwnedSystems
+    )
+    result.emptyMessage = "No visible non-owned systems to view"
+  of FleetCommandType.Move,
+     FleetCommandType.Patrol,
+     FleetCommandType.Rendezvous:
+    result.emptyMessage = "No reachable systems found"
   of FleetCommandType.Salvage:
     result.systems = filterSystemsBySet(
       allSystems, salvageSystems
@@ -2754,6 +2838,13 @@ proc buildSystemPickerListForCommand*(
     result.emptyMessage = "No friendly colonies found"
   else:
     discard
+
+  result.systems = model.filterSystemsReachableForAll(
+    result.systems,
+    sourceFleetIds
+  )
+  if result.systems.len == 0 and result.emptyMessage.len == 0:
+    result.emptyMessage = "No reachable systems found"
 
 # =============================================================================
 # Client-Side ETA Estimation (for optimistic updates)

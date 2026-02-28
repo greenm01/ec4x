@@ -19,6 +19,16 @@ suite "TUI command staging":
         return row.value
     ""
 
+  proc linkSystems(model: var TuiModel, a: int, b: int) =
+    model.view.laneNeighbors[a] =
+      model.view.laneNeighbors.getOrDefault(a, @[])
+    model.view.laneNeighbors[b] =
+      model.view.laneNeighbors.getOrDefault(b, @[])
+    model.view.laneNeighbors[a].add(b)
+    model.view.laneNeighbors[b].add(a)
+    model.view.laneTypes[(a, b)] = 0
+    model.view.laneTypes[(b, a)] = 0
+
   test "staged entries include population transfer and terraform":
     var model = initTuiModel()
     model.ui.stagedPopulationTransfers = @[
@@ -532,16 +542,23 @@ suite "TUI command staging":
     model.view.systems[(0, 0)] = SystemInfo(id: 41, name: "OpenA")
     model.view.systems[(1, 0)] = SystemInfo(id: 42, name: "Taken")
     model.view.systems[(2, 0)] = SystemInfo(id: 43, name: "OpenB")
+    model.view.systemCoords[41] = (0, 0)
+    model.view.systemCoords[42] = (1, 0)
+    model.view.systemCoords[43] = (2, 0)
+    model.linkSystems(41, 42)
+    model.linkSystems(42, 43)
     model.view.fleets = @[
       FleetInfo(
         id: 401,
         owner: 1,
+        location: 41,
         command: CmdColonize,
         destinationSystemId: 42
       ),
       FleetInfo(
         id: 402,
         owner: 1,
+        location: 41,
         command: CmdColonize,
         destinationSystemId: 43
       )
@@ -561,6 +578,87 @@ suite "TUI command staging":
     check has41
     check has43
     check not has42
+
+  test "view picker keeps visible non-owned reachable systems":
+    var model = initTuiModel()
+    model.view.systems[(0, 0)] = SystemInfo(id: 51, name: "Owned")
+    model.view.systems[(1, 0)] = SystemInfo(id: 52, name: "Visible")
+    model.view.systems[(2, 0)] = SystemInfo(id: 53, name: "Far")
+    model.view.systemCoords[51] = (0, 0)
+    model.view.systemCoords[52] = (1, 0)
+    model.view.systemCoords[53] = (2, 0)
+    model.linkSystems(51, 52)
+    model.view.planetsRows = @[
+      PlanetRow(systemId: 51, isOwned: true)
+    ]
+    model.view.intelRows = @[
+      IntelRow(systemId: 51, ownerName: "You"),
+      IntelRow(systemId: 52, ownerName: "Enemy"),
+      IntelRow(systemId: 53, ownerName: "---")
+    ]
+    model.view.fleets = @[
+      FleetInfo(id: 501, owner: 1, location: 51)
+    ]
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.View,
+      @[501]
+    )
+    check picker.systems.len == 1
+    check picker.systems[0].systemId == 52
+
+  test "scout colony picker only shows known enemy colonies":
+    var model = initTuiModel()
+    model.view.systems[(0, 0)] = SystemInfo(id: 61, name: "EnemyCol")
+    model.view.systems[(1, 0)] = SystemInfo(id: 62, name: "Unknown")
+    model.view.systemCoords[61] = (0, 0)
+    model.view.systemCoords[62] = (1, 0)
+    model.linkSystems(61, 62)
+    model.view.intelRows = @[
+      IntelRow(systemId: 61, ownerName: "Enemy"),
+      IntelRow(systemId: 62, ownerName: "---")
+    ]
+    model.view.knownEnemyColonySystemIds.incl(61)
+    model.view.fleets = @[
+      FleetInfo(id: 601, owner: 1, location: 61)
+    ]
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.ScoutColony,
+      @[601]
+    )
+    check picker.systems.len == 1
+    check picker.systems[0].systemId == 61
+
+  test "blockade picker includes known uncolonized visible systems":
+    var model = initTuiModel()
+    model.view.systems[(0, 0)] = SystemInfo(id: 71, name: "EnemyCol")
+    model.view.systems[(1, 0)] = SystemInfo(id: 72, name: "Open")
+    model.view.systemCoords[71] = (0, 0)
+    model.view.systemCoords[72] = (1, 0)
+    model.linkSystems(71, 72)
+    model.view.intelRows = @[
+      IntelRow(systemId: 71, ownerName: "Enemy"),
+      IntelRow(systemId: 72, ownerName: "---")
+    ]
+    model.view.knownEnemyColonySystemIds.incl(71)
+    model.view.fleets = @[
+      FleetInfo(id: 701, owner: 1, location: 71)
+    ]
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.Blockade,
+      @[701]
+    )
+    var has71 = false
+    var has72 = false
+    for row in picker.systems:
+      if row.systemId == 71:
+        has71 = true
+      if row.systemId == 72:
+        has72 = true
+    check has71
+    check has72
 
   test "command picker filters irrelevant single-fleet missions":
     var model = initTuiModel()

@@ -69,7 +69,14 @@ Current focus:
 
 1. Add visual/layout polish for narrow terminals where command labels or
    footer hints are still prone to truncation.
-2. [x] Add one more integration-style smoke path for mixed submit
+2. [x] Implement spec-aligned smart target filtering for fleet system
+   pickers with DRY policy plumbing.
+   - `src/player/sam/tui_model.nim`
+   - `docs/architecture/player-tui-command-audit.md`
+3. [x] Expand fleet target filter regression coverage (colonize/view/scout/
+   blockade + reachability semantics).
+   - `tests/unit/test_tui_command_staging.nim`
+4. [x] Add one more integration-style smoke path for mixed submit
    confirmation (fleet + ZTC + economy + diplomacy + espionage +
    colony commands).
    - `tests/unit/test_tui_mixed_submit_smoke.nim`
