@@ -34,7 +34,7 @@ compiled into `CommandPacket`.
 
 - [x] Create `src/bot/llm_client.nim` with provider-agnostic interface.
 - [x] Implement one OpenAI-compatible adapter for v1.
-- [ ] Add timeout, retry, and request metadata logging.
+- [x] Add timeout, retry, and request metadata logging.
 
 ## Phase 4 - JSON Schema and Compiler
 
