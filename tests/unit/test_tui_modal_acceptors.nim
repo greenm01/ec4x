@@ -380,6 +380,38 @@ suite "TUI modal acceptors":
     check 5 in model.ui.selectedFleetIds
     check 6 notin model.ui.selectedFleetIds
 
+  test "fleet batch ROE applies only to X-selected snapshot":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Fleets
+    model.ui.fleetViewMode = FleetViewMode.ListView
+    model.ui.selectedIdx = 0
+    model.view.fleets = @[
+      FleetInfo(id: 1, name: "A1", roe: 6, command: int(FleetCommandType.Hold)),
+      FleetInfo(id: 5, name: "A5", roe: 6, command: int(FleetCommandType.Hold)),
+      FleetInfo(id: 6, name: "A6", roe: 6, command: int(FleetCommandType.Hold))
+    ]
+    model.view.ownFleetsById[1] = Fleet(id: FleetId(1), houseId: HouseId(1))
+    model.view.ownFleetsById[5] = Fleet(id: FleetId(5), houseId: HouseId(1))
+    model.view.ownFleetsById[6] = Fleet(id: FleetId(6), houseId: HouseId(1))
+
+    model.ui.selectedFleetIds = @[5, 6]
+    gameActionAcceptor(model, actionFleetBatchROE())
+
+    check model.ui.mode == ViewMode.FleetDetail
+    check model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker
+    check model.ui.fleetDetailModal.batchFleetIds == @[5, 6]
+
+    # Simulate drift in live selected ids while picker is open.
+    model.ui.selectedFleetIds = @[1, 5]
+    model.ui.fleetDetailModal.roeValue = 3
+    fleetDetailModalAcceptor(model, actionFleetDetailSelectROE())
+
+    check 5 in model.ui.stagedFleetCommands
+    check 6 in model.ui.stagedFleetCommands
+    check 1 notin model.ui.stagedFleetCommands
+    check model.ui.stagedFleetCommands[5].roe.get() == 3
+    check model.ui.stagedFleetCommands[6].roe.get() == 3
+
   test "maintenance scrap sets queue-loss acknowledgement when needed":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets

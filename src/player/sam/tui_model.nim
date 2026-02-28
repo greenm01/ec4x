@@ -382,6 +382,7 @@ type
     cargoType*: CargoClass
     cargoQuantityInput*: TextInputState
     fighterQuantityInput*: TextInputState
+    batchFleetIds*: seq[int]
     # SystemPicker state (for target system selection)
     systemPickerIdx*: int      # Selected system index
     systemPickerSystems*: seq[SystemPickerEntry]  # Sorted system list
@@ -1479,6 +1480,7 @@ proc initTuiUiState*(): TuiUiState =
       cargoType: CargoClass.Marines,
       cargoQuantityInput: initTextInputState(),
       fighterQuantityInput: initTextInputState(),
+      batchFleetIds: @[],
       directSubModal: false
     )
   )

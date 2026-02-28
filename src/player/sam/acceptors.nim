@@ -370,6 +370,12 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.cargoType = CargoClass.Marines
   model.ui.fleetDetailModal.cargoQuantityInput.clear()
   model.ui.fleetDetailModal.fighterQuantityInput.clear()
+  model.ui.fleetDetailModal.batchFleetIds = @[]
+
+proc activeFleetBatchIds(model: TuiModel): seq[int] =
+  if model.ui.fleetDetailModal.batchFleetIds.len > 0:
+    return model.ui.fleetDetailModal.batchFleetIds
+  model.ui.selectedFleetIds
 
 proc syncIntelListScroll(model: var TuiModel) =
   ## Keep Intel DB list scroll state aligned with selection.
@@ -2601,6 +2607,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.roeValue = roe
             model.openCommandPicker()
             model.ui.fleetDetailModal.directSubModal = true
+            model.ui.fleetDetailModal.batchFleetIds = @[]
         else:
           # Batch mode: act on all X-selected fleets
           model.ui.mode = ViewMode.FleetDetail
@@ -2608,6 +2615,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.fleetDetailModal.fleetId = 0
           model.openCommandPicker()
           model.ui.fleetDetailModal.directSubModal = true
+          model.ui.fleetDetailModal.batchFleetIds =
+            model.ui.selectedFleetIds
     of ActionKind.fleetBatchROE:
       if model.ui.mode == ViewMode.Fleets:
         if model.ui.fleetViewMode == FleetViewMode.SystemView and
@@ -2626,6 +2635,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.roeValue = roe
             model.ui.fleetDetailModal.subModal = FleetSubModal.ROEPicker
             model.ui.fleetDetailModal.directSubModal = true
+            model.ui.fleetDetailModal.batchFleetIds = @[]
         else:
           # Batch mode: act on all X-selected fleets
           model.ui.mode = ViewMode.FleetDetail
@@ -2634,6 +2644,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.fleetDetailModal.fleetId = 0
           model.ui.fleetDetailModal.roeValue = 6
           model.ui.fleetDetailModal.directSubModal = true
+          model.ui.fleetDetailModal.batchFleetIds =
+            model.ui.selectedFleetIds
     of ActionKind.fleetBatchZeroTurn:
       if model.ui.mode == ViewMode.Fleets:
         if model.ui.fleetViewMode == FleetViewMode.SystemView and
@@ -2661,6 +2673,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.ztcDigitBuffer = ""
             model.ui.fleetDetailModal.ztcType = none(ZeroTurnCommandType)
             model.ui.fleetDetailModal.directSubModal = true
+            model.ui.fleetDetailModal.batchFleetIds = @[]
         else:
           # Batch mode: act on all X-selected fleets
           model.ui.mode = ViewMode.FleetDetail
@@ -2679,6 +2692,8 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.fleetDetailModal.ztcDigitBuffer = ""
           model.ui.fleetDetailModal.ztcType = none(ZeroTurnCommandType)
           model.ui.fleetDetailModal.directSubModal = true
+          model.ui.fleetDetailModal.batchFleetIds =
+            model.ui.selectedFleetIds
     else:
       model.ui.statusMessage = "Action: " & actionKindToStr(proposal.actionKind)
   of ProposalKind.pkSelection:
@@ -3832,6 +3847,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.fleetDetailModal.fleetPickerCandidates = @[]
             model.ui.fleetDetailModal.fleetPickerIdx = 0
             model.ui.fleetDetailModal.fleetPickerScroll = initScrollState()
+            model.ui.fleetDetailModal.batchFleetIds = @[]
             model.ui.fleetDetailModal.directSubModal = false
             discard model.updateFleetDetailScroll()
             model.ui.statusMessage = "Fleet detail opened"
@@ -3864,6 +3880,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.fleetPickerCandidates = @[]
         model.ui.fleetDetailModal.fleetPickerIdx = 0
         model.ui.fleetDetailModal.fleetPickerScroll = initScrollState()
+        model.ui.fleetDetailModal.batchFleetIds = @[]
         model.ui.fleetDetailModal.directSubModal = false
         discard model.updateFleetDetailScroll()
         model.ui.statusMessage = "Fleet detail opened"
@@ -4023,13 +4040,15 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       if idx >= 0 and idx < commands.len:
         let cmdType = commands[idx]
 
+        let batchFleetIds = activeFleetBatchIds(model)
+
         # Batch command for selected fleets
-        if model.ui.selectedFleetIds.len > 0:
+        if batchFleetIds.len > 0:
           if cmdType == FleetCommandType.JoinFleet:
             model.ui.statusMessage = "JoinFleet: use single fleet mode"
             return
           # Validate all fleets in batch meet command requirements
-          for fleetId in model.ui.selectedFleetIds:
+          for fleetId in batchFleetIds:
             for fleet in model.view.fleets:
               if fleet.id == fleetId:
                 let err = validateFleetCommand(fleet, cmdType)
@@ -4039,7 +4058,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
                   return
           # Hold: auto-target each fleet's current location
           if int(cmdType) == CmdHold:
-            for fleetId in model.ui.selectedFleetIds:
+            for fleetId in batchFleetIds:
               var loc = 0
               for fleet in model.view.fleets:
                 if fleet.id == fleetId:
@@ -4055,7 +4074,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               )
               model.stageFleetCommand(cmd)
             model.ui.statusMessage = "Staged " &
-              $model.ui.selectedFleetIds.len &
+              $batchFleetIds.len &
               " Hold command(s)"
             resetFleetDetailSubModal(model)
             model.ui.mode = ViewMode.Fleets
@@ -4064,7 +4083,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             return
           # SeekHome: auto-target nearest drydock colony
           if int(cmdType) == CmdSeekHome:
-            for fleetId in model.ui.selectedFleetIds:
+            for fleetId in batchFleetIds:
               var target = none(int)
               for fleet in model.view.fleets:
                 if fleet.id == fleetId:
@@ -4085,7 +4104,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               )
               model.stageFleetCommand(cmd)
             model.ui.statusMessage = "Staged " &
-              $model.ui.selectedFleetIds.len &
+              $batchFleetIds.len &
               " Seek Home command(s)"
             resetFleetDetailSubModal(model)
             model.ui.mode = ViewMode.Fleets
@@ -4096,10 +4115,10 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             # Open SystemPicker sub-modal for batch
             model.openSystemPickerForCommand(
               cmdType,
-              FleetSubModal.CommandPicker
+                FleetSubModal.CommandPicker
             )
             return
-          for fleetId in model.ui.selectedFleetIds:
+          for fleetId in batchFleetIds:
             let cmd = FleetCommand(
               fleetId: FleetId(fleetId),
               commandType: cmdType,
@@ -4108,7 +4127,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
               roe: some(int32(model.ui.fleetDetailModal.roeValue))
             )
             model.stageFleetCommand(cmd)
-          model.ui.statusMessage = "Staged " & $model.ui.selectedFleetIds.len &
+          model.ui.statusMessage = "Staged " & $batchFleetIds.len &
             " fleet command(s)"
           resetFleetDetailSubModal(model)
           model.ui.mode = ViewMode.Fleets
@@ -4660,8 +4679,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           discard
         # Stage command for batch or single fleet
-        if model.ui.selectedFleetIds.len > 0:
-          for fleetId in model.ui.selectedFleetIds:
+        let batchFleetIds = activeFleetBatchIds(model)
+        if batchFleetIds.len > 0:
+          for fleetId in batchFleetIds:
             let cmd = FleetCommand(
               fleetId: FleetId(fleetId),
               commandType: cmdType,
@@ -4673,7 +4693,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             )
             model.stageFleetCommand(cmd)
           model.ui.statusMessage = "Staged " &
-            $model.ui.selectedFleetIds.len & " " &
+            $batchFleetIds.len & " " &
             $cmdType & " to " & target.coordLabel
         else:
           let cmd = FleetCommand(
@@ -4712,14 +4732,15 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.ui.fleetDetailModal.subModal == FleetSubModal.ROEPicker:
       model.ui.fleetDetailModal.subModal = FleetSubModal.None
       let newRoe = model.ui.fleetDetailModal.roeValue
-      if model.ui.selectedFleetIds.len > 0:
+      let batchFleetIds = activeFleetBatchIds(model)
+      if batchFleetIds.len > 0:
         # Batch: update ROE on each fleet, preserving
         # whatever command is already staged or active.
-        for fleetId in model.ui.selectedFleetIds:
+        for fleetId in batchFleetIds:
           model.updateStagedROE(fleetId, newRoe)
         model.ui.statusMessage = "Staged ROE " &
           $newRoe & " for " &
-          $model.ui.selectedFleetIds.len & " fleets"
+          $batchFleetIds.len & " fleets"
         model.ui.mode = ViewMode.Fleets
         model.clearFleetSelection()
         model.resetBreadcrumbs(ViewMode.Fleets)
@@ -4763,8 +4784,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         return
       
       # Command doesn't need target, stage immediately
-      if model.ui.selectedFleetIds.len > 0:
-        for fleetId in model.ui.selectedFleetIds:
+      let batchFleetIds = activeFleetBatchIds(model)
+      if batchFleetIds.len > 0:
+        for fleetId in batchFleetIds:
           let cmd = FleetCommand(
             fleetId: FleetId(fleetId),
             commandType: cmdType,
@@ -4773,7 +4795,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             roe: some(int32(model.ui.fleetDetailModal.roeValue))
           )
           model.stageFleetCommand(cmd)
-        model.ui.statusMessage = "Staged " & $model.ui.selectedFleetIds.len &
+        model.ui.statusMessage = "Staged " & $batchFleetIds.len &
           " fleet command(s)"
         resetFleetDetailSubModal(model)
         model.ui.mode = ViewMode.Fleets
