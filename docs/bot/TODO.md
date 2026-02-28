@@ -112,7 +112,7 @@ compiled into `CommandPacket`.
   - Launch relay, daemon, and N bot processes.
   - Support per-bot env files, keypairs, and model settings.
   - Persist run metadata (seed, game id, model list, config hash).
-- [ ] Add feature-coverage telemetry.
+- [x] Add feature-coverage telemetry.
   - Emit per-turn feature-family usage tags in trace logs.
   - Add a coverage summary tool for hit/miss by command family.
 - [ ] Add scenario matrix for forced feature exercise.

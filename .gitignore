@@ -16,6 +16,7 @@
 !*.kdl
 !*.fish
 !*.sh
+!scripts/bot/*.py
 
 # Whitelist assets
 !*.png

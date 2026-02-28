@@ -1,9 +1,58 @@
 ## Persistence helpers for bot retry/correction traces.
 
-import std/[json, os, strutils, times]
+import std/[json, os, strutils, tables, times]
 
 import ./runner
 import ./types
+import ../engine/types/[command, zero_turn]
+
+proc packetFeatureTags(packet: CommandPacket): seq[string] =
+  if packet.zeroTurnCommands.len > 0:
+    result.add("zero_turn")
+    for cmd in packet.zeroTurnCommands:
+      case cmd.commandType
+      of ZeroTurnCommandType.DetachShips:
+        result.add("ztc_detach_ships")
+      of ZeroTurnCommandType.TransferShips:
+        result.add("ztc_transfer_ships")
+      of ZeroTurnCommandType.MergeFleets:
+        result.add("ztc_merge_fleets")
+      of ZeroTurnCommandType.LoadCargo:
+        result.add("ztc_load_cargo")
+      of ZeroTurnCommandType.UnloadCargo:
+        result.add("ztc_unload_cargo")
+      of ZeroTurnCommandType.LoadFighters:
+        result.add("ztc_load_fighters")
+      of ZeroTurnCommandType.UnloadFighters:
+        result.add("ztc_unload_fighters")
+      of ZeroTurnCommandType.TransferFighters:
+        result.add("ztc_transfer_fighters")
+      of ZeroTurnCommandType.Reactivate:
+        result.add("ztc_reactivate")
+  if packet.fleetCommands.len > 0:
+    result.add("fleet")
+  if packet.buildCommands.len > 0:
+    result.add("build")
+  if packet.repairCommands.len > 0:
+    result.add("repair")
+  if packet.scrapCommands.len > 0:
+    result.add("scrap")
+  if packet.diplomaticCommand.len > 0:
+    result.add("diplomacy")
+  if packet.populationTransfers.len > 0:
+    result.add("population_transfer")
+  if packet.terraformCommands.len > 0:
+    result.add("terraform")
+  if packet.colonyManagement.len > 0:
+    result.add("colony_management")
+  if packet.espionageActions.len > 0:
+    result.add("espionage")
+  if packet.researchAllocation.economic > 0 or
+      packet.researchAllocation.science > 0 or
+      packet.researchAllocation.technology.len > 0:
+    result.add("research")
+  if packet.ebpInvestment > 0 or packet.cipInvestment > 0:
+    result.add("investment")
 
 proc tracePath(logDir: string, gameId: string): string =
   let safeGame =
@@ -43,6 +92,11 @@ proc persistTurnTrace*(
     "errorClass": classifyRetryResult(result),
     "attempts": result.attempts,
     "errors": result.errors,
+    "featureTags":
+      if result.ok:
+        packetFeatureTags(result.packet)
+      else:
+        @[],
     "trace": traces
   }
 

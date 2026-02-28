@@ -45,6 +45,8 @@ Steps:
    - Confirm there is a `session_start` record.
    - Confirm per-turn entries are being appended.
    - Count successful submitted turns and identify failures by `errorClass`.
+   - Run `scripts/bot/summarize_trace_coverage.py` on trace output to
+     measure feature-family coverage.
 
 4) Report:
    - Number of turns attempted/submitted.

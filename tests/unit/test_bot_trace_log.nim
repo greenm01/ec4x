@@ -1,6 +1,8 @@
 import std/[unittest, os, strutils]
 
-import ../../src/bot/[trace_log, runner, types]
+import std/options
+
+import ../../src/bot/[trace_log, runner, types, order_schema, order_compiler]
 
 suite "bot trace log":
   test "persistTurnTrace appends jsonl record":
@@ -47,5 +49,58 @@ suite "bot trace log":
     let updatedContent = readFile(traceFile)
     check updatedContent.contains("\"kind\":\"session_start\"")
     check updatedContent.contains("\"autoReconnect\":true")
+
+    let successDraft = BotOrderDraft(
+      turn: 6,
+      houseId: 1,
+      zeroTurnCommands: @[
+        BotZeroTurnOrder(
+          commandType: "reactivate",
+          sourceFleetId: some(9),
+          targetFleetId: none(int),
+          shipIndices: @[],
+          fighterShipIds: @[],
+          carrierShipId: none(int),
+          sourceCarrierShipId: none(int),
+          targetCarrierShipId: none(int),
+          cargoType: none(string),
+          quantity: none(int)
+        )
+      ],
+      fleetCommands: @[
+        BotFleetOrder(
+          fleetId: 9,
+          commandType: "hold",
+          targetSystemId: none(int),
+          targetFleetId: none(int),
+          roe: none(int)
+        )
+      ],
+      buildCommands: @[],
+      populationTransfers: @[],
+      terraformCommands: @[],
+      colonyManagement: @[],
+      espionageActions: @[],
+      diplomaticCommand: none(BotDiplomaticOrder),
+      researchAllocation: none(BotResearchAllocation),
+      ebpInvestment: some(1),
+      cipInvestment: some(0)
+    )
+    let compiled = compileCommandPacket(successDraft)
+    check compiled.ok
+    let successResult = RetryResult(
+      ok: true,
+      attempts: 1,
+      errors: @[],
+      packet: compiled.packet,
+      trace: @[]
+    )
+    persistTurnTrace(tmpDir, "game-123", 6, successResult)
+    let successContent = readFile(traceFile)
+    check successContent.contains("\"featureTags\"")
+    check successContent.contains("\"zero_turn\"")
+    check successContent.contains("\"ztc_reactivate\"")
+    check successContent.contains("\"fleet\"")
+    check successContent.contains("\"investment\"")
 
     removeDir(tmpDir)

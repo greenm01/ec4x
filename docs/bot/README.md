@@ -86,6 +86,8 @@ For multi-bot runs:
 Runtime traces are written under `BOT_LOG_DIR` (default `logs/bot`).
 Each run appends `session_start` metadata and per-turn records to
 `bot_trace_<gameId>.jsonl`.
+Use `scripts/bot/summarize_trace_coverage.py <trace-dir-or-file>` to
+summarize feature-family coverage from traces.
 
 ## Runtime behavior notes
 
