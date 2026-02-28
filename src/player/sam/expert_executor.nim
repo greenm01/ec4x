@@ -230,13 +230,10 @@ proc executeExpertCommand*(model: var TuiModel, cmd: ExpertCommand): tuple[succe
     case sys
     of "rep", "repair": model.ui.stagedColonyManagement[finalIdx].autoRepair = state
     of "fig", "fighter": model.ui.stagedColonyManagement[finalIdx].autoLoadFighters = state
-    of "mar", "marine": model.ui.stagedColonyManagement[finalIdx].autoRepair = state # TYPO in previous draft
-    else: return (false, "Unknown auto system: " & sys)
-    
-    # Correction: autoLoadMarines was mapped to autoRepair
-    if sys == "mar" or sys == "marine":
+    of "mar", "marine":
       model.ui.stagedColonyManagement[finalIdx].autoLoadMarines = state
-    
+    else: return (false, "Unknown auto system: " & sys)
+
     model.ui.modifiedSinceSubmit = true
     return (true, "Set " & sys & " auto to " & (if state: "on" else: "off"))
 

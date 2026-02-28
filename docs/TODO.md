@@ -17,14 +17,22 @@ Goal: make normal Player TUI flows robust for sustained human playtesting.
 
 ### Open P2 Work
 
-1. [ ] Add visual/layout polish for narrow terminals where modal/table
+1. [x] Add visual/layout polish for narrow terminals where modal/table
    labels and footer hints still truncate or clip.
-2. [ ] Add consistent drop/edit interactions across all staged command
+2. [x] Add consistent drop/edit interactions across all staged command
    categories (uniform behavior and status messaging).
-3. [ ] Add expert-mode parity checks so expert command flows match normal
+3. [x] Add expert-mode parity checks so expert command flows match normal
    TUI validation/staging behavior.
-4. [ ] Add one focused regression test for optimistic replay after draft
+4. [x] Add one focused regression test for optimistic replay after draft
    restore when fleet-affecting staged commands are present.
+
+Evidence:
+
+- `tests/unit/test_tui_modal_layout.nim`
+- `tests/unit/test_tui_command_staging.nim`
+- `tests/unit/test_tui_modal_acceptors.nim`
+- `tests/unit/test_tui_expert_parity.nim`
+- `tests/unit/test_tui_draft_apply_resume.nim`
 
 ## Next Milestones (Execution Order)
 

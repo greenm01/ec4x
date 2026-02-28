@@ -1,7 +1,7 @@
 # Player TUI Command Audit
 
 **Date:** 2026-02-28
-**Status:** In progress (P2 ergonomics + confidence hardening)
+**Status:** Complete (P2 ergonomics + confidence hardening done)
 **Goal:** Make the player TUI capable of producing the full canonical
 turn command queue for practical human playtesting and bug hunting.
 
@@ -61,9 +61,9 @@ Legend: `Complete`, `Partial`, `Missing`
    dedicated restore helpers extracted to `src/player/tui/draft_apply.nim`.
 3. Fleet batch operations now use snapshot semantics for X-selected fleets
    across ROE/command/ZTC flows, avoiding cursor/selection drift issues.
-4. Primary remaining work is P2 ergonomics and confidence hardening:
-   narrow-terminal polish, drop/edit interaction consistency,
-   expert-mode parity, and draft-restore replay regression coverage.
+4. P2 ergonomics and confidence hardening are complete: narrow-terminal
+   polish, drop/edit interaction consistency, expert-mode parity checks,
+   and draft-restore replay regression coverage are now in place.
 
 ---
 
@@ -158,12 +158,19 @@ draft-restored, and submitted through `CommandPacket`.
 
 ### P2 - Playtesting ergonomics
 
-- Add consistent drop/edit interactions across all command categories.
-- Add expert-mode parity checks to avoid unsupported command variants.
-- Add one focused regression test for optimistic replay after draft restore
-  whenever fleet-affecting commands are present.
-- Add visual/layout polish for narrow terminals where command labels are
-  prone to truncation.
+- [x] Add consistent drop/edit interactions across all command categories.
+  - `src/player/sam/tui_model.nim`
+  - `src/player/sam/acceptors.nim`
+- [x] Add expert-mode parity checks to avoid unsupported command variants.
+  - `tests/unit/test_tui_expert_parity.nim`
+- [x] Add one focused regression test for optimistic replay after draft restore
+   whenever fleet-affecting commands are present.
+- `tests/unit/test_tui_draft_apply_resume.nim`
+- [x] Add visual/layout polish for narrow terminals where command labels are
+   prone to truncation.
+  - `src/player/tui/widget/modal.nim`
+  - `src/player/tui/widget/entry_modal.nim`
+  - `tests/unit/test_tui_modal_layout.nim`
 
 ---
 
