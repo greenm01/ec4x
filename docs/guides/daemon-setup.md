@@ -115,3 +115,78 @@ journalctl -u ec4x-daemon -f
   is lost, existing GameDefinition events on the relay will be unverifiable.
 - For local development, run `./bin/ec4x-daemon start` manually from your
   checkout.
+
+## Manual Turn Advancement
+
+Resolve one game manually:
+
+```bash
+sudo -u ec4x /usr/local/bin/ec4x-daemon resolve --gameId=<game-id>
+```
+
+Resolve all active games manually:
+
+```bash
+sudo -u ec4x /usr/local/bin/ec4x-daemon resolve-all
+```
+
+## Scheduled Turn Advancement (systemd timer)
+
+Create `/etc/systemd/system/ec4x-resolve.service`:
+
+```ini
+[Unit]
+Description=EC4X Resolve Active Turns
+
+[Service]
+Type=oneshot
+User=ec4x
+Group=ec4x
+WorkingDirectory=/home/youruser/dev/ec4x
+ExecStart=/usr/local/bin/ec4x-daemon resolve-all
+```
+
+Create `/etc/systemd/system/ec4x-resolve.timer`:
+
+```ini
+[Unit]
+Description=EC4X Scheduled Turn Resolution
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable midnight schedule:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now ec4x-resolve.timer
+```
+
+Common schedule presets (`OnCalendar`):
+
+- Hourly: `hourly`
+- Every 4 hours: `*-*-* 00/4:00:00`
+- Every 12 hours: `*-*-* 00/12:00:00`
+- Daily at midnight (default): `*-*-* 00:00:00`
+
+Disable scheduled advancement:
+
+```bash
+sudo systemctl disable --now ec4x-resolve.timer
+```
+
+## Manual-Only Mode
+
+In `config/daemon.kdl`, set:
+
+```kdl
+turn_deadline_minutes 0
+auto_resolve_on_all_submitted #false
+```
+
+With the timer disabled, turns only advance via explicit manual commands.

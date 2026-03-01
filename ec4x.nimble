@@ -137,6 +137,7 @@ task testIntegration, "Run integration tests":
 task testDaemon, "Run daemon integration tests":
   echo "Running daemon tests..."
   exec "nim c -r tests/daemon/kdl_parser_test.nim"
+  exec "nim c -r tests/daemon/test_daemon_config.nim"
   exec "nim c -r tests/daemon/test_auto_resolve.nim"
   echo "Daemon tests completed!"
 

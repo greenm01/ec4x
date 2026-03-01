@@ -315,7 +315,7 @@ SELECT
 
 1. **All orders received**: `received_orders == expected_houses`
 2. **Deadline passed**: `current_time >= deadline`
-3. **Manual trigger**: `moderator resolve game-123 --turn=42`
+3. **Manual trigger**: `ec4x-daemon resolve --gameId=game-123`
 
 **Example Log:**
 ```

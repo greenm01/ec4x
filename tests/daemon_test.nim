@@ -6,7 +6,7 @@ import ../src/engine/state/engine
 
 test "initModel":
   let model = initModel("data", 30, @["ws://localhost:8080"], 2, 7, 30, 14,
-    60, true)
+    60, true, true)
   check model.running
   check tables.len(model.games) == 0
   check model.pollInterval == 30
@@ -36,5 +36,4 @@ test "loadPersistence":
           check state.coloniesCount() >= 0
           check state.fleetsCount() >= 0
           break
-
 

@@ -10,6 +10,7 @@ type
     replay_retention_days_definition*: int
     replay_retention_days_state*: int
     turn_deadline_minutes*: int
+    auto_resolve_on_all_submitted*: bool
 
   NostrConfig* = object
     compression_min_ratio*: float
@@ -19,6 +20,7 @@ type
 proc parseDaemonKdl*(path: string): DaemonConfig =
   let content = readFile(path)
   let doc = parseKdl(content)
+  var hasAutoResolveOnAllSubmitted = false
   if doc.len == 0:
     raise newException(ValueError, "Empty or invalid KDL config")
   
@@ -53,6 +55,10 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     of "turn_deadline_minutes":
       if child.args.len > 0:
         result.turn_deadline_minutes = child.args[0].kInt().int
+    of "auto_resolve_on_all_submitted":
+      if child.args.len > 0:
+        hasAutoResolveOnAllSubmitted = true
+        result.auto_resolve_on_all_submitted = child.args[0].kBool()
     else:
       discard
 
@@ -73,8 +79,8 @@ proc parseDaemonKdl*(path: string): DaemonConfig =
     result.replay_retention_days_state = result.replay_retention_days
   if result.turn_deadline_minutes < 0:
     result.turn_deadline_minutes = 0
-  if result.turn_deadline_minutes == 0:
-    result.turn_deadline_minutes = 60
+  if not hasAutoResolveOnAllSubmitted:
+    result.auto_resolve_on_all_submitted = true
 
 proc parseNostrKdl*(path: string): NostrConfig =
   let content = readFile(path)

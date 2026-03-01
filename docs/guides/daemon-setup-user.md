@@ -80,3 +80,93 @@ journalctl --user -u ec4x-daemon -f
 - Keep using `nimble buildDaemon` (or `nimble buildAll`) before restarting.
 - If you want to install the binary into `/usr/local/bin`, run
   `sudo nimble installDaemon`.
+
+## Manual Turn Advancement
+
+Resolve one game manually:
+
+```bash
+./bin/ec4x-daemon resolve --gameId=<game-id>
+```
+
+Resolve all active games manually:
+
+```bash
+./bin/ec4x-daemon resolve-all
+```
+
+Workflow helper scripts:
+
+```bash
+# Build -> install to ~/.local/bin -> restart user service
+./scripts/deploy_daemon_user.sh
+
+# Set schedule presets for resolve-all timer
+./scripts/set_resolve_schedule_user.sh hourly
+./scripts/set_resolve_schedule_user.sh 4h
+./scripts/set_resolve_schedule_user.sh 12h
+./scripts/set_resolve_schedule_user.sh daily --time 00:00
+./scripts/set_resolve_schedule_user.sh off
+
+# Show daemon + timer status and recent logs
+./scripts/status_daemon_user.sh
+```
+
+## Scheduled Turn Advancement (systemd timer)
+
+Create `~/.config/systemd/user/ec4x-resolve.service`:
+
+```ini
+[Unit]
+Description=EC4X Resolve Active Turns
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/youruser/dev/ec4x
+ExecStart=/home/youruser/dev/ec4x/bin/ec4x-daemon resolve-all
+```
+
+Create `~/.config/systemd/user/ec4x-resolve.timer`:
+
+```ini
+[Unit]
+Description=EC4X Scheduled Turn Resolution
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable midnight schedule:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now ec4x-resolve.timer
+```
+
+Common schedule presets (`OnCalendar`):
+
+- Hourly: `hourly`
+- Every 4 hours: `*-*-* 00/4:00:00`
+- Every 12 hours: `*-*-* 00/12:00:00`
+- Daily at midnight (default): `*-*-* 00:00:00`
+
+Disable scheduled advancement:
+
+```bash
+systemctl --user disable --now ec4x-resolve.timer
+```
+
+## Manual-Only Mode
+
+In `config/daemon.kdl`, set:
+
+```kdl
+turn_deadline_minutes 0
+auto_resolve_on_all_submitted #false
+```
+
+With the timer disabled, turns only advance via explicit manual commands.

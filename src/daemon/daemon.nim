@@ -52,6 +52,7 @@ type
     replayRetentionDaysDefinition*: int    # Game definition retention
     replayRetentionDaysState*: int         # State publish retention
     turnDeadlineMinutes*: int              # Auto-resolve deadline length
+    autoResolveOnAllSubmitted*: bool       # Resolve when all submit
     identity*: DaemonIdentity              # Nostr keypair
     nostrClient*: NostrClient              # Nostr relay client
     nostrSubscriber*: Subscriber           # Nostr subscriber wrapper
@@ -131,6 +132,11 @@ proc checkAndTriggerResolution(gameId: GameId) =
   ## If so, automatically queue turn resolution
   let gameInfo = daemonLoop.model.games[gameId]
   let currentTurn = gameInfo.turn
+
+  if not daemonLoop.model.autoResolveOnAllSubmitted:
+    logDebug("Daemon", "All-submitted auto-resolve disabled for game=",
+      gameId)
+    return
 
   # Only auto-resolve games in Active phase
   if gameInfo.phase != "Active":
@@ -811,7 +817,8 @@ proc processIncomingMessage(event: NostrEvent) {.async.} =
 proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
   replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
-  turnDeadlineMinutes: int, allowIdentityRegen: bool): DaemonModel =
+  turnDeadlineMinutes: int, autoResolveOnAllSubmitted: bool,
+  allowIdentityRegen: bool): DaemonModel =
   result = DaemonModel(
     games: initTable[GameId, GameInfo](),
     resolving: initHashSet[GameId](),
@@ -824,6 +831,7 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
     replayRetentionDaysDefinition: replayRetentionDaysDefinition,
     replayRetentionDaysState: replayRetentionDaysState,
     turnDeadlineMinutes: turnDeadlineMinutes,
+    autoResolveOnAllSubmitted: autoResolveOnAllSubmitted,
     identity: ensureIdentity(allowIdentityRegen),
     nostrClient: nil,  # Will be initialized in mainLoop
     nostrSubscriber: nil,
@@ -840,11 +848,12 @@ proc initModel*(dataDir: string, pollInterval: int, relayUrls: seq[string],
 proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
   replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
-  turnDeadlineMinutes: int, allowIdentityRegen: bool): DaemonLoop =
+  turnDeadlineMinutes: int, autoResolveOnAllSubmitted: bool,
+  allowIdentityRegen: bool): DaemonLoop =
   result = newSamLoop(initModel(dataDir, pollInterval, relayUrls,
     replayRetentionTurns, replayRetentionDays,
     replayRetentionDaysDefinition, replayRetentionDaysState,
-    turnDeadlineMinutes, allowIdentityRegen))
+    turnDeadlineMinutes, autoResolveOnAllSubmitted, allowIdentityRegen))
   # Add generic acceptor to execute proposal payloads
   result.addAcceptor(proc(model: var DaemonModel,
       proposal: Proposal[DaemonModel]): bool =
@@ -906,17 +915,18 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   )
 
 proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
-  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, 60, true)
+  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, 60, true, true)
 
 proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,
   replayRetentionDaysDefinition: int, replayRetentionDaysState: int,
-  turnDeadlineMinutes: int, allowIdentityRegen: bool) {.async.} =
+  turnDeadlineMinutes: int, autoResolveOnAllSubmitted: bool,
+  allowIdentityRegen: bool) {.async.} =
   ## SAM daemon loop
   daemonLoop = newDaemonLoop(dataDir, pollInterval, relayUrls,
     replayRetentionTurns, replayRetentionDays,
     replayRetentionDaysDefinition, replayRetentionDaysState,
-    turnDeadlineMinutes, allowIdentityRegen)
+    turnDeadlineMinutes, autoResolveOnAllSubmitted, allowIdentityRegen)
   
   logInfo("Daemon", "Starting SAM daemon...")
   logInfo("Daemon", "Data directory: ", dataDir)
@@ -1043,6 +1053,7 @@ proc start*(
   var replayRetentionDaysDefinition = 30
   var replayRetentionDaysState = 14
   var turnDeadlineMinutes = 60
+  var autoResolveOnAllSubmitted = true
 
   if configKdl.len > 0:
     logInfo("Daemon", "Loading config from: ", configKdl)
@@ -1055,6 +1066,7 @@ proc start*(
     replayRetentionDaysDefinition = cfg.replay_retention_days_definition
     replayRetentionDaysState = cfg.replay_retention_days_state
     turnDeadlineMinutes = cfg.turn_deadline_minutes
+    autoResolveOnAllSubmitted = cfg.auto_resolve_on_all_submitted
   else:
     # Default relay
     finalRelayUrls = @["ws://localhost:8080"]
@@ -1090,12 +1102,65 @@ proc start*(
     waitFor mainLoop(finalDataDir, finalPollInterval, finalRelayUrls,
       replayRetentionTurns, replayRetentionDays,
       replayRetentionDaysDefinition, replayRetentionDaysState,
-      turnDeadlineMinutes, false)
+      turnDeadlineMinutes, autoResolveOnAllSubmitted, false)
   except CatchableError as e:
     logError("Daemon", "Failed to start daemon: ", e.msg)
     return 1
 
   return 0
+
+proc resolveGameInternal(gameId: string, dbPath: string,
+  dataDir: string, daemonConfig: DaemonConfig): int =
+  ## Resolve one turn for a specific game database path.
+  try:
+    daemonLoop = newDaemonLoop(dataDir, 30, daemonConfig.relay_urls,
+      daemonConfig.replay_retention_turns,
+      daemonConfig.replay_retention_days,
+      daemonConfig.replay_retention_days_definition,
+      daemonConfig.replay_retention_days_state,
+      daemonConfig.turn_deadline_minutes,
+      daemonConfig.auto_resolve_on_all_submitted,
+      true)
+    daemonLoop.model.nostrClient = newNostrClient(daemonConfig.relay_urls)
+    daemonLoop.model.nostrPublisher = newPublisher(
+      daemonLoop.model.nostrClient,
+      daemonLoop.model.identity.publicKeyHex,
+      crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
+    )
+    waitFor daemonLoop.model.nostrClient.connect()
+
+    let state = loadFullState(dbPath)
+    let commands = loadOrders(dbPath, state.turn)
+    let resolution = resolveTurnDeterministic(state, commands)
+
+    saveFullState(state)
+    saveGameEvents(state, resolution.events)
+    markCommandsProcessed(dbPath, gameId, state.turn - 1)
+
+    if daemonLoop.model.nostrPublisher != nil:
+      waitFor daemonLoop.model.nostrPublisher.publishTurnResults(
+        gameId,
+        dbPath,
+        state
+      )
+    else:
+      logWarn("Daemon", "No Nostr publisher - skipping result publishing")
+
+    if daemonLoop.model.nostrClient != nil:
+      waitFor daemonLoop.model.nostrClient.disconnect()
+
+    logInfo("Daemon", "Resolution complete. game=", gameId,
+      " turn=", $state.turn)
+    return 0
+  except CatchableError as e:
+    logError("Daemon", "Manual resolve failed for game=", gameId,
+      " error=", e.msg)
+    try:
+      if daemonLoop.model.nostrClient != nil:
+        waitFor daemonLoop.model.nostrClient.disconnect()
+    except CatchableError:
+      discard
+    return 1
 
 proc resolve*(gameId: string, dataDir: string = "data"): int =
   ## Manually trigger turn resolution for a game
@@ -1108,55 +1173,52 @@ proc resolve*(gameId: string, dataDir: string = "data"): int =
 
   logInfo("Daemon", "Manually resolving game: ", gameId)
 
-  # Load game config (required for calculations)
   gameConfig = loadGameConfig("config")
-
-  # Initialize global loop if needed (some cmds might use it)
   let daemonConfig = parseDaemonKdl("config/daemon.kdl")
-  daemonLoop = newDaemonLoop(dataDir, 30, daemonConfig.relay_urls,
-    daemonConfig.replay_retention_turns, daemonConfig.replay_retention_days,
-    daemonConfig.replay_retention_days_definition,
-    daemonConfig.replay_retention_days_state, daemonConfig.turn_deadline_minutes,
-    true)
-  daemonLoop.model.nostrClient = newNostrClient(daemonConfig.relay_urls)
-  daemonLoop.model.nostrPublisher = newPublisher(
-    daemonLoop.model.nostrClient,
-    daemonLoop.model.identity.publicKeyHex,
-    crypto.hexToBytes32(daemonLoop.model.identity.privateKeyHex)
-  )
-  waitFor daemonLoop.model.nostrClient.connect()
+  resolveGameInternal(gameId, dbPath, dataDir, daemonConfig)
 
-  # Load state
-  let state = loadFullState(dbPath)
-  let commands = loadOrders(dbPath, state.turn)
+proc resolveAll*(dataDir: string = "data"): int =
+  ## Manually resolve one turn for all active games.
+  let gamesDir = dataDir / "games"
+  if not dirExists(gamesDir):
+    logWarn("Daemon", "No games directory found: ", gamesDir)
+    return 0
 
-  # Resolve
-  let resolution = resolveTurnDeterministic(state, commands)
-  
-  # Save
-  saveFullState(state)
-  saveGameEvents(state, resolution.events)
-  markCommandsProcessed(dbPath, gameId, state.turn - 1)
+  gameConfig = loadGameConfig("config")
+  let daemonConfig = parseDaemonKdl("config/daemon.kdl")
 
-  # Publish turn results via Nostr (if connected)
-  if daemonLoop.model.nostrPublisher != nil:
-    let gameInfo = GameInfo(
-      id: gameId,
-      dbPath: dbPath,
-      turn: state.turn,
-      phase: reader.loadGamePhase(dbPath),
-      transportMode: "nostr",
-      turnDeadline: reader.loadGameDeadline(dbPath)
-    )
-    waitFor daemonLoop.model.nostrPublisher.publishTurnResults(
-      gameInfo.id,
-      gameInfo.dbPath,
-      state
-    )
-  else:
-    logWarn("Daemon", "No Nostr publisher - skipping result publishing")
-  
-  logInfo("Daemon", "Resolution complete. Now at turn ", $state.turn)
+  var resolved = 0
+  var skipped = 0
+  var failed = 0
+
+  for kind, path in walkDir(gamesDir):
+    if kind != pcDir:
+      continue
+
+    let dbPath = path / "ec4x.db"
+    if not fileExists(dbPath):
+      continue
+
+    let state = loadFullState(dbPath)
+    let gameId = state.gameId
+    let phase = reader.loadGamePhase(dbPath)
+
+    if phase != "Active":
+      skipped.inc()
+      logInfo("Daemon", "Skipping non-active game: ", gameId,
+        " phase=", phase)
+      continue
+
+    let status = resolveGameInternal(gameId, dbPath, dataDir, daemonConfig)
+    if status == 0:
+      resolved.inc()
+    else:
+      failed.inc()
+
+  logInfo("Daemon", "resolve-all complete: resolved=", $resolved,
+    " skipped=", $skipped, " failed=", $failed)
+  if failed > 0:
+    return 1
   return 0
 
 proc initIdentity*(): int =
@@ -1199,5 +1261,7 @@ when isMainModule:
     [stop, help = "Stop the daemon"],
     [status, help = "Show daemon status"],
     [resolve, help = "Manually resolve a turn"],
+    [resolveAll, cmdName = "resolve-all",
+      help = "Manually resolve one turn for all active games"],
     [version, help = "Show version"]
   )
