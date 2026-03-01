@@ -1,6 +1,7 @@
 import kdl
 import std/[strutils, options, tables, os]
-import ../../engine/types/[command, core, fleet, production, tech, diplomacy, colony, espionage, ship, facilities, ground_unit]
+import ../../engine/types/[command, core, fleet, production, tech, diplomacy,
+  colony, espionage, ship, facilities, ground_unit, zero_turn]
 import ../../common/logger
 
 type
@@ -294,6 +295,102 @@ proc parseTerraform(node: KdlNode): TerraformCommand =
   if node.props.hasKey("colony"): cmd.colonyId = parseId[ColonyId](node.props["colony"])
   return cmd
 
+proc parseZeroTurnCommands(
+    node: KdlNode, houseId: HouseId
+): seq[ZeroTurnCommand] =
+  ## Parse a zero-turn block into a sequence of ZeroTurnCommands.
+  ##
+  ## Syntax:
+  ##   zero-turn {
+  ##     detach-ships source=(FleetId)4 new-fleet=(FleetId)999 {
+  ##       ship (ShipId)10
+  ##       ship (ShipId)14
+  ##     }
+  ##     transfer-ships source=(FleetId)4 target=(FleetId)7 {
+  ##       ship (ShipId)12
+  ##     }
+  ##     merge-fleets source=(FleetId)3 target=(FleetId)4
+  ##     reactivate source=(FleetId)5
+  ##     load-cargo source=(FleetId)4 cargo="marines" quantity=10
+  ##     unload-cargo source=(FleetId)4
+  ##     load-fighters source=(FleetId)4 carrier=(ShipId)50 {
+  ##       fighter (ShipId)60
+  ##     }
+  ##     unload-fighters source=(FleetId)4 carrier=(ShipId)50 {
+  ##       fighter (ShipId)60
+  ##     }
+  ##     transfer-fighters source=(FleetId)4 \
+  ##         source-carrier=(ShipId)50 target-carrier=(ShipId)55 {
+  ##       fighter (ShipId)60
+  ##     }
+  ##   }
+  result = @[]
+  for child in node.children:
+    let cmdType = parseEnumFromStr[ZeroTurnCommandType](child.name)
+    var cmd = ZeroTurnCommand(
+      houseId: houseId,
+      commandType: cmdType,
+      colonySystem: none(SystemId),
+      sourceFleetId: none(FleetId),
+      targetFleetId: none(FleetId),
+      shipIndices: @[],
+      shipIds: @[],
+      cargoType: none(CargoClass),
+      cargoQuantity: none(int),
+      fighterIds: @[],
+      carrierShipId: none(ShipId),
+      sourceCarrierShipId: none(ShipId),
+      targetCarrierShipId: none(ShipId),
+      newFleetId: none(FleetId)
+    )
+
+    # Fleet ID properties
+    if child.props.hasKey("source"):
+      cmd.sourceFleetId = some(parseId[FleetId](child.props["source"]))
+    if child.props.hasKey("target"):
+      cmd.targetFleetId = some(parseId[FleetId](child.props["target"]))
+    if child.props.hasKey("new-fleet"):
+      cmd.newFleetId = some(parseId[FleetId](child.props["new-fleet"]))
+
+    # Carrier properties (fighter operations)
+    if child.props.hasKey("carrier"):
+      cmd.carrierShipId = some(parseId[ShipId](child.props["carrier"]))
+    if child.props.hasKey("source-carrier"):
+      cmd.sourceCarrierShipId =
+        some(parseId[ShipId](child.props["source-carrier"]))
+    if child.props.hasKey("target-carrier"):
+      cmd.targetCarrierShipId =
+        some(parseId[ShipId](child.props["target-carrier"]))
+
+    # Cargo properties
+    if child.props.hasKey("cargo"):
+      let cargoStr = child.props["cargo"].kString()
+      cmd.cargoType = some(parseEnumFromStr[CargoClass](cargoStr))
+    if child.props.hasKey("quantity"):
+      cmd.cargoQuantity = some(child.props["quantity"].kInt().int)
+
+    # Child nodes: ship (ShipId)N → shipIds, fighter (ShipId)N → fighterIds
+    for sub in child.children:
+      case sub.name.toLowerAscii()
+      of "ship":
+        if sub.args.len > 0:
+          cmd.shipIds.add(parseId[ShipId](sub.args[0]))
+        else:
+          raise newException(
+            KdlParseError, "zero-turn ship node missing ID"
+          )
+      of "fighter":
+        if sub.args.len > 0:
+          cmd.fighterIds.add(parseId[ShipId](sub.args[0]))
+        else:
+          raise newException(
+            KdlParseError, "zero-turn fighter node missing ID"
+          )
+      else:
+        logWarn("Parser", "Unknown zero-turn sub-node: " & sub.name)
+
+    result.add(cmd)
+
 # =============================================================================
 # Main Parser
 # =============================================================================
@@ -366,9 +463,9 @@ proc parseOrdersKdl*(doc: KdlDoc): CommandPacket =
     of "terraform":
       packet.terraformCommands.add(parseTerraform(node))
     of "zero-turn":
-      # Handled separately or ignored in deferred packet
-      # Log info?
-      discard
+      packet.zeroTurnCommands.add(
+        parseZeroTurnCommands(node, houseId)
+      )
     else:
       logWarn("Parser", "Unknown order node: " & node.name)
       

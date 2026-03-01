@@ -128,6 +128,31 @@ proc validateShipIndices*(
 
   return ValidationResult(valid: true, error: "")
 
+proc validateShipIds*(
+    state: GameState, fleet: Fleet, shipIds: seq[ShipId]
+): ValidationResult =
+  ## DRY: Validate ship IDs exist in fleet and have no duplicates
+  ## Preferred over validateShipIndices — immune to index staleness
+  ## when multiple ZTCs reorder the ship list within one turn.
+
+  if shipIds.len == 0:
+    return ValidationResult(valid: false, error: "Must select at least one ship")
+
+  let fleetShipSet = fleet.ships.toHashSet()
+  var seen: seq[ShipId] = @[]
+  for sid in shipIds:
+    if sid notin fleetShipSet:
+      return ValidationResult(
+        valid: false, error: "Ship " & $sid & " not found in fleet"
+      )
+    if sid in seen:
+      return ValidationResult(
+        valid: false, error: "Duplicate ship ID: " & $sid
+      )
+    seen.add(sid)
+
+  return ValidationResult(valid: true, error: "")
+
 # ============================================================================
 # Main Validation Dispatcher
 # ============================================================================
@@ -176,47 +201,50 @@ proc validateZeroTurnCommand*(
   # Layer 3: Command-specific validation
   case cmd.commandType
   of ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips:
-    # Validate ship indices
     let fleetOpt = state.fleet(cmd.sourceFleetId.get())
     if fleetOpt.isNone:
       return ValidationResult(valid: false, error: "Source fleet not found")
     let fleet = fleetOpt.get()
 
-    result = validateShipIndices(state, fleet, cmd.shipIndices)
-    if not result.valid:
-      return result
+    # Prefer shipIds (robust, index-stable); fall back to shipIndices for
+    # backward compatibility with bot/saved commands that use indices.
+    var resolvedShipIds: seq[ShipId] = @[]
+    if cmd.shipIds.len > 0:
+      result = validateShipIds(state, fleet, cmd.shipIds)
+      if not result.valid:
+        return result
+      resolvedShipIds = cmd.shipIds
+    elif cmd.shipIndices.len > 0:
+      result = validateShipIndices(state, fleet, cmd.shipIndices)
+      if not result.valid:
+        return result
+      for idx in cmd.shipIndices:
+        resolvedShipIds.add(fleet.ships[idx])
+    else:
+      return ValidationResult(
+        valid: false, error: "Must select ships by ID or index"
+      )
 
     # DetachShips specific: cannot detach transport-only fleet (except ETACs)
     if cmd.commandType == ZeroTurnCommandType.DetachShips:
-      # Check if only ETACs are being detached
-      # ETACs don't need combat escorts, but transports do
       var onlyETAC = true
       var hasNonETAC = false
 
-      for idx in cmd.shipIndices:
-        if idx < 0 or idx >= fleet.ships.len:
-          continue
-        let shipId = fleet.ships[idx]
+      for shipId in resolvedShipIds:
         let shipOpt = state.ship(shipId)
         if shipOpt.isNone:
           continue
         let ship = shipOpt.get()
 
-        # Check ship class
         if ship.shipClass == ShipClass.ETAC:
-          # ETAC ships can operate independently
           continue
         elif ship.shipClass == ShipClass.TroopTransport:
-          # Non-ETAC transports need escorts
           hasNonETAC = true
           onlyETAC = false
         else:
-          # Combat or other ship types
           onlyETAC = false
 
       if onlyETAC and hasNonETAC:
-        # Only detaching ETACs, but some are non-ETAC transports
-        # These need combat escorts
         return ValidationResult(
           valid: false,
           error: "Cannot detach non-ETAC transport ships without combat escorts",
