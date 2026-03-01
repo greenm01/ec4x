@@ -216,7 +216,7 @@ def main() -> int:
     repo = Path(__file__).resolve().parents[2]
     ec4x_bin = repo / "bin" / "ec4x"
     if not ec4x_bin.exists():
-        raise RuntimeError("Missing bin/ec4x. Build moderator first.")
+        raise RuntimeError("Missing bin/ec4x. Run: nimble buildAll")
 
     api_key = os.getenv(args.api_key_env, "")
     if not api_key:

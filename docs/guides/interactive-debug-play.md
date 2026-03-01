@@ -15,8 +15,11 @@ In this mode you control one or both houses directly:
 ## Prerequisites
 
 - Game daemon running: `systemctl --user status ec4x-daemon`
+  (see [daemon setup (user)](daemon-setup-user.md) if not installed)
 - Binaries built: `nimble buildAll`
 - A game exists in `data/games/<slug>/` (see Setup below)
+- For turn resolution options (manual, scheduled, hybrid) see the
+  [Turn Resolution Operations runbook](turn-resolution-operations.md)
 
 ---
 
@@ -36,7 +39,7 @@ python scripts/bot/bootstrap_multi_playtest.py \
 cat scripts/bot/human_invites.txt
 ```
 
-### Option B: Manual setup via moderator
+### Option B: Manual setup via daemon CLI
 
 ```bash
 # Create game
@@ -204,5 +207,7 @@ nim r tools/dump_state.nim autumn-sky --house 2
 - [Dev Tools Reference](../tools/ec4x-play.md) — `submit_orders`,
   `dump_state`, and `resolve` reference
 - [Bot Playtest Setup](../bot/PLAYTEST_SETUP.md) — human-vs-bot setup
+- [Turn Resolution Operations](turn-resolution-operations.md) —
+  manual, scheduled, and hybrid turn advancement runbook
 - [Testing Auto-Resolve](testing-auto-resolve.md) — automated integration
   test workflow

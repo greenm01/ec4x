@@ -25,6 +25,11 @@ systemctl --user start ec4x-daemon.service
 systemctl --user start nostr-relay.service
 ```
 
+See [daemon setup (user)](../guides/daemon-setup-user.md) if either
+service is not installed. For turn resolution options (manual, scheduled,
+hybrid), see the
+[Turn Resolution Operations runbook](../guides/turn-resolution-operations.md).
+
 ### Binaries
 
 ```bash

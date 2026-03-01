@@ -46,7 +46,9 @@ Once the single-turn loop is functional, we will build a simulation script (`scr
 1. Spin up a local Nostr relay.
 2. Start the `ec4x-daemon`.
 3. Spawn 4 instances of `ec4x-bot` configured with different LLMs (e.g., `gemini-2.5-pro`, `claude-3-5-sonnet`) and distinct Nostr keys.
-4. The daemon resolves turns as soon as all 4 bots submit.
+4. The daemon resolves turns as soon as all 4 bots submit (see the
+   [Turn Resolution Operations runbook](../guides/turn-resolution-operations.md)
+   for scheduling and hybrid options).
 5. At game end, the result is saved, fulfilling the data requirements for neural network training.
 
 ## Next Steps
