@@ -11,6 +11,7 @@ import db_connector/db_sqlite
 import ../../common/logger
 import ../../engine/types/[game_state, core, command]
 import ../../engine/state/engine
+import ../../engine/init/multipliers
 import ../parser/msgpack_commands
 import ./msgpack_state
 import ./player_state_snapshot
@@ -271,7 +272,16 @@ proc loadFullState*(dbPath: string): GameState =
     result.dbPath = dbPath
     result.dataDir = dbPath.parentDir.parentDir.parentDir # ../../../data
 
-    logInfo("Persistence", "Loaded full state (msgpack)", "turn=", $result.turn, " size=", $row[0].len, " bytes")
+    # Re-derive map-scale multipliers from loaded state.
+    # These are module-level threadvars (not serialized) so must be
+    # recomputed after every load.
+    let numSystems = result.systemsCount()
+    let numPlayers = int32(result.houses.entities.data.len)
+    initPrestigeMultiplier(numSystems, numPlayers)
+    initPopulationGrowthMultiplier(numSystems, numPlayers)
+
+    logInfo("Persistence", "Loaded full state (msgpack)", "turn=",
+      $result.turn, " size=", $row[0].len, " bytes")
   except:
     logError("Persistence", "Failed to load full state: ", getCurrentExceptionMsg())
     raise
