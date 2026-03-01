@@ -15,13 +15,13 @@
 ##   let result = submitZeroTurnCommand(state, cmd)
 ##   if result.success: echo "Success!"
 
-import std/[options, tables, strformat, sequtils, sets]
+import std/[options, strformat, sequtils, sets]
 import ../../types/[
   core, game_state, fleet, ship, colony, ground_unit,
   event, zero_turn, combat
 ]
 import ../../state/[engine, fleet_queries]
-import ../../entities/[fleet_ops, ground_unit_ops]
+import ../../entities/[fleet_ops, ground_unit_ops, ship_ops]
 import ../fleet/entity
 import ../ship/entity
 import ../capacity/carrier_hangar
@@ -436,7 +436,6 @@ proc validateZeroTurnCommand*(
     let sourceFleetOpt = state.fleet(cmd.sourceFleetId.get())
     if sourceFleetOpt.isNone:
       return ValidationResult(valid: false, error: "Source fleet not found")
-    let sourceFleet = sourceFleetOpt.get()
     # Find both carriers and ensure they're in same fleet or adjacent fleets at same location
     # (detailed validation in execute function)
 
@@ -495,48 +494,42 @@ proc executeDetachShips*(
   # prior ZTCs reordering the ship list), fall back to shipIndices for
   # backward compatibility with old saved commands.
   var shipsToDetach: seq[ShipId] = @[]
-  var remainingShips: seq[ShipId] = @[]
 
   if cmd.shipIds.len > 0:
     let shipIdSet = cmd.shipIds.toHashSet()
     for shipId in sourceFleet.ships:
       if shipId in shipIdSet:
         shipsToDetach.add(shipId)
-      else:
-        remainingShips.add(shipId)
   else:
     let indicesSet = cmd.shipIndices.toHashSet()
     for i, shipId in sourceFleet.ships:
       if i in indicesSet:
         shipsToDetach.add(shipId)
-      else:
-        remainingShips.add(shipId)
 
   # Create new fleet with proper index registration (fleet_ops handles all indexes)
   # Note: createFleet() generates ID internally, ignoring cmd.newFleetId if provided
   let newFleet = state.createFleet(cmd.houseId, sourceFleet.location)
   let newFleetId = newFleet.id
 
-  # Update new fleet with detached ships
-  var updatedNewFleet = newFleet
-  updatedNewFleet.ships = shipsToDetach
-  state.updateFleet(newFleetId, updatedNewFleet)
+  # Reassign each ship to the new fleet via ship_ops.assignShipToFleet,
+  # which atomically updates: ship.fleetId, byFleet index, and both
+  # fleets' ships lists.
+  for shipId in shipsToDetach:
+    state.assignShipToFleet(shipId, newFleetId)
 
   let shipsDetached = shipsToDetach.len
 
-  # Update source fleet with remaining ships
-  sourceFleet.ships = remainingShips
-
   # Check if source fleet is now empty after detaching
-  if sourceFleet.ships.len == 0:
+  let updatedSource = state.fleet(cmd.sourceFleetId.get())
+  if updatedSource.isNone or updatedSource.get().ships.len == 0:
     # Delete empty source fleet and cleanup orders
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
     logFleet(
       &"DetachShips: Detached all ships from {cmd.sourceFleetId.get()}, deleted source fleet, created new fleet {newFleetId}"
     )
   else:
-    # Write back modified source fleet via entity manager
-    state.updateFleet(cmd.sourceFleetId.get(), sourceFleet)
+    # Source fleet still has ships; no additional write needed since
+    # assignShipToFleet already updated it via entity manager.
     logFleet(
       &"DetachShips: Created fleet {newFleetId} with {shipsDetached} ships"
     )
@@ -589,49 +582,42 @@ proc executeTransferShips*(
     )
 
   var sourceFleet = sourceFleetOpt.get()
-  var targetFleet = targetFleetOpt.get()
   let systemId = sourceFleet.location
 
   # Extract ships to transfer — prefer shipIds (immune to index staleness from
   # prior ZTCs reordering the ship list), fall back to shipIndices for
   # backward compatibility with old saved commands.
   var shipsToTransfer: seq[ShipId] = @[]
-  var remainingShips: seq[ShipId] = @[]
 
   if cmd.shipIds.len > 0:
     let shipIdSet = cmd.shipIds.toHashSet()
     for shipId in sourceFleet.ships:
       if shipId in shipIdSet:
         shipsToTransfer.add(shipId)
-      else:
-        remainingShips.add(shipId)
   else:
     let indicesSet = cmd.shipIndices.toHashSet()
     for i, shipId in sourceFleet.ships:
       if i in indicesSet:
         shipsToTransfer.add(shipId)
-      else:
-        remainingShips.add(shipId)
 
   let shipsTransferred = shipsToTransfer.len
 
-  # Transfer ships to target fleet
-  targetFleet.ships.add(shipsToTransfer)
-  sourceFleet.ships = remainingShips
-
-  # Write back modified target fleet via entity manager
-  state.updateFleet(targetFleetId, targetFleet)
+  # Reassign each ship to the target fleet via ship_ops.assignShipToFleet,
+  # which atomically updates: ship.fleetId, byFleet index, and both
+  # fleets' ships lists.
+  for shipId in shipsToTransfer:
+    state.assignShipToFleet(shipId, targetFleetId)
 
   # Check if source fleet is now empty
-  if sourceFleet.ships.len == 0:
+  let updatedSrc = state.fleet(cmd.sourceFleetId.get())
+  if updatedSrc.isNone or updatedSrc.get().ships.len == 0:
     # Delete empty fleet and cleanup commands (DRY helper)
     cleanupEmptyFleet(state, cmd.sourceFleetId.get())
     logFleet(
       &"TransferShips: Merged all ships from {cmd.sourceFleetId.get()} into {targetFleetId}, deleted source fleet"
     )
   else:
-    # Write back modified source fleet via entity manager
-    state.updateFleet(cmd.sourceFleetId.get(), sourceFleet)
+    # Source fleet still has ships; assignShipToFleet already wrote it back.
     logFleet(
       &"TransferShips: Transferred {shipsTransferred} ships from {cmd.sourceFleetId.get()} to {targetFleetId}"
     )

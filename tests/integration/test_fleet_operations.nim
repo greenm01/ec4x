@@ -20,11 +20,11 @@ import std/[unittest, options, sequtils]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, ship, fleet, combat, ground_unit,
-  facilities, starmap
+  facilities, starmap, zero_turn, event
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/[ship_ops, fleet_ops, ground_unit_ops, neoria_ops, kastra_ops]
-import ../../src/engine/systems/fleet/movement
+import ../../src/engine/systems/fleet/[movement, logistics]
 import ../../src/engine/starmap
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
@@ -646,44 +646,88 @@ suite "Fleet Operations - Zero-Turn Admin: Fleet Reorganization":
     let game = setupTestGame()
     let houseId = firstHouse(game)
     let colony = houseColony(game, houseId)
-    
-    # Create fleet with multiple ships
+
+    # Create fleet with 3 ships
     let fleet = createTestFleet(
       game, houseId, colony.systemId,
-      @[ShipClass.Battleship, ShipClass.Cruiser, ShipClass.Destroyer]
+      @[ShipClass.LightCruiser, ShipClass.Destroyer, ShipClass.ETAC]
     )
-    
-    let initialShipCount = fleetShipCount(game, fleet.id)
-    check initialShipCount == 3
-    
-    # In actual implementation, DetachShips would be a zero-turn command
-    # For now, verify we can track ship counts before/after
-    check initialShipCount > 0
+    let allShips = game.shipsInFleet(fleet.id).toSeq
+    check allShips.len == 3
+
+    # Pick the ETAC to detach
+    let etacId = allShips.filterIt(it.shipClass == ShipClass.ETAC)[0].id
+
+    var events: seq[GameEvent] = @[]
+    let cmd = ZeroTurnCommand(
+      commandType: ZeroTurnCommandType.DetachShips,
+      houseId: houseId,
+      sourceFleetId: some(fleet.id),
+      shipIds: @[etacId],
+    )
+    let res = game.executeDetachShips(cmd, events)
+    check res.success
+    check res.newFleetId.isSome
+
+    let newFleetId = res.newFleetId.get()
+
+    # Source fleet should have 2 ships remaining
+    check fleetShipCount(game, fleet.id) == 2
+    # New fleet should have 1 ship
+    check fleetShipCount(game, newFleetId) == 1
+
+    # The ETAC's own fleetId must point to the new fleet (regression check)
+    let movedShip = game.ship(etacId).get()
+    check movedShip.fleetId == newFleetId
+
+    # The remaining ships' fleetIds must still point to the source fleet
+    for s in game.shipsInFleet(fleet.id):
+      check s.fleetId == fleet.id
 
   test "TransferShips: Move ships between fleets":
     let game = setupTestGame()
     let houseId = firstHouse(game)
     let colony = houseColony(game, houseId)
-    
-    # Create source and target fleets
+
+    # Create source (2 ships) and target (1 ship) fleets
     let sourceFleet = createTestFleet(
       game, houseId, colony.systemId,
-      @[ShipClass.Destroyer, ShipClass.Frigate]
+      @[ShipClass.Destroyer, ShipClass.ETAC]
     )
     let targetFleet = createTestFleet(
       game, houseId, colony.systemId,
-      @[ShipClass.Cruiser]
+      @[ShipClass.LightCruiser]
     )
-    
-    # Verify both fleets exist at same location
-    check game.fleet(sourceFleet.id).get().location == colony.systemId
-    check game.fleet(targetFleet.id).get().location == colony.systemId
-    
-    # Both fleets at same colony - ready for transfer
-    let sourceCount = fleetShipCount(game, sourceFleet.id)
-    let targetCount = fleetShipCount(game, targetFleet.id)
-    check sourceCount == 2
-    check targetCount == 1
+
+    check fleetShipCount(game, sourceFleet.id) == 2
+    check fleetShipCount(game, targetFleet.id) == 1
+
+    # Transfer the ETAC from source to target
+    let srcShips = game.shipsInFleet(sourceFleet.id).toSeq
+    let etacId = srcShips.filterIt(it.shipClass == ShipClass.ETAC)[0].id
+
+    var events: seq[GameEvent] = @[]
+    let cmd = ZeroTurnCommand(
+      commandType: ZeroTurnCommandType.TransferShips,
+      houseId: houseId,
+      sourceFleetId: some(sourceFleet.id),
+      targetFleetId: some(targetFleet.id),
+      shipIds: @[etacId],
+    )
+    let res = game.executeTransferShips(cmd, events)
+    check res.success
+
+    # Source should have 1 ship remaining, target 2
+    check fleetShipCount(game, sourceFleet.id) == 1
+    check fleetShipCount(game, targetFleet.id) == 2
+
+    # The ETAC's own fleetId must point to the target fleet (regression check)
+    let movedShip = game.ship(etacId).get()
+    check movedShip.fleetId == targetFleet.id
+
+    # Remaining source ship's fleetId must still be source
+    for s in game.shipsInFleet(sourceFleet.id):
+      check s.fleetId == sourceFleet.id
 
   test "MergeFleets: Combine two fleets":
     let game = setupTestGame()

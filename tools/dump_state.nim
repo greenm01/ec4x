@@ -182,6 +182,18 @@ proc renderFleets(ps: PlayerState): string =
         if crip > 0: p &= "(" & $crip & "crip)"
         parts.add(p)
       result &= "    Ships: " & parts.join("  ") & "\n"
+      # Per-ship detail: ID and class (useful for ZTC orders)
+      for s in ships:
+        var detail = &"      (ShipId){uint32(s.id)} [{s.shipClass}]"
+        if s.state == CombatState.Crippled: detail &= " CRIPPLED"
+        if s.embarkedFighters.len > 0:
+          let fIds = s.embarkedFighters.mapIt(
+            "(ShipId)" & $uint32(it)).join(" ")
+          detail &= &" fighters=[{fIds}]"
+        if s.assignedToCarrier.isSome:
+          detail &= &" carrier=(ShipId)" &
+            $uint32(s.assignedToCarrier.get)
+        result &= detail & "\n"
     else:
       result &= "    Ships: (empty)\n"
 
