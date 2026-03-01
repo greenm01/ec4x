@@ -281,24 +281,11 @@ proc mergeFleets*(
     return
 
   let sourceFleet = sourceOpt.get()
-  var targetFleet = targetOpt.get()
 
-  # Transfer each ship from source to target
-  for shipId in sourceFleet.ships:
-    var ship = state.ship(shipId).get()
-
-    # Update ship to point to target fleet
-    ship.fleetId = targetFleetId
-    state.updateShip(shipId, ship)
-
-    # Add to target fleet
-    targetFleet.ships.add(shipId)
-
-    # Update byFleet index
-    state.ships.byFleet.mgetOrPut(targetFleetId, @[]).add(shipId)
-
-  # Update target fleet
-  state.updateFleet(targetFleetId, targetFleet)
+  # Transfer each ship from source to target via ship_ops.assignShipToFleet
+  let shipsToMerge = sourceFleet.ships
+  for shipId in shipsToMerge:
+    assignShipToFleet(state, shipId, targetFleetId)
 
   # Destroy source fleet (already empty of ships)
   destroyFleet(state, sourceFleetId)

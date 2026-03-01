@@ -198,7 +198,7 @@ proc validateZeroTurnCommand*(
     if not result.valid:
       return result
 
-  # Layer 3: Command-specific validation
+   # Layer 3: Command-specific validation
   case cmd.commandType
   of ZeroTurnCommandType.DetachShips, ZeroTurnCommandType.TransferShips:
     let fleetOpt = state.fleet(cmd.sourceFleetId.get())
@@ -683,13 +683,14 @@ proc executeMergeFleets*(
   let shipsMerged = sourceFleet.ships.len
   let systemId = sourceFleet.location
 
-  # Merge all ships from source to target
-  targetFleet.ships.add(sourceFleet.ships)
-
-  # Write back modified target fleet via entity manager
-  state.updateFleet(targetFleetId, targetFleet)
+  # Merge all ships from source to target via ship_ops.assignShipToFleet
+  # This atomically updates ship.fleetId, byFleet indexes, and both fleets' ships lists
+  let shipsToMerge = sourceFleet.ships
+  for shipId in shipsToMerge:
+    state.assignShipToFleet(shipId, targetFleetId)
 
   # Delete source fleet using DRY helper (handles indexes and commands)
+  # Fleet is now empty, so destroyFleet will safely clean it up without destroying ships
   cleanupEmptyFleet(state, cmd.sourceFleetId.get())
 
   logFleet(

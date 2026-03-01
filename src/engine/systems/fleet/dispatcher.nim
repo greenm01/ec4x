@@ -7,6 +7,7 @@ import ../../types/[core, fleet, ship, game_state, event, diplomacy]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../intel/detection
 import ../../event_factory/init
+import ../../entities/[ship_ops, fleet_ops]
 import ./[mechanics, movement]
 import ../ship/entity
 import ../command/commands
@@ -1353,15 +1354,14 @@ proc executeJoinFleetCommand(
 
     # If we got here, fleet reached target - fall through to merge logic below
 
-  # At same location - merge ships into target fleet
-  var updatedTargetFleet = targetFleet
-  for shipId in fleet.ships:
-    updatedTargetFleet.ships.add(shipId)
+  # At same location - merge ships into target fleet via ship_ops.assignShipToFleet
+  let shipsToMerge = fleet.ships
+  for shipId in shipsToMerge:
+    state.assignShipToFleet(shipId, targetFleetId)
 
-  state.updateFleet(targetFleetId, updatedTargetFleet)
-
-  # Remove source fleet using state accessor (UFCS)
-  state.delFleet(fleet.id)
+  # Remove source fleet using fleet_ops.destroyFleet which handles cleanup correctly
+  # (Since fleet is now empty, it won't destroy the ships)
+  state.destroyFleet(fleet.id)
 
   logInfo(
     "Fleet",
@@ -1501,21 +1501,21 @@ proc executeRendezvousCommand(
     if uint32(f.id) < uint32(lowestId):
       lowestId = f.id
 
-  # Get host fleet using state accessor (UFCS)
-  var hostFleet = state.fleet(lowestId).get()
-
+  # Host fleet is managed automatically by assignShipToFleet
   # Merge all other fleets into host
   var mergedCount = 0
   for f in rendezvousFleets:
     if f.id == lowestId:
       continue # Skip host
 
-    # Merge ships from all fleets
-    for shipId in f.ships:
-      hostFleet.ships.add(shipId)
+    # Merge ships from all fleets via ship_ops.assignShipToFleet
+    let shipsToMerge = f.ships
+    for shipId in shipsToMerge:
+      state.assignShipToFleet(shipId, lowestId)
 
-    # Remove merged fleet using state accessor (UFCS)
-    state.delFleet(f.id)
+    # Remove merged fleet using fleet_ops.destroyFleet which handles cleanup correctly
+    # (Since fleet is now empty, it won't destroy the ships)
+    state.destroyFleet(f.id)
 
     mergedCount += 1
     logInfo(
@@ -1523,9 +1523,6 @@ proc executeRendezvousCommand(
       "Fleet " & $f.id & " merged into rendezvous host " & $lowestId &
         " (source fleet removed)",
     )
-
-  # Update host fleet using state accessor (UFCS)
-  state.updateFleet(lowestId, hostFleet)
 
   # Generate OrderCompleted event for successful rendezvous
   var details = &"{mergedCount} fleet(s) merged"
@@ -1617,8 +1614,8 @@ proc executeSalvageCommand(
   # Generate event
   let targetSystem = closestColony.get()
 
-  # Remove fleet from game state using state accessor (UFCS)
-  state.delFleet(fleet.id)
+  # Remove fleet and all its ships from game state using fleet_ops.destroyFleet
+  state.destroyFleet(fleet.id)
 
   # Generate OrderCompleted event for salvage operation
   events.add(

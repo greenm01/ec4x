@@ -242,6 +242,9 @@ proc processPlayerSubmissions(
   for (houseId, house) in state.activeHousesWithId():
     if houseId in orders:
       # Zero-turn administrative commands (execute immediately).
+      logInfo("Commands",
+        &"[CMD5-ZTC] Processing {orders[houseId].zeroTurnCommands.len} " &
+        &"ZTCs for house {houseId}")
       for ztc in orders[houseId].zeroTurnCommands:
         let result = submitZeroTurnCommand(state, ztc, events)
         if result.success:
