@@ -54,6 +54,7 @@ Once the single-turn loop is functional, we will build a simulation script (`scr
 Implementation tracker:
 - `docs/bot/TODO.md`
 - `docs/bot/playtest_prompts.md`
+- `docs/bot/PLAYTEST_SETUP.md` - setup and play procedure
 
 Locked v1 decisions:
 - Output contract is strict JSON parsed by bot schema, then compiled to
@@ -69,7 +70,11 @@ Immediate next steps:
 
 ## Local Playtest Runner (MVP)
 
-Use:
+See **[`docs/bot/PLAYTEST_SETUP.md`](PLAYTEST_SETUP.md)** for the full
+setup and play procedure, including human-vs-bot and multi-bot
+configurations.
+
+Quick reference:
 
 1. Copy `scripts/bot/session.env.example` to `scripts/bot/session.env`
    and fill credentials/ids.

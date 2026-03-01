@@ -173,6 +173,12 @@ def main() -> int:
     parser.add_argument("--relay", default="ws://localhost:8080")
     parser.add_argument("--scenario", default="scenarios/standard-4-player.kdl")
     parser.add_argument("--bots", type=int, default=2)
+    parser.add_argument(
+        "--reserve",
+        type=int,
+        default=1,
+        help="Number of invite slots to leave unclaimed for human players (default 1)",
+    )
     parser.add_argument("--model", default="gpt-4o-mini")
     parser.add_argument(
         "--env-file",
@@ -183,6 +189,11 @@ def main() -> int:
         "--api-key-env",
         default="BOT_API_KEY",
         help="Environment variable that stores API key",
+    )
+    parser.add_argument(
+        "--no-clean",
+        action="store_true",
+        help="Skip the clean-dev step (useful when reusing an existing game)",
     )
     parser.add_argument(
         "--run-seconds",
@@ -199,6 +210,8 @@ def main() -> int:
 
     if args.bots < 1:
         raise RuntimeError("--bots must be >= 1")
+    if args.reserve < 0:
+        raise RuntimeError("--reserve must be >= 0")
 
     repo = Path(__file__).resolve().parents[2]
     ec4x_bin = repo / "bin" / "ec4x"
@@ -215,8 +228,11 @@ def main() -> int:
                 f"Missing API key in ${args.api_key_env} (or OPENAI_API_KEY)"
             )
 
-    print("[bootstrap] cleaning dev data")
-    run(["nim", "r", "tools/clean_dev.nim", "--clean", "--logs"], repo)
+    if args.no_clean:
+        print("[bootstrap] skipping clean (--no-clean)")
+    else:
+        print("[bootstrap] cleaning dev data")
+        run(["nim", "r", "tools/clean_dev.nim", "--clean", "--logs"], repo)
 
     print("[bootstrap] creating game")
     new_output = run(
@@ -227,8 +243,12 @@ def main() -> int:
 
     invite_output = run(["bin/ec4x", "invite", game_slug], repo)
     invite_codes = parse_invite_codes(invite_output)
-    if len(invite_codes) < args.bots:
-        raise RuntimeError("Not enough invite codes for requested bot count")
+    total_needed = args.bots + args.reserve
+    if len(invite_codes) < total_needed:
+        raise RuntimeError(
+            f"Scenario only has {len(invite_codes)} invite codes but "
+            f"--bots {args.bots} + --reserve {args.reserve} = {total_needed} required"
+        )
 
     print(f"[bootstrap] game slug: {game_slug}")
     print("[bootstrap] generating bot keys")
@@ -255,6 +275,22 @@ def main() -> int:
             repo,
         )
         print(f"  bot{i+1} claimed {code}")
+
+    human_codes = invite_codes[args.bots : args.bots + args.reserve]
+    if human_codes:
+        print("[bootstrap] unclaimed invite codes for human players:")
+        for idx, code in enumerate(human_codes, start=1):
+            line = f"  player{idx}: {code}@{args.relay}"
+            print(line)
+        human_invites_file = repo / "scripts" / "bot" / "human_invites.txt"
+        human_invites_file.write_text(
+            "\n".join(
+                f"player{idx}: {code}@{args.relay}"
+                for idx, code in enumerate(human_codes, start=1)
+            )
+            + "\n"
+        )
+        print(f"[bootstrap] invite codes saved to: {human_invites_file}")
 
     daemon_identity = Path.home() / ".local/share/ec4x/daemon_identity.kdl"
     daemon_pubhex = decode_daemon_pubhex(daemon_identity)
@@ -292,6 +328,9 @@ def main() -> int:
 
     print("[bootstrap] complete")
     print(f"[bootstrap] game: {game_slug}")
+    if human_codes:
+        print("[bootstrap] join the game with one of the invite codes above")
+        print("[bootstrap] then run: scripts/run_multi_bot_playtest.sh")
     return 0
 
 

@@ -1,0 +1,93 @@
+// EC4X Standard 2-Player Scenario
+// Compact 1v1 format suited for human-vs-bot playtesting.
+// Derived from standard-4-player.kdl; only playerCount and map
+// size differ -- all balance values are identical.
+
+gameParameters {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    scenarioName "Standard 2-Player"
+    scenarioDescription "Compact 1v1 start, suitable for human-vs-bot playtesting"
+    playerCount 2
+    //gameSeed 99999                // Set a custom seed for reproducible game states
+}
+
+// 3 rings = 37 systems, ~18 systems per player
+mapGeneration {
+    (docs)"docs/specs/02-assets.md#section-2-1"
+    numRings 3
+}
+
+victoryConditions {
+    (docs)"docs/specs/01-gameplay.md#section-1-1"
+    turnLimit 35
+    finalConflictAutoEnemy #true
+}
+
+startingResources {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    treasury 1000
+    startingPrestige 100
+    defaultTaxRate 0.50
+}
+
+startingTech {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    economicLevel 1
+    scienceLevel 1
+    weapons 1
+    construction 1
+    shields 1
+    terraforming 1
+    electronicIntelligence 1
+    cloaking 1
+    strategicLift 1
+    counterIntelligence 1
+    flagshipCommand 1
+    strategicCommand 1
+    fighterDoctrine 1
+    advancedCarrierOperations 1
+}
+
+startingFleets {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    fleet {
+        ships "ETAC" "LightCruiser"
+    }
+    fleet {
+        ships "ETAC" "LightCruiser"
+    }
+    fleet {
+        ships "Destroyer"
+    }
+    fleet {
+        ships "Destroyer"
+    }
+}
+
+startingFacilities {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    spaceports 1
+    shipyards 1
+    drydocks 1
+}
+
+startingGroundForces {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    armies 10
+    marines 5
+    groundBatteries 5
+    planetaryShields 0
+}
+
+homeworld {
+    (docs)"docs/specs/01-gameplay.md#section-1-2"
+    planetClass "Eden"
+    rawQuality "Abundant"
+    colonyLevel 5
+    populationUnits 840
+    industrialUnits 420
+}
+
+optionalBalanceOverrides {
+    // Moderator can override specific balance values for this scenario only
+}
