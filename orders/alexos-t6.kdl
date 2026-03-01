@@ -1,0 +1,29 @@
+orders house=2 turn=6 {
+  // F5 (LC) @ Sabbas: move toward S31 Menas for future colonize
+  fleet 5 { move to=31 }
+
+  // F6 (LC) @ Macarius: move toward S32 Hilarion for future colonize
+  fleet 6 { move to=32 }
+
+  // F7 (Destroyer) @ Palamas: hold as forward picket
+  fleet 7 "hold"
+
+  // F8 (Destroyer + 3xCorvette) @ Silouan: hold home guard
+  fleet 8 "hold"
+
+  // Build new ETACs for both colonization fleets
+  build 2 {
+    ship "ETAC"
+    ship "ETAC"
+  }
+
+  // Invest in new colonies: shipyard at Sabbas
+  build 3 {
+    facility "Shipyard"
+  }
+
+  // Shipyard at Macarius
+  build 4 {
+    facility "Shipyard"
+  }
+}

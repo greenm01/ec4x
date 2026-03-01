@@ -671,32 +671,44 @@ proc commissionShip(
   ## Fleet selection logic:
   ## - Scouts -> Join existing pure scout fleet, or create new fleet
   ##   (scouts grouped for mesh network bonuses)
+  ## - ETACs  -> Always create a new solo fleet (player composes
+  ##   colonization task force via zero-turn commands)
   ## - All other ships -> Join existing combat fleet, or create new fleet
 
   var targetFleetId: FleetId = FleetId(0)
 
-  # Find appropriate existing fleet
-  for fleet in state.fleetsAtSystem(systemId):
-    if fleet.houseId != owner:
-      continue
+  if shipClass == ShipClass.ETAC:
+    # ETACs always form their own solo fleet so the player retains full
+    # control over colonization composition. Use zero-turn TransferShips /
+    # MergeFleets / DetachShips to attach escorts before issuing Colonize.
+    discard # targetFleetId stays 0 -> new fleet created below
+  else:
+    # Find appropriate existing fleet
+    for fleet in state.fleetsAtSystem(systemId):
+      if fleet.houseId != owner:
+        continue
 
-    if shipClass == ShipClass.Scout:
-      # Scouts join pure scout fleets (for mesh network bonuses)
-      if isPureScoutFleet(state, fleet):
-        targetFleetId = fleet.id
-        break
-    else:
-      # All other ships join combat fleets
-      if isCombatFleet(state, fleet):
-        targetFleetId = fleet.id
-        break
+      if shipClass == ShipClass.Scout:
+        # Scouts join pure scout fleets (for mesh network bonuses)
+        if isPureScoutFleet(state, fleet):
+          targetFleetId = fleet.id
+          break
+      else:
+        # All other ships join existing combat fleets
+        if isCombatFleet(state, fleet):
+          targetFleetId = fleet.id
+          break
 
-  # Create new fleet if no suitable fleet found
+  # Create new fleet if no suitable fleet found (always for ETACs)
   if targetFleetId == FleetId(0):
     let fleet = state.createFleet(owner, systemId)
     targetFleetId = fleet.id
-    let fleetType = if shipClass == ShipClass.Scout: "scout" else: "combat"
-    logInfo("Fleet", &"Created new {fleetType} fleet {targetFleetId} at {systemId}")
+    let fleetType =
+      if shipClass == ShipClass.Scout: "scout"
+      elif shipClass == ShipClass.ETAC: "etac"
+      else: "combat"
+    logInfo("Fleet",
+      &"Created new {fleetType} fleet {targetFleetId} at {systemId}")
 
   # Create and add ship to fleet
   let ship = state.createShip(owner, targetFleetId, shipClass)
@@ -782,7 +794,7 @@ proc commissionShips*(
     let techLevel = house.techTree.levels.wep
 
     # Commission ship (auto-assigns to appropriate fleet)
-    # Scouts -> pure scout fleets; others -> combat fleets
+    # Scouts -> pure scout fleets; ETACs -> solo fleet; others -> combat fleets
     commissionShip(state, owner, colony.systemId, shipClass, techLevel, events)
 
 proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =

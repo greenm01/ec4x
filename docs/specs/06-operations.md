@@ -96,7 +96,10 @@ When construction completes, your ships **immediately commission** and join flee
 
 **Fighters** remain colony-assigned for orbital defense (not assigned to fleets)
 
-**ETACs and Transports** join appropriate fleets based on operational needs
+**ETACs** each form their own individual fleet for colonization staging. Use
+zero-turn commands (§6.4) to attach escort ships before issuing Colonize (10).
+
+**Troop Transports** join existing combat fleets at the construction colony
 
 **Moving fleets do not receive reinforcements:**
 - Fleets executing **movement commands** or on patrol routes
