@@ -71,6 +71,7 @@ wandb/
 logs/
 .cache/
 .claude/
+orders/
 
 # Re-ignore temp/generated files
 *.log
