@@ -48,6 +48,7 @@ import ../../utils
 import ../../../common/logger
 import ../capacity/carrier_hangar
 import ../../event_factory/init
+import ./facility_queries
 
 proc projectDesc*(p: ConstructionProject): string =
   ## Format project description from typed fields for logging
@@ -87,20 +88,6 @@ proc starbaseGrowthBonus*(state: GameState, colonyId: ColonyId): float =
   let operationalCount = operationalStarbaseCount(state, colonyId)
   result = operationalCount.float * 0.05 # 5% per starbase
 
-proc hasSpaceport*(state: GameState, colonyId: ColonyId): bool =
-  ## Check if colony has at least one spaceport using DoD
-  let colonyOpt = state.colony(colonyId)
-  if colonyOpt.isNone:
-    return false
-
-  let colony = colonyOpt.get()
-  for neoriaId in colony.neoriaIds:
-    let neoriaOpt = state.neoria(neoriaId)
-    if neoriaOpt.isSome and neoriaOpt.get().neoriaClass == NeoriaClass.Spaceport:
-      return true
-
-  return false
-
 proc shieldBlockChance*(shieldLevel: int): float =
   ## Calculate block chance for planetary shield level
   ## SLD1=10%, SLD2=20%, ..., SLD6=60%
@@ -116,7 +103,7 @@ proc countGroundUnits(state: GameState, colony: Colony, unitType: GroundClass): 
   return count
 
 # Note: getTotalGroundDefense removed - groundBatteries is still a simple counter on Colony
-# getTotalConstructionDocks and hasSpaceport moved to DoD versions above
+# getTotalConstructionDocks moved to DoD version above
 
 proc autoLoadFightersToCarriers(
     state: GameState,
@@ -374,13 +361,19 @@ proc commissionPlanetaryDefense*(
           continue
         let colony = colonyOpt.get()
 
-        # Validate spaceport prerequisite
-        if not hasSpaceport(state, completed.colonyId):
-          logError(
+        # Validate spaceport prerequisite (safety net for bombardment edge case)
+        # If the spaceport was crippled/destroyed between order submission and
+        # commissioning (e.g., enemy bombardment), the build is lost — no refund.
+        if not facility_queries.hasOperationalSpaceport(state, completed.colonyId):
+          logWarn(
             "Economy",
-            &"Shipyard construction failed - no spaceport at {completed.colonyId}",
+            &"Shipyard commissioning failed at {completed.colonyId} - " &
+              &"no operational Spaceport (may have been destroyed in combat). " &
+              &"PP cost is forfeited.",
           )
-          # This shouldn't happen if build validation worked correctly
+          events.add(buildingCompleted(
+            colony.owner, "Shipyard (FAILED - Spaceport lost)", colony.systemId
+          ))
           continue
 
         # Create new shipyard (docks from facilities_config.toml, scaled by CST)
@@ -411,13 +404,19 @@ proc commissionPlanetaryDefense*(
           continue
         let colony = colonyOpt.get()
 
-        # Validate spaceport prerequisite
-        if not hasSpaceport(state, completed.colonyId):
-          logError(
+        # Validate spaceport prerequisite (safety net for bombardment edge case)
+        # If the spaceport was crippled/destroyed between order submission and
+        # commissioning (e.g., enemy bombardment), the build is lost — no refund.
+        if not facility_queries.hasOperationalSpaceport(state, completed.colonyId):
+          logWarn(
             "Economy",
-            &"Drydock construction failed - no spaceport at {completed.colonyId}",
+            &"Drydock commissioning failed at {completed.colonyId} - " &
+              &"no operational Spaceport (may have been destroyed in combat). " &
+              &"PP cost is forfeited.",
           )
-          # This shouldn't happen if build validation worked correctly
+          events.add(buildingCompleted(
+            colony.owner, "Drydock (FAILED - Spaceport lost)", colony.systemId
+          ))
           continue
 
         # Create new drydock (docks from facilities_config.toml, scaled by CST)

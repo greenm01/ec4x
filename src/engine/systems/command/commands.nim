@@ -20,6 +20,7 @@ import ../../state/[engine, iterators, fleet_queries]
 import ../../globals
 import ../../../common/logger
 import ../production/[projects, accessors]
+import ../production/facility_queries
 import ../fleet/entity
 import ../fleet/movement
 import ../capacity/[fighter, planet_breakers, planetary_shields, spaceports]
@@ -450,29 +451,19 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
                 &"Build command: {facilityClass} requires CST{required_cst}, house has CST{house_cst}",
             )
 
-      # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-      if facilityClass == FacilityClass.Starbase and
-          gameConfig.construction.construction.starbaseRequiresShipyard:
-        # Check if colony has operational shipyard
-        # Operational = Shipyard that is not Crippled
-        var hasShipyard = false
-        for neoriaId in colony.neoriaIds:
-          let neoriaOpt = state.neoria(neoriaId)
-          if neoriaOpt.isSome:
-            let neoria = neoriaOpt.get()
-            # Operational check: must be Shipyard AND not Crippled
-            if neoria.neoriaClass == NeoriaClass.Shipyard and neoria.state != CombatState.Crippled:
-              hasShipyard = true
-              break
-
-        if not hasShipyard:
+      # Config-driven prerequisite check (e.g., Spaceport for Shipyard/Drydock/Starbase)
+      let prereq = accessors.facilityPrerequisite(facilityClass)
+      if prereq.len > 0:
+        if not facility_queries.facilityPrerequisiteMet(
+            state, cmd.colonyId, facilityClass):
           logWarn(
             "Commands",
-            &"{packet.houseId} Build command REJECTED: {facilityClass} requires operational shipyard at {cmd.colonyId}",
+            &"{packet.houseId} Build command REJECTED: " &
+              &"{facilityClass} requires operational {prereq} at {cmd.colonyId}",
           )
           return ValidationResult(
             valid: false,
-            error: &"Build command: {facilityClass} requires operational shipyard",
+            error: &"Build command: {facilityClass} requires operational {prereq}",
           )
 
     # NOTE: Multiple build commands per colony per turn are supported (queue system)
@@ -838,30 +829,20 @@ proc validateBuildCommandWithBudget*(
               &"Build command: {facilityClass} requires CST{required_cst}, house has CST{house_cst}",
           )
 
-    # Check shipyard prerequisite (e.g., Starbase requires shipyard)
-    if facilityClass == FacilityClass.Starbase and
-        gameConfig.construction.construction.starbaseRequiresShipyard:
-      # Check if colony has operational shipyard
-      # Operational = Shipyard that is not Crippled
-      var hasShipyard = false
-      for neoriaId in colony.neoriaIds:
-        let neoriaOpt = state.neoria(neoriaId)
-        if neoriaOpt.isSome:
-          let neoria = neoriaOpt.get()
-          # Operational check: must be Shipyard AND not Crippled
-          if neoria.neoriaClass == NeoriaClass.Shipyard and neoria.state != CombatState.Crippled:
-            hasShipyard = true
-            break
-
-      if not hasShipyard:
+    # Config-driven prerequisite check (e.g., Spaceport for Shipyard/Drydock/Starbase)
+    let prereq = accessors.facilityPrerequisite(facilityClass)
+    if prereq.len > 0:
+      if not facility_queries.facilityPrerequisiteMet(
+          state, cmd.colonyId, facilityClass):
         ctx.rejectedCommands += 1
         logWarn(
           "Economy",
-          &"{houseId} Build command REJECTED: {facilityClass} requires operational shipyard at {cmd.colonyId}",
+          &"{houseId} Build command REJECTED: " &
+            &"{facilityClass} requires operational {prereq} at {cmd.colonyId}",
         )
         return ValidationResult(
           valid: false,
-          error: &"Build command: {facilityClass} requires operational shipyard",
+          error: &"Build command: {facilityClass} requires operational {prereq}",
         )
 
   # Check capacity limits using capacity modules
@@ -1104,16 +1085,7 @@ proc validateRepairCommand*(
     # Check prerequisites
     if neoria.neoriaClass in {NeoriaClass.Shipyard, NeoriaClass.Drydock}:
       # Requires operational spaceport
-      var hasSpaceport = false
-      for spNeoriaId in colony.neoriaIds:
-        let spNeoriaOpt = state.neoria(spNeoriaId)
-        if spNeoriaOpt.isSome:
-          let spNeoria = spNeoriaOpt.get()
-          if spNeoria.neoriaClass == NeoriaClass.Spaceport and
-              spNeoria.state != CombatState.Crippled:
-            hasSpaceport = true
-            break
-      if not hasSpaceport:
+      if not facility_queries.hasOperationalSpaceport(state, colony.id):
         return ValidationResult(
           valid: false, error: "Shipyard/Drydock repair requires operational spaceport"
         )
@@ -1127,16 +1099,7 @@ proc validateRepairCommand*(
     if kastra.state != CombatState.Crippled:
       return ValidationResult(valid: false, error: "Starbase is not crippled")
     # Check for spaceport
-    var hasSpaceport = false
-    for neoriaId in colony.neoriaIds:
-      let neoriaOpt = state.neoria(neoriaId)
-      if neoriaOpt.isSome:
-        let neoria = neoriaOpt.get()
-        if neoria.neoriaClass == NeoriaClass.Spaceport and
-            neoria.state != CombatState.Crippled:
-          hasSpaceport = true
-          break
-    if not hasSpaceport:
+    if not facility_queries.hasOperationalSpaceport(state, colony.id):
       return ValidationResult(
         valid: false, error: "Starbase repair requires operational spaceport"
       )

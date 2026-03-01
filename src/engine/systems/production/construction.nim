@@ -28,7 +28,7 @@ import ../../state/engine
 import ../../../common/logger
 import ../capacity/construction_docks
 import ./queue_advancement
-import ./[projects, accessors]
+import ./[projects, accessors, facility_queries]
 import ../../event_factory/economic
 
 proc resolveBuildOrders*(
@@ -78,6 +78,19 @@ proc resolveBuildOrders*(
       )
       # Note: Rejection events handled by turn result system
       continue
+
+    # Check facility prerequisites (e.g., Spaceport required for
+    # Shipyard/Drydock/Starbase). Reject early so PP is never spent.
+    if command.buildType == BuildType.Facility and command.facilityClass.isSome:
+      let fc = command.facilityClass.get()
+      if not facility_queries.facilityPrerequisiteMet(state, command.colonyId, fc):
+        let prereq = accessors.facilityPrerequisite(fc)
+        logWarn(
+          "Economy",
+          &"[BUILD ORDER REJECTED] {packet.houseId}: " &
+            &"{fc} requires operational {prereq} at {command.colonyId}",
+        )
+        continue
 
     # Determine if this construction requires dock capacity
     # DOCK CONSTRUCTION: Capital ships (non-fighters) built at spaceport/shipyard facilities

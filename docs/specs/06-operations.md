@@ -48,7 +48,7 @@ Allocate treasury (production points) to construction projects at your colonies.
 - Can build any ship type
 - **100% commission penalty**: Ships (except fighters) cost double production points due to orbital launch costs
 - Fighters exempt from penalty (distributed planetary manufacturing)
-- Required prerequisite for building shipyards, spaceports, and starbases.
+- Required prerequisite for building shipyards, drydocks, and starbases.
 
 **Shipyards** (Orbital Construction):
 - Built in 2 turns, requires existing spaceport, provides 10 construction docks

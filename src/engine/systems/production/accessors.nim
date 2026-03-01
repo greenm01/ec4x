@@ -57,23 +57,11 @@ proc buildingCSTRequirement*(buildingType: FacilityClass): int32 =
   ## Returns minCST from facilities.kdl (e.g., Starbase requires CST3)
   gameConfig.facilities.facilities[buildingType].minCST
 
-proc requiresSpaceport*(buildingType: FacilityClass): bool =
-  ## Check if facility requires a spaceport to build
-  ## Currently only used for shipyard construction
-  case buildingType
-  of FacilityClass.Shipyard:
-    gameConfig.construction.construction.shipyardRequiresSpaceport
-  else:
-    false
-
-proc requiresShipyard*(buildingType: string): bool =
-  ## Check if building requires a shipyard (e.g., Starbase requires shipyard)
-  ## Per construction.kdl: starbaseRequiresShipyard
-  ##
-  ## Note: Takes string for backward compatibility with old command validation
-  ## New code should use FacilityClass enum
-  buildingType == "Starbase" and
-    gameConfig.construction.construction.starbaseRequiresShipyard
+proc facilityPrerequisite*(buildingType: FacilityClass): string =
+  ## Get the prerequisite facility name for a given facility type.
+  ## Returns the `prerequisite` string from facilities.kdl, or "" if none.
+  ## Use facility_queries.facilityPrerequisiteMet for the state-aware check.
+  gameConfig.facilities.facilities[buildingType].prerequisite
 
 ## Ground Unit Config Accessors
 
@@ -124,7 +112,7 @@ proc planetsideConstructionMultiplier*(): float32 =
 export shipConstructionCost, shipBaseBuildTime, shipCSTRequirement,
   shipMaintenanceCost
 export buildingCost, buildingTime, buildingCSTRequirement,
-  requiresSpaceport, requiresShipyard
+  facilityPrerequisite
 export armyBuildCost, marineBuildCost, groundBatteryBuildCost,
   planetaryShieldCost
 export groundUnitCost, groundUnitBuildTime,

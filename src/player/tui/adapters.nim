@@ -14,6 +14,7 @@ import ../../engine/state/fog_of_war
 import ../../engine/systems/capacity/[construction_docks, fighter,
   planet_breakers, planetary_shields, spaceports, starbases]
 import ../../engine/systems/production/engine as production_engine
+import ../../engine/systems/production/accessors
 import ../../engine/globals
 import ../sam/client_limits
 import ./widget/hexmap/hexmap_pkg
@@ -1022,14 +1023,11 @@ proc colonyToDetailData*(
     if facilityClass == FacilityClass.Starbase:
       if not state.canBuildStarbase(colony):
         continue
-      if gameConfig.construction.construction.starbaseRequiresShipyard and
-          not hasShipyard:
-        continue
-    if facilityClass in {FacilityClass.Shipyard, FacilityClass.Drydock}:
-      if gameConfig.construction.construction.shipyardRequiresSpaceport and
-          not hasSpaceport:
-        continue
-    if facilityClass == FacilityClass.Starbase and not hasSpaceport:
+    # Config-driven prerequisite check (Spaceport required for Shipyard/Drydock/Starbase)
+    let prereq = accessors.facilityPrerequisite(facilityClass)
+    if prereq == "Spaceport" and not hasSpaceport:
+      continue
+    if prereq == "Shipyard" and not hasShipyard:
       continue
     let cost = int(
       gameConfig.facilities.facilities[facilityClass].buildCost
@@ -1647,16 +1645,11 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     if facilityClass == FacilityClass.Starbase and
         snapshot.starbases >= maxStarbases:
       continue
-    if facilityClass == FacilityClass.Starbase and
-        gameConfig.construction.construction.starbaseRequiresShipyard and
-        not hasOperationalShipyard:
+    # Config-driven prerequisite check (Spaceport required for Shipyard/Drydock/Starbase)
+    let prereq = accessors.facilityPrerequisite(facilityClass)
+    if prereq == "Spaceport" and not hasOperationalSpaceport:
       continue
-    if facilityClass in {FacilityClass.Shipyard, FacilityClass.Drydock} and
-        gameConfig.construction.construction.shipyardRequiresSpaceport and
-        not hasOperationalSpaceport:
-      continue
-    if facilityClass == FacilityClass.Starbase and
-        not hasOperationalSpaceport:
+    if prereq == "Shipyard" and not hasOperationalShipyard:
       continue
     let cost = int(gameConfig.facilities.facilities[facilityClass].buildCost)
     options.add(BuildOption(

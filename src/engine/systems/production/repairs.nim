@@ -34,6 +34,7 @@ import ../../types/[core, ship, production, facilities, combat, game_state, grou
 import ../../entities/[fleet_ops, project_ops]
 import ../../state/[engine, iterators]
 import ../../systems/production/accessors # For ship cost lookups
+import ../../systems/production/facility_queries
 import ../../globals
 import ../../../common/logger
 
@@ -161,14 +162,8 @@ proc submitAutomaticStarbaseRepairs*(state: GameState, systemId: SystemId) =
     return # Manual mode - skip automatic repairs
 
   # Check if colony has spaceport (starbases require spaceport for repair)
-  var hasSpaceport = false
-  for neoriaId in colony.neoriaIds:
-    let neoriaOpt = state.neoria(neoriaId)
-    if neoriaOpt.isSome and neoriaOpt.get().neoriaClass == NeoriaClass.Spaceport:
-      hasSpaceport = true
-      break
-  if not hasSpaceport:
-    return # No spaceport available
+  if not facility_queries.hasOperationalSpaceport(state, colonyId):
+    return # No operational spaceport available
 
   # Track if we modified the colony
   var modified = false
@@ -392,23 +387,6 @@ proc calculateFacilityRepairCost*(facilityClass: NeoriaClass): int32 =
     of NeoriaClass.Drydock:
       accessors.buildingCost(FacilityClass.Drydock)
   result = (buildCost.float32 * 0.25'f32).int32
-
-proc hasOperationalSpaceport(state: GameState, colonyId: ColonyId): bool =
-  ## Check if colony has a non-crippled spaceport
-  ## Used to validate shipyard and drydock repair prerequisites
-  let colonyOpt = state.colony(colonyId)
-  if colonyOpt.isNone:
-    return false
-  let colony = colonyOpt.get()
-  
-  for neoriaId in colony.neoriaIds:
-    let neoriaOpt = state.neoria(neoriaId)
-    if neoriaOpt.isSome:
-      let neoria = neoriaOpt.get()
-      if neoria.neoriaClass == NeoriaClass.Spaceport and
-          neoria.state == CombatState.Nominal:
-        return true
-  return false
 
 proc submitAutomaticFacilityRepairs*(
     state: GameState, systemId: SystemId
