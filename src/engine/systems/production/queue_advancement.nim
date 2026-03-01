@@ -279,46 +279,6 @@ proc advanceShipyardQueue*(
                $shipyard.id, " project=", nextProject.projectDesc)
       pulled += 1
 
-proc advanceColonyQueues*(
-    state: GameState, colonyId: ColonyId
-): QueueAdvancementResult =
-  ## Advance all facility queues at colony using entity managers
-  ## Returns combined results from all facilities
-  ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
-  result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
-
-  # Get colony to access facility IDs
-  let colonyOpt = state.colony(colonyId)
-  if colonyOpt.isNone:
-    return result
-
-  let colony = colonyOpt.get()
-
-  # Advance all neorias (spaceports, shipyards, drydocks)
-  for neoriaId in colony.neoriaIds:
-    let neoriaOpt = state.neoria(neoriaId)
-    if neoriaOpt.isSome:
-      var neoria = neoriaOpt.get()
-      case neoria.neoriaClass:
-      of NeoriaClass.Spaceport:
-        let spaceportResult = state.advanceSpaceportQueue(neoria, colonyId)
-        result.completedProjects.add(spaceportResult.completedProjects)
-        result.completedRepairs.add(spaceportResult.completedRepairs)
-        # Write back modified neoria
-        state.updateNeoria(neoriaId, neoria)
-      of NeoriaClass.Shipyard:
-        let shipyardResult = state.advanceShipyardQueue(neoria, colonyId)
-        result.completedProjects.add(shipyardResult.completedProjects)
-        result.completedRepairs.add(shipyardResult.completedRepairs)
-        # Write back modified neoria
-        state.updateNeoria(neoriaId, neoria)
-      of NeoriaClass.Drydock:
-        let drydockResult = state.advanceDrydockQueue(neoria, colonyId)
-        result.completedProjects.add(drydockResult.completedProjects)
-        result.completedRepairs.add(drydockResult.completedRepairs)
-        # Write back modified neoria
-        state.updateNeoria(neoriaId, neoria)
-
 proc isPlanetaryDefense*(project: production.CompletedProject): bool =
   ## Returns true if project should commission in Maintenance Phase
   ## Planetary assets: Facilities, ground forces, fighters (planetside)
@@ -341,27 +301,6 @@ proc isPlanetaryDefense*(project: production.CompletedProject): bool =
     return false
 
   return false
-
-proc advanceAllQueues*(
-    state: GameState
-): tuple[
-  projects: seq[production.CompletedProject], repairs: seq[production.RepairProject]
-] =
-  ## Advance all facility queues across all colonies
-  ## Called during Maintenance phase
-  ## Returns all completed projects and repairs
-  ## NOTE: Uses pre-calculated effectiveDocks (updated on CST tech upgrade)
-  result = (projects: @[], repairs: @[])
-
-  for (colonyId, colony) in state.allColoniesWithId():
-    let colonyResult = advanceColonyQueues(state, colonyId)
-    result.projects.add(colonyResult.completedProjects)
-    result.repairs.add(colonyResult.completedRepairs)
-
-  logDebug(
-    "Facilities", "Queue advancement complete", "completed_projects=",
-    result.projects.len, " completed_repairs=", result.repairs.len,
-  )
 
 ## ==============================================================================
 ## Colony Queue Management (Legacy System)
@@ -453,6 +392,76 @@ proc advanceConstruction*(
   state.updateConstructionProject(projectId, project)
 
   return none(production.CompletedProject)
+
+proc advanceColonyQueues*(
+    state: GameState, colonyId: ColonyId
+): QueueAdvancementResult =
+  ## Advance all construction queues at a colony (colony-level + facility-level)
+  ## Returns combined results from colony queue and all facilities
+  result = QueueAdvancementResult(completedProjects: @[], completedRepairs: @[])
+
+  # Get colony to access facility IDs
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isNone:
+    return result
+
+  var colony = colonyOpt.get()
+
+  # Advance colony-level construction queue (facilities, fighters,
+  # ground units, IU investment — planet-side builds)
+  let colonyCompleted = state.advanceConstruction(colony)
+  if colonyCompleted.isSome:
+    result.completedProjects.add(colonyCompleted.get())
+    logDebug(
+      "Facilities",
+      "Colony queue item completed at ", $colonyId,
+    )
+  # Write back colony (underConstruction slot may have been updated)
+  state.updateColony(colonyId, colony)
+
+  # Advance all neorias (spaceports, shipyards, drydocks)
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isSome:
+      var neoria = neoriaOpt.get()
+      case neoria.neoriaClass:
+      of NeoriaClass.Spaceport:
+        let spaceportResult = state.advanceSpaceportQueue(neoria, colonyId)
+        result.completedProjects.add(spaceportResult.completedProjects)
+        result.completedRepairs.add(spaceportResult.completedRepairs)
+        state.updateNeoria(neoriaId, neoria)
+      of NeoriaClass.Shipyard:
+        let shipyardResult = state.advanceShipyardQueue(neoria, colonyId)
+        result.completedProjects.add(shipyardResult.completedProjects)
+        result.completedRepairs.add(shipyardResult.completedRepairs)
+        state.updateNeoria(neoriaId, neoria)
+      of NeoriaClass.Drydock:
+        let drydockResult = state.advanceDrydockQueue(neoria, colonyId)
+        result.completedProjects.add(drydockResult.completedProjects)
+        result.completedRepairs.add(drydockResult.completedRepairs)
+        state.updateNeoria(neoriaId, neoria)
+
+proc advanceAllQueues*(
+    state: GameState
+): tuple[
+  projects: seq[production.CompletedProject],
+  repairs: seq[production.RepairProject],
+] =
+  ## Advance all construction and repair queues across all colonies
+  ## Called during Maintenance phase (PRD2)
+  ## Returns all completed projects and repairs
+  result = (projects: @[], repairs: @[])
+
+  for (colonyId, colony) in state.allColoniesWithId():
+    let colonyResult = advanceColonyQueues(state, colonyId)
+    result.projects.add(colonyResult.completedProjects)
+    result.repairs.add(colonyResult.completedRepairs)
+
+  logDebug(
+    "Facilities", "Queue advancement complete",
+    " completed_projects=", result.projects.len,
+    " completed_repairs=", result.repairs.len,
+  )
 
 ## ==============================================================================
 ## Design Notes

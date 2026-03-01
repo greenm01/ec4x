@@ -1,0 +1,24 @@
+orders house=1 turn=9 {
+  // F1 (LC) @ Niketas: hold - Spaceport completing this turn (commissions T10)
+  fleet 1 "hold"
+
+  // F2 (LC) @ Columba: hold - Spaceport completing this turn (commissions T10)
+  fleet 2 "hold"
+
+  // F3 (Destroyer) @ Theophanes: hold center picket
+  fleet 3 "hold"
+
+  // F4 (home guard) @ Paisios: hold
+  fleet 4 "hold"
+
+  // Build second Shipyard at Paisios (60 PP) - more dock capacity for upcoming
+  // ETAC/ship production burst as satellite colonies come online
+  build 1 {
+    facility "Shipyard"
+  }
+
+  // Build another LightCruiser at Paisios for future expansion escort
+  build 1 {
+    ship "LightCruiser"
+  }
+}

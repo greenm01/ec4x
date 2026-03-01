@@ -1,0 +1,28 @@
+orders house=1 turn=8 {
+  // F1 (LC) @ Niketas: hold - wait for ETAC being built here
+  fleet 1 "hold"
+
+  // F2 (LC) @ Paisios: move to Columba to rendezvous with ETAC being built there
+  fleet 2 { move to=11 }
+
+  // F3 (Destroyer) @ Theophanes: hold center picket
+  fleet 3 "hold"
+
+  // F4 (home guard) @ Paisios: hold
+  fleet 4 "hold"
+
+  // Build ETAC at Niketas - will commission into solo fleet at S23 (F1 waiting)
+  build 5 {
+    ship "ETAC"
+  }
+
+  // Build ETAC at Columba - will commission into solo fleet at S11 (F2 arriving)
+  build 6 {
+    ship "ETAC"
+  }
+
+  // Build another LightCruiser at Paisios for continued expansion
+  build 1 {
+    ship "LightCruiser"
+  }
+}

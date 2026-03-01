@@ -1,0 +1,28 @@
+orders house=2 turn=8 {
+  // F5 (LC) @ Sabbas: hold - wait for ETAC being built here
+  fleet 5 "hold"
+
+  // F6 (LC) @ Silouan: move to Macarius to rendezvous with ETAC being built there
+  fleet 6 { move to=33 }
+
+  // F7 (Destroyer) @ Theophanes: hold center picket
+  fleet 7 "hold"
+
+  // F8 (home guard) @ Silouan: hold
+  fleet 8 "hold"
+
+  // Build ETAC at Sabbas - will commission into solo fleet at S36 (F5 waiting)
+  build 3 {
+    ship "ETAC"
+  }
+
+  // Build ETAC at Macarius - will commission into solo fleet at S33 (F6 arriving)
+  build 4 {
+    ship "ETAC"
+  }
+
+  // Build another LightCruiser at Silouan for continued expansion
+  build 2 {
+    ship "LightCruiser"
+  }
+}

@@ -1,0 +1,24 @@
+orders house=2 turn=9 {
+  // F5 (LC) @ Sabbas: hold - Spaceport completing this turn (commissions T10)
+  fleet 5 "hold"
+
+  // F6 (LC) @ Macarius: hold - Spaceport completing this turn (commissions T10)
+  fleet 6 "hold"
+
+  // F7 (Destroyer) @ Theophanes: hold center picket
+  fleet 7 "hold"
+
+  // F8 (home guard) @ Silouan: hold
+  fleet 8 "hold"
+
+  // Build second Shipyard at Silouan (60 PP) - more dock capacity for upcoming
+  // ETAC/ship production burst as satellite colonies come online
+  build 2 {
+    facility "Shipyard"
+  }
+
+  // Build another LightCruiser at Silouan for future expansion escort
+  build 2 {
+    ship "LightCruiser"
+  }
+}
