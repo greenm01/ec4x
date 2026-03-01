@@ -184,7 +184,7 @@ proc renderFleets(ps: PlayerState): string =
       result &= "    Ships: " & parts.join("  ") & "\n"
       # Per-ship detail: ID and class (useful for ZTC orders)
       for s in ships:
-        var detail = &"      (ShipId){uint32(s.id)} [{s.shipClass}]"
+        var detail = &"      (ShipId){uint32(s.id)} [{s.shipClass}] fleetId={uint32(s.fleetId)}"
         if s.state == CombatState.Crippled: detail &= " CRIPPLED"
         if s.embarkedFighters.len > 0:
           let fIds = s.embarkedFighters.mapIt(
