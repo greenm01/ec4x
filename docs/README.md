@@ -71,6 +71,7 @@ Located in `tools/`:
 Located in `guides/`:
 - **[player-tui-playtest-checklist.md](guides/player-tui-playtest-checklist.md)** - Structured session checklist for TUI playtests
 - **[player-tui-issue-template.md](guides/player-tui-issue-template.md)** - Issue capture template for playtest findings
+- **[turn-resolution-operations.md](guides/turn-resolution-operations.md)** - Runbook for manual, scheduled, and hybrid turn advancement
 
 ### Bot & AI
 
