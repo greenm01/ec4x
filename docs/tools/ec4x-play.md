@@ -106,13 +106,23 @@ Manually trigger deterministic turn resolution for a game. Use after all
 houses have submitted orders (or when forcing resolution in debug play).
 
 ```
-bin/ec4x-daemon resolve <game-slug>
+bin/ec4x-daemon resolve <game>
 ```
 
-**Example:**
+`<game>` accepts a slug (directory name), UUID, or game name — all three
+forms resolve to the same game.
+
+**Examples:**
 
 ```bash
+# By slug (directory name under data/games/)
 bin/ec4x-daemon resolve autumn-sky
+
+# By UUID
+bin/ec4x-daemon resolve 203b6979-527c-47d5-8e6c-55ead8ff7840
+
+# By game name
+bin/ec4x-daemon resolve "Autumn Sky Campaign"
 ```
 
 This replicates what the daemon does automatically when all players have

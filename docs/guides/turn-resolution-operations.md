@@ -7,8 +7,8 @@ This guide focuses on user-level daemon setups (`systemctl --user`).
 ## Quick Commands
 
 ```bash
-# Manual: resolve one game
-./bin/ec4x-daemon resolve --gameId=<game-id>
+# Manual: resolve one game (slug, UUID, or game name)
+./bin/ec4x-daemon resolve <game>
 
 # Manual: resolve all active games
 ./bin/ec4x-daemon resolve-all

@@ -1,0 +1,18 @@
+orders house=2 turn=1 {
+  // Send ETAC fleet A1 toward S9 Cyprian to colonize
+  fleet 5 { move to=9 }
+
+  // Send ETAC fleet A2 toward S4 Polycarp to colonize
+  fleet 6 { move to=4 }
+
+  // Escort fleet A3 (Destroyer) follows A1 toward S9
+  fleet 7 { move to=9 }
+
+  // Fleet A4 (Destroyer) holds at Ephrem to guard home
+  fleet 8 "hold"
+
+  // Begin building a Corvette at the shipyard
+  build 2 {
+    ship "Corvette"
+  }
+}

@@ -118,12 +118,12 @@ proc checkDeadlineResolution(gameId: GameId) =
   logInfo("Daemon", "Turn deadline reached; auto-resolving game=", gameId,
     " turn=", $gameInfo.turn)
 
-  # Request turn resolution via proposal (reactor will queue the Cmd)
+  # Request turn resolution via proposal (reactor will queue the Cmd
+  # and set resolving flag to prevent double-queueing)
   let gId = gameId
   daemonLoop.present(Proposal[DaemonModel](
     name: "request_turn_resolution",
     payload: proc(m: var DaemonModel) =
-      m.resolving.incl(gId)
       m.resolutionRequested.incl(gId)
   ))
 
@@ -173,12 +173,12 @@ proc checkAndTriggerResolution(gameId: GameId) =
       logWarn("Daemon", "Turn already resolving for game ", gameId, " - skipping")
       return
 
-    # Request turn resolution via proposal (reactor will queue the Cmd)
+    # Request turn resolution via proposal (reactor will queue the Cmd
+    # and set resolving flag to prevent double-queueing)
     let gId = gameId
     daemonLoop.present(Proposal[DaemonModel](
       name: "request_turn_resolution",
       payload: proc(m: var DaemonModel) =
-        m.resolving.incl(gId)
         m.resolutionRequested.incl(gId)
     ))
   else:
@@ -873,7 +873,9 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
         logDebug("Daemon", "Reactor queueing turn resolution for ", gameId)
         daemonLoop.queueCmd(resolveTurnCmd(gameId))
 
-    # Clear resolution requests via proposal
+    # Clear resolution requests and mark as resolving via proposal.
+    # Setting resolving here (after queuing the cmd) prevents the reactor
+    # from double-queueing on the next SAM cycle.
     if model.resolutionRequested.len > 0:
       let requestedGames = model.resolutionRequested
       dispatch(Proposal[DaemonModel](
@@ -881,6 +883,7 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
         payload: proc(m: var DaemonModel) =
           for gameId in requestedGames:
             m.resolutionRequested.excl(gameId)
+            m.resolving.incl(gameId)
       ))
 
     # Handle game discovery requests
@@ -1162,20 +1165,24 @@ proc resolveGameInternal(gameId: string, dbPath: string,
       discard
     return 1
 
-proc resolve*(gameId: string, dataDir: string = "data"): int =
-  ## Manually trigger turn resolution for a game
-  let gamesDir = dataDir / "games"
-  let dbPath = gamesDir / gameId / "ec4x.db"
-
-  if not fileExists(dbPath):
-    logError("Daemon", "Game database not found: ", dbPath)
+proc resolve*(gameId: seq[string],
+    dataDir: string = "data"): int =
+  ## Manually trigger turn resolution for a game.
+  ## Accepts a slug (directory name), UUID, or game name.
+  if gameId.len == 0:
+    logError("Daemon", "Usage: resolve <game>")
     return 1
-
-  logInfo("Daemon", "Manually resolving game: ", gameId)
-
+  let token = gameId[0]
+  let found = reader.findGameByToken(token, dataDir)
+  if found.isNone:
+    logError("Daemon", "Game not found: ", token)
+    return 1
+  let (resolvedId, dbPath) = found.get()
+  logInfo("Daemon", "Manually resolving game: ", token,
+    " (id=", resolvedId, ")")
   gameConfig = loadGameConfig("config")
   let daemonConfig = parseDaemonKdl("config/daemon.kdl")
-  resolveGameInternal(gameId, dbPath, dataDir, daemonConfig)
+  resolveGameInternal(resolvedId, dbPath, dataDir, daemonConfig)
 
 proc resolveAll*(dataDir: string = "data"): int =
   ## Manually resolve one turn for all active games.
@@ -1260,7 +1267,8 @@ when isMainModule:
       help = "Initialize daemon identity (run once before first start)"],
     [stop, help = "Stop the daemon"],
     [status, help = "Show daemon status"],
-    [resolve, help = "Manually resolve a turn"],
+    [resolve, positional = "gameId",
+      help = "Manually resolve a turn (slug, UUID, or game name)"],
     [resolveAll, cmdName = "resolve-all",
       help = "Manually resolve one turn for all active games"],
     [version, help = "Show version"]

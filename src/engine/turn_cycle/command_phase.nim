@@ -587,7 +587,7 @@ proc processOrderValidation(
             &"  [STORED] Fleet {cmd.fleetId}: {cmd.commandType}")
       else:
         ordersRejected += 1
-        logWarn("Commands",
+        logDebug("Commands",
           &"  [REJECTED] Fleet {cmd.fleetId}: {cmd.commandType} - " &
           validation.error)
         events.add(

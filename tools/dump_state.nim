@@ -276,6 +276,19 @@ proc renderIntelligence(ps: PlayerState): string =
         result &= &" ~{opt(vf.estimatedShipCount)} ships"
       result &= "\n"
 
+proc renderStarmap(ps: PlayerState): string =
+  result = "\n## Starmap (visible systems)\n"
+  result &= "Format: S<id> <name> [<visibility>] lanes-><id,...>\n"
+  var sysList: seq[VisibleSystem]
+  for _, vs in ps.visibleSystems.pairs:
+    sysList.add(vs)
+  sysList.sort(proc(a, b: VisibleSystem): int =
+    cmp(uint32(a.systemId), uint32(b.systemId)))
+  for vs in sysList:
+    let laneIds = vs.jumpLaneIds.mapIt($uint32(it)).join(",")
+    result &= &"  S{uint32(vs.systemId)} {vs.name}" &
+      &" [{vs.visibility}] lanes->{laneIds}\n"
+
 proc renderDiplomacy(ps: PlayerState): string =
   if ps.diplomaticRelations.len == 0 and
       ps.pendingProposals.len == 0 and
@@ -501,6 +514,7 @@ proc main() =
   output &= renderGroundForces(ps)
   output &= renderOrbitalAssets(ps)
   output &= renderIntelligence(ps)
+  output &= renderStarmap(ps)
   output &= renderDiplomacy(ps)
   output &= renderStandings(ps)
   output &= renderActProgression(ps)

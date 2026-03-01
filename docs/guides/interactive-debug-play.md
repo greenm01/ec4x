@@ -128,8 +128,10 @@ by timestamp).
 ### Step 4: Resolve the turn
 
 ```bash
-bin/ec4x-daemon resolve <game-slug>
+bin/ec4x-daemon resolve <game>
 ```
+
+`<game>` accepts a slug (directory name), UUID, or game name.
 
 This runs full deterministic resolution: combat, production, research,
 diplomacy. Missing orders default to `Hold` for all fleets.

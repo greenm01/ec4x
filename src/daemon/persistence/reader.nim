@@ -299,3 +299,44 @@ proc countPlayersSubmitted*(dbPath: string, gameId: string, turn: int32): int =
     $turn
   )
   result = parseInt(row[0])
+
+type
+  GameToken* = tuple[gameId: string, dbPath: string]
+    ## Resolved game identity: UUID and database path.
+
+proc findGameByToken*(token: string,
+    dataDir: string = "data"): Option[GameToken] =
+  ## Resolve a user-provided token (slug, UUID, or game name) to a
+  ## (gameId, dbPath) pair by scanning the data/games directory.
+  ##
+  ## Resolution order:
+  ##   1. Fast path: token matches directory name (slug)
+  ##   2. Full scan: token matches games.id (UUID) or games.name
+  let gamesDir = dataDir / "games"
+  if not dirExists(gamesDir):
+    return none(GameToken)
+
+  # Fast path: token is the slug (directory name)
+  let directPath = gamesDir / token / "ec4x.db"
+  if fileExists(directPath):
+    let db = open(directPath, "", "", "")
+    defer: db.close()
+    let row = db.getRow(sql"SELECT id FROM games LIMIT 1")
+    if row[0].len > 0:
+      return some((gameId: row[0], dbPath: directPath))
+
+  # Full scan: match by UUID or game name
+  for kind, path in walkDir(gamesDir):
+    if kind != pcDir:
+      continue
+    let dbPath = path / "ec4x.db"
+    if not fileExists(dbPath):
+      continue
+    let db = open(dbPath, "", "", "")
+    defer: db.close()
+    let row = db.getRow(
+      sql"SELECT id, name, slug FROM games LIMIT 1")
+    if row[0] == token or row[1] == token or row[2] == token:
+      return some((gameId: row[0], dbPath: dbPath))
+
+  none(GameToken)
