@@ -1,0 +1,18 @@
+orders house=2 turn=3 {
+  // F5 (LC+ETAC) @ Sabbas: colonize S36 Sabbas
+  fleet 5 { colonize to=36 }
+
+  // F6 (LC+ETAC) @ Macarius: colonize S33 Macarius
+  fleet 6 { colonize to=33 }
+
+  // F7 (Destroyer) @ Palamas: hold as picket
+  fleet 7 "hold"
+
+  // F8 (Destroyer) @ Silouan: hold guard
+  fleet 8 "hold"
+
+  // Build: another Corvette
+  build 2 {
+    ship "Corvette"
+  }
+}

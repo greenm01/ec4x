@@ -1,0 +1,18 @@
+orders house=1 turn=3 {
+  // F1 (LC+ETAC) @ Niketas: colonize S23 Niketas (correct syntax)
+  fleet 1 { colonize to=23 }
+
+  // F2 (LC+ETAC) @ Columba: colonize S11 Columba
+  fleet 2 { colonize to=11 }
+
+  // F3 (Destroyer) @ Theodotus: hold position as picket
+  fleet 3 "hold"
+
+  // F4 (Destroyer + Corvette) @ Paisios: hold guard
+  fleet 4 "hold"
+
+  // Build: another Corvette for scouting
+  build 1 {
+    ship "Corvette"
+  }
+}

@@ -1,0 +1,18 @@
+orders house=1 turn=1 {
+  // F1 (LightCruiser + ETAC): move toward S23 Niketas to colonize
+  fleet 1 { move to=23 }
+
+  // F2 (LightCruiser + ETAC): move toward S11 Columba to colonize
+  fleet 2 { move to=11 }
+
+  // F3 (Destroyer): escort F1 to S23
+  fleet 3 { move to=23 }
+
+  // F4 (Destroyer): hold at Paisios to guard home
+  fleet 4 "hold"
+
+  // Build: Corvette at home colony
+  build 1 {
+    ship "Corvette"
+  }
+}

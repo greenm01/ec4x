@@ -90,8 +90,9 @@ proc createGameDatabase*(state: GameState, dataDir: string): string =
         for house in otherState.houses.entities.data:
           if house.inviteCode.len > 0:
             existingCodes.incl(house.inviteCode)
-      except CatchableError:
-        logWarn("Persistence", "Failed to scan invite codes from ", otherDbPath)
+      except:
+        logWarn("Persistence", "Failed to scan invite codes from ",
+          otherDbPath, ": ", getCurrentExceptionMsg())
 
   # Assign invite codes to houses in the state
   var needsUpdate = false

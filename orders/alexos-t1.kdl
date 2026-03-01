@@ -1,0 +1,18 @@
+orders house=2 turn=1 {
+  // F5 (LightCruiser + ETAC): move toward S36 Sabbas to colonize
+  fleet 5 { move to=36 }
+
+  // F6 (LightCruiser + ETAC): move toward S33 Macarius to colonize
+  fleet 6 { move to=33 }
+
+  // F7 (Destroyer): escort F5 to S36
+  fleet 7 { move to=36 }
+
+  // F8 (Destroyer): hold at Silouan to guard home
+  fleet 8 "hold"
+
+  // Build: Corvette at home colony
+  build 2 {
+    ship "Corvette"
+  }
+}
