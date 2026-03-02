@@ -2840,7 +2840,7 @@ proc buildOptionMatchesRow(opt: BuildOption, key: BuildRowKey): bool =
     except:
       false
   of BuildOptionKind.Industrial:
-    true
+    key.kind == BuildOptionKind.Industrial
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   if buildRowCst(key) > state.cstLevel:

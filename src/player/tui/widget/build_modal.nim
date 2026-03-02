@@ -275,7 +275,8 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
         except:
           discard
     of BuildOptionKind.Industrial:
-      return true
+      if key.kind == BuildOptionKind.Industrial:
+        return true
   false
 
 proc renderBuildTable(
