@@ -151,6 +151,59 @@ proc normalizeResearchAllocation(model: var TuiModel): bool =
 
   dependentReduced
 
+proc isResearchRowSelectable(model: TuiModel, idx: int): bool =
+  let items = researchItems()
+  if items.len == 0:
+    return false
+  if idx < 0 or idx >= items.len:
+    return false
+  if model.view.techLevels.isNone or model.view.researchPoints.isNone:
+    return true
+  let levels = model.view.techLevels.get()
+  let points = model.view.researchPoints.get()
+  not research_projection.isBlockedProjected(
+    levels, points, model.ui.researchAllocation, items[idx]
+  )
+
+proc firstSelectableResearchIdx(model: TuiModel): int =
+  let items = researchItems()
+  for idx in 0 ..< items.len:
+    if model.isResearchRowSelectable(idx):
+      return idx
+  0
+
+proc nextSelectableResearchIdx(
+    model: TuiModel,
+    current: int,
+    delta: int,
+    wrap: bool
+): int =
+  let items = researchItems()
+  if items.len == 0:
+    return 0
+  if delta == 0:
+    return clamp(current, 0, items.len - 1)
+
+  let maxIdx = items.len - 1
+  var idx = clamp(current, 0, maxIdx)
+  var steps = 0
+  while steps < items.len:
+    idx += delta
+    if wrap:
+      if idx < 0:
+        idx = maxIdx
+      elif idx > maxIdx:
+        idx = 0
+    elif idx < 0 or idx > maxIdx:
+      break
+    if model.isResearchRowSelectable(idx):
+      return idx
+    steps.inc
+
+  if model.isResearchRowSelectable(clamp(current, 0, maxIdx)):
+    return clamp(current, 0, maxIdx)
+  model.firstSelectableResearchIdx()
+
 proc adjustResearchAllocation(
     model: var TuiModel,
     delta: int
@@ -631,7 +684,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
       if selectedMode == ViewMode.Research:
-        model.ui.selectedIdx = 0
+        model.ui.selectedIdx = model.firstSelectableResearchIdx()
         model.ui.researchDigitBuffer = ""
         model.ui.researchDigitTime = 0.0
         model.ui.researchFocus = ResearchFocus.List
@@ -646,7 +699,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = ""
       model.clearExpertFeedback()
       if selectedMode == ViewMode.Research:
-        model.ui.selectedIdx = 0
+        model.ui.selectedIdx = model.firstSelectableResearchIdx()
         model.ui.researchDigitBuffer = ""
         model.ui.researchDigitTime = 0.0
         model.ui.researchFocus = ResearchFocus.List
@@ -1014,11 +1067,8 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.researchFocus == ResearchFocus.Detail:
         model.ui.researchFocus = ResearchFocus.List
       else:
-        let maxIdx = max(0, model.currentListLength() - 1)
-        if model.ui.selectedIdx > 0:
-          model.ui.selectedIdx -= 1
-        else:
-          model.ui.selectedIdx = maxIdx
+        model.ui.selectedIdx = model.nextSelectableResearchIdx(
+          model.ui.selectedIdx, -1, true)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     else:
@@ -1165,11 +1215,8 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.researchFocus == ResearchFocus.Detail:
         discard  # down does nothing in detail pane (no scrollable content)
       else:
-        let maxIdx = max(0, model.currentListLength() - 1)
-        if model.ui.selectedIdx < maxIdx:
-          model.ui.selectedIdx += 1
-        else:
-          model.ui.selectedIdx = 0
+        model.ui.selectedIdx = model.nextSelectableResearchIdx(
+          model.ui.selectedIdx, 1, true)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     else:
@@ -1192,7 +1239,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
       )
     elif model.ui.mode == ViewMode.Research:
       let pageSize = max(1, model.ui.termHeight - 10)
-      model.ui.selectedIdx = max(0, model.ui.selectedIdx - pageSize)
+      let target = max(0, model.ui.selectedIdx - pageSize)
+      model.ui.selectedIdx = model.nextSelectableResearchIdx(
+        target + 1, -1, false)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     elif model.ui.mode == ViewMode.Espionage:
@@ -1211,7 +1260,9 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
     elif model.ui.mode == ViewMode.Research:
       let maxIdx = model.currentListLength() - 1
       let pageSize = max(1, model.ui.termHeight - 10)
-      model.ui.selectedIdx = min(maxIdx, model.ui.selectedIdx + pageSize)
+      let target = min(maxIdx, model.ui.selectedIdx + pageSize)
+      model.ui.selectedIdx = model.nextSelectableResearchIdx(
+        target - 1, 1, false)
       model.ui.researchDigitBuffer = ""
       model.ui.researchDigitTime = 0.0
     elif model.ui.mode == ViewMode.Espionage:
