@@ -2963,6 +2963,35 @@ proc decrementStagedBuildAt(
   syncStagedBuildMirrors(model)
   StageToggleResult.Removed
 
+proc firstBuildableIdx(state: BuildModalState): int =
+  ## Return the index of the first buildable row in the current category.
+  ## Falls back to 0 if nothing is buildable.
+  let maxIdx = max(0, buildRowCountForCategory(state.category) - 1)
+  for i in 0..maxIdx:
+    let key = buildRowKeyAt(state, i)
+    if isBuildable(state, key):
+      return i
+  0
+
+proc nextBuildableIdx(
+    state: BuildModalState,
+    fromIdx: int,
+    maxIdx: int,
+    direction: int
+): int =
+  ## Step through indices in `direction` (+1 or -1), wrapping around,
+  ## until a buildable row is found. Returns `fromIdx` if none found.
+  var idx = fromIdx
+  for _ in 0..maxIdx:
+    if direction > 0:
+      idx = if idx < maxIdx: idx + 1 else: 0
+    else:
+      idx = if idx > 0: idx - 1 else: maxIdx
+    let key = buildRowKeyAt(state, idx)
+    if isBuildable(state, key):
+      return idx
+  fromIdx
+
 proc incSelectedQty(model: var TuiModel) =
   if model.ui.buildModal.focus != BuildModalFocus.BuildList:
     return
@@ -3072,7 +3101,8 @@ proc switchBuildCategory(model: var TuiModel, reverse: bool) =
       model.ui.buildModal.category = BuildCategory.Industrial
     of BuildCategory.Industrial:
       model.ui.buildModal.category = BuildCategory.Ships
-  model.ui.buildModal.selectedBuildIdx = 0
+  model.ui.buildModal.selectedBuildIdx =
+    firstBuildableIdx(model.ui.buildModal)
   model.ui.buildModal.focus = BuildModalFocus.BuildList
 
 proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
@@ -3120,19 +3150,23 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let maxIdx = max(0, buildRowCountForCategory(
         model.ui.buildModal.category
       ) - 1)
-      if model.ui.buildModal.selectedBuildIdx > 0:
-        model.ui.buildModal.selectedBuildIdx -= 1
-      else:
-        model.ui.buildModal.selectedBuildIdx = maxIdx
+      model.ui.buildModal.selectedBuildIdx = nextBuildableIdx(
+        model.ui.buildModal,
+        model.ui.buildModal.selectedBuildIdx,
+        maxIdx,
+        -1
+      )
   of ActionKind.buildListDown:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
       let maxIdx = max(0, buildRowCountForCategory(
         model.ui.buildModal.category
       ) - 1)
-      if model.ui.buildModal.selectedBuildIdx < maxIdx:
-        model.ui.buildModal.selectedBuildIdx += 1
-      else:
-        model.ui.buildModal.selectedBuildIdx = 0
+      model.ui.buildModal.selectedBuildIdx = nextBuildableIdx(
+        model.ui.buildModal,
+        model.ui.buildModal.selectedBuildIdx,
+        maxIdx,
+        +1
+      )
   of ActionKind.buildQueueUp:
     discard
   of ActionKind.buildQueueDown:
@@ -3141,10 +3175,17 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
       if model.ui.buildModal.category == BuildCategory.Industrial:
         return
+      let maxIdx = buildRowCountForCategory(
+        model.ui.buildModal.category
+      ) - 1
       let pageSize = max(1, model.ui.termHeight - 12)
-      model.ui.buildModal.selectedBuildIdx = max(
-        0, model.ui.buildModal.selectedBuildIdx - pageSize
-      )
+      let target = max(0, model.ui.buildModal.selectedBuildIdx - pageSize)
+      let key = buildRowKeyAt(model.ui.buildModal, target)
+      model.ui.buildModal.selectedBuildIdx =
+        if isBuildable(model.ui.buildModal, key):
+          target
+        else:
+          nextBuildableIdx(model.ui.buildModal, target, maxIdx, +1)
   of ActionKind.buildListPageDown:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
       if model.ui.buildModal.category == BuildCategory.Industrial:
@@ -3153,9 +3194,14 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.buildModal.category
       ) - 1
       let pageSize = max(1, model.ui.termHeight - 12)
-      model.ui.buildModal.selectedBuildIdx = min(
-        maxIdx, model.ui.buildModal.selectedBuildIdx + pageSize
-      )
+      let target = min(maxIdx,
+        model.ui.buildModal.selectedBuildIdx + pageSize)
+      let key = buildRowKeyAt(model.ui.buildModal, target)
+      model.ui.buildModal.selectedBuildIdx =
+        if isBuildable(model.ui.buildModal, key):
+          target
+        else:
+          nextBuildableIdx(model.ui.buildModal, target, maxIdx, -1)
   of ActionKind.buildFocusSwitch:
     # Queue list no longer shown in build modal
     model.ui.buildModal.focus = BuildModalFocus.BuildList

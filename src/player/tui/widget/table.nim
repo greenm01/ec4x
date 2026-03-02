@@ -13,7 +13,7 @@
 ##
 ## Reference: ec-style-layout.md Fleet Detail View
 
-import std/[strutils, options, unicode]
+import std/[strutils, options, unicode, sequtils]
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
@@ -594,8 +594,16 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     else:
       t.rowStyle
 
+    # Check once per row: if all cells have explicit styles set, those
+    # styles override even the selection highlight (e.g. a fully dimmed
+    # non-buildable row should stay dim even when selected).
+    let allCellsStyled =
+      row.cellStyles.len >= row.cells.len and
+      row.cellStyles.allIt(it.isSome)
+    let useSelectionHighlight = isSelected and not allCellsStyled
+
     let innerSeparatorStyle =
-      if isSelected:
+      if useSelectionHighlight:
         CellStyle(
           fg: t.separatorStyle.fg,
           bg: style.bg,
@@ -610,7 +618,7 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
     for colIdx, col in t.columns:
       let cell = if colIdx < row.cells.len: row.cells[colIdx] else: ""
       let cellStyle =
-        if isSelected:
+        if useSelectionHighlight:
           style
         elif colIdx < row.cellStyles.len and row.cellStyles[colIdx].isSome:
           row.cellStyles[colIdx].get()
@@ -622,7 +630,7 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
       putSegment(x, pad, cellStyle)
       if t.showBorders:
         let borderStyle =
-          if isSelected and colIdx < t.columns.len - 1:
+          if useSelectionHighlight and colIdx < t.columns.len - 1:
             innerSeparatorStyle
           else:
             t.separatorStyle

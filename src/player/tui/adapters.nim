@@ -1603,11 +1603,25 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
   let colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)
   let snapshot = colonyLimits.getOrDefault(int(colonyId))
   var stagedIndustrialUnits = 0
+  var stagedSpaceports = 0
+  var stagedStarbases = 0
   for cmd in stagedBuilds:
-    if cmd.colonyId == colonyId and cmd.buildType == BuildType.Industrial:
+    if cmd.colonyId != colonyId:
+      continue
+    if cmd.buildType == BuildType.Industrial:
       stagedIndustrialUnits += max(0, int(cmd.industrialUnits))
+    elif cmd.buildType == BuildType.Facility and cmd.facilityClass.isSome:
+      case cmd.facilityClass.get()
+      of FacilityClass.Spaceport:
+        stagedSpaceports.inc
+      of FacilityClass.Starbase:
+        stagedStarbases.inc
+      else:
+        discard
   let effectiveIndustrialUnits =
     snapshot.industrialUnits + stagedIndustrialUnits
+  let effectiveSpaceports = snapshot.spaceports + stagedSpaceports
+  let effectiveStarbases = snapshot.starbases + stagedStarbases
   let pbCurrent = countPlanetBreakersInFleets(ps)
   let pbMax = ps.ownColonies.len
   let maxSpaceports =
@@ -1686,10 +1700,10 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     if techLevels.cst < cstReq:
       continue
     if facilityClass == FacilityClass.Spaceport and
-        snapshot.spaceports >= maxSpaceports:
+        effectiveSpaceports >= maxSpaceports:
       continue
     if facilityClass == FacilityClass.Starbase and
-        snapshot.starbases >= maxStarbases:
+        effectiveStarbases >= maxStarbases:
       continue
     # Config-driven prerequisite check (Spaceport required for Shipyard/Drydock/Starbase)
     let prereq = accessors.facilityPrerequisite(facilityClass)
