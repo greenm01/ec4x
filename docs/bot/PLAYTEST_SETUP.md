@@ -55,17 +55,26 @@ Recommended for iterative balancing and bug hunting.
 ### Setup
 
 ```bash
-# 1) Optional fresh slate (keeps daemon identity)
-nim r tools/clean_dev.nim --clean --logs
+# Standard setup (cleans cache/data/logs, creates game, prints invites)
+./scripts/start_opencode_playtest.sh
 
-# 2) Create a 2-player game
-./bin/ec4x new --scenario=scenarios/standard-2-player.kdl
-
-# 3) Copy the slug from output, then list invite codes
-./bin/ec4x invite <game-slug>
-
-# 4) Join one seat in TUI as the human player
+# Join one seat in TUI as the human player
 ./bin/tui
+```
+
+Manual equivalent:
+
+```bash
+nim r tools/clean_dev.nim --clean --logs
+./bin/ec4x new --scenario=scenarios/standard-2-player.kdl
+./bin/ec4x invite <game-slug>
+./bin/tui
+```
+
+If you need to preserve existing cache/identity for a quick rerun:
+
+```bash
+./scripts/start_opencode_playtest.sh --clean-mode none
 ```
 
 ### Turn Loop

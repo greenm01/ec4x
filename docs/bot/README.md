@@ -76,6 +76,12 @@ See **[`docs/bot/PLAYTEST_SETUP.md`](PLAYTEST_SETUP.md)** for the full
 playtest setup, with human-vs-OpenCode as primary and bot/multi-bot
 configurations as legacy options.
 
+Primary quick start:
+
+```bash
+./scripts/start_opencode_playtest.sh
+```
+
 Quick reference:
 
 1. Copy `scripts/bot/session.env.example` to `scripts/bot/session.env`
