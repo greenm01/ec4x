@@ -66,18 +66,28 @@ Uses the 2-player scenario. Fastest setup for iterative testing.
 ```bash
 # 1. Bootstrap: creates game, generates bot key, claims 1 bot seat,
 #    leaves 1 seat for you. Writes scripts/bot/multi_session.env.
-#    --no-clean preserves your TUI identity (identity.kdl).
+#    Default clean mode is full (same cleanup behavior as clean_dev.nim --clean --logs).
 python3 scripts/bot/bootstrap_multi_playtest.py \
   --bots 1 \
   --reserve 1 \
-  --no-clean \
   --scenario scenarios/standard-2-player.kdl \
   --model gpt-4o-mini
 
 # Output will include your invite code, e.g.:
 #   [bootstrap] unclaimed invite codes for human players:
-#     player1: abc123@ws://localhost:8080
+#     player1: abc123@localhost:8080
 #   [bootstrap] invite codes saved to: scripts/bot/human_invites.txt
+```
+
+If you need to preserve your existing TUI identity/game cache, use:
+
+```bash
+python3 scripts/bot/bootstrap_multi_playtest.py \
+  --bots 1 \
+  --reserve 1 \
+  --clean-mode none \
+  --scenario scenarios/standard-2-player.kdl \
+  --model gpt-4o-mini
 ```
 
 ```bash
@@ -100,7 +110,7 @@ Standard game with you as one house and 3 LLM-controlled houses.
 python3 scripts/bot/bootstrap_multi_playtest.py \
   --bots 3 \
   --reserve 1 \
-  --no-clean \
+  --clean-mode none \
   --scenario scenarios/standard-4-player.kdl \
   --model gpt-4o-mini
 ```
@@ -126,7 +136,7 @@ submitted -- unclaimed slots do not block resolution.
 python3 scripts/bot/bootstrap_multi_playtest.py \
   --bots 2 \
   --reserve 1 \
-  --no-clean \
+  --clean-mode none \
   --scenario scenarios/standard-4-player.kdl \
   --model gpt-4o-mini
 
@@ -174,19 +184,27 @@ wipes:
 - `data/games/` and `data/players/` -- all game data
 - `data/logs/*.log` -- log files
 
-**This destroys your TUI identity.** For human playtests, always pass
-`--no-clean` so your `identity.kdl` and any existing game data are
-preserved:
+Bootstrap cleanup controls:
+
+- `--clean-mode full` (default): `clean_dev.nim --clean --logs`
+- `--clean-mode cache`: clear only `~/.local/share/ec4x/`
+- `--clean-mode data`: clear only `data/games`, `data/players` (plus logs)
+- `--clean-mode none`: skip cleanup
+- `--no-clean-logs`: keep logs when using `full` or `data`
+
+**This destroys your TUI identity.** For human playtests where you need
+to preserve identity or cache state, use `--clean-mode none` (legacy
+`--no-clean` is still accepted):
 
 ```bash
 python3 scripts/bot/bootstrap_multi_playtest.py \
   --bots 3 \
   --reserve 1 \
-  --no-clean \
+  --clean-mode none \
   --scenario scenarios/standard-4-player.kdl
 ```
 
-Only omit `--no-clean` when you want a completely fresh slate (e.g.,
+Use default clean mode (`full`) when you want a completely fresh slate (e.g.,
 automated bot-only runs where no human TUI identity needs to survive).
 If you do want to manually wipe game data without touching player state,
 use `tools/clean_dev.nim` directly:

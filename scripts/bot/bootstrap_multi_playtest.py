@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from urllib.parse import urlparse
 
 
 def run(cmd: list[str], cwd: Path, ok_codes: tuple[int, ...] = (0,)) -> str:
@@ -58,6 +59,24 @@ def parse_keypairs(keys_output: str, bot_count: int) -> list[tuple[str, str]]:
     if len(keypairs) < bot_count:
         raise RuntimeError("Insufficient keypairs generated")
     return keypairs[:bot_count]
+
+
+def relay_to_invite_target(relay: str) -> str:
+    """Convert relay URL to invite target format host[:port]."""
+    relay = relay.strip()
+    parsed = urlparse(relay)
+    if parsed.scheme:
+      host = parsed.hostname or ""
+      if not host:
+          raise RuntimeError(f"Invalid relay URL: {relay}")
+      if parsed.port is not None:
+          return f"{host}:{parsed.port}"
+      return host
+
+    # Already host[:port]
+    if relay.startswith("ws://") or relay.startswith("wss://"):
+        raise RuntimeError(f"Invalid relay URL: {relay}")
+    return relay
 
 
 def decode_daemon_pubhex(identity_file: Path) -> str:
@@ -191,9 +210,23 @@ def main() -> int:
         help="Environment variable that stores API key",
     )
     parser.add_argument(
+        "--clean-mode",
+        choices=["full", "cache", "data", "none"],
+        default="full",
+        help=(
+            "Cleanup mode before bootstrapping: "
+            "full (clean+logs), cache, data, or none"
+        ),
+    )
+    parser.add_argument(
         "--no-clean",
         action="store_true",
-        help="Skip the clean-dev step (useful when reusing an existing game)",
+        help="Deprecated alias for --clean-mode none",
+    )
+    parser.add_argument(
+        "--no-clean-logs",
+        action="store_true",
+        help="Do not clear logs when clean mode supports --logs",
     )
     parser.add_argument(
         "--run-seconds",
@@ -228,11 +261,24 @@ def main() -> int:
                 f"Missing API key in ${args.api_key_env} (or OPENAI_API_KEY)"
             )
 
-    if args.no_clean:
-        print("[bootstrap] skipping clean (--no-clean)")
+    clean_mode = "none" if args.no_clean else args.clean_mode
+    clean_cmd: list[str] = ["nim", "r", "tools/clean_dev.nim"]
+    if clean_mode == "full":
+        clean_cmd.append("--clean")
+        if not args.no_clean_logs:
+            clean_cmd.append("--logs")
+    elif clean_mode == "cache":
+        clean_cmd.append("--cache")
+    elif clean_mode == "data":
+        clean_cmd.append("--data")
+        if not args.no_clean_logs:
+            clean_cmd.append("--logs")
+
+    if clean_mode == "none":
+        print("[bootstrap] skipping clean (--clean-mode none)")
     else:
-        print("[bootstrap] cleaning dev data")
-        run(["nim", "r", "tools/clean_dev.nim", "--clean", "--logs"], repo)
+        print(f"[bootstrap] cleaning dev data (mode={clean_mode})")
+        run(clean_cmd, repo)
 
     print("[bootstrap] creating game")
     new_output = run(
@@ -278,14 +324,15 @@ def main() -> int:
 
     human_codes = invite_codes[args.bots : args.bots + args.reserve]
     if human_codes:
+        inviteTarget = relay_to_invite_target(args.relay)
         print("[bootstrap] unclaimed invite codes for human players:")
         for idx, code in enumerate(human_codes, start=1):
-            line = f"  player{idx}: {code}@{args.relay}"
+            line = f"  player{idx}: {code}@{inviteTarget}"
             print(line)
         human_invites_file = repo / "scripts" / "bot" / "human_invites.txt"
         human_invites_file.write_text(
             "\n".join(
-                f"player{idx}: {code}@{args.relay}"
+                f"player{idx}: {code}@{inviteTarget}"
                 for idx, code in enumerate(human_codes, start=1)
             )
             + "\n"
