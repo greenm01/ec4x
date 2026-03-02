@@ -62,7 +62,7 @@ industrialGrowth {
 // --- Industrial Investment ---
 industrialInvestment {
   (docs)"docs/specs/03-economy.md#section-3-4"
-  baseCost 1 // Cost in PP to purchase 1 IU (1:1 conversion)
+  baseCost 30 // Cost in PP to purchase 1 IU (30 PP per IU for balanced ROI)
 
   // Cost scaling tiers based on IU percentage relative to PU
   // Per economy.md:3.4 - cost increases as IU saturates population

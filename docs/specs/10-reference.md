@@ -18,10 +18,10 @@ Small, fast combat vessels that provide screening and patrol duties.
 
 | Class | Name          | CST | PC | MC  | AS | DS | CC |
 |:-----:| ------------- |:---:|:--:|:---:|:--:|:--:|:--:|
-| CT    | Corvette      | 1   | 20 | 3%  | 2  | 3  | 1  |
-| FG    | Frigate       | 1   | 30 | 3%  | 3  | 4  | 2  |
-| DD    | Destroyer     | 1   | 40 | 4%  | 5  | 6  | 2  |
-| CL    | Light Cruiser | 1   | 60 | 4%  | 8  | 9  | 3  |
+| CT    | Corvette      | 1   | 50 | 3%  | 2  | 3  | 1  |
+| FG    | Frigate       | 1   | 80 | 3%  | 3  | 4  | 2  |
+| DD    | Destroyer     | 1   | 120 | 4%  | 5  | 6  | 2  |
+| CL    | Light Cruiser | 1   | 180 | 4%  | 8  | 9  | 3  |
 
 ### Capital Ships
 
@@ -29,12 +29,12 @@ Heavy combat vessels that form the core of battle fleets.
 
 | Class | Name              | CST | PC  | MC  | AS | DS | CC | CL |
 |:-----:| ----------------- |:---:|:---:|:---:|:--:|:--:|:--:|:--:|
-| CA    | Cruiser           | 2   | 80  | 5%  | 12 | 13 | 3  | —  |
-| BC    | Battle Cruiser    | 3   | 100 | 5%  | 16 | 18 | 3  | —  |
-| BB    | Battleship        | 4   | 150 | 5%  | 20 | 25 | 3  | —  |
-| DN    | Dreadnought       | 5   | 200 | 5%  | 28 | 30 | 4  | —  |
+| CA    | Cruiser           | 2   | 250 | 5%  | 12 | 13 | 3  | —  |
+| BC    | Battle Cruiser    | 3   | 320 | 5%  | 16 | 18 | 3  | —  |
+| BB    | Battleship        | 4   | 450 | 5%  | 20 | 25 | 3  | —  |
+| DN    | Dreadnought       | 5   | 600 | 5%  | 28 | 30 | 4  | —  |
 | SD    | Super Dreadnought | 6   | 250 | 8%  | 35 | 40 | 5  | —  |
-| CV    | Carrier           | 3   | 120 | 5%  | 5  | 18 | 3  | 3  |
+| CV    | Carrier           | 3   | 350 | 5%  | 5  | 18 | 3  | 3  |
 | CX    | Super Carrier     | 6   | 225 | 7%  | 8  | 25 | 4  | 5  |
 | RR    | Raider            | 5   | 200 | 5%  | 20 | 25 | 2  | —  |
 
@@ -44,7 +44,7 @@ Non-combat support ships. These vessels do not have a Command Cost (CC) and do n
 
 | Class | Name            | CST | PC | MC  | AS | DS | Notes                                      |
 |:-----:| --------------- |:---:|:--:|:---:|:--:|:--:| ------------------------------------------ |
-| SC    | Scout           | 1   | 25 | 1%  | -  | -  | Intel operations, never joins combat       |
+| SC    | Scout          | 1   | 75 | 1%  | -  | -  | Intel operations, never joins combat       |
 | ET    | ETAC            | 1   | 50 | 5%  | —  | -  | Colonization (CL=3), carries 3 PTU         |
 | TT    | Troop Transport | 1   | 30 | 3%  | —  | -  | Planetary invasion (CL=1), carries marines |
 
@@ -62,7 +62,7 @@ Unique strategic units with special capacity rules.
 
 | Class | Name           | CST | PC  | MC  | AS | DS | CC | Notes                        |
 |:-----:| -------------- |:---:|:---:|:---:|:--:|:--:|:--:| ---------------------------- |
-| PB    | Planet Breaker | 10  | 400 | 10% | 50 | 20 | 6  | Max 1 per owned colony       |
+| PB    | Planet Breaker    | 10  | 1500 | 10% | 50 | 20 | 6  | Max 1 per owned colony       |
 
 *Source: config/ships.kdl*
 
@@ -115,7 +115,7 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 
 | **Class** | **Name** | CST | PC  | MC  | AS  | DS  | Build Time |
 | --------- | -------- |:---:|:---:|:---:|:---:|:---:|:----------:|
-| SB        | Starbase | 3   | 300 | 5%  | 45  | 50  | 3 turns    |
+| SB        | Starbase | 3   | 1000 | 5%  | 45  | 50  | 3 turns    |
 
 *Source: config/facilities.kdl*
 
@@ -135,9 +135,9 @@ Orbital facilities are infrastructure built at colonies that provide combat, eco
 
 | **Class** | **Name**  | CST | PC  | MC  | Docks | DS  | Purpose                    |
 |:---------:| --------- |:---:|:---:|:---:|:-----:|:---:| -------------------------- |
-| SP        | Spaceport | 1   | 20  | 5%  | 5     | 50  | Construction only          |
-| SY        | Shipyard  | 1   | 60  | 3%  | 10    | 70  | Construction only          |
-| DD        | Drydock   | 1   | 150 | 5%  | 10    | 70  | Ship repair only           |
+| SP        | Spaceport | 1   | 100  | 5%  | 5     | 50  | Construction only          |
+| SY        | Shipyard  | 1   | 250  | 3%  | 10    | 70  | Construction only          |
+| DD        | Drydock   | 1   | 400  | 5%  | 10    | 70  | Ship repair only           |
 
 **Notes:**
 - Spaceports: 5 construction docks, cannot repair ships, +100% PP penalty for ship construction

@@ -8,6 +8,12 @@ The economic power of your House is fueled by productivity, industrial capacity,
 
 Production points settle instantaneously through the Cipher Ledger - a cryptographic network operating on quantum-entangled nodes embedded in jump lane stabilizers. Houses mint blind-signature PP tokens that route through secure lane channels, enabling instant private settlement while maintaining complete opacity to rival intelligence agencies.
 
+### Timescale and Macro-Economic Scale
+
+EC4X simulates the rise and fall of interstellar empires over vast stretches of time. A single turn represents a long period—often spanning a decade or more. As a result, population growth rates and economic scaling are massive, reflecting generational compounding rather than year-over-year changes.
+
+Because homeworlds and mature colonies rapidly grow to generate thousands of Production Points (PP) per turn through this exponential growth, the cost of industrial infrastructure, planetary facilities, and military starships is correspondingly immense. A single capital ship or orbital facility represents a staggering concentration of resources, labor, and time, requiring a significant percentage of a mature world's economic output to construct. The economy is balanced around this macro-level industrial warfare, where minor fluctuations in growth compound into overwhelming strategic advantages over the centuries.
+
 ## 3.1 Principles
 
 **Population Unit (PU)**: The productive capacity of a colony's population, measured in abstract economic units rather than raw headcount.
@@ -198,7 +204,7 @@ PU Growth per Turn = max(2, floor(PU × 0.30 × tax_multiplier × (1 + starbase_
 
 Where:
 
-- Base birthrate = 30% per turn
+- Base birthrate = 30% per turn (representing decades of generational growth per turn)
 - Tax multiplier from [Section 3.2.2](#322-low-tax-incentives)
 - Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 

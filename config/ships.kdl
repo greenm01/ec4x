@@ -10,7 +10,7 @@ escorts {
     corvette {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 20
+        buildCost 50
         maintenancePercent 0.03 // 3%
         attackStrength 2
         defenseStrength 3
@@ -19,7 +19,7 @@ escorts {
     frigate {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 30
+        buildCost 80
         maintenancePercent 0.03 // 3%
         attackStrength 3
         defenseStrength 4
@@ -28,7 +28,7 @@ escorts {
     destroyer {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 40
+        buildCost 120
         maintenancePercent 0.04 // 4%
         attackStrength 5
         defenseStrength 6
@@ -37,7 +37,7 @@ escorts {
     lightCruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 60
+        buildCost 180
         maintenancePercent 0.04 // 4%
         attackStrength 8
         defenseStrength 9
@@ -52,7 +52,7 @@ capitals {
     cruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 2
-        buildCost 80
+        buildCost 250
         maintenancePercent 0.05 // 5%
         attackStrength 12
         defenseStrength 13
@@ -61,7 +61,7 @@ capitals {
     battlecruiser {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 3
-        buildCost 100
+        buildCost 320
         maintenancePercent 0.05 // 5%
         attackStrength 16
         defenseStrength 18
@@ -70,7 +70,7 @@ capitals {
     battleship {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 4
-        buildCost 150
+        buildCost 450
         maintenancePercent 0.05 // 5%
         attackStrength 20
         defenseStrength 25
@@ -79,7 +79,7 @@ capitals {
     dreadnought {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 5
-        buildCost 200
+        buildCost 600
         maintenancePercent 0.05 // 5%
         attackStrength 28
         defenseStrength 30
@@ -88,7 +88,7 @@ capitals {
     superDreadnought {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 6
-        buildCost 250
+        buildCost 800
         maintenancePercent 0.08 // 8%
         attackStrength 35
         defenseStrength 40
@@ -97,7 +97,7 @@ capitals {
     carrier {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 3
-        buildCost 120
+        buildCost 350
         maintenancePercent 0.05 // 5%
         attackStrength 5
         defenseStrength 18
@@ -108,7 +108,7 @@ capitals {
     supercarrier {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 6
-        buildCost 225
+        buildCost 700
         maintenancePercent 0.07 // 7%
         attackStrength 8
         defenseStrength 25
@@ -119,7 +119,7 @@ capitals {
     raider {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 5
-        buildCost 200
+        buildCost 600
         maintenancePercent 0.05 // 5%
         attackStrength 20
         defenseStrength 25
@@ -134,21 +134,21 @@ auxiliary {
     scout {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 25
+        buildCost 75
         maintenancePercent 0.01 // 1%
         defenseStrength 2 // Has some DS but no AS
     }
     etac {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 50
+        buildCost 150
         maintenancePercent 0.05 // 5%
         carryLimit 3 // PTU (fixed capacity)
     }
     troopTransport {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 30
+        buildCost 90
         maintenancePercent 0.03 // 3%
         carryLimit 1 // Marine Divisions (base capacity for STL I)
     }
@@ -162,7 +162,7 @@ fighters {
     fighter {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 1
-        buildCost 5
+        buildCost 15
         maintenancePercent 0.00 // 0% maintenance (cap enforced by IU, not cost)
         attackStrength 5
         defenseStrength 2
@@ -177,7 +177,7 @@ specialWeapons {
     planetBreaker {
         (docs)"docs/specs/10-reference.md#101-space-force-wep1"
         minCST 10
-        buildCost 400
+        buildCost 1500
         maintenancePercent 0.10 // 10%
         attackStrength 50
         defenseStrength 20

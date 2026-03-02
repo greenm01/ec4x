@@ -7,7 +7,7 @@
 facilities {
     spaceport {
         (docs)"docs/specs/10-reference.md#104-construction--repair-facilities-wep1"
-        buildCost 20
+        buildCost 100
         maintenancePercent 0.05 // 5%
         minCST 1
         docks 5
@@ -15,7 +15,7 @@ facilities {
     }
     shipyard {
         (docs)"docs/specs/10-reference.md#104-construction--repair-facilities-wep1"
-        buildCost 60
+        buildCost 250
         maintenancePercent 0.03 // 3%
         minCST 1
         prerequisite "Spaceport"
@@ -24,7 +24,7 @@ facilities {
     }
     drydock {
         (docs)"docs/specs/10-reference.md#104-construction--repair-facilities-wep1"
-        buildCost 150
+        buildCost 400
         maintenancePercent 0.05 // 5%
         minCST 1
         prerequisite "Spaceport"
@@ -37,7 +37,7 @@ facilities {
 orbitalDefenses {
     starbase {
         (docs)"docs/specs/10-reference.md#103-orbital-facilities-wep1"
-        buildCost 300
+        buildCost 1000
         maintenancePercent 0.05 // 5%
         minCST 3
         prerequisite "Spaceport"

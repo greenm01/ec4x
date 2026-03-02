@@ -5,7 +5,7 @@
 groundUnits {
     army {
         (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
-        buildCost 10 // Phase F Balance
+        buildCost 25 // Phase F Balance
         maintenancePercent 0.02 // 2%
         minCST 1
         attackStrength 3
@@ -13,7 +13,7 @@ groundUnits {
     }
     marine {
         (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
-        buildCost 17 // Phase F Balance
+        buildCost 40 // Phase F Balance
         maintenancePercent 0.02 // 2%
         minCST 1
         attackStrength 6
@@ -22,7 +22,7 @@ groundUnits {
     }
     groundBattery {
         (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
-        buildCost 13 // Phase F Balance
+        buildCost 35 // Phase F Balance
         maintenancePercent 0.03 // 3%
         minCST 1
         attackStrength 10
@@ -31,7 +31,7 @@ groundUnits {
     planetaryShield {
         (docs)"docs/specs/10-reference.md#102-ground-units-wep1"
         // Also see: docs/specs/07-combat.md#section-7-5-2 (bombardment mechanics)
-        buildCost 50 // Phase F Balance (for SLD I)
+        buildCost 150 // Phase F Balance (for SLD I)
         maintenancePercent 0.05 // 5%
         minCST 5 // Corresponds to SLD tech, but CST is the gate
         defenseStrength 100 // Base DS - TECH-DRIVEN bonuses in tech.kdl shieldsTech
