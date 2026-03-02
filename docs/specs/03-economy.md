@@ -137,7 +137,7 @@ To reward benevolent or populist rule, colonies grant bonuses in the same Income
 
 <!-- TAX_INCENTIVE_TABLE_START -->
 
-| Tax Rate This Turn | Population Growth Bonus (multiplier to natural 2% base) | Bonus Prestige per Colony This Turn |
+| Tax Rate This Turn | Population Growth Bonus (multiplier to natural base) | Bonus Prestige per Colony This Turn |
 | ------------------ | ------------------------------------------------------- | ----------------------------------- |
 | 41 – 50 %          | No bonus                                                | –                                   |
 | 31 – 40 %          | ×1.05 (+5 %)                                            | –                                   |
@@ -199,12 +199,12 @@ Young colonies benefit most from IU investment—the multiplier effect on GCO is
 Population naturally increases each turn via birthrate, modified by tax policy and infrastructure:
 
 ```
-PU Growth per Turn = max(2, floor(PU × 0.30 × tax_multiplier × (1 + starbase_bonus)))
+PU Growth per Turn = max(2, floor(PU × base_birthrate × tax_multiplier × (1 + starbase_bonus)))
 ```
 
 Where:
 
-- Base birthrate = 30% per turn (representing decades of generational growth per turn)
+- Base birthrate = defined in `config/economy.kdl` (representing decades of generational growth per turn)
 - Tax multiplier from [Section 3.2.2](#322-low-tax-incentives)
 - Starbase bonus = 0.05 per operational starbase, max 0.15 (3 starbases)
 
