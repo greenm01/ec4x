@@ -119,11 +119,70 @@ proc setResearchItemAllocation(
 proc researchMaxAllocation(model: TuiModel, item: ResearchItem): int =
   if model.view.techLevels.isNone or model.view.researchPoints.isNone:
     return 0
+
+  proc maxPpForRemainingRp(
+      requestedPp: int32,
+      remainingRp: int32,
+      gho: int32,
+      slLevel: int32,
+      convProc: proc (pp: int32, gho: int32, slLevel: int32): int32
+  ): int =
+    if requestedPp <= 0 or remainingRp <= 0:
+      return 0
+
+    var lo = 0'i32
+    var hi = requestedPp
+    var best = 0'i32
+    while lo <= hi:
+      let mid = (lo + hi) div 2
+      let rp = convProc(mid, gho, slLevel)
+      if rp <= remainingRp:
+        best = mid
+        lo = mid + 1
+      else:
+        hi = mid - 1
+    best.int
+
   let levels = model.view.techLevels.get()
   let points = model.view.researchPoints.get()
-  research_projection.maxProjectedAllocation(
+  let remainingRp = research_projection.maxProjectedAllocation(
     levels, points, model.ui.researchAllocation, item
   )
+  if remainingRp <= 0:
+    return 0
+
+  var gho = 0'i32
+  for colony in model.view.colonies:
+    gho += int32(max(0, colony.grossOutput))
+  if gho <= 0:
+    gho = int32(max(1, model.view.production))
+
+  let maxByTreasury = int32(max(0, model.view.treasury))
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    maxPpForRemainingRp(
+      maxByTreasury,
+      int32(remainingRp),
+      gho,
+      levels.sl,
+      convertPPToERP
+    )
+  of ResearchItemKind.ScienceLevel:
+    maxPpForRemainingRp(
+      maxByTreasury,
+      int32(remainingRp),
+      gho,
+      levels.sl,
+      convertPPToSRP
+    )
+  of ResearchItemKind.Technology:
+    maxPpForRemainingRp(
+      maxByTreasury,
+      int32(remainingRp),
+      gho,
+      levels.sl,
+      convertPPToTRP
+    )
 
 proc normalizeResearchAllocation(model: var TuiModel): bool =
   ## Re-clamp all rows against projected SL.
@@ -131,8 +190,6 @@ proc normalizeResearchAllocation(model: var TuiModel): bool =
   if model.view.techLevels.isNone or model.view.researchPoints.isNone:
     return false
 
-  let levels = model.view.techLevels.get()
-  let points = model.view.researchPoints.get()
   var dependentReduced = false
   var changed = true
 
@@ -140,9 +197,7 @@ proc normalizeResearchAllocation(model: var TuiModel): bool =
     changed = false
     for item in researchItems():
       let current = researchItemAllocation(model.ui.researchAllocation, item)
-      let maxAllowed = research_projection.maxProjectedAllocation(
-        levels, points, model.ui.researchAllocation, item
-      )
+      let maxAllowed = researchMaxAllocation(model, item)
       if current > maxAllowed:
         if item.kind != ResearchItemKind.ScienceLevel and current > 0:
           dependentReduced = true
@@ -159,11 +214,7 @@ proc isResearchRowSelectable(model: TuiModel, idx: int): bool =
     return false
   if model.view.techLevels.isNone or model.view.researchPoints.isNone:
     return true
-  let levels = model.view.techLevels.get()
-  let points = model.view.researchPoints.get()
-  not research_projection.isBlockedProjected(
-    levels, points, model.ui.researchAllocation, items[idx]
-  )
+  researchMaxAllocation(model, items[idx]) > 0
 
 proc firstSelectableResearchIdx(model: TuiModel): int =
   let items = researchItems()

@@ -83,7 +83,7 @@ suite "Research Projection: Gating":
 
 suite "Research Projection: Tech Level":
   test "projected tech level stays at current without threshold":
-    let levels = baseLevels(sl = 1, wep = 1)
+    let levels = baseLevels(sl = 2, wep = 1)
     let points = emptyPoints()
     let alloc = emptyAllocation()
     let item = researchItemAt(researchIndexForCode("WEP"))
@@ -91,7 +91,7 @@ suite "Research Projection: Tech Level":
     check projectedTechLevel(levels, points, alloc, item) == 1
 
   test "projected tech level advances when staged PP meets threshold":
-    let levels = baseLevels(sl = 1, wep = 1)
+    let levels = baseLevels(sl = 2, wep = 1)
     let points = emptyPoints()
     var alloc = emptyAllocation()
     let item = researchItemAt(researchIndexForCode("WEP"))
@@ -100,7 +100,7 @@ suite "Research Projection: Tech Level":
     check projectedTechLevel(levels, points, alloc, item) == 2
 
   test "projected tech level uses existing progress plus staged PP":
-    let levels = baseLevels(sl = 1, wep = 1)
+    let levels = baseLevels(sl = 2, wep = 1)
     var points = emptyPoints()
     var alloc = emptyAllocation()
     let item = researchItemAt(researchIndexForCode("WEP"))
@@ -121,10 +121,29 @@ suite "Research Projection: Tech Level":
     check projectedTechLevel(levels, points, alloc, item) == maxLevel
 
   test "projected tech level remains capped at one level per turn":
-    let levels = baseLevels(sl = 1, wep = 1)
+    let levels = baseLevels(sl = 2, wep = 1)
     let points = emptyPoints()
     var alloc = emptyAllocation()
     let item = researchItemAt(researchIndexForCode("WEP"))
     alloc.technology[item.field] = 999
 
     check projectedTechLevel(levels, points, alloc, item) == 2
+
+  test "EL projection respects SL gate even when ERP threshold met":
+    let levels = baseLevels(sl = 2, el = 2)
+    let points = emptyPoints()
+    var alloc = emptyAllocation()
+    let item = researchItemAt(researchIndexForCode("EL"))
+    alloc.economic = elUpgradeCost(2)
+
+    check projectedTechLevel(levels, points, alloc, item) == 2
+
+  test "EL projection unlocks when staged science projects SL gate":
+    let levels = baseLevels(sl = 2, el = 2)
+    let points = emptyPoints()
+    var alloc = emptyAllocation()
+    let item = researchItemAt(researchIndexForCode("EL"))
+    alloc.science = slUpgradeCost(2)
+    alloc.economic = elUpgradeCost(2)
+
+    check projectedTechLevel(levels, points, alloc, item) == 3

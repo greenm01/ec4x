@@ -302,6 +302,7 @@ proc processResearchAllocation(
         gameConfig.tech.cst.levels[nextLevel].slRequired
       else:
         0
+
     of TechField.WeaponsTech:
       if gameConfig.tech.wep.levels.hasKey(nextLevel):
         gameConfig.tech.wep.levels[nextLevel].slRequired
@@ -358,6 +359,29 @@ proc processResearchAllocation(
       else:
         0
 
+  proc maxPpForRemainingRp(
+      requestedPp: int32,
+      remainingRp: int32,
+      gho: int32,
+      slLevel: int32,
+      convProc: proc (pp: int32, gho: int32, slLevel: int32): int32
+  ): int32 =
+    if requestedPp <= 0 or remainingRp <= 0:
+      return 0
+
+    var lo = 0'i32
+    var hi = requestedPp
+    var best = 0'i32
+    while lo <= hi:
+      let mid = (lo + hi) div 2
+      let rp = convProc(mid, gho, slLevel)
+      if rp <= remainingRp:
+        best = mid
+        lo = mid + 1
+      else:
+        hi = mid - 1
+    best
+
   for (houseId, _) in state.activeHousesWithId():
     if houseId notin orders:
       continue
@@ -378,6 +402,12 @@ proc processResearchAllocation(
     var house = state.house(houseId).get()
     var scaledAllocation = allocation
     let treasury = house.treasury
+    var gho = 0'i32
+    for colony in state.coloniesOwned(houseId):
+      gho += colony.production
+    if gho <= 0:
+      gho = 1
+    let currentSLForConversion = house.techTree.levels.sl
 
     # Treasury scaling - can't spend more than we have
     if treasury <= 0:
@@ -418,11 +448,18 @@ proc processResearchAllocation(
         refundPP += scaledAllocation.science
         scaledAllocation.science = 0
       else:
-        let remainingSL =
+        let remainingSLRp =
           max(0'i32, slCost - house.techTree.accumulated.science)
-        if scaledAllocation.science > remainingSL:
-          refundPP += scaledAllocation.science - remainingSL
-          scaledAllocation.science = remainingSL
+        let allowedSciencePp = maxPpForRemainingRp(
+          scaledAllocation.science,
+          remainingSLRp,
+          gho,
+          currentSLForConversion,
+          convertPPToSRP
+        )
+        if scaledAllocation.science > allowedSciencePp:
+          refundPP += scaledAllocation.science - allowedSciencePp
+          scaledAllocation.science = allowedSciencePp
 
     let currentSL = house.techTree.levels.sl
     var effectiveSL = currentSL
@@ -448,11 +485,18 @@ proc processResearchAllocation(
         refundPP += scaledAllocation.economic
         scaledAllocation.economic = 0
       else:
-        let remainingEL =
+        let remainingELRp =
           max(0'i32, elCost - house.techTree.accumulated.economic)
-        if scaledAllocation.economic > remainingEL:
-          refundPP += scaledAllocation.economic - remainingEL
-          scaledAllocation.economic = remainingEL
+        let allowedEconomicPp = maxPpForRemainingRp(
+          scaledAllocation.economic,
+          remainingELRp,
+          gho,
+          currentSLForConversion,
+          convertPPToERP
+        )
+        if scaledAllocation.economic > allowedEconomicPp:
+          refundPP += scaledAllocation.economic - allowedEconomicPp
+          scaledAllocation.economic = allowedEconomicPp
 
     var cappedTech = initTable[TechField, int32]()
     for field, pp in scaledAllocation.technology:
@@ -506,10 +550,17 @@ proc processResearchAllocation(
             refundPP += allowed
             allowed = 0
           else:
-            let remaining = max(0'i32, cost - currentPoints)
-            if allowed > remaining:
-              refundPP += allowed - remaining
-              allowed = remaining
+            let remainingRp = max(0'i32, cost - currentPoints)
+            let allowedTechPp = maxPpForRemainingRp(
+              allowed,
+              remainingRp,
+              gho,
+              currentSLForConversion,
+              convertPPToTRP
+            )
+            if allowed > allowedTechPp:
+              refundPP += allowed - allowedTechPp
+              allowed = allowedTechPp
 
       if allowed > 0:
         cappedTech[field] = allowed
@@ -523,14 +574,6 @@ proc processResearchAllocation(
     if totalResearchCost > 0:
       house.treasury -= totalResearchCost
       logInfo("Research", &"{houseId} spent {totalResearchCost} PP on research")
-
-    # Calculate GHO (Gross House Output)
-    var gho: int32 = 0
-    for colony in state.coloniesOwned(houseId):
-      gho += colony.production
-
-    # Get current science level for RP conversion
-    let currentSLForConversion = house.techTree.levels.sl
 
     # Convert PP to RP using tech costs
     let earnedRP = allocateResearch(

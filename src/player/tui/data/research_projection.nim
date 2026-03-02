@@ -97,6 +97,11 @@ proc projectedTechLevel*(
   if result >= maxLevel:
     return maxLevel
 
+  let projectedSL = projectedScienceLevel(levels, points, allocation)
+  let slRequired = techSlRequiredForLevel(item, result + 1)
+  if projectedSL < slRequired:
+    return result
+
   let cost = techProgressCost(item, result)
   if cost <= 0:
     return result
