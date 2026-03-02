@@ -208,7 +208,7 @@ nim r tools/dump_state.nim autumn-sky --house 2
 
 - [Dev Tools Reference](../tools/ec4x-play.md) — `submit_orders`,
   `dump_state`, and `resolve` reference
-- [Bot Playtest Setup](../bot/PLAYTEST_SETUP.md) — human-vs-bot setup
+- [Playtest Setup](../bot/PLAYTEST_SETUP.md) — primary human-vs-OpenCode workflow
 - [Turn Resolution Operations](turn-resolution-operations.md) —
   manual, scheduled, and hybrid turn advancement runbook
 - [Testing Auto-Resolve](testing-auto-resolve.md) — automated integration

@@ -138,7 +138,7 @@ to call even if not all houses have submitted — missing orders default to
   step-by-step workflow using these tools
 - [Turn Resolution Operations](../guides/turn-resolution-operations.md) —
   manual, scheduled, and hybrid turn advancement runbook
-- [Bot Playtest Setup](../bot/PLAYTEST_SETUP.md) —
-  setting up human-vs-bot games
+- [Playtest Setup](../bot/PLAYTEST_SETUP.md) —
+  primary human-vs-OpenCode workflow plus legacy bot modes
 - [Testing Auto-Resolve](../guides/testing-auto-resolve.md) —
   automated integration test reference

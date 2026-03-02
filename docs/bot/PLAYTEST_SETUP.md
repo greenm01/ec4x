@@ -1,9 +1,10 @@
-# EC4X Bot Playtest Setup Guide
+# EC4X Playtest Setup Guide (OpenCode Primary)
 
-**Last Updated:** 2026-03-01
+**Last Updated:** 2026-03-02
 
-Step-by-step procedure for running playtests with LLM bots -- either
-fully automated (bots only) or mixed human + bots.
+Primary workflow is now **Human vs OpenCode** turn-by-turn for bug
+reproduction and balance iteration. Bot workflows remain available as
+legacy soak/stress options.
 
 ---
 
@@ -38,18 +39,6 @@ nimble buildAll   # produces bin/ec4x, bin/ec4x-daemon, bin/tui
 
 All three must exist. Run `ls bin/` to confirm.
 
-### LLM API key
-
-The bootstrap script and bot runner read `BOT_API_KEY` from the
-environment. On this machine it is defined in your Fish secrets file.
-Source it before running any playtest command:
-
-```fish
-source ~/.config/fish/secrets.fish
-```
-
----
-
 ## Scenarios
 
 | File | Players | Map | Use case |
@@ -59,49 +48,50 @@ source ~/.config/fish/secrets.fish
 
 ---
 
-## Option A: Human vs 1 Bot (1v1)
+## Option A (Primary): Human vs OpenCode (1v1)
 
-Uses the 2-player scenario. Fastest setup for iterative testing.
+Recommended for iterative balancing and bug hunting.
 
-```bash
-# 1. Bootstrap: creates game, generates bot key, claims 1 bot seat,
-#    leaves 1 seat for you. Writes scripts/bot/multi_session.env.
-#    Default clean mode is full (same cleanup behavior as clean_dev.nim --clean --logs).
-python3 scripts/bot/bootstrap_multi_playtest.py \
-  --bots 1 \
-  --reserve 1 \
-  --scenario scenarios/standard-2-player.kdl \
-  --model gpt-4o-mini
-
-# Output will include your invite code, e.g.:
-#   [bootstrap] unclaimed invite codes for human players:
-#     player1: abc123@localhost:8080
-#   [bootstrap] invite codes saved to: scripts/bot/human_invites.txt
-```
-
-If you need to preserve your existing TUI identity/game cache, use:
+### Setup
 
 ```bash
-python3 scripts/bot/bootstrap_multi_playtest.py \
-  --bots 1 \
-  --reserve 1 \
-  --clean-mode none \
-  --scenario scenarios/standard-2-player.kdl \
-  --model gpt-4o-mini
-```
+# 1) Optional fresh slate (keeps daemon identity)
+nim r tools/clean_dev.nim --clean --logs
 
-```bash
-# 2. Start the bot (runs in background)
-scripts/run_multi_bot_playtest.sh &
+# 2) Create a 2-player game
+./bin/ec4x new --scenario=scenarios/standard-2-player.kdl
 
-# 3. Launch TUI and join with your invite code
+# 3) Copy the slug from output, then list invite codes
+./bin/ec4x invite <game-slug>
+
+# 4) Join one seat in TUI as the human player
 ./bin/tui
-# Paste the invite code shown above into the join dialog
 ```
+
+### Turn Loop
+
+1. You play and submit your turn in TUI.
+2. Tell OpenCode: `play house <N> for <game-slug> turn <T>`.
+3. OpenCode uses `tools/dump_state.nim` + `tools/submit_orders.nim`
+   to submit the opposing side's orders.
+4. Resolve turn (manual recommended for deterministic debugging):
+
+```bash
+./bin/ec4x-daemon resolve --gameId=<game-slug>
+```
+
+5. Analyze outcomes together and repeat.
+
+### Notes
+
+- For this workflow, set daemon to manual-only mode to avoid accidental
+  auto-advance while only one seat is claimed.
+- Runbook: [Turn Resolution Operations](../guides/turn-resolution-operations.md)
+- Tool reference: [Dev Tools Reference](../tools/ec4x-play.md)
 
 ---
 
-## Option B: Human vs 3 Bots (4-player)
+## Option B (Legacy): Human vs 3 Bots (4-player)
 
 Standard game with you as one house and 3 LLM-controlled houses.
 
@@ -126,7 +116,7 @@ scripts/run_multi_bot_playtest.sh &
 
 ---
 
-## Option C: Human vs 2 Bots (3-player from 4-player scenario)
+## Option C (Legacy): Human vs 2 Bots (3-player from 4-player scenario)
 
 Fill 3 of the 4 seats: you + 2 bots. The 4th slot stays empty.
 Note: the daemon resolves turns only when **all claimed slots** have
@@ -146,7 +136,7 @@ scripts/run_multi_bot_playtest.sh &
 
 ---
 
-## Option D: Bot-only (automated playtesting, no human)
+## Option D (Legacy): Bot-only (automated playtesting, no human)
 
 All seats filled by bots. Useful for stability testing and training
 data generation.
@@ -175,6 +165,8 @@ python3 scripts/bot/bootstrap_multi_playtest.py \
 ---
 
 ## Clean Behaviour and When to Skip It
+
+This section applies to legacy bootstrap bot workflows (Options B-D).
 
 By default bootstrap runs `tools/clean_dev.nim --clean --logs`, which
 wipes:
@@ -217,7 +209,20 @@ nim r tools/clean_dev.nim --dry-run     # preview what would be deleted
 
 ---
 
-## Choosing a Model
+## Legacy Bot Prerequisite: LLM API Key
+
+Bot bootstrap/runner reads `BOT_API_KEY` from environment. On this
+machine it is defined in your Fish secrets file:
+
+```fish
+source ~/.config/fish/secrets.fish
+```
+
+OpenCode-vs-human playtesting does not require this.
+
+---
+
+## Legacy Bot: Choosing a Model
 
 The bot defaults to `gpt-4o-mini`. Set `--model` to any
 OpenAI-compatible model name:
@@ -234,7 +239,7 @@ endpoint before running the bot runner.
 
 ---
 
-## Where Logs and Traces Are Written
+## Legacy Bot: Where Logs and Traces Are Written
 
 | Path | Contents |
 |---|---|
@@ -244,7 +249,7 @@ endpoint before running the bot runner.
 
 ---
 
-## Post-Run Evaluation
+## Legacy Bot: Post-Run Evaluation
 
 ```bash
 # Feature-family coverage (which command types were used)
@@ -262,7 +267,7 @@ scripts/bot/run_acceptance_gates.sh \
 
 ---
 
-## Env Var Reference
+## Legacy Bot: Env Var Reference
 
 These live in `scripts/bot/multi_session.env` (written by bootstrap).
 Edit the file directly to tune a run without re-bootstrapping.
@@ -287,7 +292,7 @@ Edit the file directly to tune a run without re-bootstrapping.
 
 ---
 
-## Troubleshooting
+## Legacy Bot: Troubleshooting
 
 **Bot exits immediately / can't connect to relay**
 

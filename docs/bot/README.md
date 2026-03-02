@@ -56,7 +56,7 @@ Once the single-turn loop is functional, we will build a simulation script (`scr
 Implementation tracker:
 - `docs/bot/TODO.md`
 - `docs/bot/playtest_prompts.md`
-- `docs/bot/PLAYTEST_SETUP.md` - setup and play procedure
+- `docs/bot/PLAYTEST_SETUP.md` - playtest setup (OpenCode primary, bot legacy)
 
 Locked v1 decisions:
 - Output contract is strict JSON parsed by bot schema, then compiled to
@@ -73,8 +73,8 @@ Immediate next steps:
 ## Local Playtest Runner (MVP)
 
 See **[`docs/bot/PLAYTEST_SETUP.md`](PLAYTEST_SETUP.md)** for the full
-setup and play procedure, including human-vs-bot and multi-bot
-configurations.
+playtest setup, with human-vs-OpenCode as primary and bot/multi-bot
+configurations as legacy options.
 
 Quick reference:
 
