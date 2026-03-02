@@ -411,6 +411,12 @@ suite "TUI command staging":
     ]
     model.ui.stagedEbpInvestment = 4
     model.ui.stagedCipInvestment = 2
+    model.ui.researchAllocation = ResearchAllocation(
+      economic: 3,
+      science: 2,
+      technology: initTable[TechField, int32]()
+    )
+    model.ui.researchAllocation.technology[TechField.WeaponsTech] = 5
 
     let summary = model.stagedCommandCategorySummary()
     check summaryValue(summary, "Fleet orders") == "1"
@@ -426,6 +432,23 @@ suite "TUI command staging":
     check summaryValue(summary, "Espionage actions") == "1"
     check summaryValue(summary, "EBP investment") == "4 credits"
     check summaryValue(summary, "CIP investment") == "2 credits"
+    check summaryValue(summary, "Research allocation") == "10 PP"
+
+  test "staged command count includes research-only staging":
+    var model = initTuiModel()
+    model.ui.researchAllocation = ResearchAllocation(
+      economic: 0,
+      science: 0,
+      technology: initTable[TechField, int32]()
+    )
+    check model.stagedCommandCount() == 0
+
+    model.ui.researchAllocation.economic = 4
+    check model.stagedCommandCount() == 1
+
+    model.ui.researchAllocation.economic = 0
+    model.ui.researchAllocation.technology[TechField.WeaponsTech] = 3
+    check model.stagedCommandCount() == 1
 
   test "system picker entries include pathfinding ETA labels":
     var model = initTuiModel()
@@ -759,6 +782,12 @@ suite "TUI command staging":
     model.ui.stagedEbpInvestment = 4
     model.ui.stagedCipInvestment = 3
     model.ui.stagedTaxRate = some(18)
+    model.ui.researchAllocation = ResearchAllocation(
+      economic: 6,
+      science: 4,
+      technology: initTable[TechField, int32]()
+    )
+    model.ui.researchAllocation.technology[TechField.WeaponsTech] = 5
 
     model.stageFleetCommand(FleetCommand(
       fleetId: FleetId(801),
@@ -783,4 +812,9 @@ suite "TUI command staging":
     check model.ui.stagedEbpInvestment == 0
     check model.ui.stagedCipInvestment == 0
     check model.ui.stagedTaxRate.isNone
+    check model.ui.researchAllocation.economic == 0
+    check model.ui.researchAllocation.science == 0
+    check model.ui.researchAllocation.technology.len == 0
+    check model.ui.researchDigitBuffer.len == 0
+    check model.ui.researchDigitTime == 0.0
     check model.view.fleets[0].commandLabel == "Hold"

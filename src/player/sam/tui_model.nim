@@ -2165,6 +2165,12 @@ proc stagedCommandCount*(model: TuiModel): int =
   count += model.ui.stagedDiplomaticCommands.len
   if model.ui.stagedTaxRate.isSome:
     count.inc
+  var stagedResearch = int(model.ui.researchAllocation.economic) +
+    int(model.ui.researchAllocation.science)
+  for _, amount in model.ui.researchAllocation.technology.pairs:
+    stagedResearch += int(amount)
+  if stagedResearch > 0:
+    count.inc
   count
 
 proc stagedCommandCategorySummary*(
@@ -2211,6 +2217,12 @@ proc stagedCommandCategorySummary*(
   if model.ui.stagedCipInvestment > 0:
     result.add(("CIP investment",
       $model.ui.stagedCipInvestment & " credits"))
+  var stagedResearch = int(model.ui.researchAllocation.economic) +
+    int(model.ui.researchAllocation.science)
+  for _, amount in model.ui.researchAllocation.technology.pairs:
+    stagedResearch += int(amount)
+  if stagedResearch > 0:
+    result.add(("Research allocation", $stagedResearch & " PP"))
 
 proc espionageQueuedQty*(
     model: TuiModel,
@@ -3613,6 +3625,11 @@ proc clearStagedCommands*(model: var TuiModel) =
   model.ui.stagedEbpInvestment = 0
   model.ui.stagedCipInvestment = 0
   model.ui.stagedTaxRate = none(int)
+  model.ui.researchAllocation.economic = 0
+  model.ui.researchAllocation.science = 0
+  model.ui.researchAllocation.technology.clear()
+  model.ui.researchDigitBuffer = ""
+  model.ui.researchDigitTime = 0.0
   model.reapplyAllOptimisticUpdates()
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
