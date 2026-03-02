@@ -449,7 +449,10 @@ proc renderFooter(state: BuildModalState, area: Rect,
     return
 
   let text =
-    "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab/→/L]Next  [←/H]Prev  [Esc]Close"
+    if state.category == BuildCategory.Industrial:
+      "[+/-] IU  [Tab/→/L] Next tab  [←/H] Prev tab  [Esc] Close"
+    else:
+      "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab/→/L]Next  [←/H]Prev  [Esc]Close"
   var x = area.x
   for rune in text.runes:
     if x >= area.right:
@@ -487,8 +490,7 @@ proc render*(
     columns, maxTableWidth, showBorders = true
   )
   let title = "BUILD - " & state.colonyName
-  let footerText = "[PgUp/PgDn]Scroll  [+/-]Qty  [Tab/→/L]Next  [←/H]Prev  [Esc]Close"
-  let finalWidth = max(tableWidth, max(title.len, footerText.len))
+  let finalWidth = max(tableWidth, title.len)
 
   let modalArea = widget.modal.calculateArea(
     viewport, finalWidth, contentHeight

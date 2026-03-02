@@ -3095,12 +3095,16 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
     discard
   of ActionKind.buildListPageUp:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      if model.ui.buildModal.category == BuildCategory.Industrial:
+        return
       let pageSize = max(1, model.ui.termHeight - 12)
       model.ui.buildModal.selectedBuildIdx = max(
         0, model.ui.buildModal.selectedBuildIdx - pageSize
       )
   of ActionKind.buildListPageDown:
     if model.ui.buildModal.focus == BuildModalFocus.BuildList:
+      if model.ui.buildModal.category == BuildCategory.Industrial:
+        return
       let maxIdx = buildRowCountForCategory(
         model.ui.buildModal.category
       ) - 1
