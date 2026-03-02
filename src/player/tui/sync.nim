@@ -1021,7 +1021,17 @@ proc syncPlayerStateToModel*(
     model.view.systems[(hexQ, hexR)] = samSys
     model.view.systemCoords[int(sysId)] =
       (hexQ, hexR)
-  
+
+  # Set homeworld coordinate from PlayerState
+  if ps.homeworldSystemId.isSome:
+    let hwId = ps.homeworldSystemId.get()
+    if ps.visibleSystems.hasKey(hwId):
+      let hwVisSys = ps.visibleSystems[hwId]
+      if hwVisSys.coordinates.isSome:
+        let hwCoords = hwVisSys.coordinates.get()
+        model.view.homeworld =
+          some((int(hwCoords.q), int(hwCoords.r)))
+
   # Build colonies list from own colonies
   model.view.colonies = @[]
   for colony in ps.ownColonies:

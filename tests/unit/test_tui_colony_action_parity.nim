@@ -105,6 +105,44 @@ suite "TUI colony action parity":
     if scrapAct.isSome:
       check scrapAct.get().actionKind == ActionKind.openScrapModal
 
+  test "planet detail cycle next updates selected colony":
+    var model = initTuiModel()
+    model.ui.appPhase = AppPhase.InGame
+    model.ui.mode = ViewMode.PlanetDetail
+    model.ui.selectedIdx = 0
+    model.ui.selectedColonyId = 101
+    model.view.planetsRows = @[
+      PlanetRow(colonyId: some(101), systemId: 1, systemName: "Atlas",
+        isOwned: true),
+      PlanetRow(colonyId: some(202), systemId: 2, systemName: "Boreas",
+        isOwned: true),
+      PlanetRow(colonyId: some(303), systemId: 3, systemName: "Cygnus",
+        isOwned: true)
+    ]
+
+    navigationAcceptor(model, actionCycleColony(false))
+    check model.ui.selectedColonyId == 202
+    check model.ui.selectedIdx == 1
+
+  test "planet detail cycle prev wraps to last colony":
+    var model = initTuiModel()
+    model.ui.appPhase = AppPhase.InGame
+    model.ui.mode = ViewMode.PlanetDetail
+    model.ui.selectedIdx = 0
+    model.ui.selectedColonyId = 101
+    model.view.planetsRows = @[
+      PlanetRow(colonyId: some(101), systemId: 1, systemName: "Atlas",
+        isOwned: true),
+      PlanetRow(colonyId: some(202), systemId: 2, systemName: "Boreas",
+        isOwned: true),
+      PlanetRow(colonyId: some(303), systemId: 3, systemName: "Cygnus",
+        isOwned: true)
+    ]
+
+    navigationAcceptor(model, actionCycleColony(true))
+    check model.ui.selectedColonyId == 303
+    check model.ui.selectedIdx == 2
+
   test "fleet key mapping uses repair and ROE remap":
     var model = initTuiModel()
     model.ui.appPhase = AppPhase.InGame

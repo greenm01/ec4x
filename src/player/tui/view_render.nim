@@ -708,7 +708,19 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
     .showBorders(effBorders)
 
   let statusColumn = 2
+  var homeSystemId = none(int)
+  if model.view.homeworld.isSome:
+    let homeCoord = model.view.homeworld.get()
+    if model.view.systems.hasKey(homeCoord):
+      homeSystemId = some(int(model.view.systems[homeCoord].id))
+
   for row in model.view.planetsRows:
+    let rowIsHomeworld =
+      row.isHomeworld or
+      (homeSystemId.isSome and row.systemId == homeSystemId.get())
+    let nameLabel =
+      if rowIsHomeworld: row.systemName & "*"
+      else: row.systemName
     let popLabel = if row.pop.isSome: $row.pop.get else: "-"
     let iuLabel = if row.iu.isSome: $row.iu.get else: "-"
     let gcoLabel = if row.gco.isSome: $row.gco.get else: "-"
@@ -725,7 +737,7 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
 
     let dataRow = @[
       row.sectorLabel,
-      row.systemName,
+      nameLabel,
       statusLabel,
       $displayedQueueCount(row),
       row.classLabel,
@@ -784,8 +796,20 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
   if startIdx >= endIdx:
     return
 
+  var homeSystemId = none(int)
+  if model.view.homeworld.isSome:
+    let homeCoord = model.view.homeworld.get()
+    if model.view.systems.hasKey(homeCoord):
+      homeSystemId = some(int(model.view.systems[homeCoord].id))
+
   for i in startIdx ..< endIdx:
     let row = model.view.planetsRows[i]
+    let rowIsHomeworld =
+      row.isHomeworld or
+      (homeSystemId.isSome and row.systemId == homeSystemId.get())
+    let nameLabel =
+      if rowIsHomeworld: row.systemName & "*"
+      else: row.systemName
     let popLabel = if row.pop.isSome: $row.pop.get else: "—"
     let iuLabel = if row.iu.isSome: $row.iu.get else: "—"
     let gcoLabel = if row.gco.isSome: $row.gco.get else: "—"
@@ -802,7 +826,7 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
 
     let dataRow = @[
       row.sectorLabel,
-      row.systemName,
+      nameLabel,
       statusLabel,
       $displayedQueueCount(row),
       row.classLabel,
@@ -3035,7 +3059,15 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
 
   # Get colony data for title
   let planetData = colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
-  let title = "COLONY: " & planetData.systemName.toUpperAscii()
+  var isHomeworld = false
+  for row in model.view.planetsRows:
+    if row.colonyId.isSome and row.colonyId.get() == model.ui.selectedColonyId:
+      isHomeworld = row.isHomeworld or
+        (ps.homeworldSystemId.isSome and
+          int(ps.homeworldSystemId.get()) == row.systemId)
+      break
+  let title = "COLONY: " & planetData.systemName.toUpperAscii() &
+    (if isHomeworld: "*" else: "")
 
   let modal = newModal()
     .title(title)

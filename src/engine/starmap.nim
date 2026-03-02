@@ -409,7 +409,7 @@ proc assignHouseHomeworlds(
     state.updateSystem(updatedSystem.id, updatedSystem)
 
     starMap.houseSystemIds.add(system.id)
-    starMap.homeWorlds[system.id] = i.uint32.HouseId
+    starMap.homeWorlds[system.id] = (i + 1).uint32.HouseId
 
 proc connectHub(starMap: var StarMap, state: GameState, rng: var Rand) =
   ## Connect hub with mixed lane types to first ring (prevents rush-to-center)

@@ -680,27 +680,67 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
     if model.view.homeworld.isSome:
       model.ui.mapState.cursor = model.view.homeworld.get
   of ActionKind.cycleColony:
-    let coords = model.ownedColonyCoords()
-    if coords.len > 0:
-      # Find current cursor in owned colonies
+    let reverse = proposal.navMode == 1
+    if model.ui.mode == ViewMode.PlanetDetail:
+      var colonyIds: seq[int] = @[]
+      for row in model.view.planetsRows:
+        if row.isOwned and row.colonyId.isSome:
+          colonyIds.add(row.colonyId.get())
+
+      if colonyIds.len == 0:
+        return
+
       var currentIdx = -1
-      for i, coord in coords:
-        if coord == model.ui.mapState.cursor:
+      for i, colonyId in colonyIds:
+        if colonyId == model.ui.selectedColonyId:
           currentIdx = i
           break
 
-      # Cycle to next/prev
-      let reverse = proposal.navMode == 1
-      if reverse:
-        if currentIdx <= 0:
-          model.ui.mapState.cursor = coords[coords.len - 1]
+      if currentIdx < 0 and model.ui.selectedIdx >= 0 and
+          model.ui.selectedIdx < model.view.planetsRows.len:
+        let row = model.view.planetsRows[model.ui.selectedIdx]
+        if row.colonyId.isSome:
+          for i, colonyId in colonyIds:
+            if colonyId == row.colonyId.get():
+              currentIdx = i
+              break
+
+      let nextIdx =
+        if reverse:
+          if currentIdx <= 0: colonyIds.len - 1
+          else: currentIdx - 1
         else:
-          model.ui.mapState.cursor = coords[currentIdx - 1]
-      else:
-        if currentIdx < 0 or currentIdx >= coords.len - 1:
-          model.ui.mapState.cursor = coords[0]
+          if currentIdx < 0 or currentIdx >= colonyIds.len - 1: 0
+          else: currentIdx + 1
+
+      let nextColonyId = colonyIds[nextIdx]
+      model.ui.selectedColonyId = nextColonyId
+
+      for idx, row in model.view.planetsRows:
+        if row.colonyId.isSome and row.colonyId.get() == nextColonyId:
+          model.ui.selectedIdx = idx
+          break
+    else:
+      let coords = model.ownedColonyCoords()
+      if coords.len > 0:
+        # Find current cursor in owned colonies
+        var currentIdx = -1
+        for i, coord in coords:
+          if coord == model.ui.mapState.cursor:
+            currentIdx = i
+            break
+
+        # Cycle to next/prev
+        if reverse:
+          if currentIdx <= 0:
+            model.ui.mapState.cursor = coords[coords.len - 1]
+          else:
+            model.ui.mapState.cursor = coords[currentIdx - 1]
         else:
-          model.ui.mapState.cursor = coords[currentIdx + 1]
+          if currentIdx < 0 or currentIdx >= coords.len - 1:
+            model.ui.mapState.cursor = coords[0]
+          else:
+            model.ui.mapState.cursor = coords[currentIdx + 1]
   of ActionKind.switchFleetView:
     if model.ui.fleetViewMode == FleetViewMode.SystemView:
       model.ui.fleetViewMode = FleetViewMode.ListView
