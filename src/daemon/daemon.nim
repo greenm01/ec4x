@@ -144,18 +144,26 @@ proc checkAndTriggerResolution(gameId: GameId) =
       " - skipping auto-resolve")
     return
 
-  let expectedPlayers = countExpectedPlayers(gameInfo.dbPath, gameId)
+  let claimedPlayers = countExpectedPlayers(gameInfo.dbPath, gameId)
+  let totalPlayers = countTotalPlayers(gameInfo.dbPath, gameId)
 
-  # Edge case: No human players yet (all slots unclaimed)
-  if expectedPlayers == 0:
-    logDebug("Daemon", "No human players assigned yet for game ", gameId)
+  if totalPlayers == 0:
+    logWarn("Daemon", "Game has zero player slots; skipping auto-resolve for ",
+      gameId)
+    return
+
+  # Require all slots to be claimed before using all-submitted auto resolve.
+  if claimedPlayers < totalPlayers:
+    logDebug("Daemon", "Waiting for slot claims: claimed=", $claimedPlayers,
+      " total=", $totalPlayers, " game=", gameId)
     return
 
   let submittedPlayers = countPlayersSubmitted(gameInfo.dbPath, gameId,
     currentTurn.int32)
 
-  logDebug("Daemon", "Turn readiness check: ", $submittedPlayers, "/",
-    $expectedPlayers, " players submitted for game=", gameId,
+  logDebug("Daemon", "Turn readiness check: submitted=", $submittedPlayers,
+    " claimed=", $claimedPlayers, " total=", $totalPlayers,
+    " game=", gameId,
     " turn=", $currentTurn)
 
   let deadlineOpt = gameInfo.turnDeadline
@@ -164,7 +172,7 @@ proc checkAndTriggerResolution(gameId: GameId) =
     logDebug("Daemon", "Turn deadline at ", $deadline, " for game=", gameId)
 
   # Check if all players ready
-  if submittedPlayers >= expectedPlayers:
+  if submittedPlayers >= totalPlayers:
     logInfo("Daemon", "All players submitted! Auto-triggering resolution for game=",
       gameId, " turn=", $currentTurn)
 
@@ -182,7 +190,7 @@ proc checkAndTriggerResolution(gameId: GameId) =
         m.resolutionRequested.incl(gId)
     ))
   else:
-    logDebug("Daemon", "Waiting for ", $(expectedPlayers - submittedPlayers),
+    logDebug("Daemon", "Waiting for ", $(totalPlayers - submittedPlayers),
       " more player(s) for turn ", $currentTurn)
 
 proc resolveTurnCmd(gameId: GameId): DaemonCmd =

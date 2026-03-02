@@ -128,8 +128,9 @@ scripts/run_multi_bot_playtest.sh &
 ## Option C (Legacy): Human vs 2 Bots (3-player from 4-player scenario)
 
 Fill 3 of the 4 seats: you + 2 bots. The 4th slot stays empty.
-Note: the daemon resolves turns only when **all claimed slots** have
-submitted -- unclaimed slots do not block resolution.
+Note: the daemon now requires **all slots claimed** and **all players
+submitted** before auto-resolution. With one slot intentionally left
+unclaimed, advance turns manually.
 
 ```bash
 python3 scripts/bot/bootstrap_multi_playtest.py \

@@ -54,6 +54,12 @@ proc cleanupTestGame(dbPath: string) =
 proc saveCommandPacket(dbPath: string, gameId: string, packet: CommandPacket) =
   writer.saveCommandPacket(dbPath, gameId, packet, 1'i64)
 
+proc isAutoResolveReady(dbPath: string, gameId: string, turn: int32): bool =
+  let claimed = countExpectedPlayers(dbPath, gameId)
+  let total = countTotalPlayers(dbPath, gameId)
+  let submitted = countPlayersSubmitted(dbPath, gameId, turn)
+  total > 0 and claimed == total and submitted >= total
+
 suite "Auto-Resolve: Query Functions":
 
   test "countExpectedPlayers returns 0 when no pubkeys assigned":
@@ -85,6 +91,12 @@ suite "Auto-Resolve: Query Functions":
 
     let expected = countExpectedPlayers(dbPath, gameId)
     check expected == 3
+
+  test "countTotalPlayers counts all house slots":
+    let (dbPath, gameId, state) = createTestGame(3)
+    defer: cleanupTestGame(dbPath)
+
+    check countTotalPlayers(dbPath, gameId) == 3
 
   test "countPlayersSubmitted returns 0 when no commands":
     let (dbPath, gameId, state) = createTestGame(2)
@@ -586,19 +598,19 @@ suite "Auto-Resolve: Phase Gating":
 
 suite "Auto-Resolve: Mixed Human/AI Games":
 
-  test "3 human + 1 AI waits for 3 human submissions":
+  test "3 claimed of 4 does not auto-resolve":
     let (dbPath, gameId, state) = createTestGame(4, "Active")
     defer: cleanupTestGame(dbPath)
 
-    # Only 3 houses get pubkeys (4th is AI)
+    # Only 3 houses get pubkeys (4th slot remains unclaimed)
     setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
     setHousePubkey(dbPath, gameId, HouseId(2), "pubkey2")
     setHousePubkey(dbPath, gameId, HouseId(3), "pubkey3")
-    # HouseId(4) has no pubkey (AI)
 
     check countExpectedPlayers(dbPath, gameId) == 3
+    check countTotalPlayers(dbPath, gameId) == 4
 
-    # All 3 humans submit
+    # All claimed houses submit
     for houseNum in 1..3:
       let packet = CommandPacket(
         houseId: HouseId(houseNum),
@@ -620,12 +632,14 @@ suite "Auto-Resolve: Mixed Human/AI Games":
       saveCommandPacket(dbPath, gameId, packet)
 
     let submitted = countPlayersSubmitted(dbPath, gameId, 1)
-    let expected = countExpectedPlayers(dbPath, gameId)
-    check submitted == expected  # 3/3 humans ready (AI doesn't count)
+    check submitted == 3
+    check not isAutoResolveReady(dbPath, gameId, 1)
 
-  test "all AI game has 0 expected players":
+  test "all slots unclaimed is not ready":
     let (dbPath, gameId, state) = createTestGame(4, "Active")
     defer: cleanupTestGame(dbPath)
 
-    # No pubkeys assigned (all AI)
+    # No pubkeys assigned
     check countExpectedPlayers(dbPath, gameId) == 0
+    check countTotalPlayers(dbPath, gameId) == 4
+    check not isAutoResolveReady(dbPath, gameId, 1)

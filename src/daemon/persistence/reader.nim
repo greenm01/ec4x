@@ -293,6 +293,11 @@ proc countExpectedPlayers*(dbPath: string, gameId: string): int =
     if house.nostrPubkey.len > 0:
       result += 1
 
+proc countTotalPlayers*(dbPath: string, gameId: string): int =
+  ## Count total house slots in the game (claimed + unclaimed)
+  let state = loadFullState(dbPath)
+  result = state.houses.entities.data.len
+
 proc countPlayersSubmitted*(dbPath: string, gameId: string, turn: int32): int =
   ## Count distinct houses that have submitted commands for a turn
   ## Returns number of houses with at least one unprocessed command
