@@ -361,5 +361,8 @@ proc executeExpertCommand*(model: var TuiModel, cmd: ExpertCommand): tuple[succe
     model.ui.intelNoteSaveText = cmd.noteText
     return (true, "Saving note for " & cmd.noteSystem)
 
-  of ExpertCommandKind.MetaClear, ExpertCommandKind.MetaList, ExpertCommandKind.MetaSubmit, ExpertCommandKind.MetaHelp, ExpertCommandKind.MetaDrop, ExpertCommandKind.ParseError:
+  of ExpertCommandKind.MetaClear, ExpertCommandKind.MetaList,
+      ExpertCommandKind.MetaSubmit, ExpertCommandKind.MetaSyncNow,
+      ExpertCommandKind.MetaHelp, ExpertCommandKind.MetaDrop,
+      ExpertCommandKind.ParseError:
     return (false, "Meta commands and errors should be handled in the acceptor")

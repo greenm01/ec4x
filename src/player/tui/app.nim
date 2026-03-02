@@ -92,6 +92,8 @@ proc runTui*(gameId: string = "") =
   var lastDraftFingerprint = ""
   var nostrSubmitFuture: Future[bool] = nil  # Pending turn submission
   var nostrSubmitStartTime: float = 0.0  # When submit started
+  var awaitingTurnAdvanceAfterSubmit = false
+  var lastPostSubmitSyncCheckAt: float = 0.0
   var nostrJoinPublishTime: float = 0.0  # When slot claim was published
   var nostrJoinRetryCount: int = 0       # Re-subscribe retry attempts
 
@@ -297,6 +299,61 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.statusMessage = "New message received"
     enqueueProposal(emptyProposal())
 
+  proc currentMapExportGameName(): string =
+    if activeGameId.len == 0:
+      return "unknown"
+    let cachedGame = tuiCache.getGame(activeGameId)
+    if cachedGame.isSome and cachedGame.get().name.len > 0:
+      return cachedGame.get().name.toLowerAscii()
+    activeGameId.toLowerAscii()
+
+  proc exportCurrentMap(autoExport: bool): bool =
+    if activeGameId.len == 0 or not sam.model.view.playerStateLoaded:
+      return false
+    try:
+      let svgContent = generateStarmapFromPlayerState(playerState)
+      let outPath = exportSvg(
+        svgContent,
+        currentMapExportGameName(),
+        int(playerState.turn),
+        tuiConfig.mapExportDir
+      )
+      sam.model.ui.lastExportPath = outPath
+      if autoExport:
+        logInfo("TUI/Map", "Auto-exported turn ", $playerState.turn,
+          " map: ", outPath)
+      else:
+        sam.model.ui.exportConfirmActive = true
+        sam.model.ui.statusMessage = "Map saved: " & outPath
+        if sam.model.ui.openMapRequested:
+          discard openInViewer(outPath)
+      return true
+    except CatchableError as e:
+      if autoExport:
+        logWarn("TUI/Map", "Auto-export failed: ", e.msg)
+      else:
+        sam.model.ui.statusMessage = "Map export failed: " & e.msg
+      return false
+
+  proc triggerGameSyncCheck(showStatus: bool, reason: string) =
+    if activeGameId.len == 0:
+      if showStatus:
+        sam.model.ui.statusMessage = "Sync unavailable: no game loaded"
+      return
+    if nostrClient == nil or not nostrClient.isConnected():
+      if showStatus:
+        sam.model.ui.statusMessage =
+          "Sync unavailable: relay not connected"
+      return
+    let subId = "game:" & activeGameId
+    asyncCheck nostrClient.unsubscribe(subId)
+    nostrSubscriptions = nostrSubscriptions.filterIt(it != subId)
+    asyncCheck nostrClient.subscribeGame(activeGameId)
+    nostrSubscriptions.add(subId)
+    logInfo("TUI/Sync", "Requested game sync (", reason, ")")
+    if showStatus:
+      sam.model.ui.statusMessage = "Sync check requested"
+
   # Create initial model
   var initialModel = initTuiModel()
   # Load display settings from config.kdl
@@ -455,6 +512,7 @@ proc runTui*(gameId: string = "") =
 
       nostrHandlers.onDelta = proc(event: NostrEvent, payload: string) =
         try:
+          let previousTurn = int(playerState.turn)
           if not authoritativeConfigLoaded:
             sam.model.ui.statusMessage =
               "Ignored delta: missing authoritative config"
@@ -479,9 +537,9 @@ proc runTui*(gameId: string = "") =
             authoritativeConfigSchema
           )
           if appliedTurnOpt.isSome:
-            sam.model.view.turn = int(appliedTurnOpt.get())
+            let newTurn = int(appliedTurnOpt.get())
+            sam.model.view.turn = newTurn
             sam.model.view.playerStateLoaded = true
-            sam.model.ui.statusMessage = "Delta applied"
             # Load prev-turn snapshot before caching current
             var deltaPrevPs =
               none(ps_types.PlayerState)
@@ -502,6 +560,24 @@ proc runTui*(gameId: string = "") =
               tuiCache.savePlayerState(
                 activeGameId, int(viewingHouse),
                 playerState.turn, playerState)
+
+            if newTurn > previousTurn:
+              sam.model.clearStagedCommands()
+              sam.model.ui.turnSubmissionRevision = 0
+              sam.model.ui.modifiedSinceSubmit = false
+              nostrSubmitFuture = nil
+              nostrSubmitStartTime = 0.0
+              awaitingTurnAdvanceAfterSubmit = false
+              lastPostSubmitSyncCheckAt = 0.0
+              if activeGameId.len > 0 and int(viewingHouse) > 0:
+                tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+                lastDraftFingerprint = ""
+              sam.model.ui.statusMessage =
+                "Turn " & $newTurn &
+                " received; cleared staged previous-turn commands"
+              discard exportCurrentMap(true)
+            else:
+              sam.model.ui.statusMessage = "Delta applied"
           else:
             sam.model.ui.statusMessage =
               "Rejected delta: config mismatch or invalid payload"
@@ -514,6 +590,8 @@ proc runTui*(gameId: string = "") =
 
       nostrHandlers.onFullState = proc(event: NostrEvent, payload: string) =
         try:
+          let previousTurn = int(playerState.turn)
+          let hadLoadedState = sam.model.view.playerStateLoaded
           logDebug("TUI/State", "onFullState called",
             "eventId=", event.id[0..min(15, event.id.len-1)],
             "payloadLen=", $payload.len)
@@ -556,15 +634,23 @@ proc runTui*(gameId: string = "") =
               "turn=", $envelope.playerState.turn,
               "houseId=", $envelope.playerState.viewingHouse)
             playerState = envelope.playerState
+            let newTurn = int(playerState.turn)
             sam.model.view.playerStateLoaded = true
             viewingHouse = playerState.viewingHouse
             sam.model.view.viewingHouse = int(viewingHouse)
-            sam.model.view.turn = int(playerState.turn)
-            # Reset submission tracking for the new turn
-            sam.model.ui.turnSubmissionRevision = 0
-            sam.model.ui.modifiedSinceSubmit = false
-            nostrSubmitFuture = nil
-            nostrSubmitStartTime = 0.0
+            sam.model.view.turn = newTurn
+            let turnAdvanced = hadLoadedState and newTurn > previousTurn
+            if turnAdvanced:
+              sam.model.clearStagedCommands()
+              sam.model.ui.turnSubmissionRevision = 0
+              sam.model.ui.modifiedSinceSubmit = false
+              nostrSubmitFuture = nil
+              nostrSubmitStartTime = 0.0
+              awaitingTurnAdvanceAfterSubmit = false
+              lastPostSubmitSyncCheckAt = 0.0
+              if activeGameId.len > 0 and int(viewingHouse) > 0:
+                tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+                lastDraftFingerprint = ""
             sam.model.ui.statusMessage = "Full state received"
             if sam.model.ui.nostrEnabled:
               sam.model.ui.nostrStatus = "connected"
@@ -614,6 +700,15 @@ proc runTui*(gameId: string = "") =
             if activeGameId.len > 0:
               tuiCache.savePlayerState(activeGameId, int(viewingHouse),
                 playerState.turn, playerState)
+
+            discard exportCurrentMap(true)
+            if turnAdvanced:
+              sam.model.ui.statusMessage =
+                "Turn " & $newTurn &
+                " received; cleared staged previous-turn commands"
+            elif not hadLoadedState:
+              sam.model.ui.statusMessage =
+                "Full state received (turn " & $newTurn & ")"
           else:
             sam.model.ui.statusMessage = "Invalid full state payload"
             logDebug("TUI/State", "Failed to parse state msgpack",
@@ -1546,6 +1641,8 @@ proc runTui*(gameId: string = "") =
         if published:
           sam.model.ui.turnSubmissionRevision += 1
           sam.model.ui.modifiedSinceSubmit = false
+          awaitingTurnAdvanceAfterSubmit = true
+          lastPostSubmitSyncCheckAt = epochTime()
           let rev = sam.model.ui.turnSubmissionRevision
           let turn = sam.model.view.turn
           sam.model.ui.statusMessage =
@@ -1557,6 +1654,8 @@ proc runTui*(gameId: string = "") =
               playerState.turn, viewingHouse)
             lastDraftFingerprint = packetFingerprint(postSubmit)
         else:
+          awaitingTurnAdvanceAfterSubmit = false
+          lastPostSubmitSyncCheckAt = 0.0
           sam.model.ui.statusMessage =
             "Submit failed - check relay connection"
           logWarn("TUI Player SAM", "Turn submission publish failed")
@@ -1567,8 +1666,23 @@ proc runTui*(gameId: string = "") =
           "Submit timed out after ", $NostrSubmitTimeoutSec, "s")
         nostrSubmitFuture = nil
         nostrSubmitStartTime = 0.0
+        awaitingTurnAdvanceAfterSubmit = false
+        lastPostSubmitSyncCheckAt = 0.0
         sam.model.ui.statusMessage = "Submit timed out - check relay"
         needsRender = true
+
+    # -----------------------------------------------------------------------
+    # Post-submit periodic sync checks while waiting for turn advancement
+    # -----------------------------------------------------------------------
+    if awaitingTurnAdvanceAfterSubmit and
+        activeGameId.len > 0 and
+        nostrClient != nil and
+        nostrClient.isConnected():
+      let intervalSec = float(tuiConfig.postSubmitSyncMinutes * 60)
+      if intervalSec > 0 and
+          epochTime() - lastPostSubmitSyncCheckAt >= intervalSec:
+        triggerGameSyncCheck(false, "post-submit")
+        lastPostSubmitSyncCheckAt = epochTime()
 
   # =========================================================================
   # Main Loop (Input-first with frame-based rendering)
@@ -1735,6 +1849,8 @@ proc runTui*(gameId: string = "") =
     if sam.model.ui.loadGameRequested:
       let gameId = sam.model.ui.loadGameId
       sam.model.view.playerStateLoaded = false
+      awaitingTurnAdvanceAfterSubmit = false
+      lastPostSubmitSyncCheckAt = 0.0
       authoritativeConfigLoaded = false
       authoritativeConfigHash = ""
       authoritativeConfigSchema = 0
@@ -1856,28 +1972,17 @@ proc runTui*(gameId: string = "") =
 
     # Handle map export requests
     if sam.model.ui.exportMapRequested:
-      if activeGameId.len > 0 and sam.model.view.playerStateLoaded:
-        try:
-          let svgContent = generateStarmapFromPlayerState(playerState)
-          let cachedGame = tuiCache.getGame(activeGameId)
-          let gameName =
-            if cachedGame.isSome: cachedGame.get().name.toLowerAscii()
-            else: "unknown"
-          let outPath = exportSvg(
-            svgContent, gameName, sam.model.view.turn,
-            tuiConfig.mapExportDir)
-          sam.model.ui.lastExportPath = outPath
-          sam.model.ui.exportConfirmActive = true
-          sam.model.ui.statusMessage = "Map saved: " & outPath
-          if sam.model.ui.openMapRequested:
-            discard openInViewer(outPath)
-        except CatchableError as e:
-          sam.model.ui.statusMessage = "Map export failed: " & e.msg
-      else:
+      if not exportCurrentMap(false):
         sam.model.ui.statusMessage =
           "Map export unavailable (no game loaded)"
       sam.model.ui.exportMapRequested = false
       sam.model.ui.openMapRequested = false
+      needsRender = true
+
+    # Handle manual sync requests from expert mode
+    if sam.model.ui.syncNowRequested:
+      triggerGameSyncCheck(true, "manual")
+      sam.model.ui.syncNowRequested = false
       needsRender = true
 
     # Persist intel note edits (local TUI cache only)

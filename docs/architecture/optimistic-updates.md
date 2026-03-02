@@ -128,6 +128,12 @@ If there are already staged commands at sync time (e.g. the player
 opened a cached draft), `reapplyAllOptimisticUpdates` should be called
 immediately after sync to re-apply them against the fresh pristine state.
 
+### Turn Advance Rule
+
+When authoritative state advances to a new turn, staged commands from
+the previous turn are cleared. This prevents stale optimistic edits from
+leaking into the new turn and ensures the UI reflects authoritative data.
+
 ### 2. Staging a Command
 
 When the player confirms a ZTC or FleetCommand, the staging entry

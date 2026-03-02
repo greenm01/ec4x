@@ -70,6 +70,14 @@ suite "Expert Mode Parser":
     let cmd = parseExpertCommand(":ls")
     check cmd.kind == ExpertCommandKind.MetaList
 
+  test "Meta command: sync now":
+    let cmd = parseExpertCommand(":sync now")
+    check cmd.kind == ExpertCommandKind.MetaSyncNow
+
+  test "Map command: export":
+    let cmd = parseExpertCommand(":map export")
+    check cmd.kind == ExpertCommandKind.MapExport
+
   test "Colony command: auto":
     let cmd = parseExpertCommand(":c Sol auto rep on")
     check cmd.kind == ExpertCommandKind.ColonyAuto

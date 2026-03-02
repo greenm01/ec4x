@@ -5,6 +5,7 @@
 ## Config file format:
 ##   config {
 ##     default-relay "wss://relay.ec4x.io"
+##     post-submit-sync-minutes 15
 ##     
 ##     relay-aliases {
 ##       home "ws://192.168.1.50:8080"
@@ -27,6 +28,7 @@ type
   TuiConfig* = object
     defaultRelay*: string
     mapExportDir*: string
+    postSubmitSyncMinutes*: int
     relayAliases*: Table[string, string]
     showTableBorders*: bool
     showZebraStripe*: bool
@@ -56,6 +58,7 @@ proc loadTuiConfig*(): TuiConfig =
   result = TuiConfig(
     defaultRelay: "",
     mapExportDir: "",
+    postSubmitSyncMinutes: 15,
     relayAliases: initTable[string, string](),
     showTableBorders: true,
     showZebraStripe: true,
@@ -83,6 +86,9 @@ proc loadTuiConfig*(): TuiConfig =
         of "map-export-dir":
           if child.args.len > 0:
             result.mapExportDir = child.args[0].kString()
+        of "post-submit-sync-minutes":
+          if child.args.len > 0:
+            result.postSubmitSyncMinutes = child.args[0].kInt().int
         of "show-table-borders":
           if child.args.len > 0:
             result.showTableBorders = child.args[0].kBool()
@@ -104,6 +110,11 @@ proc loadTuiConfig*(): TuiConfig =
   except CatchableError as e:
     logWarn("TuiConfig", "Failed to parse config: ", e.msg)
 
+  if result.postSubmitSyncMinutes < 1:
+    result.postSubmitSyncMinutes = 1
+  if result.postSubmitSyncMinutes > 1440:
+    result.postSubmitSyncMinutes = 1440
+
 proc saveTuiConfig*(config: TuiConfig) =
   ## Save the TUI config to disk
   let configDir = getConfigDir()
@@ -116,6 +127,9 @@ proc saveTuiConfig*(config: TuiConfig) =
   
   if config.mapExportDir.len > 0:
     content.add("  map-export-dir \"" & config.mapExportDir & "\"\n")
+
+  content.add("  post-submit-sync-minutes " &
+    $config.postSubmitSyncMinutes & "\n")
   
   content.add("  show-table-borders " &
     (if config.showTableBorders: "true" else: "false") & "\n")

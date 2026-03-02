@@ -1022,6 +1022,7 @@ type
     # Map export flags
     exportMapRequested*: bool
     openMapRequested*: bool
+    syncNowRequested*: bool
     lastExportPath*: string
     exportConfirmActive*: bool
 
@@ -1364,6 +1365,7 @@ proc initTuiUiState*(): TuiUiState =
     showHelpOverlay: false,
     exportMapRequested: false,
     openMapRequested: false,
+    syncNowRequested: false,
     lastExportPath: "",
     exportConfirmActive: false,
     nostrEnabled: false,

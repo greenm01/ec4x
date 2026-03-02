@@ -63,6 +63,14 @@ commanding through the Player TUI without dev shortcuts.
 - [ ] Verify submit confirmation category totals.
 - [ ] Verify staged queue clears as expected after submit.
 
+## Turn Advance + Sync
+
+- [ ] Keep TUI open after submit until turn advances.
+- [ ] Verify HUD turn number updates on resolved turn.
+- [ ] Verify staged previous-turn commands are cleared on turn advance.
+- [ ] Verify map auto-export writes `turn_<N>.svg` on new turn.
+- [ ] Verify `:sync now` triggers immediate sync check.
+
 ## Exit Criteria
 
 - [ ] No blocking UX defects found.

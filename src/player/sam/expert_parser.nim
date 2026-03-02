@@ -51,6 +51,7 @@ type
     MetaList
     MetaDrop
     MetaSubmit
+    MetaSyncNow
     MetaHelp
     # Error
     ParseError
@@ -116,7 +117,7 @@ type
       noteText*: string
     of MapExport:
       discard
-    of MetaClear, MetaList, MetaSubmit, MetaHelp:
+    of MetaClear, MetaList, MetaSubmit, MetaSyncNow, MetaHelp:
       discard
     of MetaDrop:
       dropIndex*: int
@@ -167,7 +168,8 @@ proc parseCategory(tok: string): ExpertCategory =
   of "spy", "s": ExpertCategory.Spy
   of "gov", "g": ExpertCategory.Gov
   of "map", "m": ExpertCategory.Map
-  of "clear", "list", "ls", "drop", "rm", "submit", "help", "?": ExpertCategory.Meta
+  of "clear", "list", "ls", "drop", "rm", "submit", "sync",
+      "help", "?": ExpertCategory.Meta
   else: ExpertCategory.Unknown
 
 proc parseFleetCommand(tokens: seq[string]): ExpertCommand =
@@ -329,6 +331,11 @@ proc parseMetaCommand(tokens: seq[string]): ExpertCommand =
   of "clear": return ExpertCommand(kind: MetaClear)
   of "list", "ls": return ExpertCommand(kind: MetaList)
   of "submit": return ExpertCommand(kind: MetaSubmit)
+  of "sync":
+    if tokens.len >= 2 and tokens[1].toLowerAscii() == "now":
+      return ExpertCommand(kind: MetaSyncNow)
+    return ExpertCommand(kind: ParseError,
+      errorMessage: "Usage: :sync now")
   of "drop", "rm":
     if tokens.len < 2: return ExpertCommand(kind: ParseError, errorMessage: "Drop requires an index")
     var idx: int

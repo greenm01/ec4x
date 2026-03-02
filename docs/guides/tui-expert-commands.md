@@ -83,6 +83,7 @@ Each command has a two-digit code and a canonical name.
 :drop <n> or :rm    Remove staged command by index
 :clear              Clear all staged commands
 :submit             Submit turn (bypass Ctrl+E confirmation)
+:sync now           Force immediate server sync check
 ```
 
 ## History Navigation
@@ -98,3 +99,19 @@ While in expert mode:
 - Use Ctrl+E twice to submit the current turn from normal mode.
 - `:submit` bypasses confirmation and submits immediately.
 - `:list` shows numbered commands. Use those numbers with `:drop`.
+- `:map export` exports the current starmap SVG at any time.
+- After submit, the client can periodically re-check server state.
+
+## TUI Sync Config
+
+Set in `~/.config/ec4x/config.kdl`:
+
+```kdl
+config {
+  post-submit-sync-minutes 15
+}
+```
+
+`post-submit-sync-minutes` controls how often the TUI asks for a
+fresh authoritative game snapshot after a successful submit while
+waiting for the next turn.
