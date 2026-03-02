@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import time
 from urllib.parse import urlparse
 
 
@@ -44,6 +45,15 @@ def parse_invite_codes(invite_output: str) -> list[str]:
         if match:
             codes.append(match.group(1))
     return codes
+
+
+def parse_invite_statuses(invite_output: str) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for line in invite_output.splitlines():
+        match = re.search(r":\s*([a-z0-9-]+)@[^\s]+\s+\[(PENDING|CLAIMED)\]", line)
+        if match:
+            statuses[match.group(1)] = match.group(2)
+    return statuses
 
 
 def parse_keypairs(keys_output: str, bot_count: int) -> list[tuple[str, str]]:
@@ -185,6 +195,48 @@ def write_multi_env(
     env_file.write_text("\n".join(lines) + "\n")
 
 
+def claim_invite_with_retry(
+    repo: Path,
+    relay: str,
+    game_slug: str,
+    invite_code: str,
+    player_priv_hex: str,
+    player_pub_hex: str,
+    max_attempts: int = 10,
+    sleep_seconds: float = 4.0,
+) -> None:
+    for attempt in range(1, max_attempts + 1):
+        run(
+            [
+                "nim",
+                "r",
+                "tools/claim_invite.nim",
+                relay,
+                invite_code,
+                player_priv_hex,
+                player_pub_hex,
+                "invite",
+            ],
+            repo,
+        )
+
+        invite_output = run(["bin/ec4x", "invite", game_slug], repo)
+        statuses = parse_invite_statuses(invite_output)
+        if statuses.get(invite_code) == "CLAIMED":
+            return
+
+        if attempt < max_attempts:
+            print(
+                f"  claim not confirmed for {invite_code} "
+                f"(attempt {attempt}/{max_attempts}), retrying..."
+            )
+            time.sleep(sleep_seconds)
+
+    raise RuntimeError(
+        f"Invite claim not confirmed after {max_attempts} attempts: {invite_code}"
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Clean, create game, claim invites, and launch multi-bot run"
@@ -308,17 +360,13 @@ def main() -> int:
     for i in range(args.bots):
         priv_hex, pub_hex = keypairs[i]
         code = invite_codes[i]
-        run(
-            [
-                "nim",
-                "r",
-                "tools/claim_invite.nim",
-                args.relay,
-                code,
-                priv_hex,
-                pub_hex,
-            ],
-            repo,
+        claim_invite_with_retry(
+            repo=repo,
+            relay=args.relay,
+            game_slug=game_slug,
+            invite_code=code,
+            player_priv_hex=priv_hex,
+            player_pub_hex=pub_hex,
         )
         print(f"  bot{i+1} claimed {code}")
 
