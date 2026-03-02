@@ -305,6 +305,8 @@ proc buildRowCount*(category: BuildCategory): int =
     GroundSpecRows.len
   of BuildCategory.Facilities:
     FacilitySpecRows.len
+  of BuildCategory.Industrial:
+    1
 
 proc buildRowKey*(category: BuildCategory, idx: int): BuildRowKey =
   case category
@@ -332,6 +334,13 @@ proc buildRowKey*(category: BuildCategory, idx: int): BuildRowKey =
       groundClass: none(GroundClass),
       facilityClass: some(row.facilityClass)
     )
+  of BuildCategory.Industrial:
+    BuildRowKey(
+      kind: BuildOptionKind.Industrial,
+      shipClass: none(ShipClass),
+      groundClass: none(GroundClass),
+      facilityClass: none(FacilityClass)
+    )
 
 proc buildRowCost*(key: BuildRowKey): int =
   case key.kind
@@ -353,6 +362,8 @@ proc buildRowCost*(key: BuildRowKey): int =
     for row in FacilitySpecRows:
       if row.facilityClass == key.facilityClass.get():
         return row.pc
+  of BuildOptionKind.Industrial:
+    return 0
   0
 
 proc buildRowCst*(key: BuildRowKey): int =
@@ -375,4 +386,6 @@ proc buildRowCst*(key: BuildRowKey): int =
     for row in FacilitySpecRows:
       if row.facilityClass == key.facilityClass.get():
         return row.cst
+  of BuildOptionKind.Industrial:
+    return 1
   0

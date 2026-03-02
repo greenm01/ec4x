@@ -1427,6 +1427,7 @@ proc renderPlanetConstructionTab*(
             of BuildOptionKind.Ship: "Ship"
             of BuildOptionKind.Ground: "Ground"
             of BuildOptionKind.Facility: "Facility"
+            of BuildOptionKind.Industrial: "Industrial"
           buildTable.addRow(@[
             option.name,
             $option.cost,

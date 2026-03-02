@@ -204,9 +204,9 @@ proc economyContextActions*(): seq[ContextAction] =
   ## Context actions for Economy (View 6)
   @[
     ContextAction(key: "Left/Right", label: "Adjust tax", enabled: true),
-    ContextAction(key: "Enter", label: "Confirm", enabled: true),
-    ContextAction(key: "I", label: "Industrial investment", enabled: true),
-    ContextAction(key: "G", label: "Guild transfer", enabled: true),
+    ContextAction(key: "J/K", label: "Select house", enabled: true),
+    ContextAction(key: "E/P/A/R", label: "Diplomacy", enabled: true),
+    ContextAction(key: "M", label: "Export map", enabled: true),
   ]
 
 # =============================================================================

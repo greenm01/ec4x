@@ -23,6 +23,30 @@ import ./widget/hexmap/symbols
 from ../sam/tui_model import BuildOption, BuildOptionKind, DockSummary,
   commandLabel, fleetCommandNumber
 
+proc industrialUnitCostPreview(
+    populationUnits: int,
+    industrialUnits: int
+): int =
+  ## Compute next IU purchase cost from config scaling tiers.
+  let baseCost = int(gameConfig.economy.industrialInvestment.baseCost)
+  let iuPercent =
+    if populationUnits > 0:
+      int((float(industrialUnits) / float(populationUnits)) * 100.0)
+    else:
+      0
+
+  var multiplier = 1.0'f32
+  let scaling = gameConfig.economy.industrialInvestment.costScaling
+  for tierNum in 1'i32 .. 5'i32:
+    if scaling.hasKey(tierNum):
+      let tier = scaling[tierNum]
+      if iuPercent <= int(tier.threshold):
+        multiplier = tier.multiplier
+        break
+      multiplier = tier.multiplier
+
+  int(float(baseCost) * float(multiplier))
+
 # -----------------------------------------------------------------------------
 # Coordinate conversions
 # -----------------------------------------------------------------------------
@@ -802,8 +826,12 @@ proc buildCommandToQueueItem(cmd: BuildCommand): QueueItem =
   of BuildType.Infrastructure:
     name = "Infrastructure"
   let displayName =
-    if cmd.quantity > 1: name & " x" & $cmd.quantity
-    else: name
+    if cmd.buildType == BuildType.Industrial and cmd.industrialUnits > 1:
+      name & " x" & $cmd.industrialUnits
+    elif cmd.quantity > 1:
+      name & " x" & $cmd.quantity
+    else:
+      name
   QueueItem(
     kind: QueueKind.Construction,
     name: displayName,
@@ -1038,6 +1066,17 @@ proc colonyToDetailData*(
       cost: cost,
       cstReq: cstReq
     ))
+
+  let industrialCost = industrialUnitCostPreview(
+    colony.populationUnits.int,
+    colony.industrial.units.int
+  )
+  buildOptions.add(BuildOption(
+    kind: BuildOptionKind.Industrial,
+    name: "Industrial Units",
+    cost: industrialCost,
+    cstReq: 1
+  ))
 
   PlanetDetailData(
     colonyId: int(colonyId),
@@ -1501,9 +1540,10 @@ proc colonyToDetailDataFromPS*(
 # -----------------------------------------------------------------------------
 
 proc computeBuildOptionsFromPS*(ps: PlayerState,
-                               colonyId: ColonyId): tuple[
-                                 options: seq[BuildOption],
-                                 dockSummary: DockSummary] =
+                               colonyId: ColonyId,
+                               stagedBuilds: seq[BuildCommand] = @[]): tuple[
+                                  options: seq[BuildOption],
+                                  dockSummary: DockSummary] =
   ## Compute build options from PlayerState + gameConfig
   ## Used in Nostr mode where full GameState is not available
 
@@ -1562,6 +1602,12 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
 
   let colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)
   let snapshot = colonyLimits.getOrDefault(int(colonyId))
+  var stagedIndustrialUnits = 0
+  for cmd in stagedBuilds:
+    if cmd.colonyId == colonyId and cmd.buildType == BuildType.Industrial:
+      stagedIndustrialUnits += max(0, int(cmd.industrialUnits))
+  let effectiveIndustrialUnits =
+    snapshot.industrialUnits + stagedIndustrialUnits
   let pbCurrent = countPlanetBreakersInFleets(ps)
   let pbMax = ps.ownColonies.len
   let maxSpaceports =
@@ -1659,6 +1705,17 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
       cstReq: cstReq
     ))
 
+  let industrialCost = industrialUnitCostPreview(
+    col.populationUnits.int,
+    effectiveIndustrialUnits
+  )
+  options.add(BuildOption(
+    kind: BuildOptionKind.Industrial,
+    name: "Industrial Units",
+    cost: industrialCost,
+    cstReq: 1
+  ))
+
   (options: options, dockSummary: dockInfo)
 
 # =============================================================================
@@ -1671,5 +1728,3 @@ proc fleetHasStagedCommand*(fleetId: int, stagedCommands: seq[FleetCommand]): bo
     if int(cmd.fleetId) == fleetId:
       return true
   false
-
-

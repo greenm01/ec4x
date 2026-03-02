@@ -189,6 +189,7 @@ type
     Ship
     Ground
     Facility
+    Industrial
 
   BuildOption* = object
     kind*: BuildOptionKind
@@ -216,7 +217,7 @@ type
     shields*: int
 
   BuildCategory* {.pure.} = enum
-    Ships, Facilities, Ground
+    Ships, Facilities, Ground, Industrial
 
   BuildModalFocus* {.pure.} = enum
     CategoryTabs, BuildList, QueueList
@@ -2442,6 +2443,8 @@ proc formatBuildOrder*(cmd: BuildCommand): string =
       result.add($cmd.groundClass.get())
   of BuildType.Industrial:
     result.add("Industrial Units")
+    if cmd.industrialUnits > 0:
+      result.add(" +" & $cmd.industrialUnits & " IU")
   of BuildType.Infrastructure:
     result.add("Infrastructure")
 

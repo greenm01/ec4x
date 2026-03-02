@@ -123,7 +123,7 @@ proc suggestFleetActions(query: string): seq[ExpertSuggestion] =
 
 proc suggestColonyActions(query: string): seq[ExpertSuggestion] =
   let actions = @[
-    (text: "build", hint: "Build ship/facility"),
+    (text: "build", hint: "Build ship/facility/industrial"),
     (text: "qrm", hint: "Remove from queue"),
     (text: "qup", hint: "Move up in queue"),
     (text: "auto", hint: "Set automation")

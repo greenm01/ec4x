@@ -2795,6 +2795,8 @@ proc buildOptionMatchesRow(opt: BuildOption, key: BuildRowKey): bool =
       cls == key.facilityClass.get()
     except:
       false
+  of BuildOptionKind.Industrial:
+    true
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   if buildRowCst(key) > state.cstLevel:
@@ -2852,9 +2854,17 @@ proc pendingPpCost(state: BuildModalState): int =
           groundClass: none(GroundClass),
           facilityClass: cmd.facilityClass
         ))
+    of BuildType.Industrial:
+      for opt in state.availableOptions:
+        if opt.kind == BuildOptionKind.Industrial:
+          itemCost = opt.cost
+          break
     else:
       discard
-    total += itemCost * cmd.quantity.int
+    if cmd.buildType == BuildType.Industrial:
+      total += itemCost * max(0, int(cmd.industrialUnits))
+    else:
+      total += itemCost * cmd.quantity.int
   total
 
 proc stagedBuildIdx(
@@ -2880,6 +2890,9 @@ proc stagedBuildIdx(
           cmd.facilityClass.isSome and key.facilityClass.isSome and
           cmd.facilityClass.get() == key.facilityClass.get():
         return idx
+    of BuildOptionKind.Industrial:
+      if cmd.buildType == BuildType.Industrial:
+        return idx
   -1
 
 proc syncStagedBuildMirrors(model: var TuiModel) =
@@ -2893,6 +2906,11 @@ proc decrementStagedBuildAt(
 ): StageToggleResult =
   if idx < 0 or idx >= model.ui.stagedBuildCommands.len:
     return StageToggleResult.NoChange
+  if model.ui.stagedBuildCommands[idx].buildType == BuildType.Industrial and
+      model.ui.stagedBuildCommands[idx].industrialUnits > 1:
+    model.ui.stagedBuildCommands[idx].industrialUnits -= 1
+    syncStagedBuildMirrors(model)
+    return StageToggleResult.Updated
   if model.ui.stagedBuildCommands[idx].quantity > 1:
     model.ui.stagedBuildCommands[idx].quantity -= 1
     syncStagedBuildMirrors(model)
@@ -2942,13 +2960,20 @@ proc incSelectedQty(model: var TuiModel) =
   of BuildOptionKind.Facility:
     candidate.buildType = BuildType.Facility
     candidate.facilityClass = key.facilityClass
+  of BuildOptionKind.Industrial:
+    candidate.buildType = BuildType.Industrial
+    candidate.industrialUnits = 1
   let limitErr = validateBuildIncrement(model, candidate)
   if limitErr.isSome:
     model.ui.statusMessage = limitErr.get()
     return
   let existingIdx = stagedBuildIdx(model.ui.buildModal, key)
   if existingIdx >= 0:
-    model.ui.stagedBuildCommands[existingIdx].quantity += 1
+    if model.ui.stagedBuildCommands[existingIdx].buildType ==
+        BuildType.Industrial:
+      model.ui.stagedBuildCommands[existingIdx].industrialUnits += 1
+    else:
+      model.ui.stagedBuildCommands[existingIdx].quantity += 1
   else:
     model.ui.stagedBuildCommands.add(candidate)
   syncStagedBuildMirrors(model)
@@ -2986,11 +3011,13 @@ proc switchBuildCategory(model: var TuiModel, reverse: bool) =
   if reverse:
     case model.ui.buildModal.category
     of BuildCategory.Ships:
-      model.ui.buildModal.category = BuildCategory.Ground
+      model.ui.buildModal.category = BuildCategory.Industrial
     of BuildCategory.Facilities:
       model.ui.buildModal.category = BuildCategory.Ships
     of BuildCategory.Ground:
       model.ui.buildModal.category = BuildCategory.Facilities
+    of BuildCategory.Industrial:
+      model.ui.buildModal.category = BuildCategory.Ground
   else:
     case model.ui.buildModal.category
     of BuildCategory.Ships:
@@ -2998,6 +3025,8 @@ proc switchBuildCategory(model: var TuiModel, reverse: bool) =
     of BuildCategory.Facilities:
       model.ui.buildModal.category = BuildCategory.Ground
     of BuildCategory.Ground:
+      model.ui.buildModal.category = BuildCategory.Industrial
+    of BuildCategory.Industrial:
       model.ui.buildModal.category = BuildCategory.Ships
   model.ui.buildModal.selectedBuildIdx = 0
   model.ui.buildModal.focus = BuildModalFocus.BuildList

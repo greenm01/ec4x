@@ -185,10 +185,21 @@ High taxes throttle industrial development. Low taxes accelerate it. For starbas
 You can accelerate industrial development by spending PP directly:
 
 ```
-IU purchased = PP spent
+IU purchased = floor(PP spent / effective_IU_cost)
 ```
 
-Each PP you spend converts directly to one IU at your target colony. Investment is immediate and takes effect in the same turn's GCO calculation.
+Where `effective_IU_cost` is config-driven:
+
+- `effective_IU_cost = baseCost × tierMultiplier`
+- `baseCost` and tier thresholds/multipliers come from
+  `config/economy.kdl` (`industrialInvestment`)
+
+The baseline can be tuned for balance (for example, 30 PP per IU at low
+saturation), and cost rises as IU saturation increases relative to colony
+population. This keeps IU investment strategically meaningful while limiting
+runaway snowballing on already over-industrialized worlds.
+
+Investment is immediate and takes effect in the same turn's GCO calculation.
 
 **Strategic Considerations:**
 

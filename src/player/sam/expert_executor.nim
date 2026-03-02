@@ -76,6 +76,11 @@ proc parseFacilityType(s: string): Option[FacilityClass] =
   of "drydock": some(FacilityClass.Drydock)
   else: none(FacilityClass)
 
+proc isIndustrialBuildItem(s: string): bool =
+  let lower = s.toLowerAscii()
+  lower in ["industrial", "industry", "iu", "industrial-units",
+    "industrial_units"]
+
 proc getColonyMgmtIdx(model: TuiModel, colonyId: int): int =
   for i in 0 ..< model.ui.stagedColonyManagement.len:
     if int(model.ui.stagedColonyManagement[i].colonyId) == colonyId:
@@ -195,7 +200,22 @@ proc executeExpertCommand*(model: var TuiModel, cmd: ExpertCommand): tuple[succe
       ))
       model.ui.modifiedSinceSubmit = true
       return (true, "Staged build for " & $cmd.buildQty & " " & cmd.buildItem)
-      
+
+    if isIndustrialBuildItem(cmd.buildItem):
+      if cmd.buildQty <= 0:
+        return (false, "Industrial IU amount must be > 0")
+      model.ui.stagedBuildCommands.add(BuildCommand(
+        colonyId: ColonyId(cId.get()),
+        buildType: BuildType.Industrial,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: int32(cmd.buildQty)
+      ))
+      model.ui.modifiedSinceSubmit = true
+      return (true, "Staged IU investment for " & $cmd.buildQty & " IU")
+
     return (false, "Unknown build item: " & cmd.buildItem)
 
   of ExpertCommandKind.ColonyQrm:

@@ -31,6 +31,13 @@ suite "Expert Mode Parser":
     check cmd.buildQty == 5
     check cmd.buildItem == "interceptor"
 
+  test "Colony command: industrial build":
+    let cmd = parseExpertCommand(":c Sol build 7 industrial")
+    check cmd.kind == ExpertCommandKind.ColonyBuild
+    check cmd.buildColony == "Sol"
+    check cmd.buildQty == 7
+    check cmd.buildItem == "industrial"
+
   test "Tech command: alloc":
     let cmd = parseExpertCommand(":t wep alloc 50")
     check cmd.kind == ExpertCommandKind.TechAlloc

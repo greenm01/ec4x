@@ -5,7 +5,7 @@ import std/[unittest, options, strutils, tables]
 import ../../src/player/sam/tui_model
 import ../../src/player/sam/expert_parser
 import ../../src/player/sam/expert_executor
-import ../../src/engine/types/[core, fleet, colony, command]
+import ../../src/engine/types/[core, fleet, colony, command, production]
 
 suite "TUI expert parity":
   test "expert fleet move stages canonical fleet command":
@@ -56,3 +56,19 @@ suite "TUI expert parity":
     let exec = executeExpertCommand(model, ast)
     check not exec.success
     check exec.message.contains("not implemented")
+
+  test "expert colony industrial build stages IU investment":
+    var model = initTuiModel()
+    model.view.viewingHouse = 1
+    model.view.colonies = @[
+      ColonyInfo(colonyId: 19, systemName: "Forge", owner: 1)
+    ]
+
+    let ast = parseExpertCommand("colony Forge build 6 industrial")
+    check ast.kind == ExpertCommandKind.ColonyBuild
+    let exec = executeExpertCommand(model, ast)
+    check exec.success
+    check model.ui.stagedBuildCommands.len == 1
+    let cmd = model.ui.stagedBuildCommands[0]
+    check cmd.buildType == BuildType.Industrial
+    check cmd.industrialUnits == 6

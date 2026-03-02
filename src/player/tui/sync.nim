@@ -1575,7 +1575,11 @@ proc syncBuildModalData*(
       break
 
   # Compute build options and dock summary
-  let result = computeBuildOptionsFromPS(ps, colonyId)
+  let result = computeBuildOptionsFromPS(
+    ps,
+    colonyId,
+    model.ui.stagedBuildCommands
+  )
   model.ui.buildModal.availableOptions = result.options
   model.ui.buildModal.dockSummary = result.dockSummary
   model.ui.buildModal.ppAvailable = model.view.treasury

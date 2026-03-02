@@ -74,6 +74,14 @@ proc columnsForCategory(category: BuildCategory): seq[TableColumn] =
       tableColumn("Time", 4, table.Alignment.Right),
       tableColumn("Qty", 4, table.Alignment.Right)
     ]
+  of BuildCategory.Industrial:
+    @[
+      tableColumn("Class", 5, table.Alignment.Left),
+      tableColumn("Name", 24, table.Alignment.Left),
+      tableColumn("CST", 3, table.Alignment.Right),
+      tableColumn("PC", 4, table.Alignment.Right),
+      tableColumn("Qty", 4, table.Alignment.Right)
+    ]
 
 proc fillRow(area: Rect, buf: var CellBuffer, style: CellStyle) =
   if area.isEmpty:
@@ -96,7 +104,10 @@ proc renderCategoryTabs(
       1
     of BuildCategory.Ground:
       2
-  var tabBar = tabs(["Ships", "Facilities", "Ground"], activeTabIdx)
+    of BuildCategory.Industrial:
+      3
+  var tabBar = tabs(["Ships", "Facilities", "Ground", "Industrial"],
+    activeTabIdx)
     .inactiveStyle(modalBgStyle())
     .activeStyle(CellStyle(
       fg: color(SelectedBgColor),
@@ -164,6 +175,9 @@ proc stagedQty(state: BuildModalState, key: BuildRowKey): int =
           cmd.facilityClass.isSome and key.facilityClass.isSome and
           cmd.facilityClass.get() == key.facilityClass.get():
         total += cmd.quantity.int
+    of BuildOptionKind.Industrial:
+      if cmd.buildType == BuildType.Industrial:
+        total += max(0, int(cmd.industrialUnits))
   total
 
 proc pendingDockUse(state: BuildModalState): int =
@@ -212,6 +226,13 @@ proc pendingPpCost(state: BuildModalState): int =
           facilityClass: cmd.facilityClass
         )
         total += buildRowCost(key) * cmd.quantity.int
+    of BuildType.Industrial:
+      var cost = 0
+      for opt in state.availableOptions:
+        if opt.kind == BuildOptionKind.Industrial:
+          cost = opt.cost
+          break
+      total += cost * max(0, int(cmd.industrialUnits))
     else:
       discard
   total
@@ -253,6 +274,8 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
             return true
         except:
           discard
+    of BuildOptionKind.Industrial:
+      return true
   false
 
 proc renderBuildTable(
@@ -383,6 +406,39 @@ proc renderBuildTable(
         cellStyles: cellStyles,
         kind: TableRowKind.Normal
       ))
+  of BuildCategory.Industrial:
+    var cost = 0
+    var cst = 1
+    for opt in state.availableOptions:
+      if opt.kind == BuildOptionKind.Industrial:
+        cost = opt.cost
+        cst = opt.cstReq
+        break
+    let key = buildRowKey(state.category, 0)
+    let qty = stagedQty(state, key)
+    let buildable = isBuildable(state, key)
+    let qtyStyle =
+      if qty > 0: some(canvasHeaderStyle()) else: none(CellStyle)
+    var cellStyles: seq[Option[CellStyle]] = @[]
+    cellStyles.setLen(columns.len)
+    if qtyStyle.isSome:
+      cellStyles[^1] = qtyStyle
+    if not buildable:
+      for i in 0 ..< cellStyles.len:
+        if cellStyles[i].isNone:
+          cellStyles[i] = some(canvasDimStyle())
+    let cells = @[
+      "IU",
+      "Industrial Units",
+      $cst,
+      $cost,
+      $qty
+    ]
+    tableView.addRow(TableRow(
+      cells: cells,
+      cellStyles: cellStyles,
+      kind: TableRowKind.Normal
+    ))
 
   tableView.render(area, buf)
 

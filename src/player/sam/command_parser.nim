@@ -9,6 +9,7 @@
 ##   :patrol fleet 3
 ##   :03 fleet 3
 ##   :build colony 1 ship Destroyer quantity 2
+##   :build colony 1 industrial 5
 ##   :clear - Clear all staged commands
 ##   :list - Show staged command summary
 ##   :drop 2 - Remove staged command by index
@@ -282,8 +283,8 @@ proc expertCommandCatalog*(): seq[ExpertCommandInfo] =
     ExpertCommandInfo(
       name: "build",
       aliases: @["b"],
-      synopsis: "colony <id> ship/facility <type>",
-      description: "Queue ship or facility build.",
+      synopsis: "colony <id> ship/facility <type> | industrial <iu>",
+      description: "Queue ship, facility, or IU investment build.",
       isMeta: false
     ),
   ]
@@ -773,6 +774,48 @@ proc parseBuildFacility(tokens: seq[string]): ParseResult =
     buildCommand: some(cmd)
   )
 
+proc parseBuildIndustrial(tokens: seq[string]): ParseResult =
+  ## Parse: build colony <id> industrial <units>
+  if tokens.len < 5:
+    return ParseResult(
+      success: false,
+      error: "Usage: :build colony <id> industrial <units>"
+    )
+
+  if tokens[0] != "build" or tokens[1] != "colony" or
+      tokens[3] != "industrial":
+    return ParseResult(
+      success: false,
+      error: "Usage: :build colony <id> industrial <units>"
+    )
+
+  var colonyId: int
+  if parseInt(tokens[2], colonyId) == 0:
+    return ParseResult(success: false, error: "Invalid colony ID")
+
+  var units: int
+  if parseInt(tokens[4], units) == 0 or units <= 0:
+    return ParseResult(
+      success: false,
+      error: "Industrial units must be a positive integer"
+    )
+
+  let cmd = BuildCommand(
+    colonyId: ColonyId(colonyId),
+    buildType: BuildType.Industrial,
+    quantity: 1,
+    shipClass: none(ShipClass),
+    facilityClass: none(FacilityClass),
+    groundClass: none(GroundClass),
+    industrialUnits: int32(units)
+  )
+
+  ParseResult(
+    success: true,
+    error: "",
+    buildCommand: some(cmd)
+  )
+
 # =============================================================================
 # Main Parser
 # =============================================================================
@@ -883,10 +926,12 @@ proc parseExpertCommand*(input: string): ParseResult =
       parseBuildShip(tokens)
     elif tokens.len >= 4 and tokens[3] == "facility":
       parseBuildFacility(tokens)
+    elif tokens.len >= 4 and tokens[3] == "industrial":
+      parseBuildIndustrial(tokens)
     else:
       ParseResult(
         success: false,
-        error: "Usage: :build colony <id> ship/facility <type>",
+        error: "Usage: :build colony <id> ship/facility <type> | industrial <iu>",
         metaCommand: MetaCommandType.None
       )
   else:

@@ -272,6 +272,10 @@ proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int =
         let groundClass = cmd.groundClass.get()
         let cost = int(gameConfig.groundUnits.units[groundClass].productionCost)
         result += cost * qty
+    of BuildType.Industrial:
+      let cost = int(gameConfig.economy.industrialInvestment.baseCost)
+      let units = max(0, int(cmd.industrialUnits))
+      result += cost * units
     else:
       discard
 
