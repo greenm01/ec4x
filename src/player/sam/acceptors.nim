@@ -2325,10 +2325,17 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage = "Identity activated"
     of ActionKind.entryCreatePasswordAppend:
       if proposal.gameActionData.len > 0:
-        discard model.ui.entryModal.createPasswordInput.appendChar(
-          proposal.gameActionData[0])
+        if model.ui.entryModal.createPasswordFocus == 0:
+          discard model.ui.entryModal.createPasswordInput.appendChar(
+            proposal.gameActionData[0])
+        else:
+          discard model.ui.entryModal.confirmPasswordInput.appendChar(
+            proposal.gameActionData[0])
     of ActionKind.entryCreatePasswordBackspace:
-      model.ui.entryModal.createPasswordInput.backspace()
+      if model.ui.entryModal.createPasswordFocus == 0:
+        model.ui.entryModal.createPasswordInput.backspace()
+      else:
+        model.ui.entryModal.confirmPasswordInput.backspace()
     of ActionKind.entryCreatePasswordConfirm:
       if model.ui.entryModal.confirmCreatePassword():
         model.ui.statusMessage = "Wallet created successfully"
@@ -2336,6 +2343,18 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         model.ui.statusMessage =
           "Failed to create wallet: " & model.ui.entryModal.importError
+    of ActionKind.entryCreatePasswordTab:
+      model.ui.entryModal.createPasswordFocus =
+        1 - model.ui.entryModal.createPasswordFocus
+    of ActionKind.entryDismissWarning:
+      model.ui.entryModal.dismissSecurityWarning()
+    of ActionKind.entryKeyDetail:
+      model.ui.entryModal.showKeyDetail = not model.ui.entryModal.showKeyDetail
+      if model.ui.entryModal.showKeyDetail:
+        model.ui.entryModal.keyDetailMasked = true
+    of ActionKind.entryKeyDetailMask:
+      model.ui.entryModal.keyDetailMasked =
+        not model.ui.entryModal.keyDetailMasked
     of ActionKind.entryChangePassword:
       model.ui.entryModal.openChangePassword()
       model.ui.statusMessage = ""
@@ -2352,7 +2371,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
         model.ui.entryModal.passwordInput.delete()
       elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
-        model.ui.entryModal.createPasswordInput.delete()
+        if model.ui.entryModal.createPasswordFocus == 0:
+          model.ui.entryModal.createPasswordInput.delete()
+        else:
+          model.ui.entryModal.confirmPasswordInput.delete()
       elif model.ui.entryModal.mode == EntryModalMode.ChangePasswordPrompt:
         model.ui.entryModal.changePasswordInput.delete()
       elif model.ui.entryModal.mode == EntryModalMode.ImportNsec:
@@ -2374,7 +2396,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
         model.ui.entryModal.passwordInput.moveCursorLeft()
       elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
-        model.ui.entryModal.createPasswordInput.moveCursorLeft()
+        if model.ui.entryModal.createPasswordFocus == 0:
+          model.ui.entryModal.createPasswordInput.moveCursorLeft()
+        else:
+          model.ui.entryModal.confirmPasswordInput.moveCursorLeft()
       elif model.ui.entryModal.mode == EntryModalMode.ChangePasswordPrompt:
         model.ui.entryModal.changePasswordInput.moveCursorLeft()
       elif model.ui.entryModal.mode == EntryModalMode.ImportNsec:
@@ -2396,7 +2421,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       if model.ui.entryModal.mode == EntryModalMode.PasswordPrompt:
         model.ui.entryModal.passwordInput.moveCursorRight()
       elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
-        model.ui.entryModal.createPasswordInput.moveCursorRight()
+        if model.ui.entryModal.createPasswordFocus == 0:
+          model.ui.entryModal.createPasswordInput.moveCursorRight()
+        else:
+          model.ui.entryModal.confirmPasswordInput.moveCursorRight()
       elif model.ui.entryModal.mode == EntryModalMode.ChangePasswordPrompt:
         model.ui.entryModal.changePasswordInput.moveCursorRight()
       elif model.ui.entryModal.mode == EntryModalMode.ImportNsec:

@@ -118,6 +118,7 @@ type
     entryCreatePasswordAppend
     entryCreatePasswordBackspace
     entryCreatePasswordConfirm
+    entryCreatePasswordTab
     entryChangePassword
     entryChangePasswordAppend
     entryChangePasswordBackspace
@@ -128,6 +129,9 @@ type
     entryAdminSelect
     entryAdminCreateGame
     entryAdminManageGames
+    entryDismissWarning
+    entryKeyDetail
+    entryKeyDetailMask
     entryRelayEdit
     entryRelayAppend
     entryRelayBackspace

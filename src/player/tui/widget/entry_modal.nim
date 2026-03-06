@@ -20,6 +20,7 @@ import ../layout/rect
 import ../styles/ec_palette
 import ../../state/identity
 import ../../state/wallet
+import ../../../daemon/transport/nostr/nip19
 
 export text_input
 
@@ -78,6 +79,7 @@ type
     PasswordPrompt ## Prompting for password to unlock wallet
     CreatePasswordPrompt ## First-run: set password for new wallet
     ChangePasswordPrompt ## Change/remove wallet master password
+    SecurityWarning ## Post-creation security warning
 
   AdminMenuItem* {.pure.} = enum
     ## Admin menu options
@@ -126,6 +128,12 @@ type
     # Game creation state
     createPlayerCount*: int        ## Number of players (2-8)
     createField*: CreateGameField  ## Currently selected field
+    # Password confirmation (dual input)
+    confirmPasswordInput*: TextInputState ## Confirm password field
+    createPasswordFocus*: int      ## 0 = password, 1 = confirm
+    # Key detail overlay
+    showKeyDetail*: bool           ## Key detail overlay active
+    keyDetailMasked*: bool         ## nsec masked by default
 
 proc newEntryModalState*(): EntryModalState =
   ## Create initial entry modal state
@@ -164,6 +172,10 @@ proc newEntryModalState*(): EntryModalState =
     passwordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
     createPasswordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
     changePasswordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
+    confirmPasswordInput: initTextInputState(maxLength = 0, maxDisplayWidth = 30),
+    createPasswordFocus: 0,
+    showKeyDetail: false,
+    keyDetailMasked: true,
     importMasked: true,
     inviteError: "",
     importError: "",
@@ -465,21 +477,31 @@ proc closePlayerGamesManager*(state: var EntryModalState) =
 
 proc confirmCreatePassword*(state: var EntryModalState): bool =
   ## Finalize first-run wallet creation with the chosen password.
-  ## Password is mandatory — blank is rejected.
+  ## Password is mandatory — blank is rejected. Both fields must match.
   let password = state.createPasswordInput.value()
+  let confirm = state.confirmPasswordInput.value()
   if password.len == 0:
     state.importError = "A password is required."
+    return false
+  if password != confirm:
+    state.importError = "Passwords do not match"
     return false
   let result = createAndSaveWallet(some(password))
   if result.status == WalletLoadStatus.Success:
     state.wallet = result.wallet.get()
     state.identity = state.wallet.activeIdentity()
-    state.mode = EntryModalMode.Normal
+    state.mode = EntryModalMode.SecurityWarning
     state.createPasswordInput.clear()
+    state.confirmPasswordInput.clear()
+    state.createPasswordFocus = 0
     state.identityNeedsRefresh = true
     return true
   state.importError = "Failed to create wallet."
   return false
+
+proc dismissSecurityWarning*(state: var EntryModalState) =
+  ## Acknowledge security warning and proceed to Normal mode.
+  state.mode = EntryModalMode.Normal
 
 proc openChangePassword*(state: var EntryModalState) =
   ## Enter the change-password screen from the wallet manager.
@@ -642,6 +664,59 @@ proc adaptiveFooterHint(
     return ""
   minimal[0 ..< min(width, minimal.len)]
 
+proc renderKeyDetail(buf: var CellBuffer, inner: Rect,
+                     state: EntryModalState) =
+  ## Render key detail overlay showing npub and nsec for selected identity.
+  let headerStyle = modalBgStyle()
+  let labelStyle = modalDimStyle()
+  let valueStyle = CellStyle(
+    fg: color(PositiveColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let warnStyle = CellStyle(
+    fg: color(AlertColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let footerStyle = CellStyle(
+    fg: color(NeutralColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+  let idx = state.identitySelectedIdx
+  if idx < 0 or idx >= state.wallet.identities.len:
+    return
+
+  let identity = state.wallet.identities[idx]
+  let npubStr = encodeNpub(identity.npubHex)
+  let nsecStr = if state.keyDetailMasked:
+    "nsec1" & repeat("\xe2\x80\xa2", 20)
+  else:
+    encodeNsec(identity.nsecHex)
+
+  let title = "VIEW KEYS "
+  let ruleLen = max(0, inner.width - title.len - 1)
+  let headerLine = title & repeat("\xe2\x94\x80", ruleLen)
+  discard buf.setString(inner.x, inner.y, headerLine, headerStyle)
+
+  let y = inner.y + 2
+  discard buf.setString(inner.x, y, "npub:", labelStyle)
+  discard buf.setString(inner.x + 6, y, npubStr, valueStyle)
+
+  discard buf.setString(inner.x, y + 2, "nsec:", labelStyle)
+  discard buf.setString(inner.x + 6, y + 2, nsecStr,
+    if state.keyDetailMasked: labelStyle else: warnStyle)
+
+  if not state.keyDetailMasked:
+    discard buf.setString(inner.x, y + 4,
+      "Never share your nsec -- anyone with it can impersonate you.", warnStyle)
+
+  let footerY = inner.y + inner.height - 1
+  discard buf.setString(inner.x, footerY,
+    "[M]Toggle Mask  [Esc]Close", footerStyle)
+
 proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                            state: EntryModalState, tableHeight: int) =
   ## Render identity manager table.
@@ -684,13 +759,17 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
   let footerHint = adaptiveFooterHint(
     footerArea.width,
-    "[↑↓]Select [Enter]Use [I]Import [N]New [D]Del [P]Password [Esc]Back",
-    "[↑↓]Select [Enter]Use [I]Import [N]New [D]Del [Esc]Back",
-    "[↑↓] [Enter] [I] [N] [D] [Esc]",
+    "[↑↓]Select [Enter]Use [I]Import [N]New [D]Del [V]Keys [P]Password [Esc]Back",
+    "[↑↓]Select [Enter]Use [I]Import [N]New [D]Del [V]Keys [Esc]Back",
+    "[↑↓] [Enter] [I] [N] [D] [V] [Esc]",
     "[↑↓] [Enter] [Esc]"
   )
   discard buf.setString(footerArea.x, footerArea.y,
     footerHint, modalBgStyle())
+
+  if state.showKeyDetail:
+    let detailArea = rect(inner.x, inner.y, inner.width, modalArea.height - 4)
+    renderKeyDetail(buf, detailArea, state)
 
   if state.walletStatusMsg.len > 0:
     let statusStyle = CellStyle(
@@ -1026,12 +1105,18 @@ proc renderRelaySection(buf: var CellBuffer, area: Rect,
     widget.render(relayInput, inputArea, buf, editing and hasFocus)
 
 proc renderCreatePasswordPromptMode(buf: var CellBuffer, inner: Rect,
-    modalArea: Rect, passwordInput: TextInputState, importError: string,
-    isMasked: bool) =
-  ## Render the first-run password setup prompt.
+    modalArea: Rect, passwordInput: TextInputState,
+    confirmInput: TextInputState, importError: string,
+    isMasked: bool, focusField: int) =
+  ## Render the first-run password setup prompt with dual fields.
   let promptStyle = modalBgStyle()
-  let inputStyle = CellStyle(
+  let activeInputStyle = CellStyle(
     fg: color(PositiveColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let dimInputStyle = CellStyle(
+    fg: color(DisabledColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -1052,24 +1137,74 @@ proc renderCreatePasswordPromptMode(buf: var CellBuffer, inner: Rect,
   let promptY = inner.y + LogoHeight + 3
   let line1 = "Set a password to encrypt your new wallet"
   let line2 = "Password: "
+  let line3 = "Confirm:  "
   discard buf.setString(inner.x, promptY, line1, promptStyle)
   discard buf.setString(inner.x, promptY + 1, line2, promptStyle)
+  discard buf.setString(inner.x, promptY + 2, line3, promptStyle)
 
   let inputX = inner.x + line2.len
   let inputWidth = inner.width - line2.len - 1
-  let inputArea = rect(inputX, promptY + 1, inputWidth, 1)
-  let widget = newTextInput()
+
+  # Password field
+  let pwArea = rect(inputX, promptY + 1, inputWidth, 1)
+  let pwStyle = if focusField == 0: activeInputStyle else: dimInputStyle
+  let pwWidget = newTextInput()
     .masked(isMasked)
-    .style(inputStyle)
-    .cursorStyle(inputStyle)
-  widget.render(passwordInput, inputArea, buf, true)
+    .style(pwStyle)
+    .cursorStyle(pwStyle)
+  pwWidget.render(passwordInput, pwArea, buf, focusField == 0)
+
+  # Confirm field
+  let cfArea = rect(inputX, promptY + 2, inputWidth, 1)
+  let cfStyle = if focusField == 1: activeInputStyle else: dimInputStyle
+  let cfWidget = newTextInput()
+    .masked(isMasked)
+    .style(cfStyle)
+    .cursorStyle(cfStyle)
+  cfWidget.render(confirmInput, cfArea, buf, focusField == 1)
 
   if importError.len > 0:
-    discard buf.setString(inner.x, promptY + 2, importError, errorStyle)
+    discard buf.setString(inner.x, promptY + 3, importError, errorStyle)
 
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
   discard buf.setString(footerArea.x, footerArea.y,
-    "[H]ide   [Enter] Confirm   [Esc] Quit", footerStyle)
+    "[Tab]Switch  [H]ide  [Enter]Confirm  [Esc]Quit", footerStyle)
+
+proc renderSecurityWarningMode(buf: var CellBuffer, inner: Rect,
+    modalArea: Rect) =
+  ## Render the post-creation security warning screen.
+  let titleStyle = modalBgStyle()
+  let warnStyle = CellStyle(
+    fg: color(WarningColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let footerStyle = CellStyle(
+    fg: color(NeutralColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
+  let logoArea = rect(inner.x, inner.y + 1, inner.width, LogoHeight)
+  renderLogo(buf, logoArea)
+
+  let promptY = inner.y + LogoHeight + 3
+  discard buf.setString(inner.x, promptY, "WALLET CREATED", titleStyle)
+
+  let lines = [
+    "Your wallet is encrypted with your password.",
+    "If you lose your password and have not backed up your keys,",
+    "you will be permanently locked out of any games joined",
+    "with this identity.",
+    "",
+    "Back up your keys: Identity Manager > [V]iew Keys"
+  ]
+  for i, line in lines:
+    discard buf.setString(inner.x, promptY + 2 + i, line, warnStyle)
+
+  let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
+  discard buf.setString(footerArea.x, footerArea.y,
+    "[Enter] I understand", footerStyle)
 
 proc renderChangePasswordPromptMode(buf: var CellBuffer, inner: Rect,
     modalArea: Rect, passwordInput: TextInputState, importError: string,
@@ -1383,9 +1518,15 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     .minHeight(ModalMinHeight)
   
   if state.mode in {EntryModalMode.ImportNsec, EntryModalMode.PasswordPrompt,
-                    EntryModalMode.CreatePasswordPrompt, EntryModalMode.ChangePasswordPrompt}:
+                    EntryModalMode.CreatePasswordPrompt,
+                    EntryModalMode.ChangePasswordPrompt,
+                    EntryModalMode.SecurityWarning}:
     # Compact modal: logo + prompt + error + footer only
-    let extraHeight = if state.mode == EntryModalMode.ChangePasswordPrompt: 1 else: 0
+    let extraHeight = case state.mode
+      of EntryModalMode.ChangePasswordPrompt: 1
+      of EntryModalMode.CreatePasswordPrompt: 2  # extra for confirm field + error
+      of EntryModalMode.SecurityWarning: 7  # warning text lines
+      else: 0
     let importContentHeight =
       1 + LogoHeight + 2 + 1 + 1 + FooterHeight + extraHeight # blank+logo+gap+prompt+error+footer
     let importModal = modal
@@ -1404,11 +1545,15 @@ proc render*(state: EntryModalState, viewport: Rect, buf: var CellBuffer) =
     elif state.mode == EntryModalMode.CreatePasswordPrompt:
       renderCreatePasswordPromptMode(buf, importInner, importArea,
                                      state.createPasswordInput,
-                                     state.importError, state.importMasked)
+                                     state.confirmPasswordInput,
+                                     state.importError, state.importMasked,
+                                     state.createPasswordFocus)
     elif state.mode == EntryModalMode.ChangePasswordPrompt:
       renderChangePasswordPromptMode(buf, importInner, importArea,
                                      state.changePasswordInput,
                                      state.importError, state.importMasked)
+    elif state.mode == EntryModalMode.SecurityWarning:
+      renderSecurityWarningMode(buf, importInner, importArea)
     return
 
   if state.mode == EntryModalMode.ManageIdentities:

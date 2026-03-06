@@ -2345,6 +2345,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
   if model.ui.expertModeActive:
     return some(actionExitExpertMode())
   if model.ui.appPhase == AppPhase.Lobby:
+    if model.ui.entryModal.mode == EntryModalMode.SecurityWarning:
+      return none(Proposal)  # Only Enter dismisses
     if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
       return some(actionEntryImportCancel())
     if model.ui.entryModal.editingRelay:
@@ -2878,6 +2880,15 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           return none(Proposal)
 
     elif model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+      if model.ui.entryModal.showKeyDetail:
+        # Key detail overlay is active — only M, Esc
+        case key
+        of KeyCode.KeyM:
+          return some(actionEntryKeyDetailMask())
+        of KeyCode.KeyEscape:
+          return some(actionEntryKeyDetail())
+        else:
+          return none(Proposal)
       case key
       of KeyCode.KeyEscape:
         return some(actionEntryIdentityMenu())
@@ -2895,6 +2906,8 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         return some(actionEntryIdentityDelete())
       of KeyCode.KeyP:
         return some(actionEntryChangePassword())
+      of KeyCode.KeyV:
+        return some(actionEntryKeyDetail())
       else:
         if modifier != ViewModifier:
           return none(Proposal)
@@ -2917,12 +2930,21 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         if modifier != ViewModifier:
           return none(Proposal)
 
+    elif model.ui.entryModal.mode == EntryModalMode.SecurityWarning:
+      case key
+      of KeyCode.KeyEnter:
+        return some(actionEntryDismissWarning())
+      else:
+        return none(Proposal)
+
     elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
       case key
       of KeyCode.KeyEnter:
         return some(actionEntryCreatePasswordConfirm())
       of KeyCode.KeyEscape:
         return some(actionQuit())
+      of KeyCode.KeyTab, KeyCode.KeyShiftTab:
+        return some(actionEntryCreatePasswordTab())
       of KeyCode.KeyBackspace:
         return some(actionEntryCreatePasswordBackspace())
       of KeyCode.KeyDelete:

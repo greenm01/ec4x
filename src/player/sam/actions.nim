@@ -963,6 +963,42 @@ proc actionEntryCreatePasswordConfirm*(): Proposal =
     gameActionData: ""
   )
 
+proc actionEntryCreatePasswordTab*(): Proposal =
+  ## Toggle focus between password and confirm fields
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryCreatePasswordTab,
+    gameActionData: ""
+  )
+
+proc actionEntryDismissWarning*(): Proposal =
+  ## Acknowledge security warning and proceed to Normal mode
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryDismissWarning,
+    gameActionData: ""
+  )
+
+proc actionEntryKeyDetail*(): Proposal =
+  ## Toggle key detail overlay in identity manager
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryKeyDetail,
+    gameActionData: ""
+  )
+
+proc actionEntryKeyDetailMask*(): Proposal =
+  ## Toggle nsec mask in key detail overlay
+  Proposal(
+    kind: ProposalKind.pkGameAction,
+    timestamp: getTime().toUnix(),
+    actionKind: ActionKind.entryKeyDetailMask,
+    gameActionData: ""
+  )
+
 proc actionEntryChangePassword*(): Proposal =
   ## Open the change-wallet-password screen
   Proposal(
