@@ -2356,6 +2356,8 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     if model.ui.entryModal.mode == EntryModalMode.ManageGames:
       return some(actionManageGamesCancel())
     if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
+      if model.ui.entryModal.showKeyDetail:
+        return some(actionEntryKeyDetail())
       return some(actionEntryIdentityMenu())
   if model.ui.mode in {
       ViewMode.PlanetDetail,
@@ -2940,11 +2942,12 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
     elif model.ui.entryModal.mode == EntryModalMode.CreatePasswordPrompt:
       case key
       of KeyCode.KeyEnter:
-        return some(actionEntryCreatePasswordConfirm())
+        if model.ui.entryModal.createPasswordFocus == 0:
+          return some(actionEntryCreatePasswordTab())
+        else:
+          return some(actionEntryCreatePasswordConfirm())
       of KeyCode.KeyEscape:
         return some(actionQuit())
-      of KeyCode.KeyTab, KeyCode.KeyShiftTab:
-        return some(actionEntryCreatePasswordTab())
       of KeyCode.KeyBackspace:
         return some(actionEntryCreatePasswordBackspace())
       of KeyCode.KeyDelete:

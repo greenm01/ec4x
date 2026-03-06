@@ -466,6 +466,7 @@ proc closeIdentityManager*(state: var EntryModalState) =
   state.mode = EntryModalMode.Normal
   state.importError = ""
   state.identityDeleteArmed = false
+  state.showKeyDetail = false
 
 proc openPlayerGamesManager*(state: var EntryModalState) =
   state.returnMode = state.mode
@@ -664,7 +665,7 @@ proc adaptiveFooterHint(
     return ""
   minimal[0 ..< min(width, minimal.len)]
 
-proc renderKeyDetail(buf: var CellBuffer, inner: Rect,
+proc renderKeyDetail(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                      state: EntryModalState) =
   ## Render key detail overlay showing npub and nsec for selected identity.
   let headerStyle = modalBgStyle()
@@ -674,8 +675,13 @@ proc renderKeyDetail(buf: var CellBuffer, inner: Rect,
     bg: color(TrueBlackColor),
     attrs: {}
   )
-  let warnStyle = CellStyle(
+  let nsecRevealStyle = CellStyle(
     fg: color(AlertColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+  let warnStyle = CellStyle(
+    fg: color(WarningColor),
     bg: color(TrueBlackColor),
     attrs: {}
   )
@@ -684,6 +690,11 @@ proc renderKeyDetail(buf: var CellBuffer, inner: Rect,
     bg: color(TrueBlackColor),
     attrs: {}
   )
+
+  # Clear the content area above the separator (don't overwrite separator line)
+  let sepY = modalArea.bottom - 3
+  let contentArea = rect(inner.x, inner.y, inner.width, sepY - inner.y)
+  buf.fillArea(contentArea, " ", headerStyle)
 
   let idx = state.identitySelectedIdx
   if idx < 0 or idx >= state.wallet.identities.len:
@@ -707,15 +718,19 @@ proc renderKeyDetail(buf: var CellBuffer, inner: Rect,
 
   discard buf.setString(inner.x, y + 2, "nsec:", labelStyle)
   discard buf.setString(inner.x + 6, y + 2, nsecStr,
-    if state.keyDetailMasked: labelStyle else: warnStyle)
+    if state.keyDetailMasked: labelStyle else: nsecRevealStyle)
 
-  if not state.keyDetailMasked:
-    discard buf.setString(inner.x, y + 4,
-      "Never share your nsec -- anyone with it can impersonate you.", warnStyle)
-
-  let footerY = inner.y + inner.height - 1
+  # Footer in the modal's footer area (below separator) — clear first
+  let footerY = modalArea.bottom - 2
+  let footerArea = rect(inner.x, footerY, inner.width, 1)
+  buf.fillArea(footerArea, " ", footerStyle)
   discard buf.setString(inner.x, footerY,
     "[M]Toggle Mask  [Esc]Close", footerStyle)
+  # Warning above the separator
+  if not state.keyDetailMasked:
+    let sepY = modalArea.bottom - 3
+    discard buf.setString(inner.x, sepY - 1,
+      "Never share your nsec -- anyone with it can impersonate you.", warnStyle)
 
 proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
                            state: EntryModalState, tableHeight: int) =
@@ -768,8 +783,8 @@ proc renderIdentityManager(buf: var CellBuffer, inner: Rect, modalArea: Rect,
     footerHint, modalBgStyle())
 
   if state.showKeyDetail:
-    let detailArea = rect(inner.x, inner.y, inner.width, modalArea.height - 4)
-    renderKeyDetail(buf, detailArea, state)
+    let detailArea = rect(inner.x, inner.y, inner.width, inner.height)
+    renderKeyDetail(buf, detailArea, modalArea, state)
 
   if state.walletStatusMsg.len > 0:
     let statusStyle = CellStyle(
@@ -1168,7 +1183,7 @@ proc renderCreatePasswordPromptMode(buf: var CellBuffer, inner: Rect,
 
   let footerArea = rect(inner.x, modalArea.bottom - 2, inner.width, 1)
   discard buf.setString(footerArea.x, footerArea.y,
-    "[Tab]Switch  [H]ide  [Enter]Confirm  [Esc]Quit", footerStyle)
+    "[H]ide  [Enter]Confirm  [Esc]Quit", footerStyle)
 
 proc renderSecurityWarningMode(buf: var CellBuffer, inner: Rect,
     modalArea: Rect) =
