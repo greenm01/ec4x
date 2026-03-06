@@ -971,11 +971,10 @@ proc previewCommandPacketCost*(
     else:
       result.warnings.add(&"Build command at {cmd.colonyId}: cost calculation failed")
 
-  # Calculate research costs
+  # Calculate research costs (pool deposits)
   result.researchCosts =
-    packet.researchAllocation.economic + packet.researchAllocation.science
-  for field, amount in packet.researchAllocation.technology:
-    result.researchCosts += amount
+    packet.researchDeposits.erp + packet.researchDeposits.srp +
+    packet.researchDeposits.trp
 
   # Calculate espionage costs (40 PP per EBP/CIP)
   result.espionageCosts = (packet.ebpInvestment + packet.cipInvestment) * 40

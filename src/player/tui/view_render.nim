@@ -9,7 +9,7 @@ import ../../engine/types/[core, player_state as ps_types, fleet, colony,
   ground_unit, facilities, ship, tech, diplomacy, production]
 import ../../engine/state/engine
 import ../../engine/globals
-import ../../engine/systems/tech/[advancement, costs]
+import ../../engine/systems/tech/costs
 import ../sam/sam_pkg
 import ../sam/client_limits
 import ../tui/expert_autocomplete
@@ -1941,54 +1941,99 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     .minWidth(90)
     .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
-  # +2 for footer (1 separator + 1 text line)
-  let maxLevelCap = max(@[
-    maxEconomicLevel,
-    maxScienceLevel,
-    maxConstructionTech,
-    maxWeaponsTech,
-    maxTerraformingTech,
-    maxElectronicIntelligence,
-    maxCloakingTech,
-    maxShieldTech,
-    maxCounterIntelligence,
-    maxStrategicLiftTech,
-    maxFlagshipCommandTech,
-    maxStrategicCommandTech,
-    maxFighterDoctrine,
-    maxAdvancedCarrierOps
-  ])
-  let desiredContentHeight = max(23, maxLevelCap + 10)
+
+  # Content-snug sizing: match pane content height to avoid dead space.
+  let items = researchItems()
+  let selection = clamp(model.ui.selectedIdx, 0, max(0, items.len - 1))
+  let levels = if model.view.techLevels.isSome:
+    model.view.techLevels.get()
+  else:
+    TechLevel(
+      el: 1, sl: 1, cst: 1, wep: 1, ter: 1, eli: 1, clk: 1,
+      sld: 1, cic: 1, stl: 1, fc: 1, sc: 1, fd: 1, aco: 1
+    )
+  let points = if model.view.researchPoints.isSome:
+    model.view.researchPoints.get()
+  else:
+    ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho = research_projection.projectedResearchGho(
+    levels,
+    model.view.colonies,
+    model.view.production,
+    model.view.houseTaxRate
+  )
+  let effBorders = model.ui.showTableBorders and not model.ui.compactMode
+  let paneChromeRows = PanelFrameRows + 2  # frame + padding(1)
+
+  proc sizePoolLabel(item: ResearchItem): string =
+    case item.kind
+    of ResearchItemKind.EconomicLevel:
+      "ERP"
+    of ResearchItemKind.ScienceLevel:
+      "SRP"
+    of ResearchItemKind.Technology:
+      case item.field
+      of TechField.TerraformingTech, TechField.ElectronicIntelligence,
+          TechField.CloakingTech, TechField.ShieldTech,
+          TechField.CounterIntelligence, TechField.StrategicLiftTech:
+        "SRP"
+      else:
+        "TRP"
+
+  # Left pane required height (full list + three summary lines).
+  var listRowCount = 0
+  var lastPool = ""
+  for item in items:
+    let pool = sizePoolLabel(item)
+    if lastPool.len > 0 and pool != lastPool:
+      listRowCount.inc
+    listRowCount.inc
+    lastPool = pool
+  let listColumns = @[
+    tableColumn("Pool", 4, table.Alignment.Left),
+    tableColumn("Tech", 4, table.Alignment.Left),
+    tableColumn("Name", 0, table.Alignment.Left, 6),
+    tableColumn("Lvl", 3, table.Alignment.Center),
+    tableColumn("Cost", 8, table.Alignment.Right)
+  ]
+  let listProbe = table(listColumns).showBorders(effBorders)
+  let listTableHeight = listProbe.renderHeight(max(1, listRowCount))
+  let listPaneNeed = listTableHeight + 3 + paneChromeRows
+
+  # Right pane required height for selected row detail and progression.
+  var detailPaneNeed = paneChromeRows + 8
+  if items.len > 0:
+    let item = items[selection]
+    let projectedLevel = research_projection.projectedTechLevel(
+      levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
+      item, gho
+    )
+    let maxLevel = progressionMaxLevel(item)
+    let maxLevelInt = max(1, maxLevel)
+    let slReq = techSlRequiredForLevel(item, projectedLevel)
+    let progColumns = @[
+      tableColumn("Lvl", 3, table.Alignment.Center),
+      tableColumn("Cost", 6, table.Alignment.Right),
+      tableColumn("SL", 4, table.Alignment.Right),
+      tableColumn("Effect", 0, table.Alignment.Left, 16)
+    ]
+    let progProbe = table(progColumns).showBorders(effBorders)
+    let progTableHeight = progProbe.renderHeight(maxLevelInt)
+    let optionalRows = 5 + (if slReq > 0: 1 else: 0)
+    let detailInnerNeed = 3 + optionalRows + 1 + progTableHeight
+    detailPaneNeed = detailInnerNeed + paneChromeRows
+
+  # +2 for footer (separator + footer line), handled outside content area.
+  let desiredContentHeight = max(12, max(listPaneNeed, detailPaneNeed))
   let maxContentHeight = max(12, canvas.height - 4)
   let contentHeight = min(desiredContentHeight, maxContentHeight) + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
   let footerLine =
-    "[Up/Down/J/K]Navigate  [+/-]+/-5  [Shift+/-]+/-1  [0]Clear  " &
+    "[Tab]Pools/Tech  [+/-]Deposit  [Enter]Purchase  [L]Liquidate  " &
     "[/]Help"
   modal.renderWithFooter(modalArea, buf, footerLine)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   renderResearchPanel(contentArea, buf, model)
-
-proc researchItemAllocation(
-    allocation: ResearchAllocation,
-    item: ResearchItem
-): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    allocation.economic.int
-  of ResearchItemKind.ScienceLevel:
-    allocation.science.int
-  of ResearchItemKind.Technology:
-    if allocation.technology.hasKey(item.field):
-      allocation.technology[item.field].int
-    else:
-      0
-
-proc researchAllocatedTotal(allocation: ResearchAllocation): int =
-  var total = allocation.economic + allocation.science
-  for pp in allocation.technology.values:
-    total += pp
-  total.int
 
 proc researchPoolLabel(item: ResearchItem): string =
   case item.kind
@@ -2036,11 +2081,13 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let points = if model.view.researchPoints.isSome:
     model.view.researchPoints.get()
   else:
-    ResearchPoints(
-      economic: 0,
-      science: 0,
-      technology: initTable[TechField, int32]()
-    )
+    ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho = research_projection.projectedResearchGho(
+    levels,
+    model.view.colonies,
+    model.view.production,
+    model.view.houseTaxRate
+  )
 
   let columns = horizontal()
     .constraints(percentage(55), fill())
@@ -2061,8 +2108,8 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     tableColumn("Pool", 4, table.Alignment.Left),
     tableColumn("Tech", 4, table.Alignment.Left),
     tableColumn("Name", 0, table.Alignment.Left, 6),
-    tableColumn("Lvl", 3, table.Alignment.Center),
-    tableColumn("Alloc (PP)", 10, table.Alignment.Right)
+    tableColumn("Lvl", 5, table.Alignment.Center),
+    tableColumn("Cost", 8, table.Alignment.Right)
   ]
 
   let effBorders = model.ui.showTableBorders and not model.ui.compactMode
@@ -2079,13 +2126,28 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     if lastPool.len > 0 and pool != lastPool:
       listTable.addSeparatorRow()
       rowIdx.inc
-    let level = research_projection.projectedTechLevel(
-      levels, points, model.ui.researchAllocation, item
+    let currentLevel = research_projection.currentTechLevel(levels, item)
+    let projLevel = research_projection.projectedTechLevel(
+      levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
+      item, gho
     )
-    let allocated = researchItemAllocation(model.ui.researchAllocation, item)
+    let purchased = research_projection.isPurchaseToggled(
+      model.ui.researchPurchases, item
+    )
     let blocked = research_projection.isBlockedProjected(
-      levels, points, model.ui.researchAllocation, item
+      levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
+      item, gho
     )
+    let maxLevel = progressionMaxLevel(item)
+    let lvlStr =
+      if currentLevel >= maxLevel: $currentLevel
+      elif purchased: $currentLevel & ">" & $projLevel
+      else: $currentLevel
+    let cost = techProgressCost(item, currentLevel)
+    let costStr =
+      if currentLevel >= maxLevel: "-"
+      elif purchased: "\xE2\x9C\x93 " & $cost
+      else: $cost
     var cellStyles: seq[Option[CellStyle]] = @[]
     cellStyles.setLen(listColumns.len)
     if blocked:
@@ -2096,8 +2158,8 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
         pool,
         item.code,
         item.name,
-        $level,
-        $allocated
+        lvlStr,
+        costStr
       ],
       cellStyles: cellStyles,
       kind: TableRowKind.Normal
@@ -2118,17 +2180,35 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   )
   listTable.render(tableArea, buf)
 
-  let totalAllocated = researchAllocatedTotal(
-    model.ui.researchAllocation
-  )
-  let allocLine = "Allocated: " &
-    formatNumber(totalAllocated) & " PP"
+  let totalDeposit = model.ui.researchDeposits.erp.int +
+    model.ui.researchDeposits.srp.int +
+    model.ui.researchDeposits.trp.int
+  let depositLine = "Deposits: " &
+    formatNumber(totalDeposit) & " PP"
+  let poolsLine = "Pools: ERP " & $points.erp.int &
+    " SRP " & $points.srp.int &
+    " TRP " & $points.trp.int
+  let depositDetailLine = "ERP +" & $model.ui.researchDeposits.erp.int &
+    " SRP +" & $model.ui.researchDeposits.srp.int &
+    " TRP +" & $model.ui.researchDeposits.trp.int & " PP"
   let summaryY = listInner.y + tableArea.height
   if summaryY < listArea.bottom - 1:
     renderLine(
       listArea, buf,
       listInner.x, summaryY,
-      allocLine, modalDimStyle()
+      depositLine, modalDimStyle()
+    )
+  if summaryY + 1 < listArea.bottom - 1:
+    renderLine(
+      listArea, buf,
+      listInner.x, summaryY + 1,
+      poolsLine, modalDimStyle()
+    )
+  if summaryY + 2 < listArea.bottom - 1:
+    renderLine(
+      listArea, buf,
+      listInner.x, summaryY + 2,
+      depositDetailLine, modalDimStyle()
     )
 
   if detailArea.isEmpty:
@@ -2151,7 +2231,8 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let item = items[selection]
     var dy = detailInner.y
     let level = research_projection.projectedTechLevel(
-      levels, points, model.ui.researchAllocation, item
+      levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
+      item, gho
     )
     let currentLevel = research_projection.currentTechLevel(levels, item)
     let maxLevel = progressionMaxLevel(item)
@@ -2166,12 +2247,15 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
         modalDimStyle()
       )
       dy += 1
-    let staged = researchItemAllocation(model.ui.researchAllocation, item)
     let basePoints = research_projection.currentResearchPoints(points, item)
-    var pointsCurrent = basePoints + staged
     let cost = techProgressCost(item, currentLevel)
-    if pointsCurrent > cost:
-      pointsCurrent = cost
+    let pointsCurrent = min(basePoints, cost)
+    let willLevel = level > currentLevel
+    let carryover =
+      if willLevel:
+        max(0, basePoints - cost)
+      else:
+        0
     let barWidth = max(8, detailInner.width - 18)
     let pb = progressBar(pointsCurrent, cost, barWidth)
       .showPercent(false)
@@ -2192,39 +2276,6 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
         modalDimStyle()
       )
       dy += 1
-    let slReq = techSlRequiredForLevel(item, level + 1)
-    if slReq > 0 and dy < detailInner.bottom:
-      let slLine = "SL Required: " & $slReq
-      renderLine(
-        detailInner,
-        buf,
-        detailInner.x,
-        dy,
-        slLine,
-        modalDimStyle()
-      )
-      dy += 1
-
-    if dy < detailInner.bottom:
-      let desc = paragraph(techDescription(item))
-        .wrap(Wrap(trim: true))
-        .style(modalDimStyle())
-      let descHeight = min(2, max(1, detailInner.bottom - dy))
-      let descArea = rect(detailInner.x, dy, detailInner.width, descHeight)
-      desc.render(descArea, buf)
-      dy += descHeight
-
-    if dy < detailInner.bottom:
-      renderLine(
-        detailInner,
-        buf,
-        detailInner.x,
-        dy,
-        "PROGRESSION",
-        canvasHeaderStyle()
-      )
-      dy += 1
-
     let progColumns = @[
       tableColumn("Lvl", 3, table.Alignment.Center),
       tableColumn("Cost", 6, table.Alignment.Right),
@@ -2243,10 +2294,98 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       let costFor = techCostForLevel(item, lvl)
       let slFor = techSlRequiredForLevel(item, lvl)
       let effect = techEffectForLevel(item, lvl)
-      progTable.addRow(@[$lvl, $costFor, $slFor, effect])
+      let slLabel = if slFor > 0: $slFor else: "-"
+      progTable.addRow(@[$lvl, $costFor, slLabel, effect])
 
     let selectedLevel = clamp(level - 1, 0, maxLevelInt - 1)
     progTable = progTable.selectedIdx(selectedLevel)
+    let fullProgTableHeight = progTable.renderHeight(maxLevelInt)
+    let slReq = techSlRequiredForLevel(item, level)
+
+    # Reserve space for progression table first, then render lower-priority
+    # detail lines only if room remains.
+    var optionalBudget = max(
+      0,
+      detailInner.bottom - dy - (1 + fullProgTableHeight)
+    )
+
+    let purchased = research_projection.isPurchaseToggled(
+      model.ui.researchPurchases, item
+    )
+    if optionalBudget > 0 and dy < detailInner.bottom:
+      let purchaseLabel =
+        if purchased: "Purchase: QUEUED"
+        else: "Purchase: -"
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        purchaseLabel,
+        modalDimStyle()
+      )
+      dy += 1
+      optionalBudget -= 1
+    if optionalBudget > 0 and dy < detailInner.bottom:
+      let levelLine =
+        "Will level this turn: " & (if willLevel: "Yes" else: "No")
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        levelLine,
+        modalDimStyle()
+      )
+      dy += 1
+      optionalBudget -= 1
+    if slReq > 0 and optionalBudget > 0 and dy < detailInner.bottom:
+      let slLine = "SL Required: " & $slReq
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        slLine,
+        modalDimStyle()
+      )
+      dy += 1
+      optionalBudget -= 1
+    if optionalBudget > 0 and dy < detailInner.bottom:
+      let carryLine = "Carryover after level: " & $carryover & " RP"
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        carryLine,
+        modalDimStyle()
+      )
+      dy += 1
+      optionalBudget -= 1
+    if optionalBudget > 0 and dy < detailInner.bottom:
+      let desc = paragraph(techDescription(item))
+        .wrap(Wrap(trim: true))
+        .style(modalDimStyle())
+      let descHeight = min(
+        2,
+        min(optionalBudget, max(1, detailInner.bottom - dy))
+      )
+      let descArea = rect(detailInner.x, dy, detailInner.width, descHeight)
+      desc.render(descArea, buf)
+      dy += descHeight
+      optionalBudget -= descHeight
+
+    if dy < detailInner.bottom:
+      renderLine(
+        detailInner,
+        buf,
+        detailInner.x,
+        dy,
+        "PROGRESSION",
+        canvasHeaderStyle()
+      )
+      dy += 1
 
     let availableHeight = max(1, detailInner.bottom - dy)
     let visibleRows = clampedVisibleRows(
@@ -2296,7 +2435,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let treasuryFree = optimisticTreasury(
     model.view.treasury,
     model.ui.stagedBuildCommands,
-    model.ui.researchAllocation,
+    model.ui.researchDeposits,
     model.ui.stagedEbpInvestment,
     model.ui.stagedCipInvestment
   )
@@ -3789,7 +3928,7 @@ proc buildHudData*(model: TuiModel): HudData =
   let optimisticPp = optimisticTreasury(
     model.view.treasury,
     model.ui.stagedBuildCommands,
-    model.ui.researchAllocation,
+    model.ui.researchDeposits,
     model.ui.stagedEbpInvestment,
     model.ui.stagedCipInvestment,
   )

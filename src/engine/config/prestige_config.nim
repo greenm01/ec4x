@@ -186,4 +186,7 @@ proc loadPrestigeConfig*(configPath: string): PrestigeConfig =
     parseMaintenanceShortfall(doc.requireNode("maintenanceShortfall", ctx), ctx,
                               result.penalties)
 
+  ctx.withNode("researchLiquidation"):
+    result.penalties.researchLiquidation = doc.requireNode("researchLiquidation", ctx).requireInt32("prestigePenalty", ctx)
+
   logInfo("Config", "Loaded prestige configuration", "path=", configPath)

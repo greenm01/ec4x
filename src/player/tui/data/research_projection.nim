@@ -1,29 +1,15 @@
 ## Shared projected research gating helpers for TUI.
 ##
-## Keeps research allocation rules consistent between:
-## - Input acceptors (what can be staged)
-## - Rendering (what appears blocked)
+## Pool-based deposit/purchase model:
+## - Players deposit PP into shared pools (ERP/SRP/TRP)
+## - Players explicitly purchase tech upgrades
+## - No auto-advancement
 
 import ../../sam/tui_model
 import std/tables
 import ../../../engine/types/tech
 import ../../../engine/systems/tech/costs
 import ./tech_info
-
-proc researchItemAllocation*(
-    allocation: ResearchAllocation,
-    item: ResearchItem
-): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    allocation.economic.int
-  of ResearchItemKind.ScienceLevel:
-    allocation.science.int
-  of ResearchItemKind.Technology:
-    if allocation.technology.hasKey(item.field):
-      allocation.technology[item.field].int
-    else:
-      0
 
 proc currentTechLevel*(levels: TechLevel, item: ResearchItem): int =
   case item.kind
@@ -58,85 +44,147 @@ proc currentTechLevel*(levels: TechLevel, item: ResearchItem): int =
     of TechField.AdvancedCarrierOps:
       levels.aco.int
 
+proc poolAccumulated*(points: ResearchPoints, pool: ResearchPoolIdx): int =
+  case pool
+  of ResearchPoolIdx.PoolERP: points.erp.int
+  of ResearchPoolIdx.PoolSRP: points.srp.int
+  of ResearchPoolIdx.PoolTRP: points.trp.int
+
 proc currentResearchPoints*(points: ResearchPoints, item: ResearchItem): int =
+  ## Return accumulated RP in the pool that funds this item.
   case item.kind
   of ResearchItemKind.EconomicLevel:
-    points.economic.int
+    points.erp.int
   of ResearchItemKind.ScienceLevel:
-    points.science.int
+    points.srp.int
   of ResearchItemKind.Technology:
-    if points.technology.hasKey(item.field):
-      points.technology[item.field].int
+    if isSrpField(item.field):
+      points.srp.int
     else:
-      0
+      points.trp.int
+
+proc estimateColonyGrossOutput(
+    levels: TechLevel,
+    colony: ColonyInfo,
+    houseTaxRate: int
+): int32 =
+  let pop = max(0, colony.populationUnits)
+  let iu = max(0, colony.industrialUnits)
+
+  var safeTax = houseTaxRate
+  if safeTax < 0:
+    safeTax = 0
+  elif safeTax > 100:
+    safeTax = 100
+
+  let elMod = 1.0 + (float(levels.el) * 0.05)
+  let cstLevel = max(1'i32, levels.cst)
+  let cstMod = 1.0 + (float(cstLevel - 1) * 0.10)
+  let prodGrowth = (50.0 - float(safeTax)) / 500.0
+  let growthMod = max(0.0, 1.0 + prodGrowth)
+
+  let output = float(pop) + float(iu) * elMod * cstMod * growthMod
+  int32(max(0, int(output)))
+
+proc projectedResearchGho*(
+    levels: TechLevel,
+    colonies: seq[ColonyInfo],
+    fallbackProduction: int,
+    houseTaxRate: int
+): int32 =
+  var knownGho = 0'i32
+  for colony in colonies:
+    knownGho += int32(max(0, colony.grossOutput))
+  if knownGho > 0:
+    return knownGho
+
+  var estimatedGho = 0'i32
+  for colony in colonies:
+    estimatedGho += estimateColonyGrossOutput(levels, colony, houseTaxRate)
+  if estimatedGho > 0:
+    return estimatedGho
+
+  int32(max(1, fallbackProduction))
+
+proc projectedPoolRP*(
+    points: ResearchPoints,
+    deposits: ResearchDeposits,
+    pool: ResearchPoolIdx,
+    gho: int32,
+    slLevel: int32
+): int =
+  ## Accumulated RP + conversion of staged PP deposit for a pool.
+  let effectiveGho = max(1'i32, gho)
+  case pool
+  of ResearchPoolIdx.PoolERP:
+    points.erp.int + (if deposits.erp > 0: convertPPToERP(deposits.erp, effectiveGho, slLevel).int else: 0)
+  of ResearchPoolIdx.PoolSRP:
+    points.srp.int + (if deposits.srp > 0: convertPPToSRP(deposits.srp, effectiveGho, slLevel).int else: 0)
+  of ResearchPoolIdx.PoolTRP:
+    points.trp.int + (if deposits.trp > 0: convertPPToTRP(deposits.trp, effectiveGho, slLevel).int else: 0)
 
 proc projectedScienceLevel*(
     levels: TechLevel,
     points: ResearchPoints,
-    allocation: ResearchAllocation
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    gho: int32
 ): int =
-  ## Project SL using staged science allocation with one-level-per-turn cap.
+  ## Project SL: current + 1 if SL purchase is toggled and affordable.
   result = levels.sl.int
-  let nextCost = slUpgradeCost(levels.sl)
+  if not purchases.science:
+    return result
+  let nextCost = slUpgradeCost(levels.sl).int
   if nextCost <= 0:
     return result
-
-  let totalScience = points.science.int + allocation.science.int
-  if totalScience >= nextCost:
+  let poolRP = projectedPoolRP(points, deposits, ResearchPoolIdx.PoolSRP, gho, levels.sl)
+  if poolRP >= nextCost:
     result += 1
+
+proc isPurchaseToggled*(purchases: TechPurchaseSet, item: ResearchItem): bool =
+  case item.kind
+  of ResearchItemKind.EconomicLevel: purchases.economic
+  of ResearchItemKind.ScienceLevel: purchases.science
+  of ResearchItemKind.Technology: item.field in purchases.technology
 
 proc projectedTechLevel*(
     levels: TechLevel,
     points: ResearchPoints,
-    allocation: ResearchAllocation,
-    item: ResearchItem
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    item: ResearchItem,
+    gho: int32
 ): int =
-  ## Project a research row level with one-level-per-turn cap.
+  ## Project a research row level: current + 1 if purchase toggled and affordable.
   result = currentTechLevel(levels, item)
   let maxLevel = progressionMaxLevel(item)
   if result >= maxLevel:
     return maxLevel
-
-  let projectedSL = projectedScienceLevel(levels, points, allocation)
+  if not isPurchaseToggled(purchases, item):
+    return result
+  # SL gating check (use projected SL if SL purchase is also toggled)
+  let projectedSL = projectedScienceLevel(levels, points, deposits, purchases, gho)
   let slRequired = techSlRequiredForLevel(item, result + 1)
   if projectedSL < slRequired:
     return result
-
-  let cost = techProgressCost(item, result)
-  if cost <= 0:
-    return result
-
-  let progress = currentResearchPoints(points, item)
-  let staged = researchItemAllocation(allocation, item)
-  if progress + staged >= cost:
-    result = min(maxLevel, result + 1)
-
-proc maxProjectedAllocation*(
-    levels: TechLevel,
-    points: ResearchPoints,
-    allocation: ResearchAllocation,
-    item: ResearchItem
-): int =
-  ## Maximum allowed staged PP allocation for a row under projected SL gating.
-  let currentLevel = currentTechLevel(levels, item)
-  let maxLevel = progressionMaxLevel(item)
-  if currentLevel >= maxLevel:
-    return 0
-
-  let projectedSL = projectedScienceLevel(levels, points, allocation)
-  let slRequired = techSlRequiredForLevel(item, currentLevel + 1)
-  if projectedSL < slRequired:
-    return 0
-
-  let cost = techProgressCost(item, currentLevel)
-  let progress = currentResearchPoints(points, item)
-  result = max(0, cost - progress)
+  result += 1
 
 proc isBlockedProjected*(
     levels: TechLevel,
     points: ResearchPoints,
-    allocation: ResearchAllocation,
-    item: ResearchItem
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    item: ResearchItem,
+    gho: int32
 ): bool =
-  let maxAllowed = maxProjectedAllocation(levels, points, allocation, item)
-  maxAllowed <= 0
+  ## Item is blocked if maxed or SL-gated at current projected SL.
+  let currentLevel = currentTechLevel(levels, item)
+  let maxLevel = progressionMaxLevel(item)
+  if currentLevel >= maxLevel:
+    return true
+  if item.kind == ResearchItemKind.EconomicLevel or
+      item.kind == ResearchItemKind.ScienceLevel:
+    return false
+  let projectedSL = projectedScienceLevel(levels, points, deposits, purchases, gho)
+  let slRequired = techSlRequiredForLevel(item, currentLevel + 1)
+  projectedSL < slRequired

@@ -241,12 +241,21 @@ type
     inboxCollapseTurn
     inboxReportUp
     inboxReportDown
-    researchAdjustInc
-    researchAdjustDec
-    researchAdjustFineInc
-    researchAdjustFineDec
-    researchClearAllocation
-    researchDigitInput
+    researchPoolDepositInc
+    researchPoolDepositDec
+    researchPoolDepositFineInc
+    researchPoolDepositFineDec
+    researchPoolDepositClear
+    researchPoolDigitInput
+    researchPoolSelectNext
+    researchPoolSelectPrev
+    researchPurchaseToggle
+    researchLiquidateOpen
+    researchLiquidateConfirm
+    researchLiquidateCancel
+    researchLiquidateAdjustInc
+    researchLiquidateAdjustDec
+    researchFocusNext
     espionageFocusNext
     espionageFocusPrev
     espionageSelectEbp

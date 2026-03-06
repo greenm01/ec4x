@@ -29,12 +29,13 @@ proc normalizeDraftPacket*(packet: CommandPacket): CommandPacket =
       cmp(int(a.fleetId), int(b.fleetId))
   )
 
-proc hasResearchDraft*(allocation: ResearchAllocation): bool =
-  if allocation.economic > 0 or allocation.science > 0:
+proc hasResearchDraft*(deposits: ResearchDeposits, purchases: TechPurchaseSet): bool =
+  if deposits.erp > 0 or deposits.srp > 0 or deposits.trp > 0:
     return true
-  for _, pp in allocation.technology:
-    if pp > 0:
-      return true
+  if purchases.economic or purchases.science:
+    return true
+  if purchases.technology.len > 0:
+    return true
   false
 
 proc packetHasDraftData*(packet: CommandPacket): bool =
@@ -50,7 +51,7 @@ proc packetHasDraftData*(packet: CommandPacket): bool =
     packet.espionageActions.len > 0 or
     packet.ebpInvestment > 0 or
     packet.cipInvestment > 0 or
-    hasResearchDraft(packet.researchAllocation)
+    hasResearchDraft(packet.researchDeposits, packet.techPurchases)
 
 proc applyOrderDraft*(model: var TuiModel, packet: CommandPacket) =
   ## Replace staged UI orders with restored draft content.
@@ -84,7 +85,8 @@ proc applyOrderDraft*(model: var TuiModel, packet: CommandPacket) =
   model.ui.stagedEspionageActions = normalized.espionageActions
   model.ui.stagedEbpInvestment = normalized.ebpInvestment
   model.ui.stagedCipInvestment = normalized.cipInvestment
-  model.ui.researchAllocation = normalized.researchAllocation
+  model.ui.researchDeposits = normalized.researchDeposits
+  model.ui.researchPurchases = normalized.techPurchases
   for cmd in model.ui.stagedColonyManagement:
     if cmd.taxRate.isSome:
       model.ui.stagedTaxRate = some(int(cmd.taxRate.get()))

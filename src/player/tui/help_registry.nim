@@ -150,11 +150,15 @@ proc helpLines*(ctx: HelpContext): seq[string] =
       let item = HelpItems[code]
       result.add(item.label & " = " & item.desc)
   if ctx == HelpContext.Research:
-    result.add("Up/Down = navigate")
-    result.add("+/- = adjust PP")
-    result.add("Shift+/- = fine adjust")
-    result.add("0 = clear allocation")
-    result.add("0-9 = set PP")
+    result.add("Tab = cycle Pools / Tech list")
+    result.add("Left/Right = select pool (when Pools focused)")
+    result.add("+/- = deposit PP into pool (+/-5)")
+    result.add("Shift+/- = fine deposit (+/-1)")
+    result.add("0 = clear pool deposit")
+    result.add("0-9 = set PP deposit amount")
+    result.add("Enter = toggle purchase (when Tech focused)")
+    result.add("Shift+L = liquidate pool RP to PP (2:1)")
+    result.add("PP converts to ERP/SRP/TRP using GHO + SL")
   if ctx == HelpContext.Espionage:
     result.add("Tab/Shift+Tab = cycle panels")
     result.add("E/B = select EBP, C = select CIP")

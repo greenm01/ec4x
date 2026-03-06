@@ -18,7 +18,7 @@ import ../../common/logger
 
 # Types
 import ../types/[core, game_state, command, fleet, event, tech,
-                 production]
+                 production, prestige]
 
 # State Core (reading)
 import ../state/[engine, iterators]
@@ -33,6 +33,7 @@ import ../systems/fleet/logistics
 import ../systems/colony/[engine, terraforming, salvage]
 import ../systems/population/transfers
 import ../systems/tech/[costs, advancement]
+import ../prestige/engine as prestige_engine
 import ../globals
 import ../event_factory/init
 
@@ -286,221 +287,114 @@ proc processPlayerSubmissions(
 # CMD6: ORDER PROCESSING & VALIDATION
 # =============================================================================
 
-proc processResearchAllocation(
+proc processResearchDeposits(
     state: GameState,
     orders: Table[HouseId, CommandPacket],
     events: var seq[GameEvent]
 ) =
-  ## Process research allocation with treasury scaling
-  ## Per canonical spec CMD6d
-
-  proc slRequiredForNext(field: TechField, currentLevel: int32): int32 =
-    let nextLevel = currentLevel + 1
-    case field
-    of TechField.ConstructionTech:
-      if gameConfig.tech.cst.levels.hasKey(nextLevel):
-        gameConfig.tech.cst.levels[nextLevel].slRequired
-      else:
-        0
-
-    of TechField.WeaponsTech:
-      if gameConfig.tech.wep.levels.hasKey(nextLevel):
-        gameConfig.tech.wep.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.TerraformingTech:
-      if gameConfig.tech.ter.levels.hasKey(nextLevel):
-        gameConfig.tech.ter.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.ElectronicIntelligence:
-      if gameConfig.tech.eli.levels.hasKey(nextLevel):
-        gameConfig.tech.eli.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.CloakingTech:
-      if gameConfig.tech.clk.levels.hasKey(nextLevel):
-        gameConfig.tech.clk.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.ShieldTech:
-      if gameConfig.tech.sld.levels.hasKey(nextLevel):
-        gameConfig.tech.sld.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.CounterIntelligence:
-      if gameConfig.tech.cic.levels.hasKey(nextLevel):
-        gameConfig.tech.cic.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.StrategicLiftTech:
-      if gameConfig.tech.stl.levels.hasKey(nextLevel):
-        gameConfig.tech.stl.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.FlagshipCommandTech:
-      if gameConfig.tech.fc.levels.hasKey(nextLevel):
-        gameConfig.tech.fc.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.StrategicCommandTech:
-      if gameConfig.tech.sc.levels.hasKey(nextLevel):
-        gameConfig.tech.sc.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.FighterDoctrine:
-      if gameConfig.tech.fd.levels.hasKey(nextLevel):
-        gameConfig.tech.fd.levels[nextLevel].slRequired
-      else:
-        0
-    of TechField.AdvancedCarrierOps:
-      if gameConfig.tech.aco.levels.hasKey(nextLevel):
-        gameConfig.tech.aco.levels[nextLevel].slRequired
-      else:
-        0
-
-  proc maxPpForRemainingRp(
-      requestedPp: int32,
-      remainingRp: int32,
-      gho: int32,
-      slLevel: int32,
-      convProc: proc (pp: int32, gho: int32, slLevel: int32): int32
-  ): int32 =
-    if requestedPp <= 0 or remainingRp <= 0:
-      return 0
-
-    var lo = 0'i32
-    var hi = requestedPp
-    var best = 0'i32
-    while lo <= hi:
-      let mid = (lo + hi) div 2
-      let rp = convProc(mid, gho, slLevel)
-      if rp <= remainingRp:
-        best = mid
-        lo = mid + 1
-      else:
-        hi = mid - 1
-    best
+  ## Process pool-level PP deposits, explicit tech purchases, and liquidation
+  ## Per canonical spec CMD6d (new deposit/purchase model)
 
   for (houseId, _) in state.activeHousesWithId():
     if houseId notin orders:
       continue
 
     let packet = orders[houseId]
-    let allocation = packet.researchAllocation
+    let deposits = packet.researchDeposits
+    let purchases = packet.techPurchases
+    let liquidation = packet.researchLiquidation
 
-    # Calculate total PP cost for research
-    var totalResearchCost: int32 = allocation.economic + allocation.science
-    for field, pp in allocation.technology:
-      totalResearchCost += pp
-
-    # Skip if no research allocated
-    if totalResearchCost == 0:
-      continue
-
-    # Get house for reading/writing (UFCS pattern)
     var house = state.house(houseId).get()
-    var scaledAllocation = allocation
-    let treasury = house.treasury
     var gho = 0'i32
     for colony in state.coloniesOwned(houseId):
       gho += colony.production
     if gho <= 0:
       gho = 1
-    let currentSLForConversion = house.techTree.levels.sl
+    let sl = house.techTree.levels.sl
 
-    # Treasury scaling - can't spend more than we have
-    if treasury <= 0:
-      # Bankrupt - no research
-      scaledAllocation.economic = 0
-      scaledAllocation.science = 0
-      scaledAllocation.technology = initTable[TechField, int32]()
-      totalResearchCost = 0
-      logWarn("Research",
-        &"{houseId} research cancelled - negative treasury ({treasury} PP)")
-    elif totalResearchCost > treasury:
-      # Scale down proportionally
-      let affordablePercent = float(treasury) / float(totalResearchCost)
-      scaledAllocation.economic =
-        int32(float(allocation.economic) * affordablePercent)
-      scaledAllocation.science =
-        int32(float(allocation.science) * affordablePercent)
+    # --- Step 1: Liquidation (RP -> PP at 2:1 ratio) ---
+    var liquidatedPP = 0'i32
+    if liquidation.erp > 0:
+      let amount = min(liquidation.erp, house.techTree.accumulated.erp)
+      house.techTree.accumulated.erp -= amount
+      liquidatedPP += amount div 2
+    if liquidation.srp > 0:
+      let amount = min(liquidation.srp, house.techTree.accumulated.srp)
+      house.techTree.accumulated.srp -= amount
+      liquidatedPP += amount div 2
+    if liquidation.trp > 0:
+      let amount = min(liquidation.trp, house.techTree.accumulated.trp)
+      house.techTree.accumulated.trp -= amount
+      liquidatedPP += amount div 2
+    if liquidatedPP > 0:
+      house.treasury += liquidatedPP
+      logInfo("Research",
+        &"{houseId} liquidated RP for {liquidatedPP} PP")
 
-      var scaledTech = initTable[TechField, int32]()
-      for field, pp in allocation.technology:
-        scaledTech[field] = int32(float(pp) * affordablePercent)
-      scaledAllocation.technology = scaledTech
+    # --- Step 2: Validate and apply PP deposits ---
+    let totalDepositPP = deposits.erp + deposits.srp + deposits.trp
+    if totalDepositPP > 0:
+      let affordable = min(totalDepositPP, house.treasury)
+      let scale = if affordable < totalDepositPP:
+        float(affordable) / float(totalDepositPP)
+      else:
+        1.0
 
-      # Recalculate actual cost
-      totalResearchCost = scaledAllocation.economic + scaledAllocation.science
-      for field, pp in scaledAllocation.technology:
-        totalResearchCost += pp
+      let erpPP = int32(float(deposits.erp) * scale)
+      let srpPP = int32(float(deposits.srp) * scale)
+      let trpPP = int32(float(deposits.trp) * scale)
+      let actualPP = erpPP + srpPP + trpPP
 
-      logWarn("Research",
-        &"{houseId} research scaled to {int(affordablePercent * 100)}%")
+      # Convert PP -> RP per pool
+      if erpPP > 0:
+        house.techTree.accumulated.erp += convertPPToERP(erpPP, gho, sl)
+      if srpPP > 0:
+        house.techTree.accumulated.srp += convertPPToSRP(srpPP, gho, sl)
+      if trpPP > 0:
+        house.techTree.accumulated.trp += convertPPToTRP(trpPP, gho, sl)
 
-    # Cap per-tech allocation to one level per turn and apply SL gating
-    var refundPP: int32 = 0
-    if scaledAllocation.science > 0:
+      house.treasury -= actualPP
+      logInfo("Research",
+        &"{houseId} deposited {actualPP} PP into research pools")
+
+    # --- Step 3: Process tech purchases (SL first, then others) ---
+
+    # SL purchase first (gates other techs)
+    if purchases.science:
       let currentSL = house.techTree.levels.sl
-      let slCost = slUpgradeCost(currentSL)
-      if slCost <= 0:
-        refundPP += scaledAllocation.science
-        scaledAllocation.science = 0
-      else:
-        let remainingSLRp =
-          max(0'i32, slCost - house.techTree.accumulated.science)
-        let allowedSciencePp = maxPpForRemainingRp(
-          scaledAllocation.science,
-          remainingSLRp,
-          gho,
-          currentSLForConversion,
-          convertPPToSRP
+      let cost = slUpgradeCost(currentSL)
+      if cost > 0 and house.techTree.accumulated.srp >= cost:
+        house.techTree.accumulated.srp -= cost
+        house.techTree.levels.sl += 1
+        let prestigeAmount = gameConfig.prestige.economic.techAdvancement
+        let pe = PrestigeEvent(
+          source: PrestigeSource.TechAdvancement,
+          amount: prestigeAmount,
+          description: "Science Level " & $currentSL & " → " & $(currentSL + 1),
         )
-        if scaledAllocation.science > allowedSciencePp:
-          refundPP += scaledAllocation.science - allowedSciencePp
-          scaledAllocation.science = allowedSciencePp
+        state.applyPrestigeEvent(houseId, pe)
+        logInfo("Research",
+          &"{houseId} purchased SL {currentSL} -> {currentSL + 1}")
 
-    let currentSL = house.techTree.levels.sl
-    var effectiveSL = currentSL
-    let slCost = slUpgradeCost(currentSL)
-    if slCost > 0:
-      let projectedScience =
-        house.techTree.accumulated.science + scaledAllocation.science
-      if projectedScience >= slCost:
-        effectiveSL = currentSL + 1
-
-    if scaledAllocation.economic > 0:
+    # EL purchase
+    if purchases.economic:
       let currentEL = house.techTree.levels.el
-      let elCost = elUpgradeCost(currentEL)
-      let elSlRequired =
-        if gameConfig.tech.el.levels.hasKey(currentEL + 1):
-          gameConfig.tech.el.levels[currentEL + 1].slRequired
-        else:
-          0
-      if effectiveSL < elSlRequired:
-        refundPP += scaledAllocation.economic
-        scaledAllocation.economic = 0
-      elif elCost <= 0:
-        refundPP += scaledAllocation.economic
-        scaledAllocation.economic = 0
-      else:
-        let remainingELRp =
-          max(0'i32, elCost - house.techTree.accumulated.economic)
-        let allowedEconomicPp = maxPpForRemainingRp(
-          scaledAllocation.economic,
-          remainingELRp,
-          gho,
-          currentSLForConversion,
-          convertPPToERP
+      let cost = elUpgradeCost(currentEL)
+      if cost > 0 and house.techTree.accumulated.erp >= cost:
+        house.techTree.accumulated.erp -= cost
+        house.techTree.levels.el += 1
+        let prestigeAmount = gameConfig.prestige.economic.techAdvancement
+        let pe = PrestigeEvent(
+          source: PrestigeSource.TechAdvancement,
+          amount: prestigeAmount,
+          description: "Economic Level " & $currentEL & " → " & $(currentEL + 1),
         )
-        if scaledAllocation.economic > allowedEconomicPp:
-          refundPP += scaledAllocation.economic - allowedEconomicPp
-          scaledAllocation.economic = allowedEconomicPp
+        state.applyPrestigeEvent(houseId, pe)
+        logInfo("Research",
+          &"{houseId} purchased EL {currentEL} -> {currentEL + 1}")
 
-    var cappedTech = initTable[TechField, int32]()
-    for field, pp in scaledAllocation.technology:
-      var allowed = pp
+    # Tech field purchases
+    for field in purchases.technology:
       let currentLevel =
         case field
         of TechField.ConstructionTech: house.techTree.levels.cst
@@ -516,78 +410,48 @@ proc processResearchAllocation(
         of TechField.FighterDoctrine: house.techTree.levels.fd
         of TechField.AdvancedCarrierOps: house.techTree.levels.aco
 
-      let maxLevel =
-        case field
-        of TechField.ConstructionTech: maxConstructionTech
-        of TechField.WeaponsTech: maxWeaponsTech
-        of TechField.TerraformingTech: maxTerraformingTech
-        of TechField.ElectronicIntelligence: maxElectronicIntelligence
-        of TechField.CloakingTech: maxCloakingTech
-        of TechField.ShieldTech: maxShieldTech
-        of TechField.CounterIntelligence: maxCounterIntelligence
-        of TechField.StrategicLiftTech: maxStrategicLiftTech
-        of TechField.FlagshipCommandTech: maxFlagshipCommandTech
-        of TechField.StrategicCommandTech: maxStrategicCommandTech
-        of TechField.FighterDoctrine: maxFighterDoctrine
-        of TechField.AdvancedCarrierOps: maxAdvancedCarrierOps
+      let cost = techUpgradeCost(field, currentLevel)
+      if cost <= 0:
+        continue
 
-      if currentLevel >= maxLevel:
-        refundPP += allowed
-        allowed = 0
+      # Deduct from appropriate pool
+      if field.isSrpField():
+        if house.techTree.accumulated.srp < cost:
+          continue
+        house.techTree.accumulated.srp -= cost
       else:
-        let slRequired = slRequiredForNext(field, currentLevel)
-        if effectiveSL < slRequired:
-          refundPP += allowed
-          allowed = 0
-        else:
-          let cost = techUpgradeCost(field, currentLevel)
-          let currentPoints =
-            if house.techTree.accumulated.technology.hasKey(field):
-              house.techTree.accumulated.technology[field]
-            else:
-              0
-          if cost <= 0:
-            refundPP += allowed
-            allowed = 0
-          else:
-            let remainingRp = max(0'i32, cost - currentPoints)
-            let allowedTechPp = maxPpForRemainingRp(
-              allowed,
-              remainingRp,
-              gho,
-              currentSLForConversion,
-              convertPPToTRP
-            )
-            if allowed > allowedTechPp:
-              refundPP += allowed - allowedTechPp
-              allowed = allowedTechPp
+        if house.techTree.accumulated.trp < cost:
+          continue
+        house.techTree.accumulated.trp -= cost
 
-      if allowed > 0:
-        cappedTech[field] = allowed
-    scaledAllocation.technology = cappedTech
+      # Advance level
+      case field
+      of TechField.ConstructionTech: house.techTree.levels.cst += 1
+      of TechField.WeaponsTech: house.techTree.levels.wep += 1
+      of TechField.TerraformingTech: house.techTree.levels.ter += 1
+      of TechField.ElectronicIntelligence: house.techTree.levels.eli += 1
+      of TechField.CloakingTech: house.techTree.levels.clk += 1
+      of TechField.ShieldTech: house.techTree.levels.sld += 1
+      of TechField.CounterIntelligence: house.techTree.levels.cic += 1
+      of TechField.StrategicLiftTech: house.techTree.levels.stl += 1
+      of TechField.FlagshipCommandTech: house.techTree.levels.fc += 1
+      of TechField.StrategicCommandTech: house.techTree.levels.sc += 1
+      of TechField.FighterDoctrine: house.techTree.levels.fd += 1
+      of TechField.AdvancedCarrierOps: house.techTree.levels.aco += 1
 
-    if refundPP > 0:
-      house.treasury += refundPP
-      totalResearchCost -= refundPP
+      let prestigeAmount = gameConfig.prestige.economic.techAdvancement
+      let pe = PrestigeEvent(
+        source: PrestigeSource.TechAdvancement,
+        amount: prestigeAmount,
+        description: $field & " " & $currentLevel & " → " & $(currentLevel + 1),
+      )
+      state.applyPrestigeEvent(houseId, pe)
+      logInfo("Research",
+        &"{houseId} purchased {field} {currentLevel} -> {currentLevel + 1}")
 
-    # Deduct from treasury
-    if totalResearchCost > 0:
-      house.treasury -= totalResearchCost
-      logInfo("Research", &"{houseId} spent {totalResearchCost} PP on research")
-
-    # Convert PP to RP using tech costs
-    let earnedRP = allocateResearch(
-      scaledAllocation, gho, currentSLForConversion
-    )
-
-    # Accumulate RP
-    house.techTree.accumulated.economic += earnedRP.economic
-    house.techTree.accumulated.science += earnedRP.science
-
-    for field, trp in earnedRP.technology:
-      if field notin house.techTree.accumulated.technology:
-        house.techTree.accumulated.technology[field] = 0
-      house.techTree.accumulated.technology[field] += trp
+      # CST dock capacity upgrade
+      if field == TechField.ConstructionTech:
+        applyDockCapacityUpgrade(state, houseId)
 
     # Write back house changes
     state.updateHouse(houseId, house)
@@ -661,9 +525,9 @@ proc processOrderValidation(
       for repairCmd in orders[houseId].repairCommands:
         discard repairs.processManualRepairCommand(state, repairCmd)
 
-  # [CMD6d] Process tech research allocation
-  logInfo("Commands", "[CMD6d] Processing research allocation...")
-  processResearchAllocation(state, orders, events)
+  # [CMD6d] Process tech research deposits + purchases + liquidation
+  logInfo("Commands", "[CMD6d] Processing research deposits...")
+  processResearchDeposits(state, orders, events)
 
   logInfo("Commands", "[CMD6] Order Processing & Validation complete")
 

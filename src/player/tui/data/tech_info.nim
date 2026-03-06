@@ -220,15 +220,12 @@ proc techProgressCost*(item: ResearchItem, currentLevel: int): int =
     techUpgradeCost(item.field, int32(currentLevel)).int
 
 proc techSlRequiredForLevel*(item: ResearchItem, level: int): int =
-  if item.kind == ResearchItemKind.ScienceLevel:
+  if item.kind == ResearchItemKind.ScienceLevel or
+      item.kind == ResearchItemKind.EconomicLevel:
     return 0
   if level <= 0:
     return 0
   let lvl = int32(level)
-  if item.kind == ResearchItemKind.EconomicLevel:
-    if gameConfig.tech.el.levels.hasKey(lvl):
-      return gameConfig.tech.el.levels[lvl].slRequired.int
-    return 0
   case item.field
   of TechField.ConstructionTech:
     if gameConfig.tech.cst.levels.hasKey(lvl):

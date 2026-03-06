@@ -5,8 +5,8 @@
 ## Core research concepts:
 ## - RP (Research Points): Investment in R&D
 ## - ERP (Economic Research Points): For Economic Level
-## - SRP (Science Research Points): For Science Level
-## - TRP (Technology Research Points): For specific technologies
+## - SRP (Science Research Points): For Science Level + science techs
+## - TRP (Technology Research Points): For military techs
 ## - Breakthroughs: Random research events (bi-annual)
 import std/[tables, options]
 import ./[core, prestige]
@@ -44,9 +44,28 @@ type
     aco*: int32  # Advanced Carrier Ops
 
   ResearchPoints* = object
-    economic*: int32
-    science*: int32
-    technology*: Table[TechField, int32]
+    ## Shared pool accumulators: ERP, SRP, TRP
+    erp*: int32   # Economic Research Points pool
+    srp*: int32   # Science Research Points pool (SL + science techs)
+    trp*: int32   # Technology Research Points pool (military techs)
+
+  ResearchDeposits* = object
+    ## PP deposited into pools this turn
+    erp*: int32
+    srp*: int32
+    trp*: int32
+
+  TechPurchaseSet* = object
+    ## Explicit tech purchases for this turn
+    economic*: bool                    # Buy next EL
+    science*: bool                     # Buy next SL
+    technology*: set[TechField]        # Buy next level per field
+
+  ResearchLiquidation* = object
+    ## RP to liquidate from pools (converted back to PP at 2:1)
+    erp*: int32
+    srp*: int32
+    trp*: int32
 
   TechTree* = object
     houseId*: HouseId # Add back-reference
@@ -82,6 +101,7 @@ type
     revolutionary*: Option[RevolutionaryTech]
 
   ResearchAllocation* = object
+    ## Legacy per-tech allocation (kept for save migration)
     economic*: int32
     science*: int32
     technology*: Table[TechField, int32]
@@ -114,3 +134,13 @@ type
     allocations*: Table[HouseId, ResearchAllocation]
     breakthroughs*: seq[BreakthroughEvent]
     advancements*: seq[ResearchAdvancement]
+
+proc researchPool*(field: TechField): ResearchCategory =
+  ## Which pool funds this tech field
+  case field
+  of TerraformingTech, ElectronicIntelligence, CloakingTech,
+     ShieldTech, CounterIntelligence, StrategicLiftTech: ResearchCategory.Science
+  else: ResearchCategory.Technology
+
+proc isSrpField*(field: TechField): bool =
+  researchPool(field) == ResearchCategory.Science

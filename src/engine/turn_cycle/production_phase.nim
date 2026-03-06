@@ -484,64 +484,10 @@ proc processResearchAdvancement(
         logDebug("Production",
           &"  Breakthrough effect applied (category: {event.category})")
   
-  # -------------------------------------------------------------------------
-  # PRD7b-7d: TECH LEVEL ADVANCEMENT
-  # -------------------------------------------------------------------------
-  var totalAdvancements = 0
-  
-  for (houseId, _) in state.activeHousesWithId():
-    var house = state.house(houseId).get()
-    
-    # PRD7b: Economic Level (EL) Advancement
-    let currentEL = house.techTree.levels.el
-    let elAdv = house.techTree.attemptELAdvancement(currentEL)
-    if elAdv.isSome:
-      totalAdvancements += 1
-      let adv = elAdv.get()
-      logInfo("Production",
-        &"  {house.name}: EL {adv.elFromLevel} -> {adv.elToLevel} " &
-        &"(spent {adv.elCost} ERP)")
-      if adv.prestigeEvent.isSome:
-        state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
-      events.add(victory.techAdvance(houseId, "Economic Level", adv.elToLevel))
-    
-    # PRD7c: Science Level (SL) Advancement
-    let currentSL = house.techTree.levels.sl
-    let slAdv = house.techTree.attemptSLAdvancement(currentSL)
-    if slAdv.isSome:
-      totalAdvancements += 1
-      let adv = slAdv.get()
-      logInfo("Production",
-        &"  {house.name}: SL {adv.slFromLevel} -> {adv.slToLevel} " &
-        &"(spent {adv.slCost} SRP)")
-      if adv.prestigeEvent.isSome:
-        state.applyPrestigeEvent(houseId, adv.prestigeEvent.get())
-      events.add(victory.techAdvance(houseId, "Science Level", adv.slToLevel))
-    
-    # PRD7d: Technology Field Advancement
-    for field in [
-      TechField.ConstructionTech, TechField.WeaponsTech,
-      TechField.TerraformingTech, TechField.ElectronicIntelligence,
-      TechField.CounterIntelligence,
-    ]:
-      let techAdv = attemptTechAdvancement(state, houseId, house.techTree, field)
-      if techAdv.isSome:
-        totalAdvancements += 1
-        let adv = techAdv.get()
-        logInfo("Production",
-          &"  {house.name}: {field} {adv.techFromLevel} -> {adv.techToLevel} " &
-          &"(spent {adv.techCost} TRP)")
-        if adv.prestigeEvent.isSome:
-          applyPrestigeEvent(
-            state, houseId, adv.prestigeEvent.get()
-          )
-        events.add(victory.techAdvance(houseId, $field, adv.techToLevel))
-    
-    # Write back all tech changes
-    state.updateHouse(houseId, house)
-  
-  logInfo("Production",
-    &"[PRD7] Complete ({totalAdvancements} total advancements)")
+  # PRD7b-7d: Auto-advancement removed — tech purchases are now explicit
+  # in Command Phase CMD6d via TechPurchaseSet.
+
+  logInfo("Production", "[PRD7] Complete (purchases handled in CMD6d)")
 
 # =============================================================================
 # MAIN ENTRY POINT

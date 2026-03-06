@@ -543,10 +543,10 @@ proc processEspionageActions*(
             var targetHouse = targetHouseOpt.get()
             var attackerHouse = attackerHouseOpt.get()
 
-            targetHouse.techTree.accumulated.science = max(
-              0, targetHouse.techTree.accumulated.science - result.srpStolen
+            targetHouse.techTree.accumulated.srp = max(
+              0, targetHouse.techTree.accumulated.srp - result.srpStolen
             )
-            attackerHouse.techTree.accumulated.science += result.srpStolen
+            attackerHouse.techTree.accumulated.srp += result.srpStolen
 
             state.updateHouse(attempt.target, targetHouse)
             state.updateHouse(attempt.attacker, attackerHouse)

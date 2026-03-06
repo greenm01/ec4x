@@ -12,7 +12,7 @@
 ##   import common/msgpack_types
 ##   # Now pack/unpack work automatically for HouseId, FleetId, etc.
 
-import std/options
+import std/[options, tables, streams]
 import msgpack4nim
 import ../engine/types/core
 import ../engine/types/espionage
@@ -1292,3 +1292,46 @@ proc unpack_type*[S](s: S, x: var GameEvent) =
   x.fleetId = fleetId
   x.newOwner = newOwner
   x.oldOwner = oldOwner
+
+# =============================================================================
+# ResearchPoints Migration (old per-tech → new pooled format)
+# =============================================================================
+#
+# Old format: [economic: int32, science: int32, technology: Table[TechField, int32]]
+# New format: [erp: int32, srp: int32, trp: int32]
+# Detection: peek at third element — if it's a map, it's old format.
+
+proc pack_type*[S](s: S, x: ResearchPoints) =
+  s.pack_array(3)
+  s.pack(x.erp)
+  s.pack(x.srp)
+  s.pack(x.trp)
+
+proc unpack_type*[S](s: S, x: var ResearchPoints) =
+  let arrayLen = s.unpack_array()
+  doAssert(arrayLen == 3, "ResearchPoints: expected 3-element array, got " & $arrayLen)
+  var first, second: int32
+  s.unpack(first)
+  s.unpack(second)
+  if s.is_map:
+    # Old format: third element is Table[TechField, int32]
+    # Sum per-tech RP into pooled SRP/TRP based on field mapping
+    var srp = second  # old science → srp
+    var trp: int32 = 0
+    let mapLen = s.unpack_map()
+    for i in 0 ..< mapLen:
+      var fieldInt: int
+      s.unpack(fieldInt)
+      var rp: int32
+      s.unpack(rp)
+      let field = TechField(fieldInt)
+      if field.isSrpField():
+        srp += rp
+      else:
+        trp += rp
+    x = ResearchPoints(erp: first, srp: srp, trp: trp)
+  else:
+    # New format: third element is int32 (trp)
+    var third: int32
+    s.unpack(third)
+    x = ResearchPoints(erp: first, srp: second, trp: third)

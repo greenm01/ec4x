@@ -995,6 +995,7 @@ proc initBindings*() =
   # Research Context
   # =========================================================================
 
+  # Navigation (shared between Pools and List focus)
   registerBinding(Binding(
     key: KeyCode.KeyUp, modifier: KeyModifier.None,
     actionKind: ActionKind.listUp,
@@ -1005,7 +1006,7 @@ proc initBindings*() =
     key: KeyCode.KeyK, modifier: KeyModifier.None,
     actionKind: ActionKind.listUp,
     context: BindingContext.Research,
-    longLabel: "NAV", shortLabel: "K", priority: 1))
+    longLabel: "NAV", shortLabel: "K", priority: 1, hidden: true))
 
   registerBinding(Binding(
     key: KeyCode.KeyDown, modifier: KeyModifier.None,
@@ -1017,7 +1018,7 @@ proc initBindings*() =
     key: KeyCode.KeyJ, modifier: KeyModifier.None,
     actionKind: ActionKind.listDown,
     context: BindingContext.Research,
-    longLabel: "NAV", shortLabel: "J", priority: 2))
+    longLabel: "NAV", shortLabel: "J", priority: 2, hidden: true))
 
   registerBinding(Binding(
     key: KeyCode.KeyPageUp, modifier: KeyModifier.None,
@@ -1031,35 +1032,82 @@ proc initBindings*() =
     context: BindingContext.Research,
     longLabel: "PGDN", shortLabel: "PgD", priority: 4))
 
+  # Tab cycles between Pools and List
+  registerBinding(Binding(
+    key: KeyCode.KeyTab, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchFocusNext,
+    context: BindingContext.Research,
+    longLabel: "POOLS/TECH", shortLabel: "Tab", priority: 10))
+
+  # Pool navigation (Left/Right or H/L when Pools focused)
+  registerBinding(Binding(
+    key: KeyCode.KeyLeft, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchPoolSelectPrev,
+    context: BindingContext.Research,
+    longLabel: "POOL", shortLabel: "Pool", priority: 20, hidden: true))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyRight, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchPoolSelectNext,
+    context: BindingContext.Research,
+    longLabel: "POOL", shortLabel: "Pool", priority: 21, hidden: true))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyH, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchPoolSelectPrev,
+    context: BindingContext.Research,
+    longLabel: "POOL", shortLabel: "Pool", priority: 20, hidden: true))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchPoolSelectNext,
+    context: BindingContext.Research,
+    longLabel: "POOL", shortLabel: "Pool", priority: 21, hidden: true))
+
+  # Deposit controls (+/- for pool deposit when Pools focused)
   registerBinding(Binding(
     key: KeyCode.KeyPlus, modifier: KeyModifier.None,
-    actionKind: ActionKind.researchAdjustInc,
+    actionKind: ActionKind.researchPoolDepositInc,
     context: BindingContext.Research,
-    longLabel: "+", shortLabel: "+", priority: 40))
+    longLabel: "+DEPOSIT", shortLabel: "+", priority: 40))
 
   registerBinding(Binding(
     key: KeyCode.KeyMinus, modifier: KeyModifier.None,
-    actionKind: ActionKind.researchAdjustDec,
+    actionKind: ActionKind.researchPoolDepositDec,
     context: BindingContext.Research,
-    longLabel: "-", shortLabel: "-", priority: 41))
+    longLabel: "-DEPOSIT", shortLabel: "-", priority: 41))
 
   registerBinding(Binding(
     key: KeyCode.KeyPlus, modifier: KeyModifier.Shift,
-    actionKind: ActionKind.researchAdjustFineInc,
+    actionKind: ActionKind.researchPoolDepositFineInc,
     context: BindingContext.Research,
     longLabel: "+1", shortLabel: "+1", priority: 42))
 
   registerBinding(Binding(
     key: KeyCode.KeyMinus, modifier: KeyModifier.Shift,
-    actionKind: ActionKind.researchAdjustFineDec,
+    actionKind: ActionKind.researchPoolDepositFineDec,
     context: BindingContext.Research,
     longLabel: "-1", shortLabel: "-1", priority: 43))
 
   registerBinding(Binding(
     key: KeyCode.Key0, modifier: KeyModifier.None,
-    actionKind: ActionKind.researchClearAllocation,
+    actionKind: ActionKind.researchPoolDepositClear,
     context: BindingContext.Research,
     longLabel: "CLEAR", shortLabel: "0", priority: 44))
+
+  # Purchase toggle (Enter on tech list)
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.researchPurchaseToggle,
+    context: BindingContext.Research,
+    longLabel: "BUY", shortLabel: "Buy", priority: 50))
+
+  # Liquidation (L on pool)
+  registerBinding(Binding(
+    key: KeyCode.KeyL, modifier: KeyModifier.Shift,
+    actionKind: ActionKind.researchLiquidateOpen,
+    context: BindingContext.Research,
+    longLabel: "LIQUIDATE", shortLabel: "Liq", priority: 60))
 
   # =========================================================================
   # Espionage Context
@@ -2174,19 +2222,36 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionInboxReportDown())
 
   # Research actions
-  of ActionKind.researchAdjustInc:
-    return some(actionResearchAdjustInc())
-  of ActionKind.researchAdjustDec:
-    return some(actionResearchAdjustDec())
-  of ActionKind.researchAdjustFineInc:
-    return some(actionResearchAdjustFineInc())
-  of ActionKind.researchAdjustFineDec:
-    return some(actionResearchAdjustFineDec())
-  of ActionKind.researchClearAllocation:
-    return some(actionResearchClearAllocation())
-  of ActionKind.researchDigitInput:
-    # This is handled specially - digit passed via gameActionData
-    return none(Proposal)
+  of ActionKind.researchPoolDepositInc:
+    return some(actionResearchPoolDepositInc())
+  of ActionKind.researchPoolDepositDec:
+    return some(actionResearchPoolDepositDec())
+  of ActionKind.researchPoolDepositFineInc:
+    return some(actionResearchPoolDepositFineInc())
+  of ActionKind.researchPoolDepositFineDec:
+    return some(actionResearchPoolDepositFineDec())
+  of ActionKind.researchPoolDepositClear:
+    return some(actionResearchPoolDepositClear())
+  of ActionKind.researchPoolDigitInput:
+    return none(Proposal)  # Handled specially
+  of ActionKind.researchPoolSelectNext:
+    return some(actionResearchPoolSelectNext())
+  of ActionKind.researchPoolSelectPrev:
+    return some(actionResearchPoolSelectPrev())
+  of ActionKind.researchPurchaseToggle:
+    return some(actionResearchPurchaseToggle())
+  of ActionKind.researchLiquidateOpen:
+    return some(actionResearchLiquidateOpen())
+  of ActionKind.researchLiquidateConfirm:
+    return some(actionResearchLiquidateConfirm())
+  of ActionKind.researchLiquidateCancel:
+    return some(actionResearchLiquidateCancel())
+  of ActionKind.researchLiquidateAdjustInc:
+    return some(actionResearchLiquidateAdjustInc())
+  of ActionKind.researchLiquidateAdjustDec:
+    return some(actionResearchLiquidateAdjustDec())
+  of ActionKind.researchFocusNext:
+    return some(actionResearchFocusNext())
 
   # Espionage actions
   of ActionKind.espionageFocusNext:
@@ -2254,6 +2319,8 @@ proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
 
 proc backActionForState(model: TuiModel): Option[Proposal] =
   ## Return the layered back action for current state
+  if model.ui.liquidationConfirmActive:
+    return some(actionResearchLiquidateCancel())
   if model.ui.submitConfirmActive:
     return some(actionSubmitCancel())
   if model.ui.quitConfirmationActive:
@@ -2346,6 +2413,20 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return some(actionSubmitConfirm())
     else:
       return none(Proposal)  # Swallow all other input
+
+  # Liquidation confirmation dialog
+  if model.ui.liquidationConfirmActive:
+    case key
+    of KeyCode.KeyEnter:
+      return some(actionResearchLiquidateConfirm())
+    of KeyCode.KeyEscape, KeyCode.KeyN:
+      return some(actionResearchLiquidateCancel())
+    of KeyCode.KeyPlus:
+      return some(actionResearchLiquidateAdjustInc())
+    of KeyCode.KeyMinus:
+      return some(actionResearchLiquidateAdjustDec())
+    else:
+      return none(Proposal)  # Swallow
 
   # Export confirmation popup - any key dismisses it
   if model.ui.exportConfirmActive:
@@ -2491,8 +2572,9 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       if modifier != ViewModifier:
         return none(Proposal)
 
-  # Research view digit input
+  # Research view digit input (for pool deposits)
   if model.ui.mode == ViewMode.Research and
+      model.ui.researchFocus == ResearchFocus.Pools and
       not model.ui.expertModeActive and
       modifier == KeyModifier.None:
     let digitChar = case key
@@ -2508,7 +2590,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       of KeyCode.Key9: '9'
       else: '\0'
     if digitChar != '\0':
-      return some(actionResearchDigitInput(digitChar))
+      return some(actionResearchPoolDigitInput(digitChar))
 
   if model.ui.mode == ViewMode.Fleets and
       model.ui.fleetViewMode == FleetViewMode.ListView and

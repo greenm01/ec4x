@@ -29,6 +29,7 @@ import ../../engine/types/[core, production, ship, facilities, ground_unit,
 import ../../engine/systems/capacity/construction_docks
 import ../../engine/systems/tech/costs
 import ../tui/data/research_projection
+import ../tui/data/tech_info
 
 export types, tui_model, actions
 
@@ -81,140 +82,34 @@ proc viewModeFromInt(value: int): Option[ViewMode] =
   else:
     none(ViewMode)
 
-proc researchAllocatedTotal(allocation: ResearchAllocation): int =
-  var total = allocation.economic + allocation.science
-  for pp in allocation.technology.values:
-    total += pp
-  total.int
+## ------------ Research deposit/purchase helpers --------------------
 
-proc researchItemAllocation(
-    allocation: ResearchAllocation,
-    item: ResearchItem
-): int =
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    allocation.economic.int
-  of ResearchItemKind.ScienceLevel:
-    allocation.science.int
-  of ResearchItemKind.Technology:
-    if allocation.technology.hasKey(item.field):
-      allocation.technology[item.field].int
-    else:
-      0
+proc totalDepositPP(deposits: ResearchDeposits): int =
+  int(deposits.erp) + int(deposits.srp) + int(deposits.trp)
 
-proc setResearchItemAllocation(
-    allocation: var ResearchAllocation,
-    item: ResearchItem,
-    value: int
-) =
-  let clamped = max(0, value)
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    allocation.economic = int32(clamped)
-  of ResearchItemKind.ScienceLevel:
-    allocation.science = int32(clamped)
-  of ResearchItemKind.Technology:
-    allocation.technology[item.field] = int32(clamped)
+proc poolDeposit(deposits: ResearchDeposits, pool: ResearchPoolIdx): int32 =
+  case pool
+  of ResearchPoolIdx.PoolERP: deposits.erp
+  of ResearchPoolIdx.PoolSRP: deposits.srp
+  of ResearchPoolIdx.PoolTRP: deposits.trp
 
-proc researchMaxAllocation(model: TuiModel, item: ResearchItem): int =
-  if model.view.techLevels.isNone or model.view.researchPoints.isNone:
-    return 0
-
-  proc maxPpForRemainingRp(
-      requestedPp: int32,
-      remainingRp: int32,
-      gho: int32,
-      slLevel: int32,
-      convProc: proc (pp: int32, gho: int32, slLevel: int32): int32
-  ): int =
-    if requestedPp <= 0 or remainingRp <= 0:
-      return 0
-
-    var lo = 0'i32
-    var hi = requestedPp
-    var best = 0'i32
-    while lo <= hi:
-      let mid = (lo + hi) div 2
-      let rp = convProc(mid, gho, slLevel)
-      if rp <= remainingRp:
-        best = mid
-        lo = mid + 1
-      else:
-        hi = mid - 1
-    best.int
-
-  let levels = model.view.techLevels.get()
-  let points = model.view.researchPoints.get()
-  let remainingRp = research_projection.maxProjectedAllocation(
-    levels, points, model.ui.researchAllocation, item
-  )
-  if remainingRp <= 0:
-    return 0
-
-  var gho = 0'i32
-  for colony in model.view.colonies:
-    gho += int32(max(0, colony.grossOutput))
-  if gho <= 0:
-    gho = int32(max(1, model.view.production))
-
-  let maxByTreasury = int32(max(0, model.view.treasury))
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    maxPpForRemainingRp(
-      maxByTreasury,
-      int32(remainingRp),
-      gho,
-      levels.sl,
-      convertPPToERP
-    )
-  of ResearchItemKind.ScienceLevel:
-    maxPpForRemainingRp(
-      maxByTreasury,
-      int32(remainingRp),
-      gho,
-      levels.sl,
-      convertPPToSRP
-    )
-  of ResearchItemKind.Technology:
-    maxPpForRemainingRp(
-      maxByTreasury,
-      int32(remainingRp),
-      gho,
-      levels.sl,
-      convertPPToTRP
-    )
-
-proc normalizeResearchAllocation(model: var TuiModel): bool =
-  ## Re-clamp all rows against projected SL.
-  ## Returns true when dependent staged allocations were reduced.
-  if model.view.techLevels.isNone or model.view.researchPoints.isNone:
-    return false
-
-  var dependentReduced = false
-  var changed = true
-
-  while changed:
-    changed = false
-    for item in researchItems():
-      let current = researchItemAllocation(model.ui.researchAllocation, item)
-      let maxAllowed = researchMaxAllocation(model, item)
-      if current > maxAllowed:
-        if item.kind != ResearchItemKind.ScienceLevel and current > 0:
-          dependentReduced = true
-        setResearchItemAllocation(model.ui.researchAllocation, item, maxAllowed)
-        changed = true
-
-  dependentReduced
+proc setPoolDeposit(deposits: var ResearchDeposits, pool: ResearchPoolIdx, value: int32) =
+  case pool
+  of ResearchPoolIdx.PoolERP: deposits.erp = value
+  of ResearchPoolIdx.PoolSRP: deposits.srp = value
+  of ResearchPoolIdx.PoolTRP: deposits.trp = value
 
 proc isResearchRowSelectable(model: TuiModel, idx: int): bool =
+  ## In the new model all non-maxed rows are selectable (purchase affordability is separate)
   let items = researchItems()
-  if items.len == 0:
-    return false
   if idx < 0 or idx >= items.len:
     return false
-  if model.view.techLevels.isNone or model.view.researchPoints.isNone:
+  if model.view.techLevels.isNone:
     return true
-  researchMaxAllocation(model, items[idx]) > 0
+  let levels = model.view.techLevels.get()
+  let level = research_projection.currentTechLevel(levels, items[idx])
+  let maxLevel = progressionMaxLevel(items[idx])
+  level < maxLevel
 
 proc firstSelectableResearchIdx(model: TuiModel): int =
   let items = researchItems()
@@ -255,43 +150,22 @@ proc nextSelectableResearchIdx(
     return clamp(current, 0, maxIdx)
   model.firstSelectableResearchIdx()
 
-proc adjustResearchAllocation(
-    model: var TuiModel,
-    delta: int
-) =
+proc adjustPoolDeposit(model: var TuiModel, delta: int) =
   if model.ui.mode != ViewMode.Research:
     return
-  if model.ui.researchFocus != ResearchFocus.List:
+  if model.ui.researchFocus != ResearchFocus.Pools:
     return
-  let items = researchItems()
-  if items.len == 0:
-    return
-  let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
-  let item = items[idx]
-  let current = researchItemAllocation(model.ui.researchAllocation, item)
-  var nextValue = current + delta
-  if nextValue < 0:
-    nextValue = 0
-  let maxPerTech = researchMaxAllocation(model, item)
-  if nextValue > maxPerTech:
-    nextValue = maxPerTech
-  var total = researchAllocatedTotal(model.ui.researchAllocation)
-  let diff = nextValue - current
-  if diff > 0:
-    let remaining = max(0, model.view.treasury - total)
-    if diff > remaining:
-      nextValue = current + remaining
-  setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
-  if normalizeResearchAllocation(model):
-    model.ui.statusMessage = "SL reduced: blocked allocations were cleared"
+  let pool = model.ui.researchPoolIdx
+  let current = int(poolDeposit(model.ui.researchDeposits, pool))
+  let otherDeposits = totalDepositPP(model.ui.researchDeposits) - current
+  let maxByTreasury = max(0, model.view.treasury - otherDeposits)
+  var nextValue = clamp(current + delta, 0, maxByTreasury)
+  setPoolDeposit(model.ui.researchDeposits, pool, int32(nextValue))
 
-proc applyResearchDigitInput(
-    model: var TuiModel,
-    digit: char
-) =
+proc applyPoolDigitInput(model: var TuiModel, digit: char) =
   if model.ui.mode != ViewMode.Research:
     return
-  if model.ui.researchFocus != ResearchFocus.List:
+  if model.ui.researchFocus != ResearchFocus.Pools:
     return
   let now = epochTime()
   let buffer = model.ui.researchDigitBuffer
@@ -303,25 +177,33 @@ proc applyResearchDigitInput(
     nextBuffer = $digit
   model.ui.researchDigitBuffer = nextBuffer
   model.ui.researchDigitTime = now
-  let parsed = try:
-    parseInt(nextBuffer)
-  except:
-    0
+  let parsed = try: parseInt(nextBuffer) except: 0
+  let pool = model.ui.researchPoolIdx
+  let current = int(poolDeposit(model.ui.researchDeposits, pool))
+  let otherDeposits = totalDepositPP(model.ui.researchDeposits) - current
+  let maxByTreasury = max(0, model.view.treasury - otherDeposits)
+  setPoolDeposit(model.ui.researchDeposits, pool, int32(min(parsed, maxByTreasury)))
+
+proc toggleResearchPurchase(model: var TuiModel) =
+  if model.ui.mode != ViewMode.Research:
+    return
+  if model.ui.researchFocus != ResearchFocus.List:
+    return
   let items = researchItems()
   if items.len == 0:
     return
   let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
   let item = items[idx]
-  let current = researchItemAllocation(model.ui.researchAllocation, item)
-  let total = researchAllocatedTotal(model.ui.researchAllocation)
-  let remaining = max(0, model.view.treasury - (total - current))
-  var nextValue = min(parsed, remaining)
-  let maxPerTech = researchMaxAllocation(model, item)
-  if nextValue > maxPerTech:
-    nextValue = maxPerTech
-  setResearchItemAllocation(model.ui.researchAllocation, item, nextValue)
-  if normalizeResearchAllocation(model):
-    model.ui.statusMessage = "SL reduced: blocked allocations were cleared"
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    model.ui.researchPurchases.economic = not model.ui.researchPurchases.economic
+  of ResearchItemKind.ScienceLevel:
+    model.ui.researchPurchases.science = not model.ui.researchPurchases.science
+  of ResearchItemKind.Technology:
+    if item.field in model.ui.researchPurchases.technology:
+      model.ui.researchPurchases.technology.excl(item.field)
+    else:
+      model.ui.researchPurchases.technology.incl(item.field)
 
 proc espionageBudgetCostPp(model: TuiModel): int =
   let ebpCost = int(gameConfig.espionage.costs.ebpCostPp)
@@ -350,7 +232,7 @@ proc adjustEspionageBudget(
 ) =
   if model.ui.mode != ViewMode.Espionage:
     return
-  let totalResearchPp = researchAllocatedTotal(model.ui.researchAllocation)
+  let totalResearchPp = totalDepositPP(model.ui.researchDeposits)
   let currentBudgetPp = model.espionageBudgetCostPp()
   let ebpCostPp = int(gameConfig.espionage.costs.ebpCostPp)
   let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
@@ -738,7 +620,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = model.firstSelectableResearchIdx()
         model.ui.researchDigitBuffer = ""
         model.ui.researchDigitTime = 0.0
-        model.ui.researchFocus = ResearchFocus.List
+        model.ui.researchFocus = ResearchFocus.Pools
   of ActionKind.switchView:
     # Primary view switch
     let newMode = viewModeFromInt(proposal.navMode)
@@ -753,7 +635,7 @@ proc navigationAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.selectedIdx = model.firstSelectableResearchIdx()
         model.ui.researchDigitBuffer = ""
         model.ui.researchDigitTime = 0.0
-        model.ui.researchFocus = ResearchFocus.List
+        model.ui.researchFocus = ResearchFocus.Pools
       if selectedMode == ViewMode.Messages:
         model.ui.inboxFocus = InboxPaneFocus.List
         model.ui.inboxSection = InboxSection.Messages
@@ -1115,7 +997,12 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           model.ui.inboxDetailScroll.scrollBy(-1)
     elif model.ui.mode == ViewMode.Research:
-      if model.ui.researchFocus == ResearchFocus.Detail:
+      if model.ui.researchFocus == ResearchFocus.Pools:
+        model.ui.researchPoolIdx = case model.ui.researchPoolIdx
+          of ResearchPoolIdx.PoolERP: ResearchPoolIdx.PoolTRP
+          of ResearchPoolIdx.PoolSRP: ResearchPoolIdx.PoolERP
+          of ResearchPoolIdx.PoolTRP: ResearchPoolIdx.PoolSRP
+      elif model.ui.researchFocus == ResearchFocus.Detail:
         model.ui.researchFocus = ResearchFocus.List
       else:
         model.ui.selectedIdx = model.nextSelectableResearchIdx(
@@ -1263,8 +1150,13 @@ proc selectionAcceptor*(model: var TuiModel, proposal: Proposal) =
         else:
           model.ui.inboxDetailScroll.scrollBy(1)
     elif model.ui.mode == ViewMode.Research:
-      if model.ui.researchFocus == ResearchFocus.Detail:
-        discard  # down does nothing in detail pane (no scrollable content)
+      if model.ui.researchFocus == ResearchFocus.Pools:
+        model.ui.researchPoolIdx = case model.ui.researchPoolIdx
+          of ResearchPoolIdx.PoolERP: ResearchPoolIdx.PoolSRP
+          of ResearchPoolIdx.PoolSRP: ResearchPoolIdx.PoolTRP
+          of ResearchPoolIdx.PoolTRP: ResearchPoolIdx.PoolERP
+      elif model.ui.researchFocus == ResearchFocus.Detail:
+        discard
       else:
         model.ui.selectedIdx = model.nextSelectableResearchIdx(
           model.ui.selectedIdx, 1, true)
@@ -1380,27 +1272,75 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     case proposal.actionKind
     of ActionKind.toggleHelpOverlay:
       model.ui.showHelpOverlay = not model.ui.showHelpOverlay
-    of ActionKind.researchAdjustInc:
-      adjustResearchAllocation(model, ResearchAdjustStep)
-    of ActionKind.researchAdjustDec:
-      adjustResearchAllocation(model, -ResearchAdjustStep)
-    of ActionKind.researchAdjustFineInc:
-      adjustResearchAllocation(model, ResearchAdjustFineStep)
-    of ActionKind.researchAdjustFineDec:
-      adjustResearchAllocation(model, -ResearchAdjustFineStep)
-    of ActionKind.researchClearAllocation:
-      if model.ui.mode == ViewMode.Research:
-        let items = researchItems()
-        if items.len > 0:
-          let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
-          let item = items[idx]
-          setResearchItemAllocation(model.ui.researchAllocation, item, 0)
-          if normalizeResearchAllocation(model):
-            model.ui.statusMessage =
-              "SL reduced: blocked allocations were cleared"
-    of ActionKind.researchDigitInput:
+    of ActionKind.researchPoolDepositInc:
+      adjustPoolDeposit(model, ResearchAdjustStep)
+    of ActionKind.researchPoolDepositDec:
+      adjustPoolDeposit(model, -ResearchAdjustStep)
+    of ActionKind.researchPoolDepositFineInc:
+      adjustPoolDeposit(model, ResearchAdjustFineStep)
+    of ActionKind.researchPoolDepositFineDec:
+      adjustPoolDeposit(model, -ResearchAdjustFineStep)
+    of ActionKind.researchPoolDepositClear:
+      if model.ui.mode == ViewMode.Research and
+          model.ui.researchFocus == ResearchFocus.Pools:
+        setPoolDeposit(model.ui.researchDeposits, model.ui.researchPoolIdx, 0)
+    of ActionKind.researchPoolDigitInput:
       if proposal.gameActionData.len > 0:
-        applyResearchDigitInput(model, proposal.gameActionData[0])
+        applyPoolDigitInput(model, proposal.gameActionData[0])
+    of ActionKind.researchPoolSelectNext:
+      if model.ui.mode == ViewMode.Research and
+          model.ui.researchFocus == ResearchFocus.Pools:
+        model.ui.researchPoolIdx = case model.ui.researchPoolIdx
+          of ResearchPoolIdx.PoolERP: ResearchPoolIdx.PoolSRP
+          of ResearchPoolIdx.PoolSRP: ResearchPoolIdx.PoolTRP
+          of ResearchPoolIdx.PoolTRP: ResearchPoolIdx.PoolERP
+    of ActionKind.researchPoolSelectPrev:
+      if model.ui.mode == ViewMode.Research and
+          model.ui.researchFocus == ResearchFocus.Pools:
+        model.ui.researchPoolIdx = case model.ui.researchPoolIdx
+          of ResearchPoolIdx.PoolERP: ResearchPoolIdx.PoolTRP
+          of ResearchPoolIdx.PoolSRP: ResearchPoolIdx.PoolERP
+          of ResearchPoolIdx.PoolTRP: ResearchPoolIdx.PoolSRP
+    of ActionKind.researchPurchaseToggle:
+      toggleResearchPurchase(model)
+    of ActionKind.researchLiquidateOpen:
+      if model.ui.mode == ViewMode.Research and
+          model.ui.researchFocus == ResearchFocus.Pools:
+        model.ui.liquidationConfirmActive = true
+        model.ui.liquidationPool = model.ui.researchPoolIdx
+        model.ui.liquidationAmount = 0
+    of ActionKind.researchLiquidateConfirm:
+      if model.ui.liquidationConfirmActive and model.ui.liquidationAmount > 0:
+        case model.ui.liquidationPool
+        of ResearchPoolIdx.PoolERP:
+          model.ui.stagedLiquidation.erp += model.ui.liquidationAmount
+        of ResearchPoolIdx.PoolSRP:
+          model.ui.stagedLiquidation.srp += model.ui.liquidationAmount
+        of ResearchPoolIdx.PoolTRP:
+          model.ui.stagedLiquidation.trp += model.ui.liquidationAmount
+      model.ui.liquidationConfirmActive = false
+      model.ui.liquidationAmount = 0
+    of ActionKind.researchLiquidateCancel:
+      model.ui.liquidationConfirmActive = false
+      model.ui.liquidationAmount = 0
+    of ActionKind.researchLiquidateAdjustInc:
+      if model.ui.liquidationConfirmActive:
+        if model.view.researchPoints.isSome:
+          let pts = model.view.researchPoints.get()
+          let poolRP = case model.ui.liquidationPool
+            of ResearchPoolIdx.PoolERP: pts.erp
+            of ResearchPoolIdx.PoolSRP: pts.srp
+            of ResearchPoolIdx.PoolTRP: pts.trp
+          model.ui.liquidationAmount = min(poolRP, model.ui.liquidationAmount + 5)
+    of ActionKind.researchLiquidateAdjustDec:
+      if model.ui.liquidationConfirmActive:
+        model.ui.liquidationAmount = max(0, model.ui.liquidationAmount - 5)
+    of ActionKind.researchFocusNext:
+      if model.ui.mode == ViewMode.Research:
+        model.ui.researchFocus = case model.ui.researchFocus
+          of ResearchFocus.Pools: ResearchFocus.List
+          of ResearchFocus.List: ResearchFocus.Pools
+          of ResearchFocus.Detail: ResearchFocus.Pools
     of ActionKind.espionageFocusNext:
       if model.ui.mode == ViewMode.Espionage:
         case model.ui.espionageFocus

@@ -96,6 +96,12 @@ taxIncentives {
     tier 3 { minRate 0; maxRate 10; prestigeBonusPerColony 3 }
 }
 
+// --- Research Liquidation Penalty ---
+researchLiquidation {
+    (docs)"docs/specs/03-economy.md#section-3-8-2"
+    prestigePenalty -5
+}
+
 // --- Maintenance Shortfall Penalties ---
 maintenanceShortfall {
     (docs)"docs/specs/03-economy.md#section-3-9-1"

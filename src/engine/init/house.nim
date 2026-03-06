@@ -34,9 +34,7 @@ proc initHouse*(houseId: HouseId, name: string): House =
         fd: startingTech.fd,
         aco: startingTech.aco
       ),
-      accumulated: ResearchPoints(
-        economic: 0'i32, science: 0'i32, technology: initTable[TechField, int32]()
-      ),
+      accumulated: ResearchPoints(erp: 0, srp: 0, trp: 0),
       breakthroughBonus: initTable[TechField, float32](),
     ),
     espionageBudget: EspionageBudget(houseId: houseId),

@@ -359,29 +359,50 @@ proc actionToggleHelpOverlay*(): Proposal =
 # Research Actions
 # =============================================================================
 
-proc actionResearchAdjustInc*(): Proposal =
-  ## Increase research allocation
-  gameActionProposal(ActionKind.researchAdjustInc, "")
+proc actionResearchPoolDepositInc*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolDepositInc, "")
 
-proc actionResearchAdjustDec*(): Proposal =
-  ## Decrease research allocation
-  gameActionProposal(ActionKind.researchAdjustDec, "")
+proc actionResearchPoolDepositDec*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolDepositDec, "")
 
-proc actionResearchAdjustFineInc*(): Proposal =
-  ## Increase research allocation (fine step)
-  gameActionProposal(ActionKind.researchAdjustFineInc, "")
+proc actionResearchPoolDepositFineInc*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolDepositFineInc, "")
 
-proc actionResearchAdjustFineDec*(): Proposal =
-  ## Decrease research allocation (fine step)
-  gameActionProposal(ActionKind.researchAdjustFineDec, "")
+proc actionResearchPoolDepositFineDec*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolDepositFineDec, "")
 
-proc actionResearchClearAllocation*(): Proposal =
-  ## Clear research allocation for selected item
-  gameActionProposal(ActionKind.researchClearAllocation, "")
+proc actionResearchPoolDepositClear*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolDepositClear, "")
 
-proc actionResearchDigitInput*(digit: char): Proposal =
-  ## Append digit input for research allocation
-  gameActionProposal(ActionKind.researchDigitInput, $digit)
+proc actionResearchPoolDigitInput*(digit: char): Proposal =
+  gameActionProposal(ActionKind.researchPoolDigitInput, $digit)
+
+proc actionResearchPoolSelectNext*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolSelectNext, "")
+
+proc actionResearchPoolSelectPrev*(): Proposal =
+  gameActionProposal(ActionKind.researchPoolSelectPrev, "")
+
+proc actionResearchPurchaseToggle*(): Proposal =
+  gameActionProposal(ActionKind.researchPurchaseToggle, "")
+
+proc actionResearchLiquidateOpen*(): Proposal =
+  gameActionProposal(ActionKind.researchLiquidateOpen, "")
+
+proc actionResearchLiquidateConfirm*(): Proposal =
+  gameActionProposal(ActionKind.researchLiquidateConfirm, "")
+
+proc actionResearchLiquidateCancel*(): Proposal =
+  gameActionProposal(ActionKind.researchLiquidateCancel, "")
+
+proc actionResearchLiquidateAdjustInc*(): Proposal =
+  gameActionProposal(ActionKind.researchLiquidateAdjustInc, "")
+
+proc actionResearchLiquidateAdjustDec*(): Proposal =
+  gameActionProposal(ActionKind.researchLiquidateAdjustDec, "")
+
+proc actionResearchFocusNext*(): Proposal =
+  gameActionProposal(ActionKind.researchFocusNext, "")
 
 # ============================================================================
 # Espionage Actions

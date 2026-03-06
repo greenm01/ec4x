@@ -144,10 +144,10 @@ proc applyBreakthrough*(
   of BreakthroughType.Minor:
     # +10 RP to highest investment category
     if allocation.economic > allocation.science:
-      tree.accumulated.economic += 10
+      tree.accumulated.erp += 10
       result.category = ResearchCategory.Economic
     else:
-      tree.accumulated.science += 10
+      tree.accumulated.srp += 10
       result.category = ResearchCategory.Science
     result.amount = 10
   of BreakthroughType.Moderate:
@@ -185,9 +185,9 @@ proc attemptELAdvancement*(
 
   let cost = elUpgradeCost(int32(currentEL))
 
-  if tree.accumulated.economic >= int32(cost):
+  if tree.accumulated.erp >= int32(cost):
     # Spend RP
-    tree.accumulated.economic -= int32(cost)
+    tree.accumulated.erp -= int32(cost)
 
     # Advance level
     tree.levels.el = int32(currentEL + 1)
@@ -225,9 +225,9 @@ proc attemptSLAdvancement*(
 
   let cost = slUpgradeCost(int32(currentSL))
 
-  if tree.accumulated.science >= int32(cost):
+  if tree.accumulated.srp >= int32(cost):
     # Spend SRP
-    tree.accumulated.science -= int32(cost)
+    tree.accumulated.srp -= int32(cost)
 
     # Advance level
     tree.levels.sl = int32(currentSL + 1)
@@ -296,13 +296,17 @@ proc attemptTechAdvancement*(
 
   let cost = techUpgradeCost(field, currentLevel)
 
-  # Check if enough TRP accumulated
-  if field notin tree.accumulated.technology or
-      tree.accumulated.technology[field] < int32(cost):
+  # Check if enough pool RP accumulated
+  let pool = if field.isSrpField(): tree.accumulated.srp
+             else: tree.accumulated.trp
+  if pool < int32(cost):
     return none(ResearchAdvancement)
 
-  # Spend TRP
-  tree.accumulated.technology[field] -= int32(cost)
+  # Spend from pool
+  if field.isSrpField():
+    tree.accumulated.srp -= int32(cost)
+  else:
+    tree.accumulated.trp -= int32(cost)
 
   # Advance level
   case field

@@ -618,8 +618,14 @@ type
     ListView      ## Flat list with multi-select
 
   ResearchFocus* {.pure.} = enum
-    List
-    Detail
+    Pools     # Pool strip (top)
+    List      # Tech projects table (bottom-left)
+    Detail    # Detail pane (bottom-right)
+
+  ResearchPoolIdx* {.pure.} = enum
+    PoolERP
+    PoolSRP
+    PoolTRP
 
   EspionageFocus* {.pure.} = enum
     Budget
@@ -1049,10 +1055,16 @@ type
     messagesScroll*: ScrollState
 
     # Research state
-    researchAllocation*: ResearchAllocation
+    researchPoolIdx*: ResearchPoolIdx
+    researchDeposits*: ResearchDeposits
+    researchPurchases*: TechPurchaseSet
     researchDigitBuffer*: string
     researchDigitTime*: float
     researchFocus*: ResearchFocus
+    liquidationConfirmActive*: bool
+    liquidationPool*: ResearchPoolIdx
+    liquidationAmount*: int32
+    stagedLiquidation*: ResearchLiquidation
 
     # Espionage state
     espionageFocus*: EspionageFocus
@@ -1386,11 +1398,8 @@ proc initTuiUiState*(): TuiUiState =
     economyScroll: initScrollState(),
     intelScroll: initScrollState(),
     messagesScroll: initScrollState(),
-    researchAllocation: ResearchAllocation(
-      economic: 0,
-      science: 0,
-      technology: initTable[TechField, int32]()
-    ),
+    researchDeposits: ResearchDeposits(),
+    researchPurchases: TechPurchaseSet(),
     researchDigitBuffer: "",
     researchDigitTime: 0.0,
     researchFocus: ResearchFocus.List,
@@ -2165,11 +2174,15 @@ proc stagedCommandCount*(model: TuiModel): int =
   count += model.ui.stagedDiplomaticCommands.len
   if model.ui.stagedTaxRate.isSome:
     count.inc
-  var stagedResearch = int(model.ui.researchAllocation.economic) +
-    int(model.ui.researchAllocation.science)
-  for _, amount in model.ui.researchAllocation.technology.pairs:
-    stagedResearch += int(amount)
-  if stagedResearch > 0:
+  let totalDeposits = int(model.ui.researchDeposits.erp) +
+    int(model.ui.researchDeposits.srp) +
+    int(model.ui.researchDeposits.trp)
+  if totalDeposits > 0:
+    count.inc
+  let hasPurchases = model.ui.researchPurchases.economic or
+    model.ui.researchPurchases.science or
+    model.ui.researchPurchases.technology.len > 0
+  if hasPurchases:
     count.inc
   count
 
@@ -2217,12 +2230,17 @@ proc stagedCommandCategorySummary*(
   if model.ui.stagedCipInvestment > 0:
     result.add(("CIP investment",
       $model.ui.stagedCipInvestment & " credits"))
-  var stagedResearch = int(model.ui.researchAllocation.economic) +
-    int(model.ui.researchAllocation.science)
-  for _, amount in model.ui.researchAllocation.technology.pairs:
-    stagedResearch += int(amount)
-  if stagedResearch > 0:
-    result.add(("Research allocation", $stagedResearch & " PP"))
+  let totalDeposits2 = int(model.ui.researchDeposits.erp) +
+    int(model.ui.researchDeposits.srp) +
+    int(model.ui.researchDeposits.trp)
+  if totalDeposits2 > 0:
+    result.add(("Research deposits", $totalDeposits2 & " PP"))
+  var purchaseCount = 0
+  if model.ui.researchPurchases.economic: purchaseCount.inc
+  if model.ui.researchPurchases.science: purchaseCount.inc
+  purchaseCount += model.ui.researchPurchases.technology.len
+  if purchaseCount > 0:
+    result.add(("Tech purchases", $purchaseCount))
 
 proc espionageQueuedQty*(
     model: TuiModel,
@@ -3625,11 +3643,13 @@ proc clearStagedCommands*(model: var TuiModel) =
   model.ui.stagedEbpInvestment = 0
   model.ui.stagedCipInvestment = 0
   model.ui.stagedTaxRate = none(int)
-  model.ui.researchAllocation.economic = 0
-  model.ui.researchAllocation.science = 0
-  model.ui.researchAllocation.technology.clear()
+  model.ui.researchDeposits = ResearchDeposits()
+  model.ui.researchPurchases = TechPurchaseSet()
   model.ui.researchDigitBuffer = ""
   model.ui.researchDigitTime = 0.0
+  model.ui.liquidationConfirmActive = false
+  model.ui.liquidationAmount = 0
+  model.ui.stagedLiquidation = ResearchLiquidation()
   model.reapplyAllOptimisticUpdates()
 
 proc stageFleetCommand*(model: var TuiModel, cmd: FleetCommand) =
@@ -3756,7 +3776,10 @@ proc buildCommandPacket*(model: TuiModel, turn: int32,
     buildCommands: model.ui.stagedBuildCommands,
     repairCommands: model.ui.stagedRepairCommands,
     scrapCommands: model.ui.stagedScrapCommands,
-    researchAllocation: model.ui.researchAllocation,
+    researchAllocation: ResearchAllocation(),  # Legacy, unused
+    researchDeposits: model.ui.researchDeposits,
+    techPurchases: model.ui.researchPurchases,
+    researchLiquidation: model.ui.stagedLiquidation,
     diplomaticCommand: model.ui.stagedDiplomaticCommands,
     populationTransfers: model.ui.stagedPopulationTransfers,
     terraformCommands: model.ui.stagedTerraformCommands,

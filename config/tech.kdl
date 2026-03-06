@@ -50,47 +50,47 @@ scienceLevel {
 economicLevel {
     (docs)"docs/specs/04-research_development.md#section-4-3"
     level 2 {
-        slRequired 2
+        slRequired 0
         erpCost 10
         multiplier 1.5
     }
     level 3 {
-        slRequired 3
+        slRequired 0
         erpCost 12
         multiplier 2.0
     }
     level 4 {
-        slRequired 4
+        slRequired 0
         erpCost 15
         multiplier 2.5
     }
     level 5 {
-        slRequired 5
+        slRequired 0
         erpCost 19
         multiplier 3.0
     }
     level 6 {
-        slRequired 6
+        slRequired 0
         erpCost 24
         multiplier 3.5
     }
     level 7 {
-        slRequired 7
+        slRequired 0
         erpCost 31
         multiplier 4.0
     }
     level 8 {
-        slRequired 8
+        slRequired 0
         erpCost 40
         multiplier 4.5
     }
     level 9 {
-        slRequired 9
+        slRequired 0
         erpCost 52
         multiplier 5.0
     }
     level 10 {
-        slRequired 10
+        slRequired 0
         erpCost 68
         multiplier 5.5
     }

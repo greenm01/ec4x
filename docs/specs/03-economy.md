@@ -325,9 +325,7 @@ For detailed facility capabilities and construction rules, see [Sections 5.0-5.4
 
 ## 3.8 Research & Development Investment
 
-You allocate PP to research during the Income Phase. The engine converts PP
-into Research Points (RP) pools based on your Gross House Output (GHO) and
-Science Level (SL):
+R&D follows a two-step **Deposit/Purchase** cycle. During the Income Phase, you deposit PP into research pools, where the engine converts them into Research Points (RP). RP accumulates across turns. You then purchase technology levels by spending accumulated RP from the appropriate pool. For per-turn advancement limits and purchase rules, see [Section 4.1](04-research_development.md#41-science-level-sl).
 
 **PP to RP Conversion Formulas:**
 
@@ -367,7 +365,37 @@ bonuses (moderate GHO scaling, modest SL scaling).
 
 **Key Insight**: Higher GHO and SL make research investment more efficient, but with diminishing returns. Economic dominance provides an advantage without making technological catch-up impossible. A modest research infrastructure (GHO ~1000) already captures most of the efficiency gains.
 
-Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see [Section 4.0](04-research_development.md#40-research--development).
+### 3.8.1 Pool Capacity (Soft Cap)
+
+Each research pool has a maximum capacity equal to the sum of RP costs for all unresearched tech levels funded by that pool. PP deposited in excess of pool capacity is returned to the treasury. As you purchase technology levels, the pool's capacity shrinks — there is no reason to stockpile RP beyond what remains to research.
+
+**Worked Example — TRP Pool:**
+
+A House at WEP IV, CST IV, FC III, SC III, FD II, ACO II has the following remaining TRP costs:
+
+| Tech | Remaining Levels | Remaining TRP Cost |
+|------|------------------|--------------------|
+| WEP  | V–X              | 19+24+31+40+52+68 = 234 |
+| CST  | V–X              | 19+24+31+40+52+68 = 234 |
+| FC   | IV–VI            | 20+25+32 = 77     |
+| SC   | IV–VI            | 22+28+36 = 86     |
+| FD   | III              | 17                 |
+| ACO  | III              | 22                 |
+| **Total** |             | **670 TRP**        |
+
+This House's TRP pool capacity is 670. Any PP deposit that would push accumulated TRP above 670 is returned to the treasury. If the House then purchases WEP V (19 TRP), the pool's capacity drops to 651 and its stored RP decreases by 19.
+
+### 3.8.2 Emergency Liquidation
+
+A House may liquidate accumulated RP back into PP at a flat rate of **2 RP = 1 PP**. Partial liquidation is allowed — you may liquidate any amount from any pool. Each turn in which any liquidation occurs incurs a flat **-5 Prestige** penalty (not per-pool, not escalating). See `config/prestige.kdl` for tuning.
+
+Thematically, liquidation represents scrapping prototypes and repurposing research infrastructure for immediate production needs. The dual cost — 50% value loss plus prestige penalty — makes liquidation a desperation measure rather than a routine financial tool.
+
+### 3.8.3 Per-Turn Pacing
+
+A House may advance at most **+1 level per tech per turn**. This applies to EL, SL, and every individual tech field. For staging rules (e.g., staged SL unlocking gated tech purchases in the same turn), see [Section 4.1](04-research_development.md#41-science-level-sl).
+
+For complete research progression tables and technology effects, see [Section 4.0](04-research_development.md#40-research--development).
 
 ## 3.9 Maintenance Costs
 

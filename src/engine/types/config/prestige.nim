@@ -94,6 +94,7 @@ type
     veryHighTaxFrequency*: int32
     maintenanceShortfallBase*: int32
     maintenanceShortfallIncrement*: int32
+    researchLiquidation*: int32
     blockadePenalty*: int32
     overInvestEspionage*: int32
     overInvestCounterIntel*: int32

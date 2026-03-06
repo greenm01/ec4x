@@ -397,22 +397,18 @@ proc generateStarbaseObservation*(
   report.techLevels = some(targetHouse.techTree.levels)
 
   # Research allocations (from accumulated research)
-  # Calculate total TRP across all fields
-  var totalTRP: int32 = 0
-  for field, points in targetHouse.techTree.accumulated.technology:
-    totalTRP += points
-
   report.researchAllocations = some(
     (
-      erp: targetHouse.techTree.accumulated.economic,
-      srp: targetHouse.techTree.accumulated.science,
-      trp: totalTRP,
+      erp: targetHouse.techTree.accumulated.erp,
+      srp: targetHouse.techTree.accumulated.srp,
+      trp: targetHouse.techTree.accumulated.trp,
     )
   )
 
   # Current research focus (most accumulated type)
-  let economicAccum = targetHouse.techTree.accumulated.economic
-  let scienceAccum = targetHouse.techTree.accumulated.science
+  let economicAccum = targetHouse.techTree.accumulated.erp
+  let scienceAccum = targetHouse.techTree.accumulated.srp
+  let totalTRP = targetHouse.techTree.accumulated.trp
   let maxAccum = max([economicAccum, scienceAccum, totalTRP])
 
   if maxAccum == economicAccum:

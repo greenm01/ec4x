@@ -279,12 +279,9 @@ proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int =
     else:
       discard
 
-proc stagedResearchPp*(allocation: ResearchAllocation): int =
-  ## Sum staged PP allocated to research tracks.
-  var total = allocation.economic + allocation.science
-  for pp in allocation.technology.values:
-    total += pp
-  total.int
+proc stagedResearchPp*(deposits: ResearchDeposits): int =
+  ## Sum staged PP deposited into research pools.
+  (deposits.erp + deposits.srp + deposits.trp).int
 
 proc stagedEspionagePp*(stagedEbpInvestment, stagedCipInvestment: int32): int =
   ## Sum staged PP allocated to EBP/CIP investments.
@@ -298,14 +295,14 @@ proc optimisticTreasury*(baseTreasury: int,
 
 proc optimisticTreasury*(baseTreasury: int,
                          stagedBuildCommands: seq[BuildCommand],
-                         researchAllocation: ResearchAllocation,
+                         researchDeposits: ResearchDeposits,
                          stagedEbpInvestment, stagedCipInvestment: int32): int =
   ## Client-side treasury preview including staged build/research/espionage.
   max(
     0,
     baseTreasury -
       stagedPpCost(stagedBuildCommands) -
-      stagedResearchPp(researchAllocation) -
+      stagedResearchPp(researchDeposits) -
       stagedEspionagePp(stagedEbpInvestment, stagedCipInvestment)
   )
 

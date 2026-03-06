@@ -47,7 +47,10 @@ type
     buildCommands*: seq[BuildCommand]
     repairCommands*: seq[RepairCommand]  # Manual repair orders
     scrapCommands*: seq[ScrapCommand]    # Salvage entities at home colonies
-    researchAllocation*: ResearchAllocation
+    researchAllocation*: ResearchAllocation  # Legacy (kept for backward compat)
+    researchDeposits*: ResearchDeposits
+    techPurchases*: TechPurchaseSet
+    researchLiquidation*: ResearchLiquidation
     diplomaticCommand*: seq[DiplomaticCommand]
     populationTransfers*: seq[PopulationTransferCommand]
     terraformCommands*: seq[TerraformCommand]

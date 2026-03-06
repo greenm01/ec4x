@@ -1,6 +1,6 @@
 # 4.0 Research & Development
 
-R&D investment drives your technological advancement across economic, social, and military domains. You allocate Production Points to three distinct research pools each turn, accumulating progress toward specific technology thresholds.
+R&D follows a **Deposit/Purchase** model. You deposit Production Points into three research pools (ERP, SRP, TRP) during the Income Phase, where they convert into Research Points that accumulate across turns. You then purchase technology levels by spending accumulated RP from the appropriate pool. Pool capacity, conversion formulas, and emergency liquidation rules are defined in [Section 3.8](03-economy.md#38-research--development-investment).
 
 ## 4.0.1 Technology Architecture
 
@@ -86,43 +86,48 @@ Science Level represents your House's overall technological sophistication and r
 
 <!-- SL_TABLE_END -->
 
-SL advances automatically when your House accumulates the required SRP
-threshold.
+SL advances when the player explicitly purchases the next level, spending the required SRP from the accumulated pool.
 
 **Per-Turn Advancement Limit:**
 
-- A House may advance at most **one level per tech per turn** (EL, SL, and each tech field).
-- Research allocation is capped to the RP required for the next level only.
-- Any excess PP allocated beyond the next-level requirement is **returned to the treasury**.
+- A House may purchase at most **one level per tech per turn** (EL, SL, and each tech field).
+- Each purchase spends RP equal to the next level's cost from the accumulated pool.
+- Pool capacity and excess-PP handling are defined in [Section 3.8.1](03-economy.md#381-pool-capacity-soft-cap).
 - If staged SL investment reaches the next SL threshold this turn, the House
-  may also stage EL and tech investments gated by that next SL level.
+  may also stage tech purchases gated by that new SL level.
 - If staged SL investment is later reduced below the threshold, dependent staged
-  allocations are automatically cleared.
+  tech allocations are automatically cleared.
 
 **Strategic Implications:**
 
-SL advancement is non-linear and becomes progressively more expensive. Early SL tiers unlock rapidly with modest investment, but reaching SL 10 requires sustained R&D commitment over many turns. Houses that neglect research find themselves technologically outpaced and unable to field advanced unit types or economic multipliers.
+SL advancement is non-linear and becomes progressively more expensive. Early SL
+tiers unlock rapidly with modest investment, but reaching SL 10 requires
+sustained R&D commitment over many turns. Houses that neglect research find
+themselves technologically outpaced and unable to field advanced unit types.
 
 ## 4.2 Economic Level (EL)
 
 Economic Level multiplies Industrial Unit output in the GCO formula, representing advances in manufacturing efficiency, automation, and industrial organization.
 
+EL advancement depends only on ERP costs and prior EL level. It has no SL
+prerequisite.
+
 **Research Progression:**
 
 <!-- EL_TABLE_START -->
 
-| Tech Level | Prerequisites | ERP Cost | SL Required | Economic Multiplier |
-|:----------:| ------------- |:--------:|:-----------:|:-------------------:|
-| EL I       | None          | N/A      | 1           | 1.0x                |
-| EL II      | EL I          | 10       | 2           | 1.5x                |
-| EL III     | EL II         | 12       | 3           | 2.0x                |
-| EL IV      | EL III        | 15       | 4           | 2.5x                |
-| EL V       | EL IV         | 19       | 5           | 3.0x                |
-| EL VI      | EL V          | 24       | 6           | 3.5x                |
-| EL VII     | EL VI         | 31       | 7           | 4.0x                |
-| EL VIII    | EL VII        | 40       | 8           | 4.5x                |
-| EL IX      | EL VIII       | 52       | 9           | 5.0x                |
-| EL X       | EL IX         | 68       | 10          | 5.5x                |
+| Tech Level | Prerequisites | ERP Cost | Economic Multiplier |
+|:----------:| ------------- |:--------:|:-------------------:|
+| EL I       | None          | N/A      | 1.0x                |
+| EL II      | EL I          | 10       | 1.5x                |
+| EL III     | EL II         | 12       | 2.0x                |
+| EL IV      | EL III        | 15       | 2.5x                |
+| EL V       | EL IV         | 19       | 3.0x                |
+| EL VI      | EL V          | 24       | 3.5x                |
+| EL VII     | EL VI         | 31       | 4.0x                |
+| EL VIII    | EL VII        | 40       | 4.5x                |
+| EL IX      | EL VIII       | 52       | 5.0x                |
+| EL X       | EL IX         | 68       | 5.5x                |
 
 *Source: config/tech.kdl [economic_level] section*
 
@@ -653,6 +658,6 @@ For carrier combat mechanics, see [Section 2.4.1](02-assets.md#241-fighters--car
 ## 4.14 Strategic Considerations
 
 - **Balancing R&D Investments**: You must balance investments across ERP, SRP, and TRP to maximize your economic output, technological advancements, and military strength.
-- **Economic Synergies**: SL unlocks higher EL tiers and advanced technologies,
-  while EL increases PP output to fund further research.
+- **Economic Synergies**: SL unlocks advanced technologies, while EL increases
+  PP output to fund further research.
 - **Adapting to Opponents**: Flexibility in R&D strategy is key. Prioritize weapons technology (WEP) during military conflicts or focus on terraforming (TER) for long-term economic growth—critical decisions based on the game state.

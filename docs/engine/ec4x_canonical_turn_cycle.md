@@ -169,7 +169,7 @@ TURN N - COMMAND PHASE (CMD)
    │  ├─ Fighters/Ground units/Facilities → Colony queues
    │  └─ Validate budget, capacity before queuing
    ├─ 6c. Process repair orders (manual, overrides auto-repair)
-   └─ 6d. Process tech research allocation
+   └─ 6d. Process research deposits, purchases, and liquidation
 
 TURN N - PRODUCTION PHASE (PRD)
 ├─ 1. Fleet Movement
@@ -191,11 +191,8 @@ TURN N - PRODUCTION PHASE (PRD)
 ├─ 4. Population Transfers
 ├─ 5. Terraforming
 ├─ 6. Cleanup and Preparation
-└─ 7. Research Advancement
-   ├─ 7a. Breakthrough Rolls
-   ├─ 7b. Economic Level Advancement
-   ├─ 7c. Science Level Advancement
-   └─ 7d. Technology Field Advancement
+└─ 7. Research Breakthrough Rolls
+   └─ 7a. Breakthrough Rolls (every 5 turns)
 ```
 
 ---
@@ -1002,25 +999,35 @@ Players see:
 - Ground units, facilities, starbases added to colony repair queue
 - Uses same unified repair queue system as auto-repairs
 
-**6e. Tech research allocation** (detailed processing):
-- Calculate total PP cost for research allocation (ERP + SRP + TRP)
+**6e. Research deposits, purchases, and liquidation** (detailed processing):
+
+**Step 1: Liquidation** (RP → PP at 2:1 ratio):
+- For each pool with liquidation > 0: clamp to available RP, convert `pp = rp / 2`, deduct RP, add PP to treasury
+- If any liquidation occurred, apply prestige penalty
+
+**Step 2: PP deposits into pools** (PP → RP conversion):
+- Calculate total PP cost for deposits (ERP + SRP + TRP)
 - **Treasury scaling** (prevent negative treasury):
-  - If treasury ≤ 0: Cancel all research (bankruptcy)
-  - If cost > treasury: Scale allocations proportionally
-  - Example: 80 PP treasury, 100 PP research → scale to 80% (80 PP total)
-- Deduct research cost from treasury (competes with builds)
+  - If treasury ≤ 0: Cancel all deposits (bankruptcy)
+  - If cost > treasury: Scale deposits proportionally
+- Deduct deposit cost from treasury
 - Calculate GHO (Gross House Output) from colony production
 - **Convert PP → RP** using GHO and Science Level (logarithmic scaling):
   - ERP (Economic Research Points): `PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)`
   - SRP (Science Research Points): `PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)`
-  - TRP (Technology Research Points): `PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)` per field
+  - TRP (Technology Research Points): `PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)`
   - **Rationale**: Logarithmic GHO scaling provides diminishing returns, preventing runaway economic snowballing while still rewarding growth. TRP now scales with SL (modest 5% per level) to reflect advanced research infrastructure.
-- **Accumulate RP** in `house.techTree.accumulated`:
-  - `accumulated.economic += earnedRP.economic`
-  - `accumulated.science += earnedRP.science`
-  - `accumulated.technology[field] += earnedRP.technology[field]`
-- Save earned RP to `house.lastTurnResearch*` for diagnostics
-- **Note:** RP accumulation happens here in CMD6, advancement happens in PRD7
+- **Accumulate RP** in shared pools: `accumulated.erp += earned`, `accumulated.srp += earned`, `accumulated.trp += earned`
+
+**Step 3: Explicit tech purchases** (spend accumulated pool RP):
+- Process SL purchase first (gates other purchases via SL requirements)
+- Process EL purchase
+- Process tech field purchases (each deducts from SRP or TRP based on field mapping)
+- For each toggled purchase: check pool RP ≥ cost, deduct cost, advance level, award prestige
+- One level per tech per turn enforced by `TechPurchaseSet` (boolean per tech)
+- CST upgrade triggers dock capacity recalculation
+
+**Note:** Both RP accumulation and tech advancement now happen in CMD6.
 
 **Key Principles:**
 - All non-admin commands follow same path: submit → store → execute
@@ -1232,9 +1239,7 @@ Handled in `multi_house.nim:areHostile()` during combat resolution:
 - Update fog-of-war visibility
 - Prepare for next turn's Conflict Phase
 
-**7. Research Advancement** (process tech upgrades)
-
-Process tech advancements using accumulated RP from Command Phase. Per economy.md:4.1, tech upgrades can be purchased EVERY TURN if RP is available.
+**7. Research Breakthrough Rolls** (passive only)
 
 **7a. Breakthrough Rolls** (every 5 turns):
 - Calculate total RP invested in last 5 turns (ERP+SRP+TRP)
@@ -1245,30 +1250,7 @@ Process tech advancements using accumulated RP from Command Phase. Per economy.m
   - Free level advancement (rare, <5% chance)
 - Generate GameEvents for prestige awards
 
-**7b. Economic Level (EL) Advancement:**
-- Get current EL from `house.techTree.levels.economicLevel`
-- Check if `accumulated.economic` ≥ cost for next level
-- If sufficient: Deduct cost, increment EL, award prestige
-- Generate `TechAdvance` event
-- EL affects PP→ERP conversion rate
-
-**7c. Science Level (SL) Advancement:**
-- Get current SL from `house.techTree.levels.scienceLevel`
-- Check if `accumulated.science` ≥ cost for next level
-- If sufficient: Deduct cost, increment SL, award prestige
-- Generate `TechAdvance` event
-- SL affects PP→SRP conversion rate
-
-**7d. Technology Field Advancement:**
-- For each field (CST, WEP, TFM, ELI, CI):
-  - Get current level from `house.techTree.levels.<field>`
-  - Check if `accumulated.technology[field]` ≥ cost for next level
-  - If sufficient: Deduct cost, increment level, award prestige
-  - Generate `TechAdvance` event
-- Multiple fields can advance in same turn
-- CST affects ship build costs, WEP affects attack strength, etc.
-
-**Result:** Houses advance tech levels using accumulated RP. Research accumulation happens in CMD6, advancement happens here in PRD7.
+**Result:** Breakthrough rolls may grant bonus RP or free levels. Tech advancement is player-initiated in CMD6.
 
 ### Key Properties
 - Server processing time (no player interaction)
@@ -1610,7 +1592,7 @@ Production Phase -> New positions, completed construction
 ║  ║   6b. Persistent fleet commands (validate & store)    ║ ║
 ║  ║   6c. Build orders (add to queues)                    ║ ║
 ║  ║   6d. Repair orders (add to queues)                   ║ ║
-║  ║   6e. Tech research allocation                        ║ ║
+║  ║   6e. Research deposits, purchases, liquidation        ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                                                            ║
 ╠════════════════════════════════════════════════════════════╣
@@ -1680,11 +1662,8 @@ Production Phase -> New positions, completed construction
 ║                             |                              ║
 ║                             v                              ║
 ║  ╔═══════════════════════════════════════════════════════╗ ║
-║  ║ 7. Research Advancement                               ║ ║
+║  ║ 7. Research Breakthrough Rolls                         ║ ║
 ║  ║  7a. Breakthrough Rolls (every 5 turns)               ║ ║
-║  ║  7b. Economic Level (EL) Advancement                  ║ ║
-║  ║  7c. Science Level (SL) Advancement                   ║ ║
-║  ║  7d. Technology Field Advancement                     ║ ║
 ║  ╚═══════════════════════════════════════════════════════╝ ║
 ║                             |                              ║
 ║                             v                              ║

@@ -260,26 +260,20 @@ proc executeExpertCommand*(model: var TuiModel, cmd: ExpertCommand): tuple[succe
   of ExpertCommandKind.TechAlloc:
     let field = cmd.allocField.toLowerAscii()
     case field
-    of "eco": model.ui.researchAllocation.economic = int32(cmd.allocAmount)
-    of "sci": model.ui.researchAllocation.science = int32(cmd.allocAmount)
+    of "erp", "eco": model.ui.researchDeposits.erp = int32(cmd.allocAmount)
+    of "srp", "sci": model.ui.researchDeposits.srp = int32(cmd.allocAmount)
+    of "trp": model.ui.researchDeposits.trp = int32(cmd.allocAmount)
     else:
-      var matched = false
-      for f in TechField:
-        if ($f).toLowerAscii().contains(field):
-          model.ui.researchAllocation.technology[f] = int32(cmd.allocAmount)
-          matched = true
-          break
-      if not matched: return (false, "Unknown tech field: " & field)
-      
+      return (false, "Unknown pool: " & field & " (use erp/srp/trp)")
+
     model.ui.modifiedSinceSubmit = true
-    return (true, "Allocated " & $cmd.allocAmount & " PP to " & field)
+    return (true, "Deposited " & $cmd.allocAmount & " PP into " & field)
 
   of ExpertCommandKind.TechClear:
-    model.ui.researchAllocation.economic = 0
-    model.ui.researchAllocation.science = 0
-    model.ui.researchAllocation.technology.clear()
+    model.ui.researchDeposits = ResearchDeposits()
+    model.ui.researchPurchases = TechPurchaseSet()
     model.ui.modifiedSinceSubmit = true
-    return (true, "Cleared research allocations")
+    return (true, "Cleared research deposits and purchases")
 
   of ExpertCommandKind.SpyBudget:
     let bType = cmd.budgetType.toLowerAscii()

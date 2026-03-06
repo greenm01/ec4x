@@ -171,21 +171,20 @@ proc allocateResearch*(
   ##   gho: Gross House Output (for RP conversion)
   ##   slLevel: Science Level (affects all conversion rates)
 
-  result =
-    ResearchPoints(economic: 0, science: 0, technology: initTable[TechField, int32]())
+  result = ResearchPoints(erp: 0, srp: 0, trp: 0)
 
   # Convert economic allocation: ERP = PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)
   if allocation.economic > 0:
-    result.economic = convertPPToERP(allocation.economic, gho, slLevel)
+    result.erp = convertPPToERP(allocation.economic, gho, slLevel)
 
   # Convert science allocation: SRP = PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)
   if allocation.science > 0:
-    result.science = convertPPToSRP(allocation.science, gho, slLevel)
+    result.srp = convertPPToSRP(allocation.science, gho, slLevel)
 
   # Convert technology allocations: TRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)
   for field, pp in allocation.technology:
     if pp > 0:
-      result.technology[field] = convertPPToTRP(pp, gho, slLevel)
+      result.trp += convertPPToTRP(pp, gho, slLevel)
 
 proc calculateTotalRPInvested*(allocation: ResearchAllocation): int =
   ## Calculate total RP invested (for breakthrough calculation)
