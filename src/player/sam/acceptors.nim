@@ -100,7 +100,6 @@ proc setPoolDeposit(deposits: var ResearchDeposits, pool: ResearchPoolIdx, value
   of ResearchPoolIdx.PoolTRP: deposits.trp = value
 
 proc isResearchRowSelectable(model: TuiModel, idx: int): bool =
-  ## In the new model all non-maxed rows are selectable (purchase affordability is separate)
   let items = researchItems()
   if idx < 0 or idx >= items.len:
     return false
@@ -108,8 +107,18 @@ proc isResearchRowSelectable(model: TuiModel, idx: int): bool =
     return true
   let levels = model.view.techLevels.get()
   let level = research_projection.currentTechLevel(levels, items[idx])
-  let maxLevel = progressionMaxLevel(items[idx])
-  level < maxLevel
+  if level >= progressionMaxLevel(items[idx]): return false
+  let points = if model.view.researchPoints.isSome:
+    model.view.researchPoints.get()
+  else:
+    ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho = research_projection.projectedResearchGho(
+    levels, model.view.colonies, model.view.production, model.view.houseTaxRate
+  )
+  not research_projection.isBlockedProjected(
+    levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
+    items[idx], gho
+  )
 
 proc firstSelectableResearchIdx(model: TuiModel): int =
   let items = researchItems()
@@ -186,8 +195,6 @@ proc applyPoolDigitInput(model: var TuiModel, digit: char) =
 
 proc toggleResearchPurchase(model: var TuiModel) =
   if model.ui.mode != ViewMode.Research:
-    return
-  if model.ui.researchFocus != ResearchFocus.List:
     return
   let items = researchItems()
   if items.len == 0:

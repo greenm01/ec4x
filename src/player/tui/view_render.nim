@@ -1932,6 +1932,63 @@ proc renderFleetsModal*(canvas: Rect, buf: var CellBuffer,
     let contentArea = modal.contentArea(modalArea, hasFooter = true)
     renderFleetConsole(contentArea, buf, model, ps)
 
+proc renderLiquidationConfirm(canvas: Rect, buf: var CellBuffer, model: TuiModel) =
+  ## Render the liquidation confirmation overlay on top of the research modal.
+  let pool = model.ui.liquidationPool
+  let points = if model.view.researchPoints.isSome:
+    model.view.researchPoints.get()
+  else:
+    ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let poolName = case pool
+    of ResearchPoolIdx.PoolERP: "ERP"
+    of ResearchPoolIdx.PoolSRP: "SRP"
+    of ResearchPoolIdx.PoolTRP: "TRP"
+  let accumulated = research_projection.poolAccumulated(points, pool)
+  let amount = model.ui.liquidationAmount.int
+  let ppReturn = amount div 2
+
+  const width = 38
+  const height = 10
+  let x = canvas.x + (canvas.width - width) div 2
+  let y = canvas.y + (canvas.height - height) div 2
+  let modalArea = rect(x, y, width, height)
+  let m = newModal()
+    .title("LIQUIDATE " & poolName & " POOL")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(false)
+    .borderStyle(outerBorderStyle())
+    .bgStyle(modalBgStyle())
+  let footerLine = "[+/-] Adjust  [\xE2\x86\xB5] Confirm  [Esc] Cancel"
+  m.renderWithFooter(modalArea, buf, footerLine)
+  let inner = m.contentArea(modalArea, hasFooter = true)
+  if inner.isEmpty:
+    return
+
+  let lx = inner.x + 1
+  var ly = inner.y
+  let dim = modalDimStyle()
+  let hi = selectedStyle()
+
+  if ly < inner.bottom:
+    discard buf.setString(lx, ly, "Accumulated: " & $accumulated & " RP", dim)
+    ly += 1
+  if ly < inner.bottom:
+    discard buf.setString(lx, ly, "Liquidate:   ", dim)
+    discard buf.setString(lx + 13, ly, $amount & " RP", hi)
+    ly += 1
+  if ly < inner.bottom:
+    discard buf.setString(lx, ly, "Return:      ", dim)
+    discard buf.setString(lx + 13, ly, $ppReturn & " PP", hi)
+    ly += 1
+  if ly < inner.bottom:
+    discard buf.setString(lx, ly, "Penalty:     ", dim)
+    discard buf.setString(lx + 13, ly, "-5 Prestige", warningStyle())
+    ly += 1
+  if ly < inner.bottom:
+    discard buf.setString(lx, ly, "Rate:        2 RP \xE2\x86\x92 1 PP", dim)
+
 proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
                           model: TuiModel, scroll: ScrollState) =
   ## Render research view as centered floating modal
@@ -1992,9 +2049,9 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   let listColumns = @[
     tableColumn("Pool", 4, table.Alignment.Left),
     tableColumn("Tech", 4, table.Alignment.Left),
-    tableColumn("Name", 0, table.Alignment.Left, 6),
+    tableColumn("Name", 0, table.Alignment.Left, 5),
     tableColumn("Lvl", 3, table.Alignment.Center),
-    tableColumn("Cost", 8, table.Alignment.Right)
+    tableColumn("RP Alloc.", 9, table.Alignment.Right)
   ]
   let listProbe = table(listColumns).showBorders(effBorders)
   let listTableHeight = listProbe.renderHeight(max(1, listRowCount))
@@ -2024,7 +2081,8 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     detailPaneNeed = detailInnerNeed + paneChromeRows
 
   # +2 for footer (separator + footer line), handled outside content area.
-  let desiredContentHeight = max(12, max(listPaneNeed, detailPaneNeed))
+  const poolStripH = 7
+  let desiredContentHeight = max(12, max(listPaneNeed, detailPaneNeed) + poolStripH)
   let maxContentHeight = max(12, canvas.height - 4)
   let contentHeight = min(desiredContentHeight, maxContentHeight) + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
@@ -2034,6 +2092,8 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   modal.renderWithFooter(modalArea, buf, footerLine)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
   renderResearchPanel(contentArea, buf, model)
+  if model.ui.liquidationConfirmActive:
+    renderLiquidationConfirm(canvas, buf, model)
 
 proc researchPoolLabel(item: ResearchItem): string =
   case item.kind
@@ -2089,9 +2149,82 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     model.view.houseTaxRate
   )
 
+  # Pool strip: ERP/SRP/TRP deposit cards at top
+  const poolStripH = 7
+  let psSections = vertical()
+    .constraints(length(poolStripH), fill())
+    .split(area)
+  let poolStripArea = psSections[0]
+  let mainArea = psSections[1]
+
+  let poolsFocused = model.ui.researchFocus == ResearchFocus.Pools
+  bordered().title("RESEARCH POOLS").borderStyle(
+    modalPanelBorderStyle(poolsFocused)
+  ).render(poolStripArea, buf)
+  let psInner = bordered().inner(poolStripArea)
+
+  if not psInner.isEmpty:
+    let cardsH = psInner.height
+    let cardW3 = psInner.width div 3
+    let poolIdxs = [ResearchPoolIdx.PoolERP, ResearchPoolIdx.PoolSRP,
+                    ResearchPoolIdx.PoolTRP]
+    let poolNames = ["ERP", "SRP", "TRP"]
+    let poolRPs = [points.erp.int, points.srp.int, points.trp.int]
+    let poolDeps = [model.ui.researchDeposits.erp,
+                    model.ui.researchDeposits.srp,
+                    model.ui.researchDeposits.trp]
+    for i in 0 ..< 3:
+      let poolIdx = poolIdxs[i]
+      let cw = if i < 2: cardW3 else: psInner.width - 2 * cardW3
+      let cardArea = rect(psInner.x + i * cardW3, psInner.y, cw, cardsH)
+      let active = poolsFocused and model.ui.researchPoolIdx == poolIdx
+      bordered().title(poolNames[i]).borderStyle(
+        nestedPanelBorderStyle(active)
+      ).render(cardArea, buf)
+      let cInner = bordered().inner(cardArea)
+      if cInner.isEmpty:
+        continue
+      let totalBalance = research_projection.projectedPoolBalance(
+        levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
+        poolIdx, gho
+      )
+      let cap = research_projection.poolCap(levels, poolIdx)
+      let existingRP = poolRPs[i]
+      let depLine = "Dep: [ " & strutils.align($poolDeps[i].int, 4) & " ]"
+      let balanceLine = $totalBalance & " / " & $cap & " RP"
+      # Dual-shade progress bar (dark=existing, light=deposit, empty=capacity)
+      let barW = max(0, cInner.width)
+      if barW > 0 and cInner.y < cInner.bottom:
+        let (darkCells, lightCells, emptyCells) =
+          if cap == 0:
+            (barW, 0, 0)
+          else:
+            let dark = min(existingRP, totalBalance)
+            let light = totalBalance - dark
+            let empty = cap - totalBalance
+            let total = dark + light + empty
+            let d = if total > 0: dark * barW div total else: barW
+            let l = if total > 0: light * barW div total else: 0
+            (d, l, max(0, barW - d - l))
+        var bx = cInner.x
+        if darkCells > 0:
+          discard buf.setString(bx, cInner.y,
+            repeat("\xE2\x96\x88", darkCells), modalDimStyle())
+          bx += darkCells
+        if lightCells > 0:
+          discard buf.setString(bx, cInner.y,
+            repeat("\xE2\x96\x93", lightCells), selectedStyle())
+          bx += lightCells
+        if emptyCells > 0:
+          discard buf.setString(bx, cInner.y,
+            repeat("\xE2\x96\x91", emptyCells), canvasDimStyle())
+      renderLine(cInner, buf, cInner.x, cInner.y + 1, depLine,
+        if active: selectedStyle() else: normalStyle())
+      renderLine(cInner, buf, cInner.x, cInner.y + 2, balanceLine, modalDimStyle())
+
   let columns = horizontal()
     .constraints(percentage(55), fill())
-    .split(area)
+    .split(mainArea)
   let listArea = columns[0]
   let detailArea = columns[1]
 
@@ -2107,9 +2240,9 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let listColumns = @[
     tableColumn("Pool", 4, table.Alignment.Left),
     tableColumn("Tech", 4, table.Alignment.Left),
-    tableColumn("Name", 0, table.Alignment.Left, 6),
+    tableColumn("Name", 0, table.Alignment.Left, 5),
     tableColumn("Lvl", 5, table.Alignment.Center),
-    tableColumn("Cost", 8, table.Alignment.Right)
+    tableColumn("RP Alloc.", 9, table.Alignment.Right)
   ]
 
   let effBorders = model.ui.showTableBorders and not model.ui.compactMode
@@ -2180,36 +2313,6 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   )
   listTable.render(tableArea, buf)
 
-  let totalDeposit = model.ui.researchDeposits.erp.int +
-    model.ui.researchDeposits.srp.int +
-    model.ui.researchDeposits.trp.int
-  let depositLine = "Deposits: " &
-    formatNumber(totalDeposit) & " PP"
-  let poolsLine = "Pools: ERP " & $points.erp.int &
-    " SRP " & $points.srp.int &
-    " TRP " & $points.trp.int
-  let depositDetailLine = "ERP +" & $model.ui.researchDeposits.erp.int &
-    " SRP +" & $model.ui.researchDeposits.srp.int &
-    " TRP +" & $model.ui.researchDeposits.trp.int & " PP"
-  let summaryY = listInner.y + tableArea.height
-  if summaryY < listArea.bottom - 1:
-    renderLine(
-      listArea, buf,
-      listInner.x, summaryY,
-      depositLine, modalDimStyle()
-    )
-  if summaryY + 1 < listArea.bottom - 1:
-    renderLine(
-      listArea, buf,
-      listInner.x, summaryY + 1,
-      poolsLine, modalDimStyle()
-    )
-  if summaryY + 2 < listArea.bottom - 1:
-    renderLine(
-      listArea, buf,
-      listInner.x, summaryY + 2,
-      depositDetailLine, modalDimStyle()
-    )
 
   if detailArea.isEmpty:
     return
@@ -2222,7 +2325,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   let detailFrame = bordered()
     .title(detailTitle)
     .borderType(BorderType.Rounded)
-    .borderStyle(panelBorderStyle(not listFocused))
+    .borderStyle(panelBorderStyle(model.ui.researchFocus == ResearchFocus.Detail))
     .padding(1)
   detailFrame.render(detailArea, buf)
   let detailInner = detailFrame.inner(detailArea)

@@ -63,6 +63,14 @@ proc currentResearchPoints*(points: ResearchPoints, item: ResearchItem): int =
     else:
       points.trp.int
 
+proc researchItemPool*(item: ResearchItem): ResearchPoolIdx =
+  case item.kind
+  of ResearchItemKind.EconomicLevel: ResearchPoolIdx.PoolERP
+  of ResearchItemKind.ScienceLevel:  ResearchPoolIdx.PoolSRP
+  of ResearchItemKind.Technology:
+    if isSrpField(item.field): ResearchPoolIdx.PoolSRP
+    else: ResearchPoolIdx.PoolTRP
+
 proc estimateColonyGrossOutput(
     levels: TechLevel,
     colony: ColonyInfo,
@@ -147,6 +155,35 @@ proc isPurchaseToggled*(purchases: TechPurchaseSet, item: ResearchItem): bool =
   of ResearchItemKind.ScienceLevel: purchases.science
   of ResearchItemKind.Technology: item.field in purchases.technology
 
+proc poolCap*(levels: TechLevel, pool: ResearchPoolIdx): int =
+  ## Soft cap: sum of RP costs for all unresearched levels in the pool.
+  for item in researchItems():
+    if researchItemPool(item) != pool: continue
+    let currentLevel = currentTechLevel(levels, item)
+    let maxLevel = progressionMaxLevel(item)
+    for lvl in currentLevel ..< maxLevel:
+      result += techProgressCost(item, lvl)
+
+proc projectedPoolBalance*(
+    levels: TechLevel,
+    points: ResearchPoints,
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    pool: ResearchPoolIdx,
+    gho: int32
+): int =
+  ## Pool RP remaining after deducting all valid, affordable purchases.
+  result = projectedPoolRP(points, deposits, pool, gho, levels.sl)
+  let projSL = projectedScienceLevel(levels, points, deposits, purchases, gho)
+  for item in researchItems():
+    if researchItemPool(item) != pool: continue
+    if not isPurchaseToggled(purchases, item): continue
+    let lvl = currentTechLevel(levels, item)
+    if lvl >= progressionMaxLevel(item): continue
+    if projSL < techSlRequiredForLevel(item, lvl + 1): continue
+    let cost = techProgressCost(item, lvl)
+    if result >= cost: result -= cost
+
 proc projectedTechLevel*(
     levels: TechLevel,
     points: ResearchPoints,
@@ -167,6 +204,20 @@ proc projectedTechLevel*(
   let slRequired = techSlRequiredForLevel(item, result + 1)
   if projectedSL < slRequired:
     return result
+  # Affordability: compute running balance from prior items in same pool
+  let pool = researchItemPool(item)
+  var balance = projectedPoolRP(points, deposits, pool, gho, levels.sl)
+  for priorItem in researchItems():
+    if priorItem.code == item.code: break
+    if researchItemPool(priorItem) != pool: continue
+    if not isPurchaseToggled(purchases, priorItem): continue
+    let pLvl = currentTechLevel(levels, priorItem)
+    if pLvl >= progressionMaxLevel(priorItem): continue
+    if projectedSL < techSlRequiredForLevel(priorItem, pLvl + 1): continue
+    let pCost = techProgressCost(priorItem, pLvl)
+    if balance >= pCost: balance -= pCost
+  let cost = techProgressCost(item, result)
+  if balance < cost: return result   # unaffordable → no level-up shown
   result += 1
 
 proc isBlockedProjected*(
