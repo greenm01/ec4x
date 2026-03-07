@@ -57,7 +57,17 @@ proc resolveBuildOrders*(
       &"{house.treasury} PP available (current treasury after income/maintenance)",
   )
 
+  var requestedUnits = 0
+  var acceptedUnits = 0
+
   for command in packet.buildCommands:
+    let requestedCount = case command.buildType
+      of BuildType.Industrial:
+        max(0'i32, command.industrialUnits)
+      else:
+        max(1'i32, command.quantity)
+    requestedUnits += int(requestedCount)
+
     # Validate colony exists
     let colonyOpt = state.colony(command.colonyId)
     if colonyOpt.isNone:
@@ -92,207 +102,175 @@ proc resolveBuildOrders*(
         )
         continue
 
-    # Determine if this construction requires dock capacity
-    # DOCK CONSTRUCTION: Capital ships (non-fighters) built at spaceport/shipyard facilities
-    # COLONY CONSTRUCTION: Fighters, ground units, buildings, IU investment (planet-side)
-    let requiresDock = (
-      command.buildType == BuildType.Ship and command.shipClass.isSome and
-      construction_docks.shipRequiresDock(command.shipClass.get())
-    )
-
-    # For dock construction, check facility capacity and assign facility
-    var assignedFacility:
-      Option[tuple[facilityId: NeoriaId, facilityType: NeoriaClass]] =
-      none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
-
-    if requiresDock:
-      # Try to assign to available facility
-      assignedFacility = construction_docks.assignFacility(
-        state, command.colonyId, BuildType.Ship
+    for unitIdx in 0 ..< int(requestedCount):
+      # Determine if this construction requires dock capacity
+      let requiresDock = (
+        command.buildType == BuildType.Ship and command.shipClass.isSome and
+        construction_docks.shipRequiresDock(command.shipClass.get())
       )
-      if assignedFacility.isNone:
-        # No facility capacity available
-        let (current, maximum) =
-          construction_docks.colonyTotalCapacity(state, command.colonyId)
-        let errorMsg =
-          &"Colony {command.colonyId} at capacity ({current}/{maximum} docks used) - cannot accept more projects"
-        logWarn(
-          "Economy", &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}"
+
+      var assignedFacility:
+        Option[tuple[facilityId: NeoriaId, facilityType: NeoriaClass]] =
+        none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
+
+      if requiresDock:
+        assignedFacility = construction_docks.assignFacility(
+          state, command.colonyId, BuildType.Ship
         )
-        continue
-
-    # Budget validation: Check if treasury has enough funds
-    # Simple check since costs are paid upfront
-    let projectCost = case command.buildType
-      of BuildType.Ship:
-        if command.shipClass.isSome:
-          accessors.shipConstructionCost(command.shipClass.get())
-        else:
-          0'i32
-      of BuildType.Facility:
-        if command.facilityClass.isSome:
-          accessors.buildingCost(command.facilityClass.get())
-        else:
-          0'i32
-      of BuildType.Industrial, BuildType.Infrastructure:
-        projects.industrialUnitCost(colony) * command.industrialUnits
-      of BuildType.Ground:
-        if command.groundClass.isSome:
-          accessors.groundUnitCost(command.groundClass.get())
-        else:
-          0'i32
-
-    if budgetContext.availableTreasury - budgetContext.committedSpending < projectCost:
-      let errorMsg = &"Insufficient funds: need {projectCost} PP, have {budgetContext.availableTreasury - budgetContext.committedSpending} PP"
-      logWarn(
-        "Economy",
-        &"[BUILD ORDER REJECTED] {packet.houseId} at {command.colonyId}: {errorMsg}",
-      )
-      budgetContext.rejectedCommands += 1
-      continue
-
-    # Reserve funds
-    budgetContext.committedSpending += projectCost
-
-    # NOTE: No conversion needed! gamestate.Colony now has all economic fields
-    # (populationUnits, industrial, grossOutput, taxRate, infrastructureDamage)
-    # Project factory functions work directly with unified Colony type
-
-    # Create construction project based on build type
-    var project: ConstructionProject
-    var projectDesc: string
-
-    case command.buildType
-    of BuildType.Industrial, BuildType.Infrastructure:
-      # Infrastructure investment (IU expansion)
-      let units = command.industrialUnits
-      if units <= 0:
-        logError(
-          "Economy",
-          &"Infrastructure command failed: invalid unit count {units}",
-        )
-        continue
-
-      project = createIndustrialProject(colony, units)
-      projectDesc = "Industrial expansion: " & $units & " IU"
-    of BuildType.Ship:
-      # Ship construction
-      if command.shipClass.isNone:
-        logError(
-          "Economy", &"Ship construction failed: no ship class specified"
-        )
-        continue
-
-      let shipClass = command.shipClass.get()
-      project = createShipProject(shipClass)
-      projectDesc = "Ship construction: " & $shipClass
-    of BuildType.Facility:
-      # Facility construction
-      if command.facilityClass.isNone:
-        logError(
-          "Economy",
-          &"Facility construction failed: no facility class specified",
-        )
-        continue
-
-      let facilityClass = command.facilityClass.get()
-      project = createBuildingProject(facilityClass)
-      projectDesc = "Facility construction: " & $facilityClass
-    of BuildType.Ground:
-      # Ground unit construction (Army, Marine, GroundBattery, PlanetaryShield)
-      if command.groundClass.isNone:
-        logError(
-          "Economy",
-          &"Ground unit construction failed: no ground class specified",
-        )
-        continue
-
-      let groundClass = command.groundClass.get()
-      project = projects.createGroundUnitProject(groundClass)
-      projectDesc = "Ground unit construction: " & $groundClass
-
-    # Route construction to facility queue (capital ships) or colony queue (everything else)
-    var success = false
-    var queueLocation = ""
-
-    if requiresDock and assignedFacility.isSome:
-      # DOCK CONSTRUCTION: Add to facility queue
-      success =
-        construction_docks.assignAndQueueProject(state, command.colonyId, project)
-      if success:
-        let (facilityId, _) = assignedFacility.get()
-        queueLocation = &"facility {facilityId}"
-    else:
-      # COLONY CONSTRUCTION: Add to colony queue (legacy system)
-      var mutableColony = colony
-
-      if state.startConstruction(mutableColony, project):
-        # Write back modified colony
-        state.updateColony(command.colonyId, mutableColony)
-        success = true
-        queueLocation = "colony queue"
-
-    if success:
-      # CRITICAL FIX: Deduct construction cost from house treasury
-      # IMPORTANT: Use get-modify-write pattern (Nim Table copy semantics!)
-      var mutableHouse = state.house(packet.houseId).get()
-      let oldTreasury = mutableHouse.treasury
-
-      # TREASURY FLOOR CHECK: Prevent negative treasury (race condition protection)
-      # Validation happened earlier, but treasury may have changed due to:
-      # - Research spending in Income Phase
-      # - Espionage spending in Income Phase
-      # - Other houses' construction commands processed before this one
-      if mutableHouse.treasury >= project.costTotal:
-        mutableHouse.treasury -= project.costTotal
-        state.updateHouse(packet.houseId, mutableHouse)
-
-        logInfo(
-          "Economy",
-          &"Started construction at {command.colonyId}: {projectDesc} " &
-            &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
-            &"Location: {queueLocation}, Treasury: {oldTreasury} → {mutableHouse.treasury} PP)",
-        )
-
-        # Generate event
-        events.add(
-          economic.constructionStarted(
-            packet.houseId, projectDesc, colony.systemId, project.costTotal
+        if assignedFacility.isNone:
+          let (current, maximum) =
+            construction_docks.colonyTotalCapacity(state, command.colonyId)
+          let errorMsg =
+            &"Colony {command.colonyId} at capacity ({current}/{maximum} docks used) - cannot accept more projects"
+          logWarn(
+            "Economy", &"[BUILD ORDER REJECTED] {packet.houseId}: {errorMsg}"
           )
+          budgetContext.rejectedCommands += 1
+          continue
+
+      let projectCost = case command.buildType
+        of BuildType.Ship:
+          if command.shipClass.isSome:
+            accessors.shipConstructionCost(command.shipClass.get())
+          else:
+            0'i32
+        of BuildType.Facility:
+          if command.facilityClass.isSome:
+            accessors.buildingCost(command.facilityClass.get())
+          else:
+            0'i32
+        of BuildType.Industrial, BuildType.Infrastructure:
+          projects.industrialUnitCost(colony)
+        of BuildType.Ground:
+          if command.groundClass.isSome:
+            accessors.groundUnitCost(command.groundClass.get())
+          else:
+            0'i32
+
+      if budgetContext.availableTreasury - budgetContext.committedSpending <
+          projectCost:
+        let errorMsg =
+          &"Insufficient funds: need {projectCost} PP, have " &
+          &"{budgetContext.availableTreasury - budgetContext.committedSpending} PP"
+        logWarn(
+          "Economy",
+          &"[BUILD ORDER REJECTED] {packet.houseId} at {command.colonyId}: {errorMsg}",
         )
+        budgetContext.rejectedCommands += 1
+        continue
+
+      budgetContext.committedSpending += projectCost
+
+      var project: ConstructionProject
+      var projectDesc: string
+
+      case command.buildType
+      of BuildType.Industrial, BuildType.Infrastructure:
+        project = createIndustrialProject(colony, 1)
+        projectDesc = "Industrial expansion: 1 IU"
+      of BuildType.Ship:
+        if command.shipClass.isNone:
+          logError(
+            "Economy", &"Ship construction failed: no ship class specified"
+          )
+          budgetContext.rejectedCommands += 1
+          continue
+
+        let shipClass = command.shipClass.get()
+        project = createShipProject(shipClass)
+        projectDesc = "Ship construction: " & $shipClass
+      of BuildType.Facility:
+        if command.facilityClass.isNone:
+          logError(
+            "Economy",
+            &"Facility construction failed: no facility class specified",
+          )
+          budgetContext.rejectedCommands += 1
+          continue
+
+        let facilityClass = command.facilityClass.get()
+        project = createBuildingProject(facilityClass)
+        projectDesc = "Facility construction: " & $facilityClass
+      of BuildType.Ground:
+        if command.groundClass.isNone:
+          logError(
+            "Economy",
+            &"Ground unit construction failed: no ground class specified",
+          )
+          budgetContext.rejectedCommands += 1
+          continue
+
+        let groundClass = command.groundClass.get()
+        project = projects.createGroundUnitProject(groundClass)
+        projectDesc = "Ground unit construction: " & $groundClass
+
+      var success = false
+      var queueLocation = ""
+
+      if requiresDock and assignedFacility.isSome:
+        success = construction_docks.assignAndQueueProject(
+          state, command.colonyId, project
+        )
+        if success:
+          let (facilityId, _) = assignedFacility.get()
+          queueLocation = &"facility {facilityId}"
       else:
-        # Treasury insufficient (race condition: spent between validation and deduction)
-        # Cancel construction and log error
+        var mutableColony = colony
+        if state.startConstruction(mutableColony, project):
+          state.updateColony(command.colonyId, mutableColony)
+          success = true
+          queueLocation = "colony queue"
+
+      if success:
+        var mutableHouse = state.house(packet.houseId).get()
+        let oldTreasury = mutableHouse.treasury
+
+        if mutableHouse.treasury >= project.costTotal:
+          mutableHouse.treasury -= project.costTotal
+          state.updateHouse(packet.houseId, mutableHouse)
+          acceptedUnits += 1
+
+          logInfo(
+            "Economy",
+            &"Started construction at {command.colonyId}: {projectDesc} " &
+              &"(Cost: {project.costTotal} PP, Est. {project.turnsRemaining} turns, " &
+              &"Location: {queueLocation}, Treasury: {oldTreasury} → {mutableHouse.treasury} PP)",
+          )
+
+          events.add(
+            economic.constructionStarted(
+              packet.houseId, projectDesc, colony.systemId, project.costTotal
+            )
+          )
+        else:
+          logError(
+            "Economy",
+            &"{packet.houseId} Construction CANCELLED at {command.colonyId}: {projectDesc} " &
+              &"- Insufficient treasury (need {project.costTotal} PP, have {mutableHouse.treasury} PP, " &
+              &"was {oldTreasury} PP at validation)",
+          )
+
+          if queueLocation == "colony queue":
+            var mutableColony = state.colony(command.colonyId).get()
+            if mutableColony.constructionQueue.len > 0:
+              discard mutableColony.constructionQueue.pop()
+            state.updateColony(command.colonyId, mutableColony)
+
+          budgetContext.rejectedCommands += 1
+      else:
         logError(
           "Economy",
-          &"{packet.houseId} Construction CANCELLED at {command.colonyId}: {projectDesc} " &
-            &"- Insufficient treasury (need {project.costTotal} PP, have {mutableHouse.treasury} PP, " &
-            &"was {oldTreasury} PP at validation)",
+          &"Construction start failed at {command.colonyId}",
         )
-
-        # Remove from construction queue if it was added
-        if queueLocation == "colony queue":
-          var mutableColony = state.colony(command.colonyId).get()
-          # Remove last added project (the one we just added)
-          if mutableColony.constructionQueue.len > 0:
-            discard mutableColony.constructionQueue.pop()
-          state.updateColony(command.colonyId, mutableColony)
-
-        # Increment rejected commands counter for logging
         budgetContext.rejectedCommands += 1
-    else:
-      logError(
-        "Economy",
-        &"Construction start failed at {command.colonyId}",
-      )
 
   # Log budget validation summary
   let remainingBudget = budgetContext.availableTreasury - budgetContext.committedSpending
-  let successfulOrders = packet.buildCommands.len - budgetContext.rejectedCommands
+  let rejectedUnits = requestedUnits - acceptedUnits
   logInfo(
     "Economy",
-    &"{packet.houseId} Build Command Summary: {successfulOrders}/{packet.buildCommands.len} commands accepted, " &
+    &"{packet.houseId} Build Command Summary: {acceptedUnits}/{requestedUnits} units accepted, " &
       &"{budgetContext.committedSpending} PP committed, " &
       &"{remainingBudget} PP remaining, " &
-      &"{budgetContext.rejectedCommands} commands rejected due to insufficient funds",
+      &"{rejectedUnits} units rejected",
   )

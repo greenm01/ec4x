@@ -1458,23 +1458,26 @@ Capital Ship?          Everything Else?
 
 **Module:** `src/engine/resolution/commissioning.nim`
 
-EC4X uses a **unified commissioning system** where ALL assets commission in CMD2, regardless of type or build location.
+EC4X uses a **unified commissioning system** where all completed assets
+commission together at the boundary into the next player-facing turn,
+regardless of type or build location.
 
 #### Commissioning Timing
 
-**When:** CMD2 (Unified Commissioning)
+**When:** Start-of-turn commissioning boundary for the next playable turn
 
 **What:** ALL completed assets from ALL sources:
 - Ships from Spaceports/Shipyards (construction)
 - Repaired ships from Drydocks (repairs with payment)
 - Colony-built assets (fighters, marines, facilities, etc.)
 
-**Strategic Rationale:** 
+**Strategic Rationale:**
 - Architectural simplicity (single commissioning point)
 - No split timing complexity (uniform 1-turn lag)
-- Clean separation: Production advances → Conflict resolves → Command commissions
+- Clean player model: when the turn advances, completed work is already
+  visible in normal views
 
-#### All Assets Commission in CMD2
+#### All Assets Commission Together Before the Next Player Window
 
 **Universal 1-Turn Lag:**
 
@@ -1487,12 +1490,13 @@ Turn N Command Phase:
 
 Turn N Production Phase:
   - Project advances (turnsRemaining: 1 → 0)
-  - Status: InProgress → AwaitingCommission
-  - Asset NOT operational yet
+  - Status: complete, pending commissioning into the next player-facing turn
 
-Turn N Conflict Phase:
-  - Assets in queues vulnerable to combat
-  - Facilities can be destroyed/crippled
+Turn boundary into Turn N+1:
+  - Completed assets are commissioned
+  - If a producing facility was destroyed/crippled, vulnerable projects are
+    reported lost instead
+  - Player-facing Turn N+1 state is saved/published after this step
   - Colonies can be conquered
 
 Turn N+1 CMD2 (Unified Commissioning):

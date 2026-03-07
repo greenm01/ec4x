@@ -9,14 +9,16 @@
 import std/[tables, options, strutils, os, base64, times]
 import db_connector/db_sqlite
 import ../../common/logger
-import ../../engine/types/[game_state, core, command]
+import ../../engine/types/[game_state, core, command, production, event]
 import ../../engine/state/engine
 import ../../engine/init/multipliers
+import ../../engine/systems/production/commissioning
 import ../parser/msgpack_commands
 import ./msgpack_state
 import ./player_state_snapshot
 import ./replay
 import ./schema
+import ./writer
 
 export ReplayDirection
 
@@ -285,17 +287,51 @@ proc loadOrders*(dbPath: string, turn: int): Table[HouseId, CommandPacket] =
     $turn
   )
 
+proc normalizePendingTurnBoundaryState(state: GameState): bool =
+  var changed = false
+
+  if state.pendingCommissions.len > 0:
+    var militaryProjects: seq[CompletedProject] = @[]
+    var planetaryProjects: seq[CompletedProject] = @[]
+
+    for project in state.pendingCommissions:
+      if project.projectType == BuildType.Ship:
+        militaryProjects.add(project)
+      else:
+        planetaryProjects.add(project)
+
+    var events: seq[GameEvent] = @[]
+    if militaryProjects.len > 0:
+      commissioning.commissionShips(state, militaryProjects, events)
+    if planetaryProjects.len > 0:
+      commissioning.commissionPlanetaryDefense(state, planetaryProjects, events)
+    state.pendingCommissions = @[]
+    changed = true
+
+  var completedRepairs: seq[RepairProject] = @[]
+  for (repairId, _) in state.repairProjects.entities.index.pairs:
+    let repairOpt = state.repairProject(repairId)
+    if repairOpt.isSome:
+      let repair = repairOpt.get()
+      if repair.turnsRemaining <= 0:
+        completedRepairs.add(repair)
+
+  if completedRepairs.len > 0:
+    var events: seq[GameEvent] = @[]
+    commissioning.commissionRepairedShips(state, completedRepairs, events)
+    changed = true
+
+  changed
+
 proc loadFullState*(dbPath: string): GameState =
   ## Load full GameState from per-game DB
   ## Deserializes complete state from msgpack blob
-  let db = open(dbPath, "", "", "")
-  defer: db.close()
-
   try:
     ensureSupportedGameDb(dbPath)
 
-    # Load msgpack blob from database
+    let db = open(dbPath, "", "", "")
     let row = db.getRow(sql"SELECT state_msgpack FROM games LIMIT 1")
+    db.close()
     if row[0] == "":
       logError("Persistence", "No state_msgpack found in database")
       raise newException(ValueError, "Empty state_msgpack in database")
@@ -318,6 +354,9 @@ proc loadFullState*(dbPath: string): GameState =
     let numPlayers = int32(result.houses.entities.data.len)
     initPrestigeMultiplier(numSystems, numPlayers)
     initPopulationGrowthMultiplier(numSystems, numPlayers)
+
+    if result.normalizePendingTurnBoundaryState():
+      saveFullState(result)
 
     logInfo("Persistence", "Loaded full state (msgpack)", "turn=",
       $result.turn, " size=", $row[0].len, " bytes")

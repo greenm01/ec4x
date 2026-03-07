@@ -9,11 +9,12 @@
 ##
 ## Per docs/specs/05-construction.md
 
-import std/[unittest, options, sequtils]
+import std/[unittest, options, sequtils, tables, random]
 import ../../src/engine/engine
+import ../../src/engine/turn_cycle/engine as turn_engine
 import ../../src/engine/types/[
   core, house, colony, facilities, ship, fleet,
-  production, command, event, combat, ground_unit
+  production, command, event, combat, ground_unit, tech
 ]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/globals
@@ -32,11 +33,13 @@ proc makeBuildCommand(
   colonyId: ColonyId, buildType: BuildType,
   shipClass: Option[ShipClass] = none(ShipClass),
   facilityClass: Option[FacilityClass] = none(FacilityClass),
-  industrialUnits: int32 = 0
+  industrialUnits: int32 = 0,
+  quantity: int32 = 1
 ): BuildCommand =
   result = BuildCommand(
     colonyId: colonyId,
     buildType: buildType,
+    quantity: quantity,
     shipClass: shipClass,
     facilityClass: facilityClass,
     industrialUnits: industrialUnits
@@ -180,6 +183,45 @@ suite "Construction: Build Order Processing":
     # Construction should start
     let constructionEvents = events.filterIt(it.eventType == GameEventType.ConstructionStarted)
     check constructionEvents.len == 1
+
+  test "build command quantity creates multiple projects":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+
+    let owner = colony.owner
+    var house = game.house(owner).get()
+    house.treasury = 10000
+    game.updateHouse(owner, house)
+
+    let packet = CommandPacket(
+      houseId: owner,
+      buildCommands: @[makeBuildCommand(
+        colony.id,
+        BuildType.Ship,
+        shipClass = some(ShipClass.Corvette),
+        quantity = 4
+      )]
+    )
+
+    resolveBuildOrders(game, packet, events)
+
+    let constructionEvents =
+      events.filterIt(it.eventType == GameEventType.ConstructionStarted)
+    check constructionEvents.len == 4
+
+    var queuedProjects = 0
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = game.neoria(neoriaId)
+      if neoriaOpt.isSome:
+        let neoria = neoriaOpt.get()
+        queuedProjects += neoria.constructionQueue.len
+        queuedProjects += neoria.activeConstructions.len
+    check queuedProjects == 4
 
   test "build command rejected for insufficient funds":
     let game = newGame()
@@ -580,6 +622,60 @@ suite "Construction: Full Lifecycle Integration":
 
     # Ship should be commissioned (1-turn build time)
     check finalShipCount >= initialShipCount + 1
+
+  test "one-turn ship builds are visible in next turn state":
+    var game = newGame()
+    var rng = initRand(42)
+
+    var owner: HouseId
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      owner = c.owner
+      break
+
+    var house = game.house(owner).get()
+    house.treasury = 10000
+    game.updateHouse(owner, house)
+
+    let initialShipCount = game.allShips().toSeq.len
+
+    var commands = initTable[HouseId, CommandPacket]()
+    for (houseId, _) in game.activeHousesWithId():
+      commands[houseId] = CommandPacket(
+        houseId: houseId,
+        turn: 1,
+        fleetCommands: @[],
+        buildCommands: @[],
+        repairCommands: @[],
+        scrapCommands: @[],
+        researchAllocation: ResearchAllocation(),
+        researchDeposits: ResearchDeposits(),
+        techPurchases: TechPurchaseSet(),
+        researchLiquidation: ResearchLiquidation(),
+        diplomaticCommand: @[],
+        populationTransfers: @[],
+        terraformCommands: @[],
+        colonyManagement: @[],
+        espionageActions: @[],
+        ebpInvestment: 0,
+        cipInvestment: 0
+      )
+
+    commands[owner].buildCommands = @[
+      makeBuildCommand(
+        colony.id,
+        BuildType.Ship,
+        shipClass = some(ShipClass.Corvette),
+        quantity = 2
+      )
+    ]
+
+    discard turn_engine.resolveTurn(game, commands, rng)
+
+    check game.turn == 2
+    check game.pendingCommissions.len == 0
+    check game.allShips().toSeq.len == initialShipCount + 2
 
 suite "Construction: All Ship Classes Can Be Built":
 

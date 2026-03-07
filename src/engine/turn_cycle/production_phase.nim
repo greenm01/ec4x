@@ -534,8 +534,8 @@ proc resolveProductionPhase*(
   # =========================================================================
   let queueResults = advanceQueues(state)
   
-  # Return ALL completed projects for CMD2 commissioning
-  # NO split commissioning - everything deferred to Command Phase
+  # Return all completed projects so the turn boundary can commission them
+  # into the published next-turn player state.
   result = queueResults.projects
   
   # =========================================================================

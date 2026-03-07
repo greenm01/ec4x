@@ -101,7 +101,9 @@ proc commissionEntities(state: GameState, events: var seq[GameEvent]) =
   logInfo("Commands", "[CMD2-pre] Clearing damaged facility queues...")
   commissioning.clearDamagedFacilityQueues(state, events)
 
-  # Process pending commissions from Production Phase
+  # Process pending commissions retained from older saved states.
+  # New turn resolution now commissions completed work before the next
+  # player-facing turn is published.
   if state.pendingCommissions.len > 0:
     # Separate military (ships) from planetary (fighters, ground units,
     # facilities)

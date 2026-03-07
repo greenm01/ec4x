@@ -1,8 +1,8 @@
-## Commissioning System - Converting completed construction into operational units
+## Commissioning System - Converting completed construction into operational
+## units
 ##
-## This module handles the commissioning of completed construction projects into
-## operational military units and facilities. It runs as the FIRST step in the
-## Command Phase, before new build commands are processed.
+## This module handles the commissioning of completed construction projects
+## into operational military units and facilities.
 ##
 ## **Design Rationale:**
 ## Commissioning must occur before build commands to ensure clean capacity calculations.
@@ -10,20 +10,25 @@
 ## construction commands submitted the same turn. By commissioning first, we eliminate
 ## temporal paradoxes where dock availability is ambiguous.
 ##
-## **Phase Ordering (Updated 2025-12-04):**
+## **Phase Ordering:**
 ## ```
-## Maintenance Phase:
+## Turn N Production Phase:
 ##   - Advance construction queues (facility + colony)
-##   - Return completed projects
+##   - Return completed projects/repairs
 ##
-## (Turn boundary - game state persisted)
+## Turn boundary into player-facing Turn N+1:
+##   - Commission completed projects/repairs
+##   - Save/publish the next-turn state
 ##
-## Command Phase:
-##   1. Commission completed projects ← THIS MODULE
+## Turn N+1 Command Phase:
+##   1. Legacy cleanup / compatibility commissioning if needed
 ##   2. Auto-load fighters to carriers (if enabled)
 ##   3. Process new build commands
 ##   4. ... rest of Command Phase ...
 ## ```
+##
+## The player-facing turn snapshot already includes commissioning results.
+## Legacy `pendingCommissions` handling remains only for older saved states.
 ##
 ## **Handles:**
 ## - Fighters → colony.fighterIds (colony-based fighters)
@@ -36,7 +41,7 @@
 ##
 ## **Does NOT Handle:**
 ## - Auto-loading fighters to carriers (separate function)
-## - Construction queue advancement (happens in Maintenance Phase)
+## - Construction queue advancement (happens in Production Phase)
 
 import std/[tables, options, strformat, strutils, sequtils]
 import ../../types/[core, game_state, production, event, ground_unit, combat]
@@ -724,9 +729,8 @@ proc commissionShips*(
     completedProjects: seq[CompletedProject],
     events: var seq[GameEvent],
 ) =
-  ## Commission ships in Command Phase (next turn)
+  ## Commission completed ship projects into the next player-facing turn state.
   ##
-  ## This function runs at START of Command Phase, after Conflict Phase.
   ## Converts completed ship construction into operational units:
   ## - Capital ships → fleets (auto-assigned)
   ## - Spacelift ships → fleets (auto-assigned with cargo)
@@ -734,10 +738,6 @@ proc commissionShips*(
   ## **Strategic Rationale:** Ships built in docks may be destroyed during
   ## Conflict Phase. Commission only if facilities survived combat.
   ##
-  ## **Called From:** resolveCommandPhase() in phases/command_phase.nim
-  ## **Called After:** Conflict Phase (combat resolution)
-  ## **Called Before:** resolveBuildOrders() (new construction)
-
   # Process each completed ship construction project
   for completed in completedProjects:
     if completed.projectType != BuildType.Ship:
@@ -797,12 +797,11 @@ proc commissionShips*(
     commissionShip(state, owner, colony.systemId, shipClass, techLevel, events)
 
 proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
-  ## Clear construction and repair queues for crippled/destroyed facilities
-  ## Called during Command Phase Part A (before ship commissioning)
-  ## Ensures ships don't commission from facilities that were destroyed in combat
+  ## Clear construction and repair queues for crippled/destroyed facilities.
   ##
-  ## **Timing:** Command Phase Part A (before Step 1: Ship Commissioning)
-  ## **Why:** Facilities may have been crippled/destroyed during previous Conflict Phase
+  ## This remains useful during Command Phase cleanup for legacy saved states
+  ## that may still carry queue state across the old commissioning boundary.
+  ## It also preserves explicit loss reporting for damaged docks.
   ##
   ## **Clears:**
   ## - Construction projects at crippled/destroyed Neorias (Spaceport, Shipyard, Drydock)

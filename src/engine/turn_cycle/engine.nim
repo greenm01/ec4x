@@ -16,15 +16,58 @@
 ## - Uses UFCS pattern for state access
 ## - Phases mutate state in-place
 ## - Events collected across all phases
-## - pendingCommissions passed from Production to next Command Phase
+## - Player-facing turn N+1 state already includes any assets completed in
+##   turn N Production
 
-import std/[tables, random, strformat]
+import std/[tables, random, strformat, options]
 import ../../common/logger
 import ../types/[
-  core, game_state, command, event, combat, victory
+  core, game_state, command, event, combat, victory, production
 ]
+import ../state/engine as state_engine
 import ./[conflict_phase, income_phase, command_phase, production_phase]
 import ../victory/engine
+import ../systems/production/commissioning
+
+proc commissionCompletedAssetsForPlayerTurn(
+    state: GameState,
+    completedProjects: seq[CompletedProject],
+    events: var seq[GameEvent]
+) =
+  ## Publish-facing turn state should already include newly commissioned
+  ## assets. Commission them after Production advancement and after the
+  ## turn counter advances into the next player turn.
+  if completedProjects.len == 0:
+    return
+
+  var militaryProjects: seq[CompletedProject] = @[]
+  var planetaryProjects: seq[CompletedProject] = @[]
+
+  for project in completedProjects:
+    if project.projectType == BuildType.Ship:
+      militaryProjects.add(project)
+    else:
+      planetaryProjects.add(project)
+
+  if militaryProjects.len > 0:
+    commissioning.commissionShips(state, militaryProjects, events)
+  if planetaryProjects.len > 0:
+    commissioning.commissionPlanetaryDefense(state, planetaryProjects, events)
+
+proc commissionCompletedRepairsForPlayerTurn(
+    state: GameState,
+    events: var seq[GameEvent]
+) =
+  var completedRepairs: seq[RepairProject] = @[]
+  for (repairId, _) in state.repairProjects.entities.index.pairs:
+    let repairOpt = state_engine.repairProject(state, repairId)
+    if repairOpt.isSome:
+      let repair = repairOpt.get()
+      if repair.turnsRemaining <= 0:
+        completedRepairs.add(repair)
+
+  if completedRepairs.len > 0:
+    commissioning.commissionRepairedShips(state, completedRepairs, events)
 
 type
   TurnResult* = object
@@ -117,20 +160,16 @@ proc resolveTurn*(
     state, result.events, mutableCommands, rng
   )
 
-  # Store completed military projects for next turn's Command Phase
-  # Planetary defense already commissioned in Production Phase Step 2b
-  # Ships will be commissioned at start of next turn's Command Phase CMD2
-  state.pendingCommissions = completedProjects
-  if completedProjects.len > 0:
-    logInfo("TurnCycle",
-      &"Stored {completedProjects.len} projects for next turn commissioning")
-
   # =========================================================================
   # TURN ADVANCEMENT
   # =========================================================================
+  state.turn += 1
+  state.pendingCommissions = @[]
+  state.commissionCompletedAssetsForPlayerTurn(completedProjects, result.events)
+  state.commissionCompletedRepairsForPlayerTurn(result.events)
+
   # Store events for PlayerState creation (fog-of-war filtering per house)
   state.lastTurnEvents = result.events
-  state.turn += 1
   result.turnAdvanced = true
 
   logInfo("TurnCycle", &"=== Turn {state.turn - 1} Resolution Complete ===")
