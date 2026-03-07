@@ -1058,6 +1058,7 @@ type
     researchPoolIdx*: ResearchPoolIdx
     researchDeposits*: ResearchDeposits
     researchPurchases*: TechPurchaseSet
+    researchAllocations*: ResearchAllocation   ## Per-tech RP allocations (TUI-only)
     researchDigitBuffer*: string
     researchDigitTime*: float
     researchFocus*: ResearchFocus
@@ -1400,6 +1401,7 @@ proc initTuiUiState*(): TuiUiState =
     messagesScroll: initScrollState(),
     researchDeposits: ResearchDeposits(),
     researchPurchases: TechPurchaseSet(),
+    researchAllocations: ResearchAllocation(),
     researchDigitBuffer: "",
     researchDigitTime: 0.0,
     researchFocus: ResearchFocus.List,
@@ -3645,6 +3647,7 @@ proc clearStagedCommands*(model: var TuiModel) =
   model.ui.stagedTaxRate = none(int)
   model.ui.researchDeposits = ResearchDeposits()
   model.ui.researchPurchases = TechPurchaseSet()
+  model.ui.researchAllocations = ResearchAllocation()
   model.ui.researchDigitBuffer = ""
   model.ui.researchDigitTime = 0.0
   model.ui.liquidationConfirmActive = false

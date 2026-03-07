@@ -2087,7 +2087,7 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   let contentHeight = min(desiredContentHeight, maxContentHeight) + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
   let footerLine =
-    "[Tab]Pools/Tech  [+/-]Deposit  [Enter]Purchase  [L]Liquidate  " &
+    "[Tab]Pools/Tech  [+/-]Deposit/Alloc  [Enter]Full/Clear  [L]Liquidate  " &
     "[/]Help"
   modal.renderWithFooter(modalArea, buf, footerLine)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)
@@ -2184,13 +2184,14 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       let cInner = bordered().inner(cardArea)
       if cInner.isEmpty:
         continue
-      let totalBalance = research_projection.projectedPoolBalance(
-        levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
-        poolIdx, gho
+      let poolRP = research_projection.projectedPoolRP(
+        points, model.ui.researchDeposits, poolIdx, gho, levels.sl
       )
+      let allocated = research_projection.poolAllocForPool(model.ui.researchAllocations, poolIdx)
       let cap = research_projection.poolCap(levels, poolIdx)
+      let totalBalance = min(cap, max(0, poolRP - allocated))
       let existingRP = poolRPs[i]
-      let depLine = "Dep: [ " & strutils.align($poolDeps[i].int, 4) & " ]"
+      let depLine = "PP Spend: [ " & strutils.align($poolDeps[i].int, 4) & " ]"
       let balanceLine = $totalBalance & " / " & $cap & " RP"
       # Dual-shade progress bar (dark=existing, light=deposit, empty=capacity)
       let barW = max(0, cInner.width)
@@ -2264,9 +2265,6 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
       item, gho
     )
-    let purchased = research_projection.isPurchaseToggled(
-      model.ui.researchPurchases, item
-    )
     let blocked = research_projection.isBlockedProjected(
       levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
       item, gho
@@ -2274,13 +2272,15 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let maxLevel = progressionMaxLevel(item)
     let lvlStr =
       if currentLevel >= maxLevel: $currentLevel
-      elif purchased: $currentLevel & ">" & $projLevel
+      elif projLevel > currentLevel: $projLevel
       else: $currentLevel
     let cost = techProgressCost(item, currentLevel)
-    let costStr =
+    let alloc = research_projection.getAllocForItem(model.ui.researchAllocations, item)
+    let allocStr =
       if currentLevel >= maxLevel: "-"
-      elif purchased: "\xE2\x9C\x93 " & $cost
-      else: $cost
+      elif alloc >= cost and cost > 0: "\xE2\x9C\x93 " & $alloc
+      elif alloc > 0: $alloc
+      else: ""
     var cellStyles: seq[Option[CellStyle]] = @[]
     cellStyles.setLen(listColumns.len)
     if blocked:
@@ -2292,7 +2292,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
         item.code,
         item.name,
         lvlStr,
-        costStr
+        allocStr
       ],
       cellStyles: cellStyles,
       kind: TableRowKind.Normal
@@ -2352,7 +2352,8 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       dy += 1
     let basePoints = research_projection.currentResearchPoints(points, item)
     let cost = techProgressCost(item, currentLevel)
-    let pointsCurrent = min(basePoints, cost)
+    let detailAlloc = research_projection.getAllocForItem(model.ui.researchAllocations, item)
+    let pointsCurrent = min(detailAlloc, cost)
     let willLevel = level > currentLevel
     let carryover =
       if willLevel:
@@ -2369,7 +2370,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       dy += 1
     if dy < detailInner.bottom:
       let progressLine =
-        "Progress: " & $pointsCurrent & "/" & $cost
+        "Allocated: " & $pointsCurrent & "/" & $cost
       renderLine(
         detailInner,
         buf,

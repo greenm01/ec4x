@@ -99,26 +99,40 @@ proc setPoolDeposit(deposits: var ResearchDeposits, pool: ResearchPoolIdx, value
   of ResearchPoolIdx.PoolSRP: deposits.srp = value
   of ResearchPoolIdx.PoolTRP: deposits.trp = value
 
+proc getAllocForItem(alloc: ResearchAllocation, item: ResearchItem): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel: alloc.economic.int
+  of ResearchItemKind.ScienceLevel:  alloc.science.int
+  of ResearchItemKind.Technology:
+    if item.field in alloc.technology: alloc.technology[item.field].int else: 0
+
+proc setAllocForItem(alloc: var ResearchAllocation, item: ResearchItem, val: int32) =
+  case item.kind
+  of ResearchItemKind.EconomicLevel: alloc.economic = val
+  of ResearchItemKind.ScienceLevel:  alloc.science  = val
+  of ResearchItemKind.Technology:    alloc.technology[item.field] = val
+
+proc poolAllocTotal(alloc: ResearchAllocation, pool: ResearchPoolIdx): int =
+  case pool
+  of ResearchPoolIdx.PoolERP: alloc.economic.int
+  of ResearchPoolIdx.PoolSRP:
+    var t = alloc.science.int
+    for field, amt in alloc.technology:
+      if isSrpField(field): t += amt.int
+    t
+  of ResearchPoolIdx.PoolTRP:
+    var t = 0
+    for field, amt in alloc.technology:
+      if not isSrpField(field): t += amt.int
+    t
+
 proc isResearchRowSelectable(model: TuiModel, idx: int): bool =
   let items = researchItems()
-  if idx < 0 or idx >= items.len:
-    return false
-  if model.view.techLevels.isNone:
-    return true
+  if idx < 0 or idx >= items.len: return false
+  if model.view.techLevels.isNone: return true
   let levels = model.view.techLevels.get()
   let level = research_projection.currentTechLevel(levels, items[idx])
-  if level >= progressionMaxLevel(items[idx]): return false
-  let points = if model.view.researchPoints.isSome:
-    model.view.researchPoints.get()
-  else:
-    ResearchPoints(erp: 0, srp: 0, trp: 0)
-  let gho = research_projection.projectedResearchGho(
-    levels, model.view.colonies, model.view.production, model.view.houseTaxRate
-  )
-  not research_projection.isBlockedProjected(
-    levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
-    items[idx], gho
-  )
+  level < progressionMaxLevel(items[idx])
 
 proc firstSelectableResearchIdx(model: TuiModel): int =
   let items = researchItems()
@@ -159,6 +173,98 @@ proc nextSelectableResearchIdx(
     return clamp(current, 0, maxIdx)
   model.firstSelectableResearchIdx()
 
+proc clampAllAllocations(model: var TuiModel) =
+  ## Invalidate allocations that are no longer valid (SL-gated or over-budget).
+  if model.view.techLevels.isNone: return
+  let levels = model.view.techLevels.get()
+  let points = if model.view.researchPoints.isSome: model.view.researchPoints.get()
+               else: ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho = research_projection.projectedResearchGho(
+    levels, model.view.colonies, model.view.production, model.view.houseTaxRate)
+  # First pass: clear allocations for SL-gated or maxed items
+  let projSL = research_projection.projectedScienceLevel(
+    levels, points, model.ui.researchDeposits, model.ui.researchPurchases, gho)
+  for item in researchItems():
+    let alloc = getAllocForItem(model.ui.researchAllocations, item)
+    if alloc <= 0: continue
+    let curLvl = research_projection.currentTechLevel(levels, item)
+    if curLvl >= progressionMaxLevel(item):
+      setAllocForItem(model.ui.researchAllocations, item, 0)
+      continue
+    let slReq = techSlRequiredForLevel(item, curLvl + 1)
+    if projSL < slReq:
+      setAllocForItem(model.ui.researchAllocations, item, 0)
+      continue
+  # Second pass: clamp per-pool totals to available pool RP
+  for poolIdx in [ResearchPoolIdx.PoolERP, ResearchPoolIdx.PoolSRP, ResearchPoolIdx.PoolTRP]:
+    let poolRP = research_projection.projectedPoolRP(
+      points, model.ui.researchDeposits, poolIdx, gho, levels.sl)
+    var totalAlloc = poolAllocTotal(model.ui.researchAllocations, poolIdx)
+    if totalAlloc <= poolRP: continue
+    # Over-budget: trim allocations in reverse researchItems order
+    var excess = totalAlloc - poolRP
+    let items = researchItems()
+    for i in countdown(items.len - 1, 0):
+      if excess <= 0: break
+      let item = items[i]
+      if research_projection.researchItemPool(item) != poolIdx: continue
+      let alloc = getAllocForItem(model.ui.researchAllocations, item)
+      if alloc <= 0: continue
+      let reduction = min(alloc, excess)
+      setAllocForItem(model.ui.researchAllocations, item, int32(alloc - reduction))
+      excess -= reduction
+
+proc updateResearchPurchases(model: var TuiModel) =
+  clampAllAllocations(model)
+  if model.view.techLevels.isNone: return
+  let levels = model.view.techLevels.get()
+  let points = if model.view.researchPoints.isSome: model.view.researchPoints.get()
+               else: ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho = research_projection.projectedResearchGho(
+    levels, model.view.colonies, model.view.production, model.view.houseTaxRate)
+  let projSL = research_projection.projectedScienceLevel(
+    levels, points, model.ui.researchDeposits, model.ui.researchPurchases, gho)
+  model.ui.researchPurchases = TechPurchaseSet()
+  for item in researchItems():
+    let alloc = getAllocForItem(model.ui.researchAllocations, item)
+    let curLvl = research_projection.currentTechLevel(levels, item)
+    let cost = techProgressCost(item, curLvl)
+    if cost <= 0 or alloc < cost: continue
+    let slReq = techSlRequiredForLevel(item, curLvl + 1)
+    if projSL < slReq: continue
+    case item.kind
+    of ResearchItemKind.EconomicLevel: model.ui.researchPurchases.economic = true
+    of ResearchItemKind.ScienceLevel:  model.ui.researchPurchases.science  = true
+    of ResearchItemKind.Technology:    model.ui.researchPurchases.technology.incl(item.field)
+
+proc maxPoolDepositPP(model: TuiModel, pool: ResearchPoolIdx): int =
+  let treasuryLimit = max(
+    0,
+    model.view.treasury -
+      (totalDepositPP(model.ui.researchDeposits) -
+       int(poolDeposit(model.ui.researchDeposits, pool)))
+  )
+  if model.view.techLevels.isNone:
+    return treasuryLimit
+  let levels = model.view.techLevels.get()
+  let points = if model.view.researchPoints.isSome:
+      model.view.researchPoints.get()
+    else:
+      ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho = research_projection.projectedResearchGho(
+    levels,
+    model.view.colonies,
+    model.view.production,
+    model.view.houseTaxRate
+  )
+  let rpLimit = research_projection.maxDepositPPForPoolCap(
+    levels,
+    points,
+    pool,
+    gho
+  )
+  min(treasuryLimit, rpLimit)
+
 proc adjustPoolDeposit(model: var TuiModel, delta: int) =
   if model.ui.mode != ViewMode.Research:
     return
@@ -166,10 +272,11 @@ proc adjustPoolDeposit(model: var TuiModel, delta: int) =
     return
   let pool = model.ui.researchPoolIdx
   let current = int(poolDeposit(model.ui.researchDeposits, pool))
-  let otherDeposits = totalDepositPP(model.ui.researchDeposits) - current
-  let maxByTreasury = max(0, model.view.treasury - otherDeposits)
-  var nextValue = clamp(current + delta, 0, maxByTreasury)
+  let maxDeposit = model.maxPoolDepositPP(pool)
+  let nextValue = clamp(current + delta, 0, maxDeposit)
   setPoolDeposit(model.ui.researchDeposits, pool, int32(nextValue))
+  clampAllAllocations(model)
+  updateResearchPurchases(model)
 
 proc applyPoolDigitInput(model: var TuiModel, digit: char) =
   if model.ui.mode != ViewMode.Research:
@@ -188,29 +295,74 @@ proc applyPoolDigitInput(model: var TuiModel, digit: char) =
   model.ui.researchDigitTime = now
   let parsed = try: parseInt(nextBuffer) except: 0
   let pool = model.ui.researchPoolIdx
-  let current = int(poolDeposit(model.ui.researchDeposits, pool))
-  let otherDeposits = totalDepositPP(model.ui.researchDeposits) - current
-  let maxByTreasury = max(0, model.view.treasury - otherDeposits)
-  setPoolDeposit(model.ui.researchDeposits, pool, int32(min(parsed, maxByTreasury)))
+  let maxDeposit = model.maxPoolDepositPP(pool)
+  setPoolDeposit(
+    model.ui.researchDeposits,
+    pool,
+    int32(min(parsed, maxDeposit))
+  )
+  clampAllAllocations(model)
+  updateResearchPurchases(model)
+
+proc adjustTechAllocation(model: var TuiModel, delta: int) =
+  if model.ui.mode != ViewMode.Research: return
+  if model.ui.researchFocus != ResearchFocus.List: return
+  if model.view.techLevels.isNone: return
+  let items = researchItems()
+  if items.len == 0: return
+  let idx  = clamp(model.ui.selectedIdx, 0, items.len - 1)
+  let item = items[idx]
+  let levels = model.view.techLevels.get()
+  let points = if model.view.researchPoints.isSome: model.view.researchPoints.get()
+               else: ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho   = research_projection.projectedResearchGho(
+                levels, model.view.colonies, model.view.production, model.view.houseTaxRate)
+  let blocked = research_projection.isBlockedProjected(
+    levels, points, model.ui.researchDeposits, model.ui.researchPurchases, item, gho)
+  if blocked: return
+  let pool  = research_projection.researchItemPool(item)
+  let cur   = getAllocForItem(model.ui.researchAllocations, item)
+  let poolRP      = research_projection.projectedPoolRP(
+                      points, model.ui.researchDeposits, pool, gho, levels.sl)
+  let otherAlloc  = poolAllocTotal(model.ui.researchAllocations, pool) - cur
+  let cost        = techProgressCost(item, research_projection.currentTechLevel(levels, item))
+  let maxAlloc    = min(cost, max(0, poolRP - otherAlloc))
+  let newVal      = int32(clamp(cur + delta, 0, maxAlloc))
+  setAllocForItem(model.ui.researchAllocations, item, newVal)
+  updateResearchPurchases(model)
 
 proc toggleResearchPurchase(model: var TuiModel) =
+  ## Convenience toggle: if allocation == 0 → set to full cost (capped by pool);
+  ## if allocation > 0 → clear to 0.
   if model.ui.mode != ViewMode.Research:
     return
   let items = researchItems()
   if items.len == 0:
     return
-  let idx = clamp(model.ui.selectedIdx, 0, items.len - 1)
+  if model.view.techLevels.isNone:
+    return
+  let idx  = clamp(model.ui.selectedIdx, 0, items.len - 1)
   let item = items[idx]
-  case item.kind
-  of ResearchItemKind.EconomicLevel:
-    model.ui.researchPurchases.economic = not model.ui.researchPurchases.economic
-  of ResearchItemKind.ScienceLevel:
-    model.ui.researchPurchases.science = not model.ui.researchPurchases.science
-  of ResearchItemKind.Technology:
-    if item.field in model.ui.researchPurchases.technology:
-      model.ui.researchPurchases.technology.excl(item.field)
-    else:
-      model.ui.researchPurchases.technology.incl(item.field)
+  let levels = model.view.techLevels.get()
+  let points = if model.view.researchPoints.isSome: model.view.researchPoints.get()
+               else: ResearchPoints(erp: 0, srp: 0, trp: 0)
+  let gho    = research_projection.projectedResearchGho(
+                 levels, model.view.colonies, model.view.production, model.view.houseTaxRate)
+  let blocked = research_projection.isBlockedProjected(
+    levels, points, model.ui.researchDeposits, model.ui.researchPurchases, item, gho)
+  if blocked: return
+  let cur  = getAllocForItem(model.ui.researchAllocations, item)
+  if cur > 0:
+    setAllocForItem(model.ui.researchAllocations, item, 0)
+  else:
+    let pool   = research_projection.researchItemPool(item)
+    let poolRP = research_projection.projectedPoolRP(
+                   points, model.ui.researchDeposits, pool, gho, levels.sl)
+    let otherAlloc = poolAllocTotal(model.ui.researchAllocations, pool)
+    let cost   = techProgressCost(item, research_projection.currentTechLevel(levels, item))
+    let maxAlloc = min(cost, max(0, poolRP - otherAlloc))
+    setAllocForItem(model.ui.researchAllocations, item, int32(maxAlloc))
+  updateResearchPurchases(model)
 
 proc espionageBudgetCostPp(model: TuiModel): int =
   let ebpCost = int(gameConfig.espionage.costs.ebpCostPp)
@@ -1281,12 +1433,16 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.showHelpOverlay = not model.ui.showHelpOverlay
     of ActionKind.researchPoolDepositInc:
       adjustPoolDeposit(model, ResearchAdjustStep)
+      adjustTechAllocation(model, ResearchAdjustStep)
     of ActionKind.researchPoolDepositDec:
       adjustPoolDeposit(model, -ResearchAdjustStep)
+      adjustTechAllocation(model, -ResearchAdjustStep)
     of ActionKind.researchPoolDepositFineInc:
       adjustPoolDeposit(model, ResearchAdjustFineStep)
+      adjustTechAllocation(model, ResearchAdjustFineStep)
     of ActionKind.researchPoolDepositFineDec:
       adjustPoolDeposit(model, -ResearchAdjustFineStep)
+      adjustTechAllocation(model, -ResearchAdjustFineStep)
     of ActionKind.researchPoolDepositClear:
       if model.ui.mode == ViewMode.Research and
           model.ui.researchFocus == ResearchFocus.Pools:

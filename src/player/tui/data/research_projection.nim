@@ -131,6 +131,22 @@ proc projectedPoolRP*(
   of ResearchPoolIdx.PoolTRP:
     points.trp.int + (if deposits.trp > 0: convertPPToTRP(deposits.trp, effectiveGho, slLevel).int else: 0)
 
+proc projectedDepositRP*(
+    pool: ResearchPoolIdx,
+    depositPp: int,
+    gho: int32,
+    slLevel: int32
+): int =
+  let effectiveGho = max(1'i32, gho)
+  let safeDeposit = max(0, depositPp).int32
+  case pool
+  of ResearchPoolIdx.PoolERP:
+    convertPPToERP(safeDeposit, effectiveGho, slLevel).int
+  of ResearchPoolIdx.PoolSRP:
+    convertPPToSRP(safeDeposit, effectiveGho, slLevel).int
+  of ResearchPoolIdx.PoolTRP:
+    convertPPToTRP(safeDeposit, effectiveGho, slLevel).int
+
 proc projectedScienceLevel*(
     levels: TechLevel,
     points: ResearchPoints,
@@ -163,6 +179,33 @@ proc poolCap*(levels: TechLevel, pool: ResearchPoolIdx): int =
     let maxLevel = progressionMaxLevel(item)
     for lvl in currentLevel ..< maxLevel:
       result += techProgressCost(item, lvl)
+
+proc maxDepositPPForPoolCap*(
+    levels: TechLevel,
+    points: ResearchPoints,
+    pool: ResearchPoolIdx,
+    gho: int32
+): int =
+  let cap = poolCap(levels, pool)
+  let currentRp = poolAccumulated(points, pool)
+  let remainingRp = max(0, cap - currentRp)
+  if remainingRp <= 0:
+    return 0
+
+  var low = 0
+  var high = 1
+  while projectedDepositRP(pool, high, gho, levels.sl) < remainingRp:
+    if high >= int(high(int) div 2):
+      break
+    high *= 2
+
+  while low < high:
+    let mid = (low + high + 1) div 2
+    if projectedDepositRP(pool, mid, gho, levels.sl) <= remainingRp:
+      low = mid
+    else:
+      high = mid - 1
+  low
 
 proc projectedPoolBalance*(
     levels: TechLevel,
@@ -219,6 +262,27 @@ proc projectedTechLevel*(
   let cost = techProgressCost(item, result)
   if balance < cost: return result   # unaffordable → no level-up shown
   result += 1
+
+proc getAllocForItem*(alloc: ResearchAllocation, item: ResearchItem): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel: alloc.economic.int
+  of ResearchItemKind.ScienceLevel:  alloc.science.int
+  of ResearchItemKind.Technology:
+    if item.field in alloc.technology: alloc.technology[item.field].int else: 0
+
+proc poolAllocForPool*(alloc: ResearchAllocation, pool: ResearchPoolIdx): int =
+  case pool
+  of ResearchPoolIdx.PoolERP: alloc.economic.int
+  of ResearchPoolIdx.PoolSRP:
+    var t = alloc.science.int
+    for field, amt in alloc.technology:
+      if isSrpField(field): t += amt.int
+    t
+  of ResearchPoolIdx.PoolTRP:
+    var t = 0
+    for field, amt in alloc.technology:
+      if not isSrpField(field): t += amt.int
+    t
 
 proc isBlockedProjected*(
     levels: TechLevel,
