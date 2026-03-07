@@ -354,6 +354,7 @@ proc runTui*(gameId: string = "") =
     asyncCheck nostrClient.subscribeGame(activeGameId)
     nostrSubscriptions.add(subId)
     if nostrDaemonPubkey.len > 0:
+      sam.model.ui.syncIntegrityState = "syncing"
       asyncCheck nostrClient.requestFullState(sam.model.view.turn)
     logInfo("TUI/Sync", "Requested game sync (", reason, ")")
     if showStatus:
@@ -556,14 +557,17 @@ proc runTui*(gameId: string = "") =
               if lastAutoResyncTurn != incomingTurn:
                 lastAutoResyncTurn = incomingTurn
                 allowSameTurnFullStateRefresh = true
+                sam.model.ui.syncIntegrityState = "syncing"
                 triggerGameSyncCheck(false, "integrity")
                 sam.model.ui.statusMessage =
                   "State mismatch detected; requesting resync"
               else:
+                sam.model.ui.syncIntegrityState = "desync"
                 sam.model.ui.statusMessage =
                   "State mismatch persists; resync required"
               return
             playerState = applied.playerState
+            sam.model.ui.syncIntegrityState = "ok"
             let newTurn = int(applied.turn)
             sam.model.view.turn = newTurn
             sam.model.view.playerStateLoaded = true
@@ -654,10 +658,12 @@ proc runTui*(gameId: string = "") =
               if lastAutoResyncTurn != incomingTurn:
                 lastAutoResyncTurn = incomingTurn
                 allowSameTurnFullStateRefresh = true
+                sam.model.ui.syncIntegrityState = "syncing"
                 triggerGameSyncCheck(false, "integrity")
                 sam.model.ui.statusMessage =
                   "Rejected full state: integrity mismatch"
               else:
+                sam.model.ui.syncIntegrityState = "desync"
                 sam.model.ui.statusMessage =
                   "Authoritative state mismatch persists"
               enqueueProposal(emptyProposal())
@@ -685,6 +691,7 @@ proc runTui*(gameId: string = "") =
             let newTurn = int(playerState.turn)
             allowSameTurnFullStateRefresh = false
             lastAutoResyncTurn = -1
+            sam.model.ui.syncIntegrityState = "ok"
             sam.model.view.playerStateLoaded = true
             viewingHouse = playerState.viewingHouse
             sam.model.view.viewingHouse = int(viewingHouse)
@@ -2036,6 +2043,7 @@ proc runTui*(gameId: string = "") =
     # Handle manual sync requests from expert mode
     if sam.model.ui.syncNowRequested:
       allowSameTurnFullStateRefresh = true
+      sam.model.ui.syncIntegrityState = "syncing"
       triggerGameSyncCheck(true, "manual")
       sam.model.ui.syncNowRequested = false
       needsRender = true
@@ -2044,6 +2052,7 @@ proc runTui*(gameId: string = "") =
         sam.model.view.playerStateLoaded and nostrClient != nil and
         nostrClient.isConnected():
       allowSameTurnFullStateRefresh = true
+      sam.model.ui.syncIntegrityState = "syncing"
       triggerGameSyncCheck(false, "startup")
       startupSyncPending = false
       sam.model.ui.statusMessage = "Verifying cached state"

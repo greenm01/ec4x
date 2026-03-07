@@ -555,7 +555,7 @@ The original design had the engine generating **human-readable narrative reports
 - Emit `GameEvent` stream (structured events: who, what, where, when)
 
 **Client responsibility:**
-- Receive `PlayerState` deltas (KDL format)
+- Receive `PlayerState` deltas/full state (msgpack envelopes)
 - Receive filtered `GameEvent` stream
 - Generate human-readable reports from:
   - PlayerState changes (diff detection)
@@ -584,14 +584,14 @@ The original design had the engine generating **human-readable narrative reports
                          ▼                                  ▼
               ┌────────────────────┐              ┌────────────────────┐
               │  houses/<house>/   │              │  NIP-44 Encrypted  │
-              │  turn_results/     │              │  Event (30002)     │
-              │  turn_N.kdl        │              │  Per-Player Delta  │
+              │  turn_results/     │              │  Events 30403/30405│
+              │  turn_N.json       │              │  Per-Player State  │
               └─────────┬──────────┘              └─────────┬──────────┘
                          │                                  │
                          ▼                                  ▼
               ┌────────────────────────────────────────────────────────┐
               │                     CLIENT                             │
-              │  Receives: PlayerState (KDL)                          │
+              │  Receives: PlayerState (msgpack envelopes)            │
               │  - Full entity data for owned assets                  │
               │  - Limited intel for enemy assets                     │
               │  - Visibility levels for systems                      │
@@ -626,16 +626,9 @@ PlayerState = object
 ```
 
 **Bandwidth Optimization:**
-- **Turn 1**: Full PlayerState sent (complete snapshot)
-- **Turn 2+**: Delta format sent (only changes)
-```kdl
-turn 42
-delta {
-  fleet-moved id="fleet-1" from="sys-A" to="sys-B"
-  ship-damaged id="ship-5" hp=8
-  colony-updated id="col-3" industry=12
-}
-```
+- **Turn 1 / resync**: Full `30405` PlayerState sent
+- **Turn 2+**: `30403` delta sent plus `30405` full-state baseline
+- Both envelopes include authoritative `stateHash` integrity metadata
 
 ### Types Consolidated into player_state.nim
 
@@ -676,7 +669,8 @@ delta {
 
 ### Benefits
 
-1. **Bandwidth efficient**: Transport sends delta format (KDL) with minimal data
+1. **Bandwidth efficient**: Transport sends msgpack delta format with
+   minimal data
 2. **Clear separation**: Engine = data, Client = presentation
 3. **Flexibility**: Different clients can format reports differently
 4. **Maintainability**: No duplicate logic between GameEvents and intel reports
@@ -694,4 +688,4 @@ delta {
 - [Storage Schema](./storage.md) - Intel table definitions
 - [Data Flow](./dataflow.md) - When intel is updated
 - [Daemon Design](./daemon.md) - Intel update process
-- [Transport Layer](./transport.md) - How filtered views are delivered (KDL format)
+- [Transport Layer](./transport.md) - How filtered views are delivered

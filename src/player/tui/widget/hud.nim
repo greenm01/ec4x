@@ -37,6 +37,7 @@ type
     commandMax*: int        ## Maximum command capacity
     alertCount*: int        ## Number of alerts/warnings
     unreadMessages*: int    ## Unread messages/reports
+    syncIntegrityState*: string ## "ok", "syncing", or "desync"
     submissionRevision*: int  ## Current submission revision (0 = none)
     modifiedSinceSubmit*: bool ## True if staged cmds changed post-submit
 
@@ -75,6 +76,32 @@ proc formatNumber*(n: int): string =
     res = s[i] & res
     count.inc
   res
+
+proc syncBadgeText(data: HudData): string =
+  case data.syncIntegrityState
+  of "syncing":
+    "SYNC"
+  of "desync":
+    "DESYNC"
+  else:
+    ""
+
+proc syncBadgeStyle(data: HudData): CellStyle =
+  case data.syncIntegrityState
+  of "syncing":
+    CellStyle(
+      fg: color(WarningColor),
+      bg: color(HudBgColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of "desync":
+    CellStyle(
+      fg: color(SelectedFgColor),
+      bg: color(SelectedBgColor),
+      attrs: {StyleAttr.Bold}
+    )
+  else:
+    hudDimStyle()
 
 # =============================================================================
 # HUD Rendering
@@ -224,7 +251,13 @@ proc renderHudStrip*(area: Rect, buf: var CellBuffer, data: HudData) =
   
   # Calculate right-aligned position
   var rightX = contentEnd - 1
-  
+
+  let syncBadge = syncBadgeText(data)
+  if syncBadge.len > 0:
+    rightX -= syncBadge.len
+    discard buf.setString(rightX, contentY, syncBadge, syncBadgeStyle(data))
+    rightX -= 3
+
   # Unread messages (rightmost)
   if data.unreadMessages > 0:
     let msgStr = GlyphUnread & " " & $data.unreadMessages
@@ -362,7 +395,13 @@ proc renderHudStripCompact*(area: Rect, buf: var CellBuffer, data: HudData) =
   
   # Alerts (right-aligned)
   var rightX = contentEnd - 1
-  
+
+  let syncBadge = syncBadgeText(data)
+  if syncBadge.len > 0:
+    rightX -= syncBadge.len
+    discard buf.setString(rightX, contentY, syncBadge, syncBadgeStyle(data))
+    rightX -= 2
+
   if data.unreadMessages > 0:
     let msgStr = GlyphUnread & $data.unreadMessages
     rightX -= msgStr.len

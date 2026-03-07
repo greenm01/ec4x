@@ -183,7 +183,10 @@ Normative behavior:
    - `PlayerStateDeltaEnvelope` for `30403`
    - `PlayerStateEnvelope` for `30405`
 6. Validate config schema/hash against active `TuiRulesSnapshot`
-7. Apply deltas or replace local state from full snapshot
+7. Validate `stateHash` integrity:
+   - `30405`: recompute hash over full `PlayerState`
+   - `30403`: apply delta to a copy and compare post-apply hash
+8. Apply deltas or replace local state only if integrity checks pass
 ```
 
 #### Manual Recovery / Resync
@@ -194,6 +197,10 @@ Normative behavior:
 4. Daemon validates sender and house membership
 5. Daemon republishes `30405` authoritative full state
 6. Client replaces same-turn local state with the authoritative snapshot
+
+The TUI also performs this automatically:
+- once after loading cached state on startup
+- once on integrity mismatch during delta application
 ```
 
 #### Authoritative Config Flow
@@ -202,10 +209,12 @@ Normative behavior:
 2. Parse PlayerStateEnvelope:
    - playerState
    - authoritativeConfig (TuiRulesSnapshot)
+   - stateHash
 3. Validate snapshot schema/capabilities/hash
 4. Cache snapshot in local SQLite (per game)
 5. Materialize runtime rules used by TUI screens/validators
 6. Reject future deltas whose config hash/schema do not match snapshot
+7. Reject snapshots or deltas whose recomputed `stateHash` does not match
 ```
 
 #### Draft Restore Gate (Player TUI)
@@ -292,12 +301,15 @@ type PlayerStateDeltaEnvelope* = object
   delta*: PlayerStateDelta
   configSchemaVersion*: int32
   configHash*: string
+  stateHash*: string
 ```
 
 **Bandwidth Reduction**: 20-40x smaller than full state.
 
-30405 full state uses a `PlayerStateEnvelope` containing both
-`playerState` and authoritative `TuiRulesSnapshot`.
+30405 full state uses a `PlayerStateEnvelope` containing:
+- `playerState`
+- authoritative `TuiRulesSnapshot`
+- `stateHash`
 
 **Implementation:**
 - `src/daemon/transport/nostr/delta_msgpack.nim`

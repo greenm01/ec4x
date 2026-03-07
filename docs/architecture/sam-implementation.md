@@ -318,7 +318,6 @@ proc resolveTurnAsync(gameId: GameId): Future[TurnResult] {.async.} =
 
   # Save results
   await db.saveGameState(result.newState)
-  await db.saveDeltas(result.deltas)
   await db.updateIntelTables(result)
   await db.close()
 
@@ -330,7 +329,9 @@ proc publishResultsAsync(gameId: GameId, result: TurnResult): Future[void] {.asy
 
   for house in result.houses:
     let delta = generateDelta(result, house)
+    let fullState = generateFullState(result, house)
     await transport.publish(gameId, house, delta)
+    await transport.publish(gameId, house, fullState)
 ```
 
 ### Main Loop

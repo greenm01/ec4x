@@ -35,7 +35,7 @@ This document traces the complete data flow through an EC4X turn cycle, from com
 
 **1. Player Reviews Game State**
 
-Players use the GUI client (`bin/ec4x-client`) to view game state:
+Players use the player TUI (`bin/tui`) or local tooling to view game state:
 - Starmap visualization shows known systems
 - Fleet and colony panels show owned assets
 - Intel panel shows known enemy positions
@@ -502,6 +502,7 @@ All intel updates stored in GameState.intel (per-house IntelDatabase)
 4. Generate msgpack delta for Nostr distribution:
    Compare snapshot with previous turn's snapshot
    Generate `PlayerStateDeltaEnvelope` with only changed entities
+   and authoritative `stateHash`
 ```
 
 ## Phase 5: Result Distribution
@@ -523,8 +524,8 @@ For each house in game:
      - No pre-formatted text files needed (saves storage)
 
 Note: Previous versions generated text summaries server-side.
-Current design: Clients format reports from structured TurnResult data
-using src/client/reports/turn_report.nim. This approach:
+Current design: clients format reports from structured `PlayerState` and
+`GameEvent` data in the player TUI. This approach:
   - Minimizes network traffic (structured data only)
   - Allows different clients to format differently
   - Enables hex coordinate display with proper formatting
@@ -547,7 +548,7 @@ For each house in game:
 ### Localhost
 
 ```
-Player opens GUI client (bin/ec4x-client):
+Player opens the TUI (`bin/tui`) or another client:
 
 Client automatically:
   1. Checks for new turn results in:
@@ -575,12 +576,13 @@ On EVENT received:
   1. Verify signature
   2. Check if new turn (not already processed)
   3. Decrypt with own privkey and daemon pubkey
-  4. If `30403`, apply delta to local cached `PlayerState`
-  5. If `30405`, replace local cached `PlayerState`
-  6. Update local SQLite cache
-  7. Notify player of refreshed state
+  4. If `30403`, apply delta to a copy and verify `stateHash`
+  5. If `30405`, verify full-state `stateHash`
+  6. Accept only valid authoritative state
+  7. Update local SQLite cache
+  8. Notify player of refreshed state
 
-GUI client automatically refreshes to show updated state from local cache.
+Player TUI automatically refreshes to show updated state from local cache.
 ```
 
 ### Manual Resync Path
@@ -597,6 +599,12 @@ Daemon validates sender pubkey -> house mapping
 Daemon republishes `30405` authoritative full state
   ↓
 Client accepts same-turn full-state replacement and refreshes UI
+
+Startup integrity path:
+- load cached `PlayerState`
+- subscribe to relay
+- request same-turn authoritative full state once
+- replace cached state if authoritative snapshot differs
 ```
 
 ## Complete Flow Diagram
@@ -634,7 +642,7 @@ Player A                     Daemon                      Player B
    │                           │   (different view)         │
    │                           │                            │
    │ 13. View results          │                            │
-   │    (GUI client)           │                            │
+   │    (player TUI)           │                            │
    │                           │                 13. View   │
    │                           │                    results │
    │                           │                            │

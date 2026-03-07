@@ -4080,6 +4080,7 @@ proc buildHudData*(model: TuiModel): HudData =
     commandMax: model.view.commandMax,
     alertCount: model.view.alertCount,
     unreadMessages: model.view.unreadMessages,
+    syncIntegrityState: model.ui.syncIntegrityState,
     submissionRevision: model.ui.turnSubmissionRevision,
     modifiedSinceSubmit: model.ui.modifiedSinceSubmit,
   )

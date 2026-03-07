@@ -562,6 +562,12 @@ CREATE TABLE received_events (
 and stores authoritative sectioned rules snapshots (`TuiRulesSnapshot`) for
 config/schema/hash validation on reconnect and delta application.
 
+Integrity behavior:
+- full-state envelopes carry `stateHash`
+- delta envelopes carry authoritative post-apply `stateHash`
+- cached PlayerState remains provisional until checked against daemon-
+  published authoritative state
+
 ### Authoritative Rules in Client Cache
 
 The daemon remains the authoritative source for gameplay config used by
@@ -571,6 +577,7 @@ the player TUI. The TUI cache stores the latest valid
 - Materialize runtime rules consumed by TUI screens/validators
 - Validate incoming 30403 delta envelopes via `configHash` and
   `configSchemaVersion`
+- Validate incoming 30403 and 30405 envelopes via `stateHash`
 - Block gameplay entry when no valid authoritative snapshot is available
 
 This prevents client-side config drift while still allowing the server

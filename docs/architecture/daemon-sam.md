@@ -220,7 +220,7 @@ src/daemon/
 │   ├── writer.nim        # Save game state to SQLite
 │   └── schema.nim        # Database schema
 ├── parser/
-│   └── kdl_commands.nim  # Parse KDL command syntax
+│   └── msgpack_commands.nim  # Parse submitted msgpack CommandPacket
 └── transport/nostr/
     ├── client.nim        # Nostr relay client
     ├── crypto.nim        # NIP-44 encryption

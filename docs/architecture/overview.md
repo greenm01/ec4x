@@ -39,13 +39,12 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
           │ • Relays        │
           └─────────────────┘
                     ↑
-┌───────────────────────────────────────────────────┐
-│              Client (src/client/)                 │
-│  • GUI player interface (bin/ec4x-client)         │
-│  • SAM architecture with Sokol+Nuklear            │
-│  • Starmap rendering, command submission          │
-│  • Turn report viewing                            │
-└───────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│     Player TUI (src/player/)        │
+│  • Terminal game interface (bin/tui)│
+│  • Local cache + optimistic UI      │
+│  • Nostr state sync + reports       │
+└─────────────────────────────────────┘
 
 ┌─────────────────────────────────────┐
 │     Moderator (src/moderator/)      │
@@ -53,36 +52,29 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 │  • Game creation from scenarios     │
 │  • Game management (pause/resume)   │
 └─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│     Dev Player (src/player/)        │
-│  • TUI/CLI tool (bin/ec4x-play)     │
-│  • Menu-driven command entry        │
-│  • Command validation for LLMs      │
-└─────────────────────────────────────┘
 ```
 
 **Import Rules:**
 - `engine/` → imports NOTHING from other modules (pure library)
 - `daemon/` → imports from `engine/` (types, resolveTurn)
 - `moderator/` → imports from `engine/` and `daemon/persistence/`
-- `client/` → imports from `engine/types/` (player_state for data structures)
 - `player/` → imports from `engine/` (validation) and `daemon/persistence/` (SQLite)
 
 ## Components
 
-### Client (Player Interface)
-**Binary**: `bin/ec4x-client`
-**Source**: `src/client/`
-**Role**: Player's game interface (GUI)
+### Player TUI
+**Binary**: `bin/tui`
+**Source**: `src/player/`
+**Role**: Player-facing game interface
 **Capabilities**:
 - Join games via Nostr relay
 - View game state (filtered by intel)
-- Submit commands via KDL format
+- Stage and submit commands to the daemon
 - View turn history and reports
-- Starmap visualization with hex grid
+- Export and inspect fog-of-war starmaps
 
-**Architecture**: SAM pattern with Sokol (graphics) + Nuklear (UI)
+**Architecture**: SAM pattern with local cache, optimistic staging, and
+authoritative `PlayerState` sync from the daemon.
 
 **Report Generation**: Client-side formatting of TurnResult data
 - Engine sends structured TurnResult (events, combatReports)
@@ -116,28 +108,10 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 - View game statistics
 - Manage player roster
 
-### Dev Player (Playtesting Tool)
-**Binary**: `bin/ec4x-play`
-**Source**: `src/player/`
-**Role**: Lightweight dev tool for playtesting without GUI
-**Documentation**: `docs/tools/ec4x-play.md`
-
-**Two Modes**:
-- **TUI Mode**: Menu-driven terminal interface for human playtesting
-- **CLI Mode**: Command validation for Claude/LLM workflows
-
-**Capabilities**:
-- View fog-of-war filtered game state
-- Enter commands via menu navigation
-- Generate KDL command files
-- Validate commands before submission
-- Submit commands to daemon
-
-**Claude/LLM Integration**:
-- LLMs read game state directly from SQLite
-- Generate KDL commands per `docs/engine/kdl-commands.md`
-- Validate with `ec4x-play validate <game-id> commands.kdl --house=N`
-- Drop validated commands to `data/games/{id}/commands/`
+### Playtest Tooling
+Local tools under `tools/` support invite claims, wallet setup, state
+inspection, and Nostr turn submission for development and LLM-assisted
+playtesting.
 
 ## Validation System
 
@@ -174,8 +148,8 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
 
 **Transport**:
 - Commands: Encrypted Nostr events to daemon
-- State: Encrypted per-player deltas from relay
-- Results: Public turn summaries + private deltas
+- State: Encrypted per-player deltas and authoritative full state
+- Recovery: Player-triggered or automatic authoritative resync
 
 **Benefits**:
 - No central server required
@@ -204,15 +178,15 @@ EC4X is an **asynchronous turn-based 4X strategy game** built with these core pr
    Daemon → Update intel tables for each player
 
 6. Result Distribution
-   Daemon → Generate per-player deltas → [Transport] → Players
+   Daemon → Generate per-player delta + full state → [Transport] → Players
 ```
 
 ### Command Collection
 
 ```
-Player edits commands.kdl
+Player stages commands in the TUI or local tooling
   ↓
-Client serializes to msgpack, encrypts to daemon pubkey
+Client serializes `CommandPacket` to msgpack, encrypts to daemon pubkey
   ↓
 Client publishes EventKindTurnCommands (30402)
   ↓

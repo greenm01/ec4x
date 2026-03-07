@@ -533,9 +533,12 @@ In the current implementation, the msgpack payload is a
 - `delta`: the `PlayerStateDelta`
 - `configSchemaVersion`: authoritative rules schema version
 - `configHash`: hash of the active `TuiRulesSnapshot`
+- `stateHash`: authoritative post-apply `PlayerState` hash
 
 Clients must reject deltas whose schema or hash do not match the active
 rules snapshot from the most recent 30405 full-state payload.
+Clients must also reject deltas whose recomputed post-apply hash does
+not match `stateHash`.
 
 See [Payload Formats](#payload-formats) for the msgpack structure.
 
@@ -603,6 +606,7 @@ In the current implementation, the msgpack payload is a
 - `authoritativeConfig`: sectioned `TuiRulesSnapshot`
   (`schemaVersion`, `configHash`, section versions, capabilities,
   optional sections)
+- `stateHash`: authoritative hash over canonicalized snapshot content
 
 Clients request this when:
 
@@ -640,6 +644,9 @@ Client behavior:
   hash validation pass.
 - Reject 30403 deltas when envelope `configHash` or
   `configSchemaVersion` differs from active snapshot.
+- Reject 30405 full state if recomputed `stateHash` does not match the
+  envelope.
+- On 30403 integrity mismatch, request one authoritative 30405 resync.
 - Remain in lobby/loading state until a valid authoritative snapshot is
   available.
 

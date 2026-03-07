@@ -1044,6 +1044,7 @@ type
     nostrRelayUrl*: string
     nostrLastError*: string
     nostrStatus*: string
+    syncIntegrityState*: string
     nostrJoinRequested*: bool
     nostrJoinSent*: bool
     nostrJoinInviteCode*: string
@@ -1392,6 +1393,7 @@ proc initTuiUiState*(): TuiUiState =
     nostrRelayUrl: "",
     nostrLastError: "",
     nostrStatus: "idle",
+    syncIntegrityState: "ok",
     nostrJoinRequested: false,
     nostrJoinSent: false,
     nostrJoinInviteCode: "",

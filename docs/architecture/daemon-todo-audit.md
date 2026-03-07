@@ -64,7 +64,7 @@ These TODOs are in dead code files that are not imported anywhere:
 ```
 **Status:** 🔧 **Active** - Partially implemented
 **Context:**
-- Research/Espionage ARE parsed in `parser/kdl_commands.nim:212-362`
+- Research/Espionage ARE parsed in `parser/msgpack_commands.nim`
 - Command types exist: `ResearchAllocation`, `EspionageAttempt`, `DiplomaticCommand`
 - NOT persisted to SQLite yet
 

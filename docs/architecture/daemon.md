@@ -220,8 +220,9 @@ BEGIN TRANSACTION;
    - Colony intel from spy ops
 
 8. Generate state deltas per player
-   - Query intel tables for each house
+   - Build fog-of-war `PlayerStateSnapshot`
    - Compute changes since last turn
+   - Compute authoritative `stateHash`
 9. Publish per-house `30403` delta and `30405` full state
    - delta for efficient turn refresh
    - full state as authoritative recovery baseline
@@ -269,13 +270,15 @@ Public results:
 
 ```
 For each house in game:
-  1. Query state_deltas for house_id
-  2. Query intel tables for visibility
-  3. Generate filtered delta msgpack
-  4. Encrypt to house's pubkey (NIP-44)
-  5. Create EventKindTurnResults (30403)
-  6. Sign with daemon keypair
-  7. Publish to relay and record outbound event id
+  1. Build filtered `PlayerStateSnapshot`
+  2. Diff against previous snapshot
+  3. Compute authoritative `stateHash`
+  4. Generate filtered delta msgpack
+  5. Encrypt to house's pubkey (NIP-44)
+  6. Create EventKindTurnResults (30403)
+  7. Sign with daemon keypair
+  8. Publish to relay and record outbound event id
+  9. Publish `30405` full state baseline for the same turn
 
 Public results:
   1. Generate public turn summary
