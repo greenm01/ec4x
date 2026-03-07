@@ -84,13 +84,7 @@ proc renderTech(ps: PlayerState): string =
     &"FC:{t.fc} SC:{t.sc} FD:{t.fd} ACO:{t.aco}\n"
   if ps.researchPoints.isSome:
     let rp = ps.researchPoints.get
-    result &= &"Research: ERP:{rp.economic} SRP:{rp.science}"
-    var techEntries: seq[string]
-    for field, pts in rp.technology.pairs:
-      if pts > 0:
-        techEntries.add($field & ":" & $pts)
-    if techEntries.len > 0:
-      result &= " TRP:[" & techEntries.join(" ") & "]"
+    result &= &"Research: ERP:{rp.erp} SRP:{rp.srp} MRP:{rp.mrp}"
     result &= "\n"
 
 proc renderColonies(ps: PlayerState): string =
