@@ -81,15 +81,19 @@ If you need to preserve existing cache/identity for a quick rerun:
 
 1. You play and submit your turn in TUI.
 2. Tell OpenCode: `play house <N> for <game-slug> turn <T>`.
-3. OpenCode uses `tools/dump_state.nim` + `tools/submit_orders.nim`
-   to submit the opposing side's orders.
-4. Resolve turn (manual recommended for deterministic debugging):
+3. OpenCode uses `tools/dump_state.nim` plus the LLM toolchain in
+   [LLM_PLAYTEST_QUICKREF.md](LLM_PLAYTEST_QUICKREF.md) to inspect,
+   claim, and submit through Nostr.
+4. For auto-resolve testing, ensure all seats are claimed and all
+   players submit through Nostr.
+5. Resolve turn manually only when you explicitly want deterministic
+   debug control:
 
 ```bash
 ./bin/ec4x-daemon resolve --gameId=<game-slug>
 ```
 
-5. Analyze outcomes together and repeat.
+6. Analyze outcomes together and repeat.
 
 ### Notes
 

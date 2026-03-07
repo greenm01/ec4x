@@ -57,6 +57,7 @@ Implementation tracker:
 - `docs/bot/TODO.md`
 - `docs/bot/playtest_prompts.md`
 - `docs/bot/PLAYTEST_SETUP.md` - playtest setup (OpenCode primary, bot legacy)
+- `docs/bot/LLM_PLAYTEST_QUICKREF.md` - token-light operator guide
 
 Locked v1 decisions:
 - Output contract is strict JSON parsed by bot schema, then compiled to

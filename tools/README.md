@@ -94,23 +94,38 @@ Legacy explicit-key mode still works:
 
 ```bash
 nim r tools/claim_invite.nim \
-  localhost:8080 invite-code privhex pubhex phase-sapling-awful
+  ws://localhost:8080 invite-code privhex pubhex phase-sapling-awful
 ```
 
 Wallet-aware mode uses the active local identity:
 
 ```bash
 nim r tools/claim_invite.nim \
-  localhost:8080 invite-code --game phase-sapling-awful --password PW
+  ws://localhost:8080 invite-code --game phase-sapling-awful --password PW
 ```
 
 To create a wallet automatically if missing:
 
 ```bash
 nim r tools/claim_invite.nim \
-  localhost:8080 invite-code --game phase-sapling-awful \
+  ws://localhost:8080 invite-code --game phase-sapling-awful \
   --password PW --ensure-wallet
 ```
+
+## submit_turn_nostr.nim
+
+Submits a KDL orders file through the player Nostr command path, which is
+required if you want daemon auto-resolve to trigger from an LLM-driven turn.
+
+```bash
+nim r tools/submit_turn_nostr.nim \
+  ws://localhost:8080 phase-sapling-awful /tmp/orders.kdl --house 1
+```
+
+This uses:
+- the active player wallet identity for signing/encryption
+- the local daemon identity for the daemon pubkey
+- the resolved game UUID for the event `d` tag
 
 ---
 
