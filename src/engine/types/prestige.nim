@@ -13,6 +13,7 @@ type
     ColonySeized
     ColonyEstablished
     TechAdvancement
+    ResearchLiquidation
     LowTaxBonus
     HighTaxPenalty
     BlockadePenalty
@@ -34,4 +35,3 @@ type
   ColonyPrestigeResult* = object ## Result of colony prestige calculation
     attackerEvent*: PrestigeEvent # Attacker gains (if seized)
     defenderEvent*: Option[PrestigeEvent] # Defender loses (if seized, zero-sum)
-

@@ -313,6 +313,10 @@ proc processResearchDeposits(
     let sl = house.techTree.levels.sl
     let ml = house.techTree.levels.ml
 
+    proc applyResearchPrestige(event: PrestigeEvent) =
+      house.prestige += event.amount
+      state.applyPrestigeEvent(houseId, event)
+
     # --- Step 1: Liquidation (RP -> PP at 2:1 ratio) ---
     var liquidatedPP = 0'i32
     if liquidation.erp > 0:
@@ -329,6 +333,13 @@ proc processResearchDeposits(
       liquidatedPP += amount div 2
     if liquidatedPP > 0:
       house.treasury += liquidatedPP
+      let prestigePenalty = gameConfig.prestige.penalties.researchLiquidation
+      let prestigeEvent = PrestigeEvent(
+        source: PrestigeSource.ResearchLiquidation,
+        amount: prestigePenalty,
+        description: "Research liquidation penalty",
+      )
+      applyResearchPrestige(prestigeEvent)
       logInfo("Research",
         &"{houseId} liquidated RP for {liquidatedPP} PP")
 
@@ -373,7 +384,7 @@ proc processResearchDeposits(
           amount: prestigeAmount,
           description: "Science Level " & $currentSL & " → " & $(currentSL + 1),
         )
-        state.applyPrestigeEvent(houseId, pe)
+        applyResearchPrestige(pe)
         logInfo("Research",
           &"{houseId} purchased SL {currentSL} -> {currentSL + 1}")
 
@@ -390,7 +401,7 @@ proc processResearchDeposits(
           description: "Military Level " & $currentML & " → " &
             $(currentML + 1),
         )
-        state.applyPrestigeEvent(houseId, pe)
+        applyResearchPrestige(pe)
         logInfo("Research",
           &"{houseId} purchased ML {currentML} -> {currentML + 1}")
 
@@ -407,7 +418,7 @@ proc processResearchDeposits(
           amount: prestigeAmount,
           description: "Economic Level " & $currentEL & " → " & $(currentEL + 1),
         )
-        state.applyPrestigeEvent(houseId, pe)
+        applyResearchPrestige(pe)
         logInfo("Research",
           &"{houseId} purchased EL {currentEL} -> {currentEL + 1}")
 
@@ -472,7 +483,7 @@ proc processResearchDeposits(
         amount: prestigeAmount,
         description: $field & " " & $currentLevel & " → " & $(currentLevel + 1),
       )
-      state.applyPrestigeEvent(houseId, pe)
+      applyResearchPrestige(pe)
       logInfo("Research",
         &"{houseId} purchased {field} {currentLevel} -> {currentLevel + 1}")
 

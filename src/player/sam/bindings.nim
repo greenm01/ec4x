@@ -1102,9 +1102,9 @@ proc initBindings*() =
     context: BindingContext.Research,
     longLabel: "BUY", shortLabel: "Buy", priority: 50))
 
-  # Liquidation (L on pool)
+  # Liquidation (D on pool)
   registerBinding(Binding(
-    key: KeyCode.KeyL, modifier: KeyModifier.Shift,
+    key: KeyCode.KeyD, modifier: KeyModifier.None,
     actionKind: ActionKind.researchLiquidateOpen,
     context: BindingContext.Research,
     longLabel: "LIQUIDATE", shortLabel: "Liq", priority: 60))

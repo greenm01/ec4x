@@ -157,7 +157,7 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     result.add("0 = clear pool deposit")
     result.add("0-9 = set PP deposit amount")
     result.add("Enter = toggle purchase (when Tech focused)")
-    result.add("Shift+L = liquidate pool RP to PP (2:1)")
+    result.add("D = liquidate pool RP to PP (2:1)")
     result.add("PP converts to ERP/SRP/MRP using GHO + SL/ML by pool")
   if ctx == HelpContext.Espionage:
     result.add("Tab/Shift+Tab = cycle panels")

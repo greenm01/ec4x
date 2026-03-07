@@ -24,6 +24,8 @@ proc prestigeValue*(source: PrestigeSource): int32 =
     gameConfig.prestige.economic.establishColony
   of PrestigeSource.TechAdvancement:
     gameConfig.prestige.economic.techAdvancement
+  of PrestigeSource.ResearchLiquidation:
+    gameConfig.prestige.penalties.researchLiquidation
   of PrestigeSource.BlockadePenalty:
     gameConfig.prestige.penalties.blockadePenalty
   of PrestigeSource.Eliminated:

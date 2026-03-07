@@ -2095,7 +2095,7 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
   let contentHeight = min(desiredContentHeight, maxContentHeight) + 2
   let modalArea = modal.calculateArea(canvas, contentHeight)
   let footerLine =
-    "[Tab]Pools/Tech  [+/-]Deposit/Alloc  [Enter]Full/Clear  [L]Liquidate  " &
+    "[Tab]Pools/Tech  [+/-]Deposit/Alloc  [Enter]Full/Clear  liqui[D]ate  " &
     "[/]Help"
   modal.renderWithFooter(modalArea, buf, footerLine)
   let contentArea = modal.contentArea(modalArea, hasFooter = true)

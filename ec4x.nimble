@@ -120,6 +120,7 @@ task testIntegration, "Run integration tests":
   exec "nim c -r tests/integration/test_game_initialization.nim"
   exec "nim c -r tests/integration/test_starmap_validation.nim"
   exec "nim c -r tests/integration/test_tech_integration.nim"
+  exec "nim c -r tests/integration/test_research_liquidation.nim"
   exec "nim c -r tests/integration/test_intel_espionage.nim"
   exec "nim c -r tests/integration/test_capacity_limits.nim"
   exec "nim c -r tests/integration/test_combat.nim"
