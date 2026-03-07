@@ -121,7 +121,10 @@ The game server executes every tedious task a human moderator would handle:
 
 **Map Generation:**
 
-Config files define the number of players and map size. The map size is set by the number of hexagonal rings centered around the hub system.
+Config files define the number of players and map size. The resulting
+starmap is a network of systems connected by jump lanes and organized
+into sector coordinates. Internally, map scale is derived from the ring
+count around the hub during generation.
 
 **Your Starting Position:**
 

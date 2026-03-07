@@ -2,11 +2,14 @@
 
 ## 2.1 Star Map
 
-The star-map consists of a 2D hexagonal grid, each a flat-top hex that
-contains a solar system, interconnected throughout by procedurally generated
-jump lanes. Map size is configurable via the `numRings` parameter (2-12
-rings), independent of player count, allowing flexible scenario design. The
-center hub is guaranteed to have six lanes of travel.
+The star-map is presented as a network of star systems connected by jump
+lanes. Each system occupies a sector coordinate in the region and may
+contain a colony, fleets, and supporting infrastructure. Internally, the
+map generator and layout use a flat-top axial hex representation, but
+players interact with the starmap as a lane-connected network. Map size
+is configurable via the `numRings` parameter (2-12 rings), independent of
+player count, allowing flexible scenario design. The center hub is
+guaranteed to have six lanes of travel.
 
 Solar systems have special traits and are procedurally generated. They each
 contain a single planet that is suitable for colonization.
@@ -582,5 +585,3 @@ A vast decentralized network of trade, commerce, transport, industry, tech, and 
 Numerous Space Guilds compete for business in unregulated, private capital markets. The Space Guilds are neutral non-player-characters (NPC) with zero loyalty to any House.
 
 You contract the Guilds to provide various critical services to your House, most notably the transport of PTU and goods between colonies. Space Guilds are also known to deal in the black arts of subversion and subterfuge, for a price. They will not freely leak intelligence.
-
-

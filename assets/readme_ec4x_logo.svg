@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260">
+  <rect width="1200" height="260" fill="#0b0f14" rx="24" ry="24"/>
+  <text x="60" y="72" fill="#f5f7fb" font-family="DejaVu Sans Mono, monospace" font-size="52" font-weight="700" xml:space="preserve">███████╗ ██████╗██╗  ██╗██╗  ██╗</text>
+  <text x="60" y="108" fill="#f5f7fb" font-family="DejaVu Sans Mono, monospace" font-size="52" font-weight="700" xml:space="preserve">██╔════╝██╔════╝██║  ██║╚██╗██╔╝</text>
+  <text x="60" y="144" fill="#f5f7fb" font-family="DejaVu Sans Mono, monospace" font-size="52" font-weight="700" xml:space="preserve">█████╗  ██║     ███████║ ╚███╔╝ </text>
+  <text x="60" y="180" fill="#f5f7fb" font-family="DejaVu Sans Mono, monospace" font-size="52" font-weight="700" xml:space="preserve">██╔══╝  ██║     ╚════██║ ██╔██╗ </text>
+  <text x="60" y="216" fill="#f5f7fb" font-family="DejaVu Sans Mono, monospace" font-size="52" font-weight="700" xml:space="preserve">███████╗╚██████╗     ██║██╔╝ ██╗</text>
+  <text x="60" y="252" fill="#f5f7fb" font-family="DejaVu Sans Mono, monospace" font-size="52" font-weight="700" xml:space="preserve">╚══════╝ ╚═════╝     ╚═╝╚═╝  ╚═╝</text>
+</svg>

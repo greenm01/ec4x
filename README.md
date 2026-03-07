@@ -1,5 +1,9 @@
 # EC4X - Asynchronous Turn-Based 4X Wargame
 
+<p align="center">
+  <img src="assets/readme_ec4x_logo.png" alt="EC4X logo" width="560">
+</p>
+
 EC4X is an asynchronous turn-based wargame of the classic eXplore,
 eXpand, eXploit, and eXterminate (4X) variety for multiple players.
 
@@ -9,6 +13,8 @@ identity, encrypted relay transport, and a self-hostable multiplayer
 stack.
 
 **📖 [Read the Complete Game Specification](docs/specs/index.md)** - Full rules, gameplay mechanics, and strategic systems
+
+![EC4X starmap banner](assets/readme_starmap_banner.png)
 
 ## Game Overview
 
@@ -89,7 +95,7 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 - Colonization system (PTU, Space Guild)
 - Victory conditions (turn limit, elimination)
 - Fleet management (movement, orders, status)
-- Star map generation (procedural hex grid)
+- Star map generation (procedural jump-lane network)
 - Fog-of-war intelligence system
 - Configuration system (KDL format)
 - Turn resolution (order processing)

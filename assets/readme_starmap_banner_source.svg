@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" 
+     viewBox="0 0 1000 1000"
+     width="1000" height="1000">
+  
+  <defs>
+    <style>
+      /* Lane styles */
+      .lane { stroke-linecap: round; }
+      .lane-major { stroke: #B8860B; stroke-width: 3; }
+      .lane-minor { stroke: #4682B4; stroke-width: 2; 
+                    stroke-dasharray: 8,4; }
+      .lane-restricted { stroke: #8B0000; stroke-width: 1.5; 
+                         stroke-dasharray: 3,3; }
+      
+      /* Node styles */
+      .node-hub { fill: #B8860B; stroke: #FFFFFF; stroke-width: 2; }
+      .node-own { stroke: none; }
+      .node-enemy { fill: transparent; stroke-width: 2; }
+      .node-neutral { fill: #333333; stroke: #FFFFFF; 
+                       stroke-width: 1; }
+      
+      /* Label styles */
+      .label { fill: #FFFFFF; font-family: monospace; 
+               text-anchor: middle; }
+      .label-name { font-size: 11px; font-weight: bold; }
+      .label-coord { fill: #AAAAAA; font-size: 9px; }
+      .label-info { fill: #888888; font-size: 8px; }
+      .label-inside { fill: #FFFFFF; font-family: monospace;
+                      font-size: 9px; font-weight: bold;
+                      text-anchor: middle; dominant-baseline: central; }
+      
+      /* Legend styles */
+      .legend-text { fill: #FFFFFF; font-family: monospace; 
+                     font-size: 10px; }
+      .legend-title { fill: #FFFFFF; font-family: monospace; 
+                      font-size: 12px; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Explicit background rectangle for Inkscape/export compatibility -->
+  <rect id="background" x="0" y="0" width="1000" height="1000" fill="#000000"/>
+  <g id="lanes">
+  <line class="lane lane-restricted" x1="500.0" y1="500.0" x2="500.0" y2="607.7"/>
+  <line class="lane lane-restricted" x1="500.0" y1="500.0" x2="406.7" y2="553.8"/>
+  <line class="lane lane-major" x1="500.0" y1="500.0" x2="593.3" y2="553.8"/>
+  <line class="lane lane-major" x1="500.0" y1="500.0" x2="593.3" y2="446.2"/>
+  <line class="lane lane-minor" x1="500.0" y1="500.0" x2="500.0" y2="392.3"/>
+  <line class="lane lane-minor" x1="500.0" y1="500.0" x2="406.7" y2="446.2"/>
+  <line class="lane lane-major" x1="500.0" y1="823.1" x2="593.3" y2="769.2"/>
+  <line class="lane lane-major" x1="500.0" y1="823.1" x2="500.0" y2="715.4"/>
+  <line class="lane lane-major" x1="500.0" y1="823.1" x2="406.7" y2="769.2"/>
+  <line class="lane lane-major" x1="779.8" y1="338.5" x2="686.5" y2="284.6"/>
+  <line class="lane lane-major" x1="779.8" y1="338.5" x2="779.8" y2="446.2"/>
+  <line class="lane lane-major" x1="779.8" y1="338.5" x2="686.5" y2="392.3"/>
+  <line class="lane lane-minor" x1="500.0" y1="607.7" x2="593.3" y2="661.5"/>
+  <line class="lane lane-major" x1="500.0" y1="607.7" x2="593.3" y2="553.8"/>
+  <line class="lane lane-major" x1="500.0" y1="607.7" x2="406.7" y2="553.8"/>
+  <line class="lane lane-major" x1="500.0" y1="607.7" x2="406.7" y2="661.5"/>
+  <line class="lane lane-major" x1="500.0" y1="607.7" x2="500.0" y2="715.4"/>
+  <line class="lane lane-major" x1="406.7" y1="553.8" x2="406.7" y2="446.2"/>
+  <line class="lane lane-major" x1="406.7" y1="553.8" x2="313.5" y2="500.0"/>
+  <line class="lane lane-major" x1="406.7" y1="553.8" x2="313.5" y2="607.7"/>
+  <line class="lane lane-minor" x1="406.7" y1="553.8" x2="406.7" y2="661.5"/>
+  <line class="lane lane-major" x1="220.2" y1="553.8" x2="313.5" y2="607.7"/>
+  <line class="lane lane-minor" x1="220.2" y1="553.8" x2="313.5" y2="500.0"/>
+  <line class="lane lane-major" x1="220.2" y1="553.8" x2="220.2" y2="446.2"/>
+  <line class="lane lane-minor" x1="220.2" y1="553.8" x2="220.2" y2="661.5"/>
+  <line class="lane lane-major" x1="313.5" y1="607.7" x2="406.7" y2="661.5"/>
+  <line class="lane lane-minor" x1="313.5" y1="607.7" x2="313.5" y2="500.0"/>
+  <line class="lane lane-minor" x1="313.5" y1="607.7" x2="220.2" y2="661.5"/>
+  <line class="lane lane-major" x1="313.5" y1="607.7" x2="313.5" y2="715.4"/>
+  <line class="lane lane-minor" x1="779.8" y1="446.2" x2="686.5" y2="392.3"/>
+  <line class="lane lane-major" x1="779.8" y1="446.2" x2="686.5" y2="500.0"/>
+  <line class="lane lane-major" x1="779.8" y1="446.2" x2="779.8" y2="553.8"/>
+  <line class="lane lane-minor" x1="220.2" y1="661.5" x2="313.5" y2="715.4"/>
+  <line class="lane lane-major" x1="313.5" y1="392.3" x2="406.7" y2="446.2"/>
+  <line class="lane lane-minor" x1="313.5" y1="392.3" x2="406.7" y2="338.5"/>
+  <line class="lane lane-restricted" x1="313.5" y1="392.3" x2="313.5" y2="284.6"/>
+  <line class="lane lane-major" x1="313.5" y1="392.3" x2="220.2" y2="338.5"/>
+  <line class="lane lane-minor" x1="313.5" y1="392.3" x2="220.2" y2="446.2"/>
+  <line class="lane lane-major" x1="313.5" y1="392.3" x2="313.5" y2="500.0"/>
+  <line class="lane lane-major" x1="406.7" y1="230.8" x2="500.0" y2="284.6"/>
+  <line class="lane lane-major" x1="406.7" y1="230.8" x2="500.0" y2="176.9"/>
+  <line class="lane lane-major" x1="406.7" y1="230.8" x2="313.5" y2="284.6"/>
+  <line class="lane lane-major" x1="406.7" y1="230.8" x2="406.7" y2="338.5"/>
+  <line class="lane lane-minor" x1="220.2" y1="446.2" x2="313.5" y2="500.0"/>
+  <line class="lane lane-major" x1="220.2" y1="446.2" x2="220.2" y2="338.5"/>
+  <line class="lane lane-major" x1="779.8" y1="661.5" x2="779.8" y2="553.8"/>
+  <line class="lane lane-minor" x1="779.8" y1="661.5" x2="686.5" y2="607.7"/>
+  <line class="lane lane-major" x1="779.8" y1="661.5" x2="686.5" y2="715.4"/>
+  <line class="lane lane-major" x1="220.2" y1="338.5" x2="313.5" y2="284.6"/>
+  <line class="lane lane-major" x1="500.0" y1="176.9" x2="593.3" y2="230.8"/>
+  <line class="lane lane-restricted" x1="500.0" y1="176.9" x2="500.0" y2="284.6"/>
+  <line class="lane lane-major" x1="593.3" y1="553.8" x2="686.5" y2="607.7"/>
+  <line class="lane lane-minor" x1="593.3" y1="553.8" x2="686.5" y2="500.0"/>
+  <line class="lane lane-minor" x1="593.3" y1="553.8" x2="593.3" y2="446.2"/>
+  <line class="lane lane-minor" x1="593.3" y1="553.8" x2="593.3" y2="661.5"/>
+  <line class="lane lane-minor" x1="593.3" y1="446.2" x2="686.5" y2="500.0"/>
+  <line class="lane lane-minor" x1="593.3" y1="446.2" x2="686.5" y2="392.3"/>
+  <line class="lane lane-minor" x1="593.3" y1="446.2" x2="593.3" y2="338.5"/>
+  <line class="lane lane-minor" x1="593.3" y1="446.2" x2="500.0" y2="392.3"/>
+  <line class="lane lane-minor" x1="500.0" y1="284.6" x2="593.3" y2="338.5"/>
+  <line class="lane lane-major" x1="500.0" y1="284.6" x2="593.3" y2="230.8"/>
+  <line class="lane lane-major" x1="500.0" y1="284.6" x2="406.7" y2="338.5"/>
+  <line class="lane lane-restricted" x1="500.0" y1="284.6" x2="500.0" y2="392.3"/>
+  <line class="lane lane-minor" x1="686.5" y1="284.6" x2="593.3" y2="230.8"/>
+  <line class="lane lane-major" x1="686.5" y1="284.6" x2="593.3" y2="338.5"/>
+  <line class="lane lane-minor" x1="686.5" y1="284.6" x2="686.5" y2="392.3"/>
+  <line class="lane lane-major" x1="686.5" y1="500.0" x2="779.8" y2="553.8"/>
+  <line class="lane lane-minor" x1="686.5" y1="500.0" x2="686.5" y2="392.3"/>
+  <line class="lane lane-restricted" x1="686.5" y1="500.0" x2="686.5" y2="607.7"/>
+  <line class="lane lane-major" x1="686.5" y1="715.4" x2="686.5" y2="607.7"/>
+  <line class="lane lane-major" x1="686.5" y1="715.4" x2="593.3" y2="661.5"/>
+  <line class="lane lane-major" x1="686.5" y1="715.4" x2="593.3" y2="769.2"/>
+  <line class="lane lane-minor" x1="686.5" y1="607.7" x2="779.8" y2="553.8"/>
+  <line class="lane lane-minor" x1="686.5" y1="607.7" x2="593.3" y2="661.5"/>
+  <line class="lane lane-restricted" x1="500.0" y1="392.3" x2="593.3" y2="338.5"/>
+  <line class="lane lane-major" x1="500.0" y1="392.3" x2="406.7" y2="338.5"/>
+  <line class="lane lane-restricted" x1="500.0" y1="392.3" x2="406.7" y2="446.2"/>
+  <line class="lane lane-major" x1="406.7" y1="769.2" x2="500.0" y2="715.4"/>
+  <line class="lane lane-major" x1="406.7" y1="769.2" x2="406.7" y2="661.5"/>
+  <line class="lane lane-minor" x1="406.7" y1="769.2" x2="313.5" y2="715.4"/>
+  <line class="lane lane-restricted" x1="593.3" y1="661.5" x2="500.0" y2="715.4"/>
+  <line class="lane lane-minor" x1="593.3" y1="661.5" x2="593.3" y2="769.2"/>
+  <line class="lane lane-minor" x1="313.5" y1="284.6" x2="406.7" y2="338.5"/>
+  <line class="lane lane-major" x1="313.5" y1="715.4" x2="406.7" y2="661.5"/>
+  <line class="lane lane-major" x1="406.7" y1="338.5" x2="406.7" y2="446.2"/>
+  <line class="lane lane-minor" x1="593.3" y1="769.2" x2="500.0" y2="715.4"/>
+  <line class="lane lane-major" x1="406.7" y1="661.5" x2="500.0" y2="715.4"/>
+  <line class="lane lane-minor" x1="593.3" y1="230.8" x2="593.3" y2="338.5"/>
+  <line class="lane lane-minor" x1="593.3" y1="338.5" x2="686.5" y2="392.3"/>
+  <line class="lane lane-major" x1="313.5" y1="500.0" x2="406.7" y2="446.2"/>
+
+  </g>
+  <g id="nodes">
+  <circle class="node-neutral" cx="500.0" cy="607.7" r="14.0"/>
+  <circle class="node-neutral" cx="406.7" cy="553.8" r="14.0"/>
+  <circle class="node-neutral" cx="220.2" cy="553.8" r="14.0"/>
+  <circle class="node-neutral" cx="313.5" cy="607.7" r="14.0"/>
+  <circle class="node-neutral" cx="779.8" cy="446.2" r="14.0"/>
+  <circle class="node-neutral" cx="220.2" cy="661.5" r="14.0"/>
+  <circle class="node-neutral" cx="313.5" cy="392.3" r="14.0"/>
+  <circle class="node-neutral" cx="406.7" cy="230.8" r="14.0"/>
+  <circle class="node-neutral" cx="220.2" cy="446.2" r="14.0"/>
+  <circle class="node-neutral" cx="779.8" cy="661.5" r="14.0"/>
+  <circle class="node-neutral" cx="220.2" cy="338.5" r="14.0"/>
+  <circle class="node-neutral" cx="500.0" cy="176.9" r="14.0"/>
+  <circle class="node-own" cx="500.0" cy="823.1" r="20.0" style="fill: #DC143C"/>
+  <text class="label-inside" x="500.0" y="823.1">ED-A</text>
+  <circle class="node-neutral" cx="593.3" cy="553.8" r="14.0"/>
+  <circle class="node-neutral" cx="593.3" cy="446.2" r="14.0"/>
+  <circle class="node-neutral" cx="500.0" cy="284.6" r="14.0"/>
+  <circle class="node-neutral" cx="686.5" cy="284.6" r="14.0"/>
+  <circle class="node-neutral" cx="686.5" cy="500.0" r="14.0"/>
+  <circle class="node-neutral" cx="686.5" cy="715.4" r="14.0"/>
+  <circle class="node-neutral" cx="779.8" cy="338.5" r="14.0"/>
+  <circle class="node-neutral" cx="686.5" cy="607.7" r="14.0"/>
+  <circle class="node-neutral" cx="500.0" cy="392.3" r="14.0"/>
+  <circle class="node-neutral" cx="779.8" cy="553.8" r="14.0"/>
+  <circle class="node-neutral" cx="406.7" cy="769.2" r="14.0"/>
+  <circle class="node-neutral" cx="593.3" cy="661.5" r="14.0"/>
+  <circle class="node-neutral" cx="313.5" cy="284.6" r="14.0"/>
+  <circle class="node-neutral" cx="313.5" cy="715.4" r="14.0"/>
+  <circle class="node-neutral" cx="406.7" cy="338.5" r="14.0"/>
+  <circle class="node-neutral" cx="593.3" cy="769.2" r="14.0"/>
+  <circle class="node-neutral" cx="406.7" cy="661.5" r="14.0"/>
+  <circle class="node-neutral" cx="593.3" cy="230.8" r="14.0"/>
+  <circle class="node-neutral" cx="593.3" cy="338.5" r="14.0"/>
+  <circle class="node-neutral" cx="500.0" cy="715.4" r="14.0"/>
+  <circle class="node-neutral" cx="313.5" cy="500.0" r="14.0"/>
+  <circle class="node-neutral" cx="406.7" cy="446.2" r="14.0"/>
+  <circle class="node-neutral" cx="686.5" cy="392.3" r="14.0"/>
+  <circle class="node-neutral" cx="500.0" cy="500.0" r="14.0"/>
+
+  </g>
+  <g id="labels">
+  <text class="label label-name" x="500.0" y="633.7">Basil</text>
+  <text class="label label-coord" x="500.0" y="645.7">A04</text>
+  <text class="label label-name" x="406.7" y="579.8">Athanasius</text>
+  <text class="label label-coord" x="406.7" y="591.8">A05</text>
+  <text class="label label-name" x="220.2" y="579.8">Polycarp</text>
+  <text class="label label-coord" x="220.2" y="591.8">C14</text>
+  <text class="label label-name" x="313.5" y="633.7">Cyprian</text>
+  <text class="label label-coord" x="313.5" y="645.7">B09</text>
+  <text class="label label-name" x="779.8" y="472.2">Palamas</text>
+  <text class="label label-coord" x="779.8" y="484.2">C05</text>
+  <text class="label label-name" x="220.2" y="687.5">Ephrem</text>
+  <text class="label label-coord" x="220.2" y="699.5">C13</text>
+  <text class="label label-name" x="313.5" y="418.3">Ambrose</text>
+  <text class="label label-coord" x="313.5" y="430.3">B11</text>
+  <text class="label label-name" x="406.7" y="256.8">Columba</text>
+  <text class="label label-coord" x="406.7" y="268.8">C18</text>
+  <text class="label label-name" x="220.2" y="472.2">Seraphim</text>
+  <text class="label label-coord" x="220.2" y="484.2">C15</text>
+  <text class="label label-name" x="779.8" y="687.5">Silouan</text>
+  <text class="label label-coord" x="779.8" y="699.5">C07</text>
+  <text class="label label-name" x="220.2" y="364.5">Nectarios</text>
+  <text class="label label-coord" x="220.2" y="376.5">C16</text>
+  <text class="label label-name" x="500.0" y="202.9">Paisios</text>
+  <text class="label label-coord" x="500.0" y="214.9">C01</text>
+  <text class="label label-name" x="500.0" y="855.1">Porphyrios</text>
+  <text class="label label-coord" x="500.0" y="867.1">C10</text>
+  <text class="label label-name" x="593.3" y="579.8">Nilus</text>
+  <text class="label label-coord" x="593.3" y="591.8">A03</text>
+  <text class="label label-name" x="593.3" y="472.2">Tikhon</text>
+  <text class="label label-coord" x="593.3" y="484.2">A02</text>
+  <text class="label label-name" x="500.0" y="310.6">Photios</text>
+  <text class="label label-coord" x="500.0" y="322.6">B01</text>
+  <text class="label label-name" x="686.5" y="310.6">Spyridon</text>
+  <text class="label label-coord" x="686.5" y="322.6">C03</text>
+  <text class="label label-name" x="686.5" y="526.0">Menas</text>
+  <text class="label label-coord" x="686.5" y="538.0">B04</text>
+  <text class="label label-name" x="686.5" y="741.4">Macarius</text>
+  <text class="label label-coord" x="686.5" y="753.4">C08</text>
+  <text class="label label-name" x="779.8" y="364.5">Arsenius</text>
+  <text class="label label-coord" x="779.8" y="376.5">C04</text>
+  <text class="label label-name" x="686.5" y="633.7">Hilarion</text>
+  <text class="label label-coord" x="686.5" y="645.7">B05</text>
+  <text class="label label-name" x="500.0" y="418.3">Cassian</text>
+  <text class="label label-coord" x="500.0" y="430.3">A01</text>
+  <text class="label label-name" x="779.8" y="579.8">Sabbas</text>
+  <text class="label label-coord" x="779.8" y="591.8">C06</text>
+  <text class="label label-name" x="406.7" y="795.2">Zosimas</text>
+  <text class="label label-coord" x="406.7" y="807.2">C11</text>
+  <text class="label label-name" x="593.3" y="687.5">Bessarion</text>
+  <text class="label label-coord" x="593.3" y="699.5">B06</text>
+  <text class="label label-name" x="313.5" y="310.6">Evagrius</text>
+  <text class="label label-coord" x="313.5" y="322.6">C17</text>
+  <text class="label label-name" x="313.5" y="741.4">Theophan</text>
+  <text class="label label-coord" x="313.5" y="753.4">C12</text>
+  <text class="label label-name" x="406.7" y="364.5">Maximos</text>
+  <text class="label label-coord" x="406.7" y="376.5">B12</text>
+  <text class="label label-name" x="593.3" y="795.2">Silvanus</text>
+  <text class="label label-coord" x="593.3" y="807.2">C09</text>
+  <text class="label label-name" x="406.7" y="687.5">Sophronius</text>
+  <text class="label label-coord" x="406.7" y="699.5">B08</text>
+  <text class="label label-name" x="593.3" y="256.8">Niketas</text>
+  <text class="label label-coord" x="593.3" y="268.8">C02</text>
+  <text class="label label-name" x="593.3" y="364.5">Theodotus</text>
+  <text class="label label-coord" x="593.3" y="376.5">B02</text>
+  <text class="label label-name" x="500.0" y="741.4">Theodosios</text>
+  <text class="label label-coord" x="500.0" y="753.4">B07</text>
+  <text class="label label-name" x="313.5" y="526.0">Euthymius</text>
+  <text class="label label-coord" x="313.5" y="538.0">B10</text>
+  <text class="label label-name" x="406.7" y="472.2">Gerasimos</text>
+  <text class="label label-coord" x="406.7" y="484.2">A06</text>
+  <text class="label label-name" x="686.5" y="418.3">Theophanes</text>
+  <text class="label label-coord" x="686.5" y="430.3">B03</text>
+  <text class="label label-name" x="500.0" y="526.0">Leontius</text>
+  <text class="label label-coord" x="500.0" y="538.0">H</text>
+
+  </g>
+  <g id="legend" transform="translate(30.0,30.0)">
+  <text class="legend-title" x="0.0" y="0.0">LEGEND</text>  <text class="legend-text" x="0.0" y="20.0">Lanes:</text>  <line class="lane lane-major" x1="0.0" y1="35.0" x2="30.0" y2="35.0"/>  <text class="legend-text" x="40.0" y="39.0">Major</text>  <line class="lane lane-minor" x1="0.0" y1="50.0" x2="30.0" y2="50.0"/>  <text class="legend-text" x="40.0" y="54.0">Minor</text>  <line class="lane lane-restricted" x1="0.0" y1="65.0" x2="30.0" y2="65.0"/>  <text class="legend-text" x="40.0" y="69.0">Restricted</text>  <text class="legend-text" x="0.0" y="90.0">Systems:</text>  <circle class="node-hub" cx="12.0" cy="108.0" r="12.0"/>  <text class="legend-text" x="36.0" y="112.0">Hub</text>  <circle class="node-own" cx="12.0" cy="136.0" r="10.0" style="fill: #DC143C"/>  <text class="legend-text" x="36.0" y="140.0">Your Colony</text>  <circle class="node-enemy" cx="12.0" cy="162.0" r="10.0" style="stroke: #4169E1"/>  <text class="legend-text" x="36.0" y="166.0">Enemy Colony</text>  <circle class="node-neutral" cx="12.0" cy="188.0" r="8.0"/>  <text class="legend-text" x="36.0" y="192.0">Neutral</text>  <text class="legend-text" x="0.0" y="216.0">Node text: Planet-Resource</text>  <text class="legend-text" x="0.0" y="234.0">e.g. HO-R = Hostile/Rich</text>  <text class="legend-text" x="0.0" y="256.0">Planet codes:</text>  <text class="legend-text" x="0.0" y="271.0">EX DE HO HA BE LU ED</text>  <text class="legend-text" x="0.0" y="289.0">Resource codes:</text>  <text class="legend-text" x="0.0" y="304.0">VP P A R VR</text>  <text class="legend-text" x="0.0" y="329.0">Houses:</text>  <rect x="0" y="336." width="12" height="12" fill="#32CD32"/>  <text class="legend-text" x="20.0" y="344.0">Kalan</text>  <rect x="0" y="354." width="12" height="12" fill="#DC143C"/>  <text class="legend-text" x="20.0" y="362.0">Nikos</text>
+  </g>
+</svg>
