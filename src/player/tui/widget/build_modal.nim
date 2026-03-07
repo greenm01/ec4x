@@ -119,7 +119,6 @@ proc renderCategoryTabs(
   tabBar.render(area, buf)
 
 proc pendingDockUse(state: BuildModalState): int
-proc pendingPpCost(state: BuildModalState): int
 proc stagedQty(state: BuildModalState, key: BuildRowKey): int
 
 proc renderDockSummary(
@@ -136,18 +135,8 @@ proc renderDockSummary(
   used += pendingUsed
   if used > docks.constructionTotal:
     used = docks.constructionTotal
-  let availablePp =
-    if state.ppAvailable >= 0:
-      max(0, state.ppAvailable - pendingPpCost(state))
-    else:
-      -1
-  let ppLabel = if availablePp >= 0:
-    $availablePp & "/" & $state.ppAvailable
-  else:
-    "N/A"
   let text = "Docks: " & $used & "/" &
-    $docks.constructionTotal & " CDK | " &
-    "PP Available: " & ppLabel
+    $docks.constructionTotal & " CDK"
 
   for i, ch in text:
     if area.x + i < area.right:
@@ -191,51 +180,6 @@ proc pendingDockUse(state: BuildModalState): int =
     if construction_docks.shipRequiresDock(cmd.shipClass.get()):
       used += cmd.quantity.int
   used
-
-proc pendingPpCost(state: BuildModalState): int =
-  var total = 0
-  let colonyId = ColonyId(state.colonyId.uint32)
-  for cmd in state.stagedBuildCommands:
-    if cmd.colonyId != colonyId:
-      continue
-    case cmd.buildType
-    of BuildType.Ship:
-      if cmd.shipClass.isSome:
-        let key = BuildRowKey(
-          kind: BuildOptionKind.Ship,
-          shipClass: cmd.shipClass,
-          groundClass: none(GroundClass),
-          facilityClass: none(FacilityClass)
-        )
-        total += buildRowCost(key) * cmd.quantity.int
-    of BuildType.Ground:
-      if cmd.groundClass.isSome:
-        let key = BuildRowKey(
-          kind: BuildOptionKind.Ground,
-          shipClass: none(ShipClass),
-          groundClass: cmd.groundClass,
-          facilityClass: none(FacilityClass)
-        )
-        total += buildRowCost(key) * cmd.quantity.int
-    of BuildType.Facility:
-      if cmd.facilityClass.isSome:
-        let key = BuildRowKey(
-          kind: BuildOptionKind.Facility,
-          shipClass: none(ShipClass),
-          groundClass: none(GroundClass),
-          facilityClass: cmd.facilityClass
-        )
-        total += buildRowCost(key) * cmd.quantity.int
-    of BuildType.Industrial:
-      var cost = 0
-      for opt in state.availableOptions:
-        if opt.kind == BuildOptionKind.Industrial:
-          cost = opt.cost
-          break
-      total += cost * max(0, int(cmd.industrialUnits))
-    else:
-      discard
-  total
 
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   if buildRowCst(key) > state.cstLevel:

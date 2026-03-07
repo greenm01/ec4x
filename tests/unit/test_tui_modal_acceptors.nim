@@ -673,3 +673,29 @@ suite "TUI modal acceptors":
     check model.ui.stagedEbpInvestment == 0
     check model.ui.stagedCipInvestment == 0
     check model.ui.stagedTaxRate.isNone
+
+  test "build modal blocks qty increment when other staged PP spends exhaust treasury":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.PlanetDetail
+    model.ui.selectedColonyId = 21
+    model.view.treasury = 0
+    model.ui.buildModal.active = true
+    model.ui.buildModal.colonyId = 21
+    model.ui.buildModal.category = BuildCategory.Ground
+    model.ui.buildModal.focus = BuildModalFocus.BuildList
+    model.ui.buildModal.selectedBuildIdx = 2
+    model.ui.buildModal.cstLevel = 1
+    model.ui.buildModal.availableOptions = @[
+      BuildOption(
+        kind: BuildOptionKind.Ground,
+        name: "Army",
+        cost: 25,
+        cstReq: 1
+      )
+    ]
+    model.view.colonyLimits[21] = ColonyLimitSnapshot(industrialUnits: 100)
+
+    buildModalAcceptor(model, actionBuildQtyInc())
+
+    check model.ui.stagedBuildCommands.len == 0
+    check model.ui.statusMessage == "Insufficient PP"

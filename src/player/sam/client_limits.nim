@@ -149,6 +149,28 @@ proc validateStagedBuildLimits*(
     model: TuiModel,
     stagedCommands: seq[BuildCommand] = @[],
 ): seq[string]
+proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int
+proc stagedResearchPp*(deposits: ResearchDeposits): int
+proc stagedEspionagePp*(stagedEbpInvestment, stagedCipInvestment: int32): int
+
+proc remainingBuildPp*(model: TuiModel,
+                       stagedCommands: seq[BuildCommand] = @[]): int =
+  ## Remaining PP after all staged PP-consuming actions.
+  let commands =
+    if stagedCommands.len > 0:
+      stagedCommands
+    else:
+      model.ui.stagedBuildCommands
+  max(
+    0,
+    model.view.treasury -
+      stagedPpCost(commands) -
+      stagedResearchPp(model.ui.researchDeposits) -
+      stagedEspionagePp(
+        model.ui.stagedEbpInvestment,
+        model.ui.stagedCipInvestment
+      )
+  )
 
 proc singleIncrementError(
     model: TuiModel,
@@ -173,6 +195,20 @@ proc validateStagedBuildLimits*(
       stagedCommands
     else:
       model.ui.stagedBuildCommands
+  let buildPp = stagedPpCost(commands)
+  let researchPp = stagedResearchPp(model.ui.researchDeposits)
+  let espionagePp = stagedEspionagePp(
+    model.ui.stagedEbpInvestment,
+    model.ui.stagedCipInvestment
+  )
+  let totalPp = buildPp + researchPp + espionagePp
+  if totalPp > model.view.treasury:
+    result.add(formatLimitError(
+      "PP exceeded",
+      totalPp,
+      model.view.treasury,
+    ))
+
   let staged = stagedCounts(commands, model.view.colonyLimits)
 
   for colonyId in staged.invalidColonyIds:

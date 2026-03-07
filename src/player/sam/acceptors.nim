@@ -3113,51 +3113,6 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
       return true
   false
 
-proc pendingPpCost(state: BuildModalState): int =
-  var total = 0
-  let colonyId = ColonyId(state.colonyId.uint32)
-  for cmd in state.stagedBuildCommands:
-    if cmd.colonyId != colonyId:
-      continue
-    var itemCost = 0
-    case cmd.buildType
-    of BuildType.Ship:
-      if cmd.shipClass.isSome:
-        itemCost = buildRowCost(BuildRowKey(
-          kind: BuildOptionKind.Ship,
-          shipClass: cmd.shipClass,
-          groundClass: none(GroundClass),
-          facilityClass: none(FacilityClass)
-        ))
-    of BuildType.Ground:
-      if cmd.groundClass.isSome:
-        itemCost = buildRowCost(BuildRowKey(
-          kind: BuildOptionKind.Ground,
-          shipClass: none(ShipClass),
-          groundClass: cmd.groundClass,
-          facilityClass: none(FacilityClass)
-        ))
-    of BuildType.Facility:
-      if cmd.facilityClass.isSome:
-        itemCost = buildRowCost(BuildRowKey(
-          kind: BuildOptionKind.Facility,
-          shipClass: none(ShipClass),
-          groundClass: none(GroundClass),
-          facilityClass: cmd.facilityClass
-        ))
-    of BuildType.Industrial:
-      for opt in state.availableOptions:
-        if opt.kind == BuildOptionKind.Industrial:
-          itemCost = opt.cost
-          break
-    else:
-      discard
-    if cmd.buildType == BuildType.Industrial:
-      total += itemCost * max(0, int(cmd.industrialUnits))
-    else:
-      total += itemCost * cmd.quantity.int
-  total
-
 proc stagedBuildIdx(
     state: BuildModalState, key: BuildRowKey
 ): int =
@@ -3256,9 +3211,7 @@ proc incSelectedQty(model: var TuiModel) =
     model.ui.statusMessage = "Not buildable"
     return
   let cost = buildRowCost(key)
-  let pendingCost = pendingPpCost(model.ui.buildModal)
-  if model.ui.buildModal.ppAvailable >= 0 and
-      pendingCost + cost > model.ui.buildModal.ppAvailable:
+  if remainingBuildPp(model) < cost:
     model.ui.statusMessage = "Insufficient PP"
     return
   var candidate = BuildCommand(
@@ -3374,7 +3327,6 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.buildModal.focus = BuildModalFocus.BuildList
       model.ui.buildModal.selectedBuildIdx = 0
       model.ui.buildModal.selectedQueueIdx = 0
-      model.ui.buildModal.ppAvailable = model.view.treasury
       if model.view.techLevels.isSome:
         model.ui.buildModal.cstLevel = model.view.techLevels.get().cst
       else:

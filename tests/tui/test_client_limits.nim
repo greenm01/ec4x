@@ -85,8 +85,51 @@ suite "Client limits":
     check stagedPpCost(staged) == expected
     check optimisticTreasury(1000, staged) == 1000 - expected
 
+  test "validateStagedBuildLimits blocks PP overspend across systems":
+    var model = initTuiModel()
+    model.view.treasury = 100
+    model.ui.researchDeposits.erp = 40
+    model.ui.stagedEbpInvestment = 2
+    let cmd = BuildCommand(
+      colonyId: ColonyId(10),
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.Corvette),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+    )
+    let errs = validateStagedBuildLimits(model, @[cmd])
+    check errs.len > 0
+    check errs[0].contains("PP exceeded")
+
+  test "remainingBuildPp accounts for research and espionage staging":
+    var model = initTuiModel()
+    model.view.treasury = 200
+    model.ui.researchDeposits.erp = 50
+    model.ui.stagedCipInvestment = 1
+    let staged = @[
+      BuildCommand(
+        colonyId: ColonyId(10),
+        buildType: BuildType.Ground,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        facilityClass: none(FacilityClass),
+        groundClass: some(GroundClass.Army),
+        industrialUnits: 0,
+      )
+    ]
+    let expected =
+      200 -
+      stagedPpCost(staged) -
+      stagedResearchPp(model.ui.researchDeposits) -
+      stagedEspionagePp(model.ui.stagedEbpInvestment,
+        model.ui.stagedCipInvestment)
+    check remainingBuildPp(model, staged) == expected
+
   test "spaceport cap blocks staged build":
     var model = initTuiModel()
+    model.view.treasury = 10_000
     let maxSpaceports =
       int(gameConfig.limits.quantityLimits.maxSpaceportsPerColony)
     model.view.colonyLimits[10] = ColonyLimitSnapshot(
@@ -111,6 +154,7 @@ suite "Client limits":
 
   test "starbase cap blocks staged build":
     var model = initTuiModel()
+    model.view.treasury = 10_000
     let maxStarbases =
       int(gameConfig.limits.quantityLimits.maxStarbasesPerColony)
     model.view.colonyLimits[10] = ColonyLimitSnapshot(
@@ -135,6 +179,7 @@ suite "Client limits":
 
   test "planetary shield cap blocks staged build":
     var model = initTuiModel()
+    model.view.treasury = 10_000
     let maxShields =
       int(gameConfig.limits.quantityLimits.maxPlanetaryShieldsPerColony)
     model.view.colonyLimits[10] = ColonyLimitSnapshot(
@@ -159,6 +204,7 @@ suite "Client limits":
 
   test "fighter cap blocks staged fighter build":
     var model = initTuiModel()
+    model.view.treasury = 10_000
     let divisor = gameConfig.limits.fighterCapacity.iuDivisor
     let iu = max(100, int(divisor))
     let fighterCap =
@@ -189,6 +235,7 @@ suite "Client limits":
 
   test "planet-breaker cap blocks staged build":
     var model = initTuiModel()
+    model.view.treasury = 10_000
     model.view.colonyLimits[10] = ColonyLimitSnapshot(industrialUnits: 200)
     model.view.colonyLimits[11] = ColonyLimitSnapshot(industrialUnits: 200)
     model.view.planetBreakersInFleets = 2

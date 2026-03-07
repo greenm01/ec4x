@@ -232,7 +232,6 @@ type
     selectedQueueIdx*: int
     availableOptions*: seq[BuildOption]
     dockSummary*: DockSummary
-    ppAvailable*: int
     cstLevel*: int
     stagedBuildCommands*: seq[BuildCommand]
     buildListScroll*: ScrollState
@@ -1449,7 +1448,6 @@ proc initTuiUiState*(): TuiUiState =
       selectedBuildIdx: 0,
       selectedQueueIdx: 0,
       availableOptions: @[],
-      ppAvailable: -1,
       cstLevel: 1,
       stagedBuildCommands: @[],
       buildListScroll: initScrollState(),

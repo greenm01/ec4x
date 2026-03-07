@@ -5,6 +5,7 @@ import std/[options, math, os]
 import kdl
 
 import ../sam/tui_model
+import ../../engine/globals
 import ../../engine/types/[ship, ground_unit, facilities]
 
 type
@@ -363,7 +364,7 @@ proc buildRowCost*(key: BuildRowKey): int =
       if row.facilityClass == key.facilityClass.get():
         return row.pc
   of BuildOptionKind.Industrial:
-    return 0
+    return int(gameConfig.economy.industrialInvestment.baseCost)
   0
 
 proc buildRowCst*(key: BuildRowKey): int =
