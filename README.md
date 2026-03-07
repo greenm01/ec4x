@@ -1,8 +1,12 @@
 # EC4X - Asynchronous Turn-Based 4X Wargame
 
-EC4X is an asynchronous turn-based wargame of the classic eXplore, eXpand, eXploit, and eXterminate (4X) variety for multiple players.
+EC4X is an asynchronous turn-based wargame of the classic eXplore,
+eXpand, eXploit, and eXterminate (4X) variety for multiple players.
 
-Inspired by Esterian Conquest and other classic BBS door games, EC4X combines the async rhythm of turn-based strategy with modern cryptographic identity and decentralized infrastructure.
+Inspired by Esterian Conquest and other classic BBS door games, EC4X
+combines the async rhythm of turn-based strategy with Nostr-native
+identity, encrypted relay transport, and a self-hostable multiplayer
+stack.
 
 **📖 [Read the Complete Game Specification](docs/specs/index.md)** - Full rules, gameplay mechanics, and strategic systems
 
@@ -18,9 +22,29 @@ The twelve *dynatoi* (δυνατοί - "the powerful") - ancient Great Houses ri
 
 Turns cycle every 24 hours IRL, intentionally designed for async gameplay where players check in once per day.
 
-## Architecture
+## Project Status
 
-EC4X uses **Nostr relays** for transport. For local development, point the daemon at a localhost relay (e.g. `ws://localhost:8080`). For multiplayer, point it at any public or private Nostr relay.
+EC4X is in active development, but the core multiplayer loop is working:
+
+- authoritative daemon-backed turn resolution
+- player TUI with invite join, staging, submit, and turn refresh
+- encrypted Nostr transport for commands and player state
+- live playtesting with ongoing bug fixing and balance work
+
+Expect active iteration on rules, UI polish, and operational tooling.
+
+## Online Play Model
+
+EC4X uses **Nostr relays** for transport and `npub`/`nsec` identities for
+players and daemons.
+
+Each game is resolved by an authoritative daemon. Players interact through
+the TUI, submit encrypted command packets, and receive fog-of-war filtered
+state updates over Nostr.
+
+For local development, point the daemon at a localhost relay such as
+`ws://localhost:8080`. For hosted multiplayer, run a daemon and relay
+together on the same server or LAN.
 
 **Binaries:**
 - `ec4x` — Game moderator CLI: create games, manage invites, inspect state
@@ -28,37 +52,32 @@ EC4X uses **Nostr relays** for transport. For local development, point the daemo
 - `tui` — Terminal player client: join games via invite code, submit orders, view game state
 
 **Key Features:**
-- Server-authoritative game state over Nostr (NIP-44 end-to-end encryption)
+- Nostr-native identity and transport
+- Server-authoritative game state over Nostr (NIP-44 encryption)
 - Fog of war via intel system
-- Bandwidth-efficient state deltas
-- KDL-based configuration (18 config files, no hardcoded values)
+- Delta updates plus authoritative full-state resync
+- KDL-based configuration (no hardcoded gameplay values)
 - SQLite single source of truth per game
 
 See **[Architecture Documentation](docs/architecture/overview.md)** for complete system design.
 
 ## Development Status
 
-**Engine, Daemon & TUI Operational — Playtesting**
+**Engine, Daemon, and TUI Operational — Active Playtesting**
 
 ✅ **Engine:**
-- Core game engine stable and tested (343+ tests passing)
+- Core game engine stable and tested
 - All 13 game systems operational
 - Full turn cycle tested (Conflict → Income → Command → Production)
 
 ✅ **Infrastructure:**
 - Daemon operational: game discovery, turn resolution, Nostr publish/subscribe
 - TUI operational: invite code join flow, order submission, fog-of-war state rendering
-- Nostr transport implemented: encrypted commands (NIP-44), replaceable events, delta publishing
+- Nostr transport implemented: encrypted commands, deltas, full-state resync
 
 🔄 **Current Work:**
 - Playtesting and balance validation
 - Polish and bug fixes surfaced during real games
-
-📋 **Test Coverage:**
-- Unit Tests: 9 suites passing
-- Integration Tests: 310 tests passing
-- Stress Tests: 24 tests passing
-- **Total: 343+ tests passing**
 
 **Game Systems (Operational):**
 - Combat system (space battles, ground combat, starbases)
@@ -92,6 +111,7 @@ See **[Architecture Documentation](docs/architecture/overview.md)** for complete
 - **[TODO](docs/TODO.md)** - Current work tracking and roadmap
 - **[Daemon Setup (system service)](docs/guides/daemon-setup.md)** - Production deployment guide
 - **[Daemon Setup (user service)](docs/guides/daemon-setup-user.md)** - Local dev deployment guide
+- **[Local Nostr Development](docs/guides/local-nostr-development.md)** - Relay and transport workflow
 - **[Playtesting Plans](docs/play_testing/README.md)** - Human playtesting and training data collection
 
 ## Development Setup
