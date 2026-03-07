@@ -407,7 +407,7 @@ proc tickMaintenanceCmd(): DaemonCmd =
         payload: proc(m: var DaemonModel) = discard
       )
 
-proc tickProposal(): Proposal[DaemonModel] =
+proc tickProposal*(): Proposal[DaemonModel] =
   return Proposal[DaemonModel](
     name: "tick",
     payload: proc(model: var DaemonModel) =
@@ -926,7 +926,7 @@ proc newDaemonLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   )
 
 proc initTestDaemonLoop*(dataDir: string): DaemonLoop =
-  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, 60, true, true)
+  result = newDaemonLoop(dataDir, 30, @[], 2, 7, 30, 14, 0, true, true)
 
 proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
   replayRetentionTurns: int, replayRetentionDays: int,

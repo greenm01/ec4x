@@ -321,7 +321,12 @@ proc invite(GAMEID: seq[string], dataDir = "data",
     except CatchableError:
       discard  # Use defaults
 
-  let houses = dbGetHousesWithInvites(dbPath, meta.id)
+  let houses =
+    try:
+      dbGetHousesWithInvites(dbPath, meta.id)
+    except ValueError as e:
+      echo "Error: ", e.msg
+      return 1
   if houses.len == 0:
     echo "No houses with invites found"
     return 0

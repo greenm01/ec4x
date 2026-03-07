@@ -132,7 +132,9 @@ task testIntegration, "Run integration tests":
   exec "nim c -r tests/daemon/test_replay_protection.nim"
   exec "nim c -r tests/daemon/test_slot_tags.nim"
   echo "Running daemon tests..."
-  exec "nimble testDaemon"
+  exec "nim c -r tests/daemon/kdl_parser_test.nim"
+  exec "nim c -r tests/daemon/test_daemon_config.nim"
+  exec "nim c -r tests/daemon/test_auto_resolve.nim"
 
 task testDaemon, "Run daemon integration tests":
   echo "Running daemon tests..."

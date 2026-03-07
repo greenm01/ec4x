@@ -2,8 +2,10 @@
 ##
 ## Tests the automatic turn resolution trigger when all players submit commands
 
-import std/[unittest, options, tables, os, strutils, times]
+import std/[unittest, options, tables, os, strutils, times, asyncdispatch,
+  sets]
 import db_connector/db_sqlite
+import ../../src/daemon/[daemon, sam_core]
 import ../../src/engine/init/game_state
 import ../../src/engine/types/[core, command, game_state, fleet]
 import ../../src/engine/state/engine
@@ -59,6 +61,10 @@ proc isAutoResolveReady(dbPath: string, gameId: string, turn: int32): bool =
   let total = countTotalPlayers(dbPath, gameId)
   let submitted = countPlayersSubmitted(dbPath, gameId, turn)
   total > 0 and claimed == total and submitted >= total
+
+proc drainDaemon(loop: DaemonLoop, cycles: int = 4) =
+  for _ in 0..<cycles:
+    loop.process()
 
 suite "Auto-Resolve: Query Functions":
 
@@ -238,7 +244,7 @@ suite "Auto-Resolve: Readiness Detection":
         FleetCommand(
           fleetId: FleetId(1),
           commandType: FleetCommandType.Hold,
-          
+
           priority: 0,
           targetSystem: none(SystemId),
           targetFleet: none(FleetId)
@@ -250,7 +256,7 @@ suite "Auto-Resolve: Readiness Detection":
     )
     saveCommandPacket(dbPath, gameId, packet1)
 
-    check countPlayersSubmitted(dbPath, gameId, 1) == 1  # Not ready yet
+    check countPlayersSubmitted(dbPath, gameId, 1) == 1
 
     # House 2 submits
     let packet2 = CommandPacket(
@@ -260,7 +266,7 @@ suite "Auto-Resolve: Readiness Detection":
         FleetCommand(
           fleetId: FleetId(2),
           commandType: FleetCommandType.Hold,
-          
+
           priority: 0,
           targetSystem: none(SystemId),
           targetFleet: none(FleetId)
@@ -274,7 +280,7 @@ suite "Auto-Resolve: Readiness Detection":
 
     let submitted = countPlayersSubmitted(dbPath, gameId, 1)
     let expected = countExpectedPlayers(dbPath, gameId)
-    check submitted == expected  # Ready to resolve!
+    check submitted == expected
 
   test "partial submission not ready":
     let (dbPath, gameId, state) = createTestGame(3)
@@ -293,7 +299,7 @@ suite "Auto-Resolve: Readiness Detection":
         FleetCommand(
           fleetId: FleetId(1),
           commandType: FleetCommandType.Hold,
-          
+
           priority: 0,
           targetSystem: none(SystemId),
           targetFleet: none(FleetId)
@@ -312,7 +318,7 @@ suite "Auto-Resolve: Readiness Detection":
         FleetCommand(
           fleetId: FleetId(2),
           commandType: FleetCommandType.Hold,
-          
+
           priority: 0,
           targetSystem: none(SystemId),
           targetFleet: none(FleetId)
@@ -326,7 +332,106 @@ suite "Auto-Resolve: Readiness Detection":
 
     let submitted = countPlayersSubmitted(dbPath, gameId, 1)
     let expected = countExpectedPlayers(dbPath, gameId)
-    check submitted < expected  # Not ready yet (2/3)
+    check submitted < expected
+
+suite "Auto-Resolve: Daemon Deadline Behavior":
+
+  test "maintenance does not assign deadline when disabled":
+    let (dbPath, gameId, state) = createTestGame(2)
+    defer: cleanupTestGame(dbPath)
+
+    let loop = initTestDaemonLoop(dbPath.parentDir().parentDir().parentDir())
+    daemon.daemonLoop = loop
+    loop.model.turnDeadlineMinutes = 0
+    loop.model.games[gameId] = GameInfo(
+      id: gameId,
+      dbPath: dbPath,
+      turn: state.turn.int,
+      phase: "Active",
+      transportMode: "nostr",
+      turnDeadline: none(int64)
+    )
+
+    loop.present(Proposal[DaemonModel](
+      name: "tick",
+      payload: proc(model: var DaemonModel) =
+        model.maintenanceRequested = true
+    ))
+    drainDaemon(loop)
+
+    check loadGameDeadline(dbPath).isNone
+    check loop.model.games[gameId].turnDeadline.isNone
+
+  test "maintenance assigns deadline when enabled":
+    let (dbPath, gameId, state) = createTestGame(2)
+    defer: cleanupTestGame(dbPath)
+
+    let loop = initTestDaemonLoop(getTempDir())
+    daemon.daemonLoop = loop
+    loop.model.turnDeadlineMinutes = 60
+    loop.model.games[gameId] = GameInfo(
+      id: gameId,
+      dbPath: dbPath,
+      turn: state.turn.int,
+      phase: "Active",
+      transportMode: "nostr",
+      turnDeadline: none(int64)
+    )
+
+    loop.present(Proposal[DaemonModel](
+      name: "tick",
+      payload: proc(model: var DaemonModel) =
+        model.maintenanceRequested = true
+    ))
+    drainDaemon(loop)
+
+    check loadGameDeadline(dbPath).isSome
+    check loop.model.games[gameId].turnDeadline.isSome
+
+  test "overdue deadline requests resolution on tick":
+    let (dbPath, gameId, state) = createTestGame(2)
+    defer: cleanupTestGame(dbPath)
+
+    let overdue = some(getTime().toUnix() - 1)
+    updateTurnDeadline(dbPath, gameId, overdue)
+
+    let loop = initTestDaemonLoop(getTempDir())
+    daemon.daemonLoop = loop
+    loop.model.games[gameId] = GameInfo(
+      id: gameId,
+      dbPath: dbPath,
+      turn: state.turn.int,
+      phase: "Active",
+      transportMode: "nostr",
+      turnDeadline: overdue
+    )
+
+    loop.present(daemon.tickProposal())
+    loop.process()
+
+    var queuedResolution = false
+    for proposal in loop.proposalQueue:
+      if proposal.name == "request_turn_resolution":
+        queuedResolution = true
+        break
+    check queuedResolution
+
+suite "Persistence: Schema Compatibility":
+
+  test "loadFullState rejects unsupported schema versions cleanly":
+    let (dbPath, _, _) = createTestGame(2)
+    defer: cleanupTestGame(dbPath)
+
+    let db = open(dbPath, "", "", "")
+    defer: db.close()
+    db.exec(sql"DELETE FROM schema_version")
+    db.exec(sql"INSERT INTO schema_version(version, applied_at) VALUES (?, ?)",
+      MinimumSupportedSchemaVersion - 1, epochTime().int64)
+
+    expect ValueError:
+      discard loadFullState(dbPath)
+
+suite "Auto-Resolve: Readiness Detection":
 
   test "command resubmission doesn't affect count":
     let (dbPath, gameId, state) = createTestGame(2)

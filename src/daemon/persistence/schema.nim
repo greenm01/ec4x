@@ -15,7 +15,9 @@
 import std/os
 import db_connector/db_sqlite
 
-const SchemaVersion* = 11  # Incremented for message storage
+const
+  MinimumSupportedSchemaVersion* = 11
+  SchemaVersion* = 12  # Incremented for ML/MRP persistence break
 
 ## ============================================================================
 ## Core Game State Tables

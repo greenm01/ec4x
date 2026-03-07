@@ -16,6 +16,7 @@ import ../parser/msgpack_commands
 import ./msgpack_state
 import ./player_state_snapshot
 import ./replay
+import ./schema
 
 export ReplayDirection
 
@@ -23,6 +24,38 @@ export ReplayDirection
 
 # Forward declaration for loadFullState (defined later)
 proc loadFullState*(dbPath: string): GameState
+
+proc incompatibleGameDbError(dbPath: string, detail: string): ref ValueError =
+  newException(ValueError,
+    "Incompatible game database at " & dbPath & ": " & detail &
+    ". Recreate the game database with the current daemon.")
+
+proc loadStoredSchemaVersion(dbPath: string): int =
+  let db = open(dbPath, "", "", "")
+  defer: db.close()
+
+  try:
+    let row = db.getRow(
+      sql"""
+      SELECT version
+      FROM schema_version
+      ORDER BY version DESC
+      LIMIT 1
+    """)
+    if row[0] == "":
+      return 0
+    return parseInt(row[0])
+  except CatchableError:
+    logError("Persistence", "Failed to load schema_version: ",
+      getCurrentExceptionMsg())
+    return 0
+
+proc ensureSupportedGameDb*(dbPath: string) =
+  let storedVersion = loadStoredSchemaVersion(dbPath)
+  if storedVersion < MinimumSupportedSchemaVersion:
+    raise incompatibleGameDbError(dbPath,
+      "schema version " & $storedVersion & " is too old; minimum supported " &
+      "version is " & $MinimumSupportedSchemaVersion)
 
 # Note: House pubkey and invite code queries now load from GameState
 # These procs are kept for backward compatibility and query the msgpack blob.
@@ -259,6 +292,8 @@ proc loadFullState*(dbPath: string): GameState =
   defer: db.close()
 
   try:
+    ensureSupportedGameDb(dbPath)
+
     # Load msgpack blob from database
     let row = db.getRow(sql"SELECT state_msgpack FROM games LIMIT 1")
     if row[0] == "":
@@ -266,7 +301,11 @@ proc loadFullState*(dbPath: string): GameState =
       raise newException(ValueError, "Empty state_msgpack in database")
 
     # Deserialize GameState from msgpack
-    result = deserializeGameState(row[0])
+    try:
+      result = deserializeGameState(row[0])
+    except ObjectConversionDefect as e:
+      raise incompatibleGameDbError(dbPath,
+        "saved state cannot be decoded by the current build (" & e.msg & ")")
 
     # Restore runtime fields not serialized
     result.dbPath = dbPath
