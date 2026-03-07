@@ -1063,7 +1063,7 @@ proc start*(
   var replayRetentionDays = 7
   var replayRetentionDaysDefinition = 30
   var replayRetentionDaysState = 14
-  var turnDeadlineMinutes = 60
+  var turnDeadlineMinutes = 0
   var autoResolveOnAllSubmitted = true
 
   if configKdl.len > 0:
