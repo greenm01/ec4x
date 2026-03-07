@@ -73,6 +73,45 @@ Workflow complete! You can now start testing.
 
 Simple API documentation extractor (legacy tool).
 
+## player_wallet.nim
+
+Non-interactive wallet helper for local development and playtests.
+
+```bash
+nim r tools/player_wallet.nim status [--password PW]
+nim r tools/player_wallet.nim init [--password PW]
+nim r tools/player_wallet.nim show-active [--password PW]
+```
+
+Use this to create or inspect the active player identity without opening
+the TUI.
+
+## claim_invite.nim
+
+Claims a playtest invite code on a relay.
+
+Legacy explicit-key mode still works:
+
+```bash
+nim r tools/claim_invite.nim \
+  localhost:8080 invite-code privhex pubhex phase-sapling-awful
+```
+
+Wallet-aware mode uses the active local identity:
+
+```bash
+nim r tools/claim_invite.nim \
+  localhost:8080 invite-code --game phase-sapling-awful --password PW
+```
+
+To create a wallet automatically if missing:
+
+```bash
+nim r tools/claim_invite.nim \
+  localhost:8080 invite-code --game phase-sapling-awful \
+  --password PW --ensure-wallet
+```
+
 ---
 
 **Tip:** Compile `clean_dev` once to `bin/clean_dev` for faster execution during development.
