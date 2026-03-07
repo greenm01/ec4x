@@ -1946,21 +1946,30 @@ proc renderLiquidationConfirm(canvas: Rect, buf: var CellBuffer, model: TuiModel
   let accumulated = research_projection.poolAccumulated(points, pool)
   let amount = model.ui.liquidationAmount.int
   let ppReturn = amount div 2
+  let footerLine = "[+/-] Adjust  [\xE2\x86\xB5] Confirm  [Esc] Cancel"
+  let detailLines = [
+    "Accumulated: " & $accumulated & " RP",
+    "Liquidate:   " & $amount & " RP",
+    "Return:      " & $ppReturn & " PP",
+    "Penalty:     -5 Prestige",
+    "Rate:        2 RP \xE2\x86\x92 1 PP"
+  ]
 
-  const width = 38
-  const height = 10
-  let x = canvas.x + (canvas.width - width) div 2
-  let y = canvas.y + (canvas.height - height) div 2
-  let modalArea = rect(x, y, width, height)
+  var contentWidth = footerLine.runeLen
+  contentWidth = max(contentWidth,
+    ("LIQUIDATE " & poolName & " POOL").runeLen)
+  for line in detailLines:
+    contentWidth = max(contentWidth, line.runeLen)
+
   let m = newModal()
     .title("LIQUIDATE " & poolName & " POOL")
-    .minWidth(width)
-    .maxWidth(width)
-    .minHeight(height)
-    .showBackdrop(false)
+    .minWidth(contentWidth + 2)
+    .maxWidth(contentWidth + 2)
+    .minHeight(10)
+    .showBackdrop(true)
     .borderStyle(outerBorderStyle())
     .bgStyle(modalBgStyle())
-  let footerLine = "[+/-] Adjust  [\xE2\x86\xB5] Confirm  [Esc] Cancel"
+  let modalArea = m.calculateArea(canvas, contentWidth, detailLines.len + 2)
   m.renderWithFooter(modalArea, buf, footerLine)
   let inner = m.contentArea(modalArea, hasFooter = true)
   if inner.isEmpty:
