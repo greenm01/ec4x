@@ -8,6 +8,7 @@ import msgpack4nim
 import ../../engine/types/[core, player_state]
 import ../../common/config_sync
 import ../../common/msgpack_types
+import ../../daemon/persistence/player_state_snapshot
 import ../../daemon/transport/nostr/delta_msgpack
 import ../../daemon/transport/nostr/state_msgpack
 
@@ -19,12 +20,23 @@ export state_msgpack
 # Full State Deserialization
 # =============================================================================
 
+type
+  DeltaApplyResult* = object
+    turn*: int32
+    playerState*: PlayerState
+    expectedStateHash*: string
+    actualStateHash*: string
+    hashMatched*: bool
+
 proc parseFullStateMsgpack*(payload: string): Option[PlayerStateEnvelope] =
   ## Deserialize msgpack binary to full state envelope.
   try:
     some(unpack(payload, PlayerStateEnvelope))
   except CatchableError:
     none(PlayerStateEnvelope)
+
+proc fullStateHashMatches*(envelope: PlayerStateEnvelope): bool =
+  envelope.stateHash == computePlayerStateHash(envelope.playerState)
 
 # =============================================================================
 # Delta Application
@@ -164,6 +176,60 @@ proc applyDeltaToPlayerState*(
         break
     if idx >= 0:
       state.ownGroundUnits.delete(idx)
+
+  # Apply ownNeorias delta
+  for neoria in delta.ownNeorias.added:
+    var found = false
+    for i, existing in state.ownNeorias:
+      if existing.id == neoria.id:
+        state.ownNeorias[i] = neoria
+        found = true
+        break
+    if not found:
+      state.ownNeorias.add(neoria)
+
+  for neoria in delta.ownNeorias.updated:
+    for i, existing in state.ownNeorias:
+      if existing.id == neoria.id:
+        state.ownNeorias[i] = neoria
+        break
+
+  for removedId in delta.ownNeorias.removed:
+    let neoriaId = NeoriaId(removedId)
+    var idx = -1
+    for i, existing in state.ownNeorias:
+      if existing.id == neoriaId:
+        idx = i
+        break
+    if idx >= 0:
+      state.ownNeorias.delete(idx)
+
+  # Apply ownKastras delta
+  for kastra in delta.ownKastras.added:
+    var found = false
+    for i, existing in state.ownKastras:
+      if existing.id == kastra.id:
+        state.ownKastras[i] = kastra
+        found = true
+        break
+    if not found:
+      state.ownKastras.add(kastra)
+
+  for kastra in delta.ownKastras.updated:
+    for i, existing in state.ownKastras:
+      if existing.id == kastra.id:
+        state.ownKastras[i] = kastra
+        break
+
+  for removedId in delta.ownKastras.removed:
+    let kastraId = KastraId(removedId)
+    var idx = -1
+    for i, existing in state.ownKastras:
+      if existing.id == kastraId:
+        idx = i
+        break
+    if idx >= 0:
+      state.ownKastras.delete(idx)
   
   # Apply visibleSystems delta
   for system in delta.visibleSystems.added:
@@ -362,6 +428,8 @@ proc applyDeltaToPlayerState*(
   if delta.actProgressionChanged and delta.actProgression.isSome:
     state.actProgression = delta.actProgression.get()
 
+  state.turnEvents = delta.turnEvents
+
 proc parseDeltaMsgpack*(payload: string): Option[PlayerStateDelta] =
   ## Deserialize msgpack binary to PlayerStateDelta envelope.
   try:
@@ -373,27 +441,35 @@ proc parseDeltaMsgpack*(payload: string): Option[PlayerStateDelta] =
     none(PlayerStateDelta)
 
 proc applyDeltaMsgpack*(
-  state: var PlayerState,
+  state: PlayerState,
   payload: string,
   expectedConfigHash: string,
   expectedConfigSchemaVersion: int32
-): Option[int32] =
+) : Option[DeltaApplyResult] =
   ## Apply a msgpack-encoded delta to a PlayerState
-  ## Returns the new turn number if successful
+  ## Returns the post-apply state and integrity result if successful.
   let envelopeOpt =
     try:
       some(unpack(payload, PlayerStateDeltaEnvelope))
     except CatchableError:
       none(PlayerStateDeltaEnvelope)
   if envelopeOpt.isNone:
-    return none(int32)
+    return none(DeltaApplyResult)
 
   let envelope = envelopeOpt.get()
   if envelope.configSchemaVersion != expectedConfigSchemaVersion:
-    return none(int32)
+    return none(DeltaApplyResult)
   if envelope.configHash != expectedConfigHash:
-    return none(int32)
+    return none(DeltaApplyResult)
 
   let delta = envelope.delta
-  applyDeltaToPlayerState(state, delta)
-  some(delta.turn)
+  var updatedState = state
+  updatedState.applyDeltaToPlayerState(delta)
+  let actualStateHash = computePlayerStateHash(updatedState)
+  some(DeltaApplyResult(
+    turn: delta.turn,
+    playerState: updatedState,
+    expectedStateHash: envelope.stateHash,
+    actualStateHash: actualStateHash,
+    hashMatched: envelope.stateHash == actualStateHash
+  ))

@@ -3,11 +3,12 @@
 ## Stores per-house PlayerState snapshots for delta generation.
 ## Migration: Switched from JSON to msgpack for faster serialization.
 
-import std/[tables, base64, options]
+import std/[algorithm, base64, options, strutils, tables]
 import msgpack4nim
+import nimcrypto/sha2
 import ../../engine/types/player_state
 import ../../engine/types/[core, colony, fleet, ship, ground_unit, diplomacy,
-  progression, tech, event]
+  progression, tech, event, facilities]
 import ./msgpack_state
 
 # =============================================================================
@@ -59,6 +60,8 @@ type
     ownFleets*: seq[Fleet]
     ownShips*: seq[Ship]
     ownGroundUnits*: seq[GroundUnit]
+    ownNeorias*: seq[Neoria]
+    ownKastras*: seq[Kastra]
     visibleSystems*: seq[VisibleSystem]
     visibleColonies*: seq[VisibleColony]
     visibleFleets*: seq[VisibleFleet]
@@ -93,6 +96,8 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.ownFleets = ps.ownFleets
   result.ownShips = ps.ownShips
   result.ownGroundUnits = ps.ownGroundUnits
+  result.ownNeorias = ps.ownNeorias
+  result.ownKastras = ps.ownKastras
   for _, visibleSystem in ps.visibleSystems:
     result.visibleSystems.add(visibleSystem)
   result.visibleColonies = ps.visibleColonies
@@ -119,6 +124,80 @@ proc snapshotFromPlayerState*(ps: PlayerState): PlayerStateSnapshot =
   result.eliminatedHouses = ps.eliminatedHouses
   result.actProgression = ps.actProgression
   result.turnEvents = ps.turnEvents
+
+proc normalizeSnapshot(snapshot: PlayerStateSnapshot): PlayerStateSnapshot =
+  result = snapshot
+  result.ownColonies.sort(
+    proc(a, b: Colony): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.ownFleets.sort(
+    proc(a, b: Fleet): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.ownShips.sort(
+    proc(a, b: Ship): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.ownGroundUnits.sort(
+    proc(a, b: GroundUnit): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.ownNeorias.sort(
+    proc(a, b: Neoria): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.ownKastras.sort(
+    proc(a, b: Kastra): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.visibleSystems.sort(
+    proc(a, b: VisibleSystem): int = cmp(a.systemId.uint32, b.systemId.uint32)
+  )
+  result.visibleColonies.sort(
+    proc(a, b: VisibleColony): int = cmp(a.colonyId.uint32, b.colonyId.uint32)
+  )
+  result.visibleFleets.sort(
+    proc(a, b: VisibleFleet): int = cmp(a.fleetId.uint32, b.fleetId.uint32)
+  )
+  result.ltuSystems.sort(
+    proc(a, b: LtuSystem): int = cmp(a.systemId.uint32, b.systemId.uint32)
+  )
+  result.ltuColonies.sort(
+    proc(a, b: LtuColony): int = cmp(a.colonyId.uint32, b.colonyId.uint32)
+  )
+  result.ltuFleets.sort(
+    proc(a, b: LtuFleet): int = cmp(a.fleetId.uint32, b.fleetId.uint32)
+  )
+  result.housePrestige.sort(
+    proc(a, b: HouseValue): int = cmp(a.houseId.uint32, b.houseId.uint32)
+  )
+  result.houseColonyCounts.sort(
+    proc(a, b: HouseCount): int = cmp(a.houseId.uint32, b.houseId.uint32)
+  )
+  result.houseNames.sort(
+    proc(a, b: HouseNameEntry): int = cmp(a.houseId.uint32, b.houseId.uint32)
+  )
+  result.diplomaticRelations.sort(
+    proc(a, b: RelationSnapshot): int =
+      result = cmp(a.sourceHouse.uint32, b.sourceHouse.uint32)
+      if result == 0:
+        result = cmp(a.targetHouse.uint32, b.targetHouse.uint32)
+  )
+  result.pendingProposals.sort(
+    proc(a, b: PendingProposal): int = cmp(a.id.uint32, b.id.uint32)
+  )
+  result.eliminatedHouses.sort(
+    proc(a, b: HouseId): int = cmp(a.uint32, b.uint32)
+  )
+
+proc sha256Hex(data: string): string =
+  let digest = sha256.digest(data)
+  var hexValue = newStringOfCap(64)
+  for value in digest.data:
+    hexValue.add(value.toHex(2).toLowerAscii())
+  hexValue
+
+proc computePlayerStateHash*(snapshot: PlayerStateSnapshot): string =
+  let normalized = normalizeSnapshot(snapshot)
+  sha256Hex(pack(normalized))
+
+proc computePlayerStateHash*(ps: PlayerState): string =
+  computePlayerStateHash(snapshotFromPlayerState(ps))
 
 proc snapshotToMsgpack*(snapshot: PlayerStateSnapshot): string =
   ## Serialize PlayerStateSnapshot to msgpack binary

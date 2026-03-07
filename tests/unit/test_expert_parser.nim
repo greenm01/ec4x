@@ -74,6 +74,10 @@ suite "Expert Mode Parser":
     let cmd = parseExpertCommand(":sync now")
     check cmd.kind == ExpertCommandKind.MetaSyncNow
 
+  test "Meta command: resync":
+    let cmd = parseExpertCommand(":resync")
+    check cmd.kind == ExpertCommandKind.MetaSyncNow
+
   test "Map command: export":
     let cmd = parseExpertCommand(":map export")
     check cmd.kind == ExpertCommandKind.MapExport

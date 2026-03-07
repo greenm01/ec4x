@@ -19,6 +19,8 @@ proc applyFullStatePayload*(
     return false
 
   let envelope = envelopeOpt.get()
+  if not fullStateHashMatches(envelope):
+    return false
   runtime.hasState = true
   runtime.playerState = envelope.playerState
   runtime.configHash = envelope.authoritativeConfig.configHash
@@ -41,16 +43,20 @@ proc applyDeltaPayload*(
   if not runtime.hasState:
     return false
 
-  let updatedTurn = applyDeltaMsgpack(
+  let applyResult = applyDeltaMsgpack(
     runtime.playerState,
     payload,
     runtime.configHash,
     runtime.configSchemaVersion
   )
-  if updatedTurn.isNone:
+  if applyResult.isNone:
+    return false
+  let applied = applyResult.get()
+  if not applied.hashMatched:
     return false
 
-  runtime.lastSeenTurn = updatedTurn.get()
+  runtime.playerState = applied.playerState
+  runtime.lastSeenTurn = applied.turn
   if eventId.len > 0:
     runtime.lastEventId = some(eventId)
   true

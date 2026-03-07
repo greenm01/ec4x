@@ -308,6 +308,11 @@ proc subscribeDaemon*(client: NostrClient, gameId: string,
       .withKinds(@[EventKindTurnCommands])
       .withTag(TagD, @[gameId])
       .withTag(TagP, @[daemonPubkey]),
+    # Player sync requests for this game
+    newFilter()
+      .withKinds(@[EventKindStateSyncRequest])
+      .withTag(TagD, @[gameId])
+      .withTag(TagP, @[daemonPubkey]),
     # Slot claims
     newFilter()
       .withKinds(@[EventKindPlayerSlotClaim])

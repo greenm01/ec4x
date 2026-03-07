@@ -163,6 +163,32 @@ proc submitCommands*(
   signEvent(event, privOpt.get())
   await pc.client.publish(event)
 
+proc requestFullState*(
+  pc: PlayerNostrClient,
+  turn: int
+): Future[bool] {.async.} =
+  ## Request the daemon to republish the current full state.
+  if pc.daemonPubkey.len == 0:
+    pc.handleError("Missing daemon pubkey")
+    return false
+  if pc.gameId.len == 0:
+    pc.handleError("Missing game id")
+    return false
+
+  let privOpt = hexToBytes32Safe(pc.playerPrivHex)
+  if privOpt.isNone:
+    pc.handleError("Invalid key material")
+    return false
+
+  var event = createStateSyncRequest(
+    gameId = pc.gameId,
+    turn = turn,
+    daemonPubkey = pc.daemonPubkey,
+    playerPubkey = pc.playerPubHex
+  )
+  signEvent(event, privOpt.get())
+  await pc.client.publish(event)
+
 proc sendMessage*(
   pc: PlayerNostrClient,
   msg: GameMessage

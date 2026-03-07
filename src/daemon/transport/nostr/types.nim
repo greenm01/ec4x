@@ -73,6 +73,7 @@ const
   EventKindJoinError* = 30404        # Server: Join errors
   EventKindGameState* = 30405        # Server: Full current state
   EventKindPlayerMessage* = 30406    # Player: Direct message
+  EventKindStateSyncRequest* = 30407 # Player: Request full state refresh
 
 # =============================================================================
 # Standard Nostr Tag Names

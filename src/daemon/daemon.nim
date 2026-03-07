@@ -520,6 +520,54 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
   except CatchableError as e:
     logError("Nostr", "Failed to process command: ", e.msg)
 
+proc processStateSyncRequest(event: NostrEvent) {.async.} =
+  ## Process a player request to republish authoritative full state.
+  try:
+    let gameIdOpt = event.getGameId()
+    if gameIdOpt.isNone:
+      logError("Nostr", "Sync request missing game ID")
+      return
+
+    let gameId = gameIdOpt.get()
+    if not daemonLoop.model.games.hasKey(gameId):
+      logWarn("Nostr", "Sync request for unknown game: ", gameId)
+      return
+
+    let gameInfo = daemonLoop.model.games[gameId]
+    if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
+        event.kind, event.id, reader.ReplayDirection.Inbound):
+      logWarn("Nostr", "Duplicate sync request ignored: ",
+        event.id[0..7])
+      return
+
+    if not verifyEvent(event):
+      logWarn("Nostr", "Invalid sync request signature for game=",
+        gameId)
+      return
+
+    let state = loadFullState(gameInfo.dbPath)
+    let senderHouseOpt = resolveHouseId(state, event.pubkey)
+    if senderHouseOpt.isNone:
+      logWarn("Nostr", "Sync request from unknown player for game=",
+        gameId)
+      return
+
+    let houseId = senderHouseOpt.get()
+    if daemonLoop.model.nostrPublisher != nil:
+      await daemonLoop.model.nostrPublisher.publishFullState(
+        gameInfo.id,
+        gameInfo.dbPath,
+        state,
+        houseId
+      )
+      logInfo("Nostr", "Republished full state for game=", gameId,
+        " house=", $houseId)
+
+    writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+      state.turn, event.kind, event.id, reader.ReplayDirection.Inbound)
+  except CatchableError as e:
+    logError("Nostr", "Failed to process sync request: ", e.msg)
+
 proc processSlotClaim*(event: NostrEvent) {.async.} =
   ## Process a slot claim event (30401) from a player
   try:
@@ -978,6 +1026,13 @@ proc mainLoop(dataDir: string, pollInterval: int, relayUrls: seq[string],
       let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
       logError("Nostr", "Event handler failed: kind=", $event.kind,
         " id=", eventId, " error=", e.msg)
+  daemonLoop.model.nostrSubscriber.onSyncRequest = proc(event: NostrEvent) =
+    try:
+      asyncCheck processStateSyncRequest(event)
+    except CatchableError as e:
+      let eventId = if event.id.len >= 8: event.id[0..7] else: "unknown"
+      logError("Nostr", "Sync request handler failed: kind=",
+        $event.kind, " id=", eventId, " error=", e.msg)
   daemonLoop.model.nostrSubscriber.onMessage = proc(event: NostrEvent) =
     try:
       let gameIdOpt = event.getGameId()

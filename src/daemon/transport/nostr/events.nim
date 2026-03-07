@@ -226,6 +226,31 @@ proc createGameState*(
   result.id = computeEventId(result)
 
 # =============================================================================
+# Full State Sync Request Events (30407)
+# =============================================================================
+
+proc createStateSyncRequest*(
+  gameId: string,
+  turn: int,
+  daemonPubkey: string,
+  playerPubkey: string
+): NostrEvent =
+  ## Create a player request for the daemon to republish full state.
+  let tags = @[
+    @[TagD, gameId],
+    @[TagP, daemonPubkey],
+    @[TagTurn, $turn]
+  ]
+
+  result = newEvent(
+    kind = EventKindStateSyncRequest,
+    content = "",
+    tags = tags,
+    pubkey = playerPubkey
+  )
+  result.id = computeEventId(result)
+
+# =============================================================================
 # Player Messages Events (30406)
 # =============================================================================
 

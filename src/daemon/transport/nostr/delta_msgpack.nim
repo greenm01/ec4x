@@ -6,7 +6,7 @@
 import std/[options, tables]
 import msgpack4nim
 import ../../../engine/types/[core, colony, fleet, ship, ground_unit, player_state,
-  progression, capacity, tech, diplomacy, event]
+  progression, capacity, tech, diplomacy, event, facilities]
 import ../../../engine/types/game_state
 import ../../../engine/state/fog_of_war
 import ../../../engine/globals
@@ -48,6 +48,8 @@ type
     ownFleets*: EntityDelta[Fleet]
     ownShips*: EntityDelta[Ship]
     ownGroundUnits*: EntityDelta[GroundUnit]
+    ownNeorias*: EntityDelta[Neoria]
+    ownKastras*: EntityDelta[Kastra]
     visibleSystems*: EntityDelta[VisibleSystem]
     visibleColonies*: EntityDelta[VisibleColony]
     visibleFleets*: EntityDelta[VisibleFleet]
@@ -69,6 +71,7 @@ type
     delta*: PlayerStateDelta
     configSchemaVersion*: int32
     configHash*: string
+    stateHash*: string
 
 # =============================================================================
 # Delta Builders
@@ -367,6 +370,30 @@ proc diffGroundUnits(
     proc(a: GroundUnit, b: GroundUnit): bool = sameGroundUnit(a, b)
   )
 
+proc diffNeorias(
+  oldItems: seq[Neoria],
+  newItems: seq[Neoria]
+): EntityDelta[Neoria] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: Neoria): NeoriaId = item.id,
+    proc(id: NeoriaId): uint32 = id.uint32,
+    proc(a: Neoria, b: Neoria): bool = a == b
+  )
+
+proc diffKastras(
+  oldItems: seq[Kastra],
+  newItems: seq[Kastra]
+): EntityDelta[Kastra] =
+  diffById(
+    oldItems,
+    newItems,
+    proc(item: Kastra): KastraId = item.id,
+    proc(id: KastraId): uint32 = id.uint32,
+    proc(a: Kastra, b: Kastra): bool = a == b
+  )
+
 proc diffPlayerState*(
   oldSnapshotOpt: Option[PlayerStateSnapshot],
   current: PlayerStateSnapshot
@@ -379,6 +406,8 @@ proc diffPlayerState*(
     result.ownFleets.added = current.ownFleets
     result.ownShips.added = current.ownShips
     result.ownGroundUnits.added = current.ownGroundUnits
+    result.ownNeorias.added = current.ownNeorias
+    result.ownKastras.added = current.ownKastras
     result.visibleSystems.added = current.visibleSystems
     result.visibleColonies.added = current.visibleColonies
     result.visibleFleets.added = current.visibleFleets
@@ -419,6 +448,14 @@ proc diffPlayerState*(
   result.ownGroundUnits = diffGroundUnits(
     oldSnapshot.ownGroundUnits,
     current.ownGroundUnits
+  )
+  result.ownNeorias = diffNeorias(
+    oldSnapshot.ownNeorias,
+    current.ownNeorias
+  )
+  result.ownKastras = diffKastras(
+    oldSnapshot.ownKastras,
+    current.ownKastras
   )
   result.visibleSystems = diffVisibleSystems(
     oldSnapshot.visibleSystems,
@@ -534,7 +571,8 @@ proc deserializePlayerStateDeltaEnvelope*(
 
 proc formatPlayerStateDeltaMsgpack*(
   gameId: string,
-  delta: PlayerStateDelta
+  delta: PlayerStateDelta,
+  stateHash: string
 ): string =
   ## Serialize delta + config metadata for wire transmission.
   discard gameId
@@ -542,7 +580,8 @@ proc formatPlayerStateDeltaMsgpack*(
   let envelope = PlayerStateDeltaEnvelope(
     delta: delta,
     configSchemaVersion: ConfigSchemaVersion,
-    configHash: rulesSnapshot.configHash
+    configHash: rulesSnapshot.configHash,
+    stateHash: stateHash
   )
   serializePlayerStateDeltaEnvelope(envelope)
 

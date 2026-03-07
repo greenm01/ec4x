@@ -9,6 +9,7 @@ import ../../../engine/state/fog_of_war
 import ../../../engine/globals
 import ../../../common/config_sync
 import ../../../common/msgpack_types
+import ../../persistence/player_state_snapshot
 export msgpack_types
 
 # =============================================================================
@@ -19,6 +20,7 @@ type
   PlayerStateEnvelope* = object
     playerState*: PlayerState
     authoritativeConfig*: AuthoritativeConfig
+    stateHash*: string
 
 proc serializePlayerState*(state: PlayerState): string =
   ## Serialize PlayerState to msgpack binary (as string for wire)
@@ -48,6 +50,7 @@ proc formatPlayerStateMsgpack*(
   let rulesSnapshot = buildTuiRulesSnapshot(gameConfig)
   let envelope = PlayerStateEnvelope(
     playerState: playerState,
-    authoritativeConfig: rulesSnapshot
+    authoritativeConfig: rulesSnapshot,
+    stateHash: computePlayerStateHash(playerState)
   )
   serializePlayerStateEnvelope(envelope)

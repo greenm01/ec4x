@@ -169,6 +169,7 @@ proc parseCategory(tok: string): ExpertCategory =
   of "gov", "g": ExpertCategory.Gov
   of "map", "m": ExpertCategory.Map
   of "clear", "list", "ls", "drop", "rm", "submit", "sync",
+      "resync",
       "help", "?": ExpertCategory.Meta
   else: ExpertCategory.Unknown
 
@@ -331,6 +332,8 @@ proc parseMetaCommand(tokens: seq[string]): ExpertCommand =
   of "clear": return ExpertCommand(kind: MetaClear)
   of "list", "ls": return ExpertCommand(kind: MetaList)
   of "submit": return ExpertCommand(kind: MetaSubmit)
+  of "resync":
+    return ExpertCommand(kind: MetaSyncNow)
   of "sync":
     if tokens.len >= 2 and tokens[1].toLowerAscii() == "now":
       return ExpertCommand(kind: MetaSyncNow)

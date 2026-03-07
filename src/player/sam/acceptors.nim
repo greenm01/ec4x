@@ -2791,7 +2791,10 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       of ExpertCommandKind.ParseError:
         model.setExpertFeedback("Error: " & cmdAst.errorMessage)
       of ExpertCommandKind.MetaHelp:
-        model.setExpertFeedback("Commands: fleet, colony, tech, spy, gov, map | Meta: clear, list, drop, submit, sync now")
+        model.setExpertFeedback(
+          "Commands: fleet, colony, tech, spy, gov, map | " &
+          "Meta: clear, list, drop, submit, resync"
+        )
         model.addToExpertHistory(inputStr)
       of ExpertCommandKind.MetaClear:
         let count = model.stagedCommandCount()
@@ -2825,7 +2828,7 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.addToExpertHistory(inputStr)
       of ExpertCommandKind.MetaSyncNow:
         model.ui.syncNowRequested = true
-        model.setExpertFeedback("Sync check requested")
+        model.setExpertFeedback("Authoritative resync requested")
         model.addToExpertHistory(inputStr)
       else:
         let execResult = executeExpertCommand(model, cmdAst)

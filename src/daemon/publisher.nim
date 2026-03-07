@@ -8,6 +8,7 @@ import ../engine/state/iterators
 import ./transport/nostr/[types, client, events, crypto, wire]
 import ./persistence/reader
 import ./persistence/writer
+import ./persistence/player_state_snapshot
 import ./transport/nostr/delta_msgpack
 import ./transport/nostr/state_msgpack
 
@@ -48,6 +49,7 @@ proc buildDeltaMsgpack(dbPath: string, gameId: string, state: GameState,
 
   let currentSnapshot = buildPlayerStateSnapshot(state, houseId)
   let delta = diffPlayerState(previousSnapshot, currentSnapshot)
+  let stateHash = computePlayerStateHash(currentSnapshot)
 
   savePlayerStateSnapshot(
     dbPath,
@@ -57,7 +59,7 @@ proc buildDeltaMsgpack(dbPath: string, gameId: string, state: GameState,
     currentSnapshot
   )
 
-  formatPlayerStateDeltaMsgpack(gameId, delta)
+  formatPlayerStateDeltaMsgpack(gameId, delta, stateHash)
 
 proc publishFullState*(pub: Publisher, gameId: string, dbPath: string,
   state: GameState, houseId: HouseId) {.async.} =
@@ -228,6 +230,7 @@ proc publishTurnResults*(pub: Publisher, gameId: string, dbPath: string,
         insertProcessedEvent(dbPath, gameId,
           state.turn.int32, event.kind, event.id,
           reader.ReplayDirection.Outbound)
+        await pub.publishFullState(gameId, dbPath, state, houseId)
       else:
         logError("Nostr", "Failed to publish delta for house ", $houseId)
 

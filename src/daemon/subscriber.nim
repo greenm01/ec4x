@@ -9,6 +9,7 @@ type
     client*: NostrClient
     onCommand*: proc(event: NostrEvent) {.closure.}
     onSlotClaim*: proc(event: NostrEvent) {.closure.}
+    onSyncRequest*: proc(event: NostrEvent) {.closure.}
     onMessage*: proc(event: NostrEvent) {.closure.}
 
 proc newSubscriber*(client: NostrClient): Subscriber =
@@ -31,6 +32,9 @@ proc attachHandlers*(sub: Subscriber) =
     elif event.kind == EventKindTurnCommands:
       if sub.onCommand != nil:
         sub.onCommand(event)
+    elif event.kind == EventKindStateSyncRequest:
+      if sub.onSyncRequest != nil:
+        sub.onSyncRequest(event)
     elif event.kind == EventKindPlayerMessage:
       if sub.onMessage != nil:
         sub.onMessage(event)

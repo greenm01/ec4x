@@ -94,6 +94,9 @@ proc runTui*(gameId: string = "") =
   var nostrSubmitStartTime: float = 0.0  # When submit started
   var awaitingTurnAdvanceAfterSubmit = false
   var lastPostSubmitSyncCheckAt: float = 0.0
+  var allowSameTurnFullStateRefresh = false
+  var startupSyncPending = false
+  var lastAutoResyncTurn = -1
   var nostrJoinPublishTime: float = 0.0  # When slot claim was published
   var nostrJoinRetryCount: int = 0       # Re-subscribe retry attempts
 
@@ -350,6 +353,8 @@ proc runTui*(gameId: string = "") =
     nostrSubscriptions = nostrSubscriptions.filterIt(it != subId)
     asyncCheck nostrClient.subscribeGame(activeGameId)
     nostrSubscriptions.add(subId)
+    if nostrDaemonPubkey.len > 0:
+      asyncCheck nostrClient.requestFullState(sam.model.view.turn)
     logInfo("TUI/Sync", "Requested game sync (", reason, ")")
     if showStatus:
       sam.model.ui.statusMessage = "Sync check requested"
@@ -521,8 +526,17 @@ proc runTui*(gameId: string = "") =
           if turnOpt.isNone:
             sam.model.ui.statusMessage = "Ignored event: missing turn"
             return
+          let incomingTurn = turnOpt.get()
+          let sameTurnResync = allowSameTurnFullStateRefresh and
+            sam.model.view.playerStateLoaded and
+            incomingTurn == sam.model.view.turn
           if sam.model.view.playerStateLoaded and
-              turnOpt.get() <= sam.model.view.turn:
+              incomingTurn < sam.model.view.turn:
+            sam.model.ui.statusMessage = "Ignored event: stale turn"
+            return
+          if sam.model.view.playerStateLoaded and
+              incomingTurn == sam.model.view.turn and
+              not sameTurnResync:
             sam.model.ui.statusMessage = "Ignored event: stale turn"
             return
           if event.pubkey.len > 0 and
@@ -537,7 +551,20 @@ proc runTui*(gameId: string = "") =
             authoritativeConfigSchema
           )
           if appliedTurnOpt.isSome:
-            let newTurn = int(appliedTurnOpt.get())
+            let applied = appliedTurnOpt.get()
+            if not applied.hashMatched:
+              if lastAutoResyncTurn != incomingTurn:
+                lastAutoResyncTurn = incomingTurn
+                allowSameTurnFullStateRefresh = true
+                triggerGameSyncCheck(false, "integrity")
+                sam.model.ui.statusMessage =
+                  "State mismatch detected; requesting resync"
+              else:
+                sam.model.ui.statusMessage =
+                  "State mismatch persists; resync required"
+              return
+            playerState = applied.playerState
+            let newTurn = int(applied.turn)
             sam.model.view.turn = newTurn
             sam.model.view.playerStateLoaded = true
             # Load prev-turn snapshot before caching current
@@ -600,8 +627,17 @@ proc runTui*(gameId: string = "") =
             sam.model.ui.statusMessage = "Ignored event: missing turn"
             logDebug("TUI/State", "Missing turn tag in event")
             return
+          let incomingTurn = turnOpt.get()
+          let sameTurnResync = allowSameTurnFullStateRefresh and
+            sam.model.view.playerStateLoaded and
+            incomingTurn == sam.model.view.turn
           if sam.model.view.playerStateLoaded and
-              turnOpt.get() <= sam.model.view.turn:
+              incomingTurn < sam.model.view.turn:
+            sam.model.ui.statusMessage = "Ignored event: stale turn"
+            return
+          if sam.model.view.playerStateLoaded and
+              incomingTurn == sam.model.view.turn and
+              not sameTurnResync:
             sam.model.ui.statusMessage = "Ignored event: stale turn"
             return
           if event.pubkey.len > 0 and
@@ -614,6 +650,18 @@ proc runTui*(gameId: string = "") =
           let envelopeOpt = parseFullStateMsgpack(payload)
           if envelopeOpt.isSome:
             let envelope = envelopeOpt.get()
+            if not fullStateHashMatches(envelope):
+              if lastAutoResyncTurn != incomingTurn:
+                lastAutoResyncTurn = incomingTurn
+                allowSameTurnFullStateRefresh = true
+                triggerGameSyncCheck(false, "integrity")
+                sam.model.ui.statusMessage =
+                  "Rejected full state: integrity mismatch"
+              else:
+                sam.model.ui.statusMessage =
+                  "Authoritative state mismatch persists"
+              enqueueProposal(emptyProposal())
+              return
             if not applyAuthoritativeConfig(envelope.authoritativeConfig):
               let reason = if authoritativeConfigError.len > 0:
                 authoritativeConfigError
@@ -635,6 +683,8 @@ proc runTui*(gameId: string = "") =
               "houseId=", $envelope.playerState.viewingHouse)
             playerState = envelope.playerState
             let newTurn = int(playerState.turn)
+            allowSameTurnFullStateRefresh = false
+            lastAutoResyncTurn = -1
             sam.model.view.playerStateLoaded = true
             viewingHouse = playerState.viewingHouse
             sam.model.view.viewingHouse = int(viewingHouse)
@@ -651,7 +701,10 @@ proc runTui*(gameId: string = "") =
               if activeGameId.len > 0 and int(viewingHouse) > 0:
                 tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
                 lastDraftFingerprint = ""
-            sam.model.ui.statusMessage = "Full state received"
+            if sameTurnResync:
+              sam.model.ui.statusMessage = "Authoritative state reloaded"
+            else:
+              sam.model.ui.statusMessage = "Full state received"
             if sam.model.ui.nostrEnabled:
               sam.model.ui.nostrStatus = "connected"
             # Load prev-turn snapshot for diff reports
@@ -1939,6 +1992,7 @@ proc runTui*(gameId: string = "") =
           # Persist last active game when entering a game
           if gameId.len > 0:
             tuiCache.setLastActiveGame(gameId)
+          startupSyncPending = true
         elif cachedStateOpt.isSome and not authoritativeConfigLoaded:
           # Cached state exists but config snapshot is missing/invalid.
           activeGameId = gameId
@@ -1981,8 +2035,18 @@ proc runTui*(gameId: string = "") =
 
     # Handle manual sync requests from expert mode
     if sam.model.ui.syncNowRequested:
+      allowSameTurnFullStateRefresh = true
       triggerGameSyncCheck(true, "manual")
       sam.model.ui.syncNowRequested = false
+      needsRender = true
+
+    if startupSyncPending and activeGameId.len > 0 and
+        sam.model.view.playerStateLoaded and nostrClient != nil and
+        nostrClient.isConnected():
+      allowSameTurnFullStateRefresh = true
+      triggerGameSyncCheck(false, "startup")
+      startupSyncPending = false
+      sam.model.ui.statusMessage = "Verifying cached state"
       needsRender = true
 
     # Persist intel note edits (local TUI cache only)

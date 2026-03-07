@@ -1,6 +1,7 @@
 import std/unittest
 
 import ../../src/bot/[types, session, runner, llm_client]
+import ../../src/daemon/persistence/player_state_snapshot
 import ../../src/daemon/transport/nostr/state_msgpack
 import ../../src/common/config_sync
 import ../../src/player/state/msgpack_serializer
@@ -30,7 +31,8 @@ suite "bot integration smoke":
       authoritativeConfig: TuiRulesSnapshot(
         schemaVersion: ConfigSchemaVersion,
         configHash: "cfg-v1"
-      )
+      ),
+      stateHash: computePlayerStateHash(state)
     )
     let payload = serializePlayerStateEnvelope(envelope)
     check bot.ingestFullStatePayload(payload, "evt-1")
@@ -71,7 +73,8 @@ suite "bot integration smoke":
       authoritativeConfig: TuiRulesSnapshot(
         schemaVersion: ConfigSchemaVersion,
         configHash: "cfg-v1"
-      )
+      ),
+      stateHash: computePlayerStateHash(state)
     )
     check bot.ingestFullStatePayload(serializePlayerStateEnvelope(envelope))
 

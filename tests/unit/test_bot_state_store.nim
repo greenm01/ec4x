@@ -1,6 +1,7 @@
 import std/[unittest, options]
 
 import ../../src/bot/[types, state_store]
+import ../../src/daemon/persistence/player_state_snapshot
 import ../../src/daemon/transport/nostr/[state_msgpack, delta_msgpack]
 import ../../src/common/config_sync
 import ../../src/engine/types/[core, player_state]
@@ -17,7 +18,8 @@ suite "bot state store":
       authoritativeConfig: TuiRulesSnapshot(
         schemaVersion: ConfigSchemaVersion,
         configHash: "cfg-v1"
-      )
+      ),
+      stateHash: computePlayerStateHash(state)
     )
     let payload = serializePlayerStateEnvelope(envelope)
 
@@ -40,7 +42,8 @@ suite "bot state store":
       authoritativeConfig: TuiRulesSnapshot(
         schemaVersion: ConfigSchemaVersion,
         configHash: "cfg-v1"
-      )
+      ),
+      stateHash: computePlayerStateHash(state)
     )
     check runtime.applyFullStatePayload(
       serializePlayerStateEnvelope(fullEnvelope)
@@ -53,7 +56,11 @@ suite "bot state store":
     let deltaEnvelope = PlayerStateDeltaEnvelope(
       delta: delta,
       configSchemaVersion: ConfigSchemaVersion,
-      configHash: "cfg-v1"
+      configHash: "cfg-v1",
+      stateHash: computePlayerStateHash(PlayerState(
+        viewingHouse: HouseId(1),
+        turn: 6'i32
+      ))
     )
 
     let ok = runtime.applyDeltaPayload(
@@ -76,7 +83,8 @@ suite "bot state store":
       authoritativeConfig: TuiRulesSnapshot(
         schemaVersion: ConfigSchemaVersion,
         configHash: "cfg-v1"
-      )
+      ),
+      stateHash: computePlayerStateHash(state)
     )
     check runtime.applyFullStatePayload(serializePlayerStateEnvelope(envelope))
     check runtime.hasActionableTurn()
@@ -95,7 +103,8 @@ suite "bot state store":
       authoritativeConfig: TuiRulesSnapshot(
         schemaVersion: ConfigSchemaVersion,
         configHash: "cfg-v1"
-      )
+      ),
+      stateHash: computePlayerStateHash(state)
     )
 
     check runtime.applyFullStatePayload(
@@ -114,7 +123,11 @@ suite "bot state store":
     let deltaEnvelope = PlayerStateDeltaEnvelope(
       delta: delta,
       configSchemaVersion: ConfigSchemaVersion,
-      configHash: "cfg-v1"
+      configHash: "cfg-v1",
+      stateHash: computePlayerStateHash(PlayerState(
+        viewingHouse: HouseId(1),
+        turn: 6'i32
+      ))
     )
 
     check runtime.applyDeltaPayload(

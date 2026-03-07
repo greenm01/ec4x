@@ -89,6 +89,7 @@ proc suggestCategories(query: string): seq[ExpertSuggestion] =
     (text: "list", hint: "List staged commands"),
     (text: "drop", hint: "Drop staged command"),
     (text: "submit", hint: "Submit turn"),
+    (text: "resync", hint: "Reload authoritative state"),
     (text: "sync", hint: "Force sync check")
   ]
   suggest(query, categories, ExpertSuggestionType.Category)
@@ -229,7 +230,7 @@ proc getAutocompleteSuggestions*(model: TuiModel, input: string): seq[ExpertSugg
   let isCategoryComplete = tokens.len > 1 or hasTrailingSpace
   
   if isCategoryComplete:
-    if catStr.toLowerAscii() == "sync":
+    if catStr.toLowerAscii() in ["sync", "resync"]:
       if tokens.len == 1 and hasTrailingSpace:
         return suggest("", @[(text: "now", hint: "Run sync check")],
           ExpertSuggestionType.Action)
