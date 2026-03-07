@@ -169,7 +169,7 @@ LLM-driven games provide high-quality "expert demonstrations" for imitation lear
     "research": {
       "erp": 400,
       "srp": 150,
-      "trp": 100,
+      "mrp": 100,
       "reasoning": "Push EL4 for +20% production modifier (+120 PP/turn)."
     },
     "diplomacy": [
@@ -376,11 +376,11 @@ class EC4XPolicyNetwork(nn.Module):
             nn.Linear(128, len(ShipClass) + len(FacilityType))  # All buildable types
         )
 
-        # Research allocation policy (ERP/SRP/TRP splits)
+        # Research allocation policy (ERP/SRP/MRP splits)
         self.research_policy = nn.Sequential(
             nn.Linear(state_dim, 64),
             nn.ReLU(),
-            nn.Linear(64, 3),  # ERP, SRP, TRP percentages
+            nn.Linear(64, 3),  # ERP, SRP, MRP percentages
             nn.Softmax(dim=-1)  # Ensure they sum to 100%
         )
 

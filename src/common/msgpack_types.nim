@@ -199,6 +199,7 @@ proc unpack_type*[S](s: S, x: var EntityIdUnion) =
 # Branches:
 #   EconomicLevel -> elFromLevel, elToLevel, elCost
 #   ScienceLevel  -> slFromLevel, slToLevel, slCost
+#   MilitaryLevel -> mlFromLevel, mlToLevel, mlCost
 #   Technology    -> techField, techFromLevel, techToLevel, techCost
 # Common trailing fields: houseId, prestigeEvent
 # -----------------------------------------------------------------------------
@@ -214,6 +215,10 @@ proc pack_type*[S](s: S, x: ResearchAdvancement) =
     s.pack(x.slFromLevel)
     s.pack(x.slToLevel)
     s.pack(x.slCost)
+  of AdvancementType.MilitaryLevel:
+    s.pack(x.mlFromLevel)
+    s.pack(x.mlToLevel)
+    s.pack(x.mlCost)
   of AdvancementType.Technology:
     s.pack(x.techField.int)
     s.pack(x.techFromLevel)
@@ -249,6 +254,17 @@ proc unpack_type*[S](s: S, x: var ResearchAdvancement) =
       slFromLevel: slFrom,
       slToLevel: slTo,
       slCost: slCost
+    )
+  of AdvancementType.MilitaryLevel:
+    var mlFrom, mlTo, mlCost: int32
+    s.unpack(mlFrom)
+    s.unpack(mlTo)
+    s.unpack(mlCost)
+    x = ResearchAdvancement(
+      advancementType: AdvancementType.MilitaryLevel,
+      mlFromLevel: mlFrom,
+      mlToLevel: mlTo,
+      mlCost: mlCost
     )
   of AdvancementType.Technology:
     var techDisc: int
@@ -1298,14 +1314,14 @@ proc unpack_type*[S](s: S, x: var GameEvent) =
 # =============================================================================
 #
 # Old format: [economic: int32, science: int32, technology: Table[TechField, int32]]
-# New format: [erp: int32, srp: int32, trp: int32]
+# New format: [erp: int32, srp: int32, mrp: int32]
 # Detection: peek at third element — if it's a map, it's old format.
 
 proc pack_type*[S](s: S, x: ResearchPoints) =
   s.pack_array(3)
   s.pack(x.erp)
   s.pack(x.srp)
-  s.pack(x.trp)
+  s.pack(x.mrp)
 
 proc unpack_type*[S](s: S, x: var ResearchPoints) =
   let arrayLen = s.unpack_array()
@@ -1315,9 +1331,9 @@ proc unpack_type*[S](s: S, x: var ResearchPoints) =
   s.unpack(second)
   if s.is_map:
     # Old format: third element is Table[TechField, int32]
-    # Sum per-tech RP into pooled SRP/TRP based on field mapping
+    # Sum per-tech RP into pooled SRP/MRP based on field mapping
     var srp = second  # old science → srp
-    var trp: int32 = 0
+    var mrp: int32 = 0
     let mapLen = s.unpack_map()
     for i in 0 ..< mapLen:
       var fieldInt: int
@@ -1328,10 +1344,10 @@ proc unpack_type*[S](s: S, x: var ResearchPoints) =
       if field.isSrpField():
         srp += rp
       else:
-        trp += rp
-    x = ResearchPoints(erp: first, srp: srp, trp: trp)
+        mrp += rp
+    x = ResearchPoints(erp: first, srp: srp, mrp: mrp)
   else:
-    # New format: third element is int32 (trp)
+    # New format: third element is int32 (mrp)
     var third: int32
     s.unpack(third)
-    x = ResearchPoints(erp: first, srp: second, trp: third)
+    x = ResearchPoints(erp: first, srp: second, mrp: third)

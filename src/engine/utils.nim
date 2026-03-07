@@ -91,18 +91,23 @@ proc slUpgradeCost*(level: int32): int32 =
   let cfg = gameConfig.tech.sl
   return techLevel(cfg.levels, level, "SL", 2, 10).srpRequired
 
+proc mlUpgradeCost*(level: int32): int32 =
+  ## Get MRP cost for advancing from level N to N+1
+  let cfg = gameConfig.tech.ml
+  return techLevel(cfg.levels, level, "ML", 2, 10).mrpRequired
+
 proc techUpgradeCost*(techField: TechField, level: int32): int32 =
-  ## Get TRP/SRP cost for advancing from level N to N+1
+  ## Get MRP/SRP cost for advancing from level N to N+1
   ## Looks up cost from gameConfig.tech based on field and level
 
   case techField
   of TechField.ConstructionTech:
     let cfg = gameConfig.tech.cst
-    return techLevel(cfg.levels, level, "CST", 2, 10).trpCost
+    return techLevel(cfg.levels, level, "CST", 2, 10).mrpCost
 
   of TechField.WeaponsTech:
     let cfg = gameConfig.tech.wep
-    return techLevel(cfg.levels, level, "WEP", 2, 10).trpCost
+    return techLevel(cfg.levels, level, "WEP", 2, 10).mrpCost
 
   of TechField.TerraformingTech:
     if level < 1 or level > 6:
@@ -133,19 +138,19 @@ proc techUpgradeCost*(techField: TechField, level: int32): int32 =
 
   of TechField.FlagshipCommandTech:
     let cfg = gameConfig.tech.fc
-    return techLevel(cfg.levels, level, "FC", 2, 6).trpCost
+    return techLevel(cfg.levels, level, "FC", 2, 6).mrpCost
 
   of TechField.StrategicCommandTech:
     let cfg = gameConfig.tech.sc
-    return techLevel(cfg.levels, level, "SC", 1, 5).trpCost
+    return techLevel(cfg.levels, level, "SC", 1, 5).mrpCost
 
   of TechField.FighterDoctrine:
     let cfg = gameConfig.tech.fd
-    return techLevel(cfg.levels, level, "FD", 2, 3).trpCost
+    return techLevel(cfg.levels, level, "FD", 2, 3).mrpCost
 
   of TechField.AdvancedCarrierOps:
     let cfg = gameConfig.tech.aco
-    return techLevel(cfg.levels, level, "ACO", 1, 3).trpCost
+    return techLevel(cfg.levels, level, "ACO", 1, 3).mrpCost
 
 proc taxTier*(tier: int32): TaxTierData =
   ## Get tax tier data with validation

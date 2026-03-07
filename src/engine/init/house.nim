@@ -21,6 +21,7 @@ proc initHouse*(houseId: HouseId, name: string): House =
       levels: TechLevel(
         el: startingTech.el,
         sl: startingTech.sl,
+        ml: startingTech.ml,
         cst: startingTech.cst,
         wep: startingTech.wep,
         ter: startingTech.ter,
@@ -34,7 +35,7 @@ proc initHouse*(houseId: HouseId, name: string): House =
         fd: startingTech.fd,
         aco: startingTech.aco
       ),
-      accumulated: ResearchPoints(erp: 0, srp: 0, trp: 0),
+      accumulated: ResearchPoints(erp: 0, srp: 0, mrp: 0),
       breakthroughBonus: initTable[TechField, float32](),
     ),
     espionageBudget: EspionageBudget(houseId: houseId),

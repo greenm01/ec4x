@@ -1126,7 +1126,7 @@ You allocate PP to three research pools during the Income Phase:
 
 *Social Research Points (SRP)*: Unlocks critical infrastructure and doctrinal technologies including Fighter Doctrine (FD), Advanced Carrier Operations (ACO), Cloaking (CLK), Electronic Intelligence (ELI), Shields (SLD), Terraforming (TER), and Strategic Lift (STL).
 
-*Tactical Research Points (TRP)*: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes.
+*Military Research Points (MRP)*: Advances weapons (WEP) and construction (CST) technologies. WEP improvements increase ship combat effectiveness. CST improvements increase facility construction capacity and unlock advanced hull classes.
 
 Research pools accumulate over multiple turns. Technologies require specific point thresholds and Science Level (SL) prerequisites to unlock. For complete research progression tables and technology effects, see <<40-research--development,Section 4.0>>.
 
@@ -1211,7 +1211,7 @@ Weapons technology improves ship combat statistics across all hull classes. Each
 
 [cols="^,<,^,^", options="header"]
 |===
-| Tech Level | Prerequisites | TRP Cost | SL Required
+| Tech Level | Prerequisites | MRP Cost | ML Required
 
 | WEP I | None | N/A | 1
 | WEP II | WEP I | 10 | 2
@@ -1297,7 +1297,7 @@ Construction technology increases shipyard and spaceport capacity, enables advan
 
 [cols="^,<,^,^,^,<", options="header"]
 |===
-| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier | Unlocked Hulls
+| Tech Level | Prerequisites | MRP Cost | ML Required | Capacity Multiplier | Unlocked Hulls
 
 | CST I | None | N/A | 1 | 1.0x | DD, CL, CA, CV
 | CST II | CST I | 10 | 2 | 1.1x | BC
@@ -1511,7 +1511,7 @@ Command technology increases the Command Rating (CR) of capital ship flagships, 
 
 [cols="^,<,^,^,^", options="header"]
 |===
-| Tech Level | Prerequisites | TRP Cost | SL Required | CR Increase
+| Tech Level | Prerequisites | MRP Cost | ML Required | CR Increase
 
 | CMD I | None | N/A | 1 | Base CR
 | CMD II | CMD I | 10 | 2 | +1 CR
@@ -1580,7 +1580,7 @@ Fighter Doctrine improves organizational efficiency and training throughput, inc
 
 [cols="^,<,^,^,^", options="header"]
 |===
-| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier
+| Tech Level | Prerequisites | MRP Cost | ML Required | Capacity Multiplier
 
 | FD I | None | N/A | 1 | 1.0x
 | FD II | FD I | 15 | 2 | 1.5x
@@ -1623,7 +1623,7 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater fighte
 
 [cols="^,<,^,^,^,^", options="header"]
 |===
-| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity | CX Capacity
+| Tech Level | Prerequisites | MRP Cost | ML Required | CV Capacity | CX Capacity
 
 | ACO I | None | N/A | 1 | 3 FS | 5 FS
 | ACO II | ACO I | 20 | 4 | 4 FS | 6 FS
@@ -1654,7 +1654,7 @@ For carrier combat mechanics, see <<241-fighter-squadrons--carriers,Section 2.4.
 
 == 4.14 Strategic Considerations
 
-- *Balancing R&D Investments*: You must balance investments across ERP, SRP, and TRP to maximize your economic output, technological advancements, and military strength.
+- *Balancing R&D Investments*: You must balance investments across ERP, SRP, and MRP to maximize your economic output, technological advancements, and military strength.
 - *Economic Synergies*: Increasing EL and SL together provides synergistic benefits, enhancing your overall productivity and unlocking powerful technologies.
 - *Adapting to Opponents*: Flexibility in R&D strategy is key. Prioritize weapons technology (WEP) during military conflicts or focus on terraforming (TER) for long-term economic growth—critical decisions based on the game state.
 
@@ -4263,7 +4263,7 @@ Penalty mechanics describe how prestige is deducted based on player actions and 
 | SL | Science Level – scientific advancement (max 10+) | <<43-science-level-sl,4.3>>
 | SRP | Science Research Points – used to advance Science Level | <<41-research-points-rp,4.1>>
 | TL | Tech Level – generic technology level (context dependent) | <<40-research-development,4.0>>
-| TRP | Technology Research Points – used to purchase specific technologies | <<41-research-points-rp,4.1>>
+| MRP | Military Research Points – used to purchase specific technologies | <<41-research-points-rp,4.1>>
 | WEP | Weapons Level – determines available ship classes and upgrades | <<101-space-force-wep1,9.1>>
 |===
 

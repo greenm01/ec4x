@@ -332,12 +332,12 @@ R&D follows a two-step **Deposit/Purchase** cycle. During the Income Phase, you 
 ```
 ERP = PP × (1 + log₁₀(GHO)/3) × (1 + SL/10)
 SRP = PP × (1 + log₁₀(GHO)/4) × (1 + SL/5)
-TRP = PP × (1 + log₁₀(GHO)/3.5) × (1 + SL/20)
+MRP = PP × (1 + log₁₀(GHO)/3.5) × (1 + ML/20)
 ```
 
 Where:
 - **GHO**: Gross House Output (sum of all colony GCO)
-- **SL**: Science Level (1-10)
+- **ML**: Military Level (1-10)
 - **log₁₀**: Base-10 logarithm (provides diminishing returns on economic scale)
 
 **Logarithmic Scaling**: The logarithmic GHO bonus ensures that economic growth provides meaningful research advantages without creating runaway snowball effects. A House with 10x the GHO of a rival has only ~1.3x the research efficiency, not 10x.
@@ -350,14 +350,15 @@ Benefits strongly from both GHO and SL bonuses (strongest GHO scaling).
 tech fields (TER, ELI, CLK, SLD, CIC, STL). Benefits from both GHO and SL
 bonuses (moderate GHO scaling, strong SL scaling).
 
-**Technology Research Points (TRP)**: Advances TRP-funded tech fields (CST, WEP,
-FC, SC, FD, ACO). WEP improves ship combat effectiveness. CST improves
-construction capacity and unlocks hull classes. Benefits from both GHO and SL
-bonuses (moderate GHO scaling, modest SL scaling).
+**Military Research Points (MRP)**: Advances Military Level (ML) and
+MRP-funded tech fields (CST, WEP, FC, SC, FD, ACO). WEP improves ship combat
+effectiveness. CST improves construction capacity and unlocks hull classes.
+Benefits from both GHO and ML bonuses (moderate GHO scaling, modest ML
+scaling).
 
 **Efficiency Scaling Examples:**
 
-| GHO | ERP Bonus | SRP Bonus | TRP Bonus |
+| GHO | ERP Bonus | SRP Bonus | MRP Bonus |
 |-----|-----------|-----------|-----------|
 | 100 | +67% | +50% | +57% |
 | 1,000 | +100% | +75% | +86% |
@@ -369,11 +370,11 @@ bonuses (moderate GHO scaling, modest SL scaling).
 
 Each research pool has a maximum capacity equal to the sum of RP costs for all unresearched tech levels funded by that pool. PP deposited in excess of pool capacity is returned to the treasury. As you purchase technology levels, the pool's capacity shrinks — there is no reason to stockpile RP beyond what remains to research.
 
-**Worked Example — TRP Pool:**
+**Worked Example — MRP Pool:**
 
-A House at WEP IV, CST IV, FC III, SC III, FD II, ACO II has the following remaining TRP costs:
+A House at WEP IV, CST IV, FC III, SC III, FD II, ACO II has the following remaining MRP costs:
 
-| Tech | Remaining Levels | Remaining TRP Cost |
+| Tech | Remaining Levels | Remaining MRP Cost |
 |------|------------------|--------------------|
 | WEP  | V–X              | 19+24+31+40+52+68 = 234 |
 | CST  | V–X              | 19+24+31+40+52+68 = 234 |
@@ -381,9 +382,9 @@ A House at WEP IV, CST IV, FC III, SC III, FD II, ACO II has the following remai
 | SC   | IV–VI            | 22+28+36 = 86     |
 | FD   | III              | 17                 |
 | ACO  | III              | 22                 |
-| **Total** |             | **670 TRP**        |
+| **Total** |             | **670 MRP**        |
 
-This House's TRP pool capacity is 670. Any PP deposit that would push accumulated TRP above 670 is returned to the treasury. If the House then purchases WEP V (19 TRP), the pool's capacity drops to 651 and its stored RP decreases by 19.
+This House's MRP pool capacity is 670. Any PP deposit that would push accumulated MRP above 670 is returned to the treasury. If the House then purchases WEP V (19 MRP), the pool's capacity drops to 651 and its stored RP decreases by 19.
 
 ### 3.8.2 Emergency Liquidation
 

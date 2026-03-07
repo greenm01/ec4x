@@ -42,6 +42,7 @@ startingTech {
     // Initial technology levels - all start at level 1
     economicLevel 1
     scienceLevel 1
+    militaryLevel 1
     weapons 1
     construction 1
     shields 1

@@ -19,10 +19,15 @@ type
     erpRequired*: int32
     srpRequired*: int32
 
+  MlLevelData* = object
+    ## Military Level data (ML)
+    ## Advancement cost uses mrpRequired.
+    mrpRequired*: int32
+
   WepLevelData* = object
     ## Weapons Tech level data (WEP)
-    slRequired*: int32
-    trpCost*: int32
+    mlRequired*: int32
+    mrpCost*: int32
 
   EliLevelData* = object
     ## Electronic Intelligence level data (ELI)
@@ -62,36 +67,36 @@ type
 
   FcLevelData* = object
     ## Fleet Command level data (FC)
-    slRequired*: int32
-    trpCost*: int32
+    mlRequired*: int32
+    mrpCost*: int32
     maxShipsPerFleet*: int32
 
   ScLevelData* = object
     ## Strategic Command level data (SC)
-    slRequired*: int32
-    trpCost*: int32
+    mlRequired*: int32
+    mrpCost*: int32
     c2Bonus*: int32
     maxCombatFleetsBase*: int32
 
   FdLevelData* = object
     ## Fighter Doctrine level data (FD)
-    slRequired*: int32
-    trpCost*: int32
+    mlRequired*: int32
+    mrpCost*: int32
     capacityMultiplier*: float32
     description*: string
 
   AcoLevelData* = object
     ## Advanced Carrier Operations level data (ACO)
-    slRequired*: int32
-    trpCost*: int32
+    mlRequired*: int32
+    mrpCost*: int32
     cvCapacity*: int32
     cxCapacity*: int32
     description*: string
 
   CstLevelData* = object
     ## Construction Tech level data (CST)
-    slRequired*: int32
-    trpCost*: int32
+    mlRequired*: int32
+    mrpCost*: int32
     unlocks*: seq[string]
 
   TerraformingUpgradeCostData* = object
@@ -108,6 +113,10 @@ type
   SlConfig* = object
     ## Science Level configuration (SL 2-10)
     levels*: Table[int32, SlLevelData]
+
+  MlConfig* = object
+    ## Military Level configuration (ML 2-10)
+    levels*: Table[int32, MlLevelData]
 
   EliConfig* = object
     ## Electronic Intelligence configuration (ELI 1-15)
@@ -175,6 +184,7 @@ type
     ## Complete technology configuration loaded from KDL
     el*: ElConfig
     sl*: SlConfig
+    ml*: MlConfig
     cst*: CstConfig
     wep*: WepConfig
     ter*: TerConfig

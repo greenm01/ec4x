@@ -401,15 +401,15 @@ proc generateStarbaseObservation*(
     (
       erp: targetHouse.techTree.accumulated.erp,
       srp: targetHouse.techTree.accumulated.srp,
-      trp: targetHouse.techTree.accumulated.trp,
+      mrp: targetHouse.techTree.accumulated.mrp,
     )
   )
 
   # Current research focus (most accumulated type)
   let economicAccum = targetHouse.techTree.accumulated.erp
   let scienceAccum = targetHouse.techTree.accumulated.srp
-  let totalTRP = targetHouse.techTree.accumulated.trp
-  let maxAccum = max([economicAccum, scienceAccum, totalTRP])
+  let totalMrp = targetHouse.techTree.accumulated.mrp
+  let maxAccum = max([economicAccum, scienceAccum, totalMrp])
 
   if maxAccum == economicAccum:
     report.currentResearch = some("Economic")

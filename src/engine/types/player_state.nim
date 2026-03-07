@@ -120,7 +120,7 @@ type
     grossIncome*: Option[int32]
     netIncome*: Option[int32]
     taxRate*: Option[float32]
-    researchAllocations*: Option[tuple[erp: int32, srp: int32, trp: int32]]
+    researchAllocations*: Option[tuple[erp: int32, srp: int32, mrp: int32]]
     currentResearch*: Option[string]
     techLevels*: Option[TechLevel]
 

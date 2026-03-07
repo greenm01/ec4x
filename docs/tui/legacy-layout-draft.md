@@ -65,7 +65,7 @@ truncate long fields with ellipsis. Status bar uses shortened labels (OVR, PLN, 
 | `1` | Overview   | Empire dashboard, leaderboard, alerts            |
 | `2` | Planets    | Colony list and detail management                |
 | `3` | Fleets     | Fleet management (system view, list, details)    |
-| `4` | Research   | Tech levels, ERP/SRP/TRP allocation              |
+| `4` | Research   | Tech levels, ERP/SRP/MRP allocation              |
 | `5` | Espionage  | EBP/CIP budget, intelligence operations          |
 | `6` | Economy    | House tax rate, treasury, income breakdown       |
 | `7` | Reports    | Turn summaries, combat/intel reports             |
@@ -172,7 +172,7 @@ vim-style direct commands:
 # Research Commands
 :research erp 50        Allocate 50 PP to Economic Research Pool
 :research srp 30        Allocate 30 PP to Scientific Research Pool
-:research trp 20        Allocate 20 PP to Technical Research Pool
+:research mrp 20        Allocate 20 PP to Military Research Pool
 
 # Espionage Commands
 :buy ebp 3              Purchase 3 EBP (120 PP)
@@ -865,10 +865,10 @@ Accessible via `[L]` from Overview. Shows all inter-house diplomatic relations:
 │   → Gates all other tech research                            │  SC  Strategic Cmd  2  FD  Fighter Doc  1             │
 │   → Current: 80 SRP accumulated, 150 for next level          │  CST Construction   2  ACO Adv Carrier  0             │
 │                                                              │                                                       │
-│ Technical Pool (TRP):    ▓▓░░░░░░░░  20 PP   [T+][T-]        │                                                       │
+│ Technical Pool (MRP):    ▓▓░░░░░░░░  20 PP   [T+][T-]        │                                                       │
 │   → Improves: WEP, CST, TER, ELI, CLK, SLD, CIC,             │                                                       │
 │               STL, FC, SC, FD, ACO                           │                                                       │
-│   → Current: 45 TRP accumulated                              │                                                       │
+│   → Current: 45 MRP accumulated                              │                                                       │
 │                                                              │                                                       │
 ├──────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────┤
 │ RECENT BREAKTHROUGHS                                                                                                 │
@@ -1332,7 +1332,7 @@ Deterministic mock data in `samples/tui/` for layout validation without full sim
 
 5. **Research Screen MVP** (Sprint 8)
    - Tech level display grid
-   - ERP/SRP/TRP allocation controls
+   - ERP/SRP/MRP allocation controls
    - Breakthrough history
 
 6. **Espionage Screen MVP** (Sprint 9)

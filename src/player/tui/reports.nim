@@ -888,6 +888,7 @@ proc generateEconomyReports(
           linkView: 4, linkLabel: "Research",
         ))
     checkTech("Economic Level", ot.el, nt.el)
+    checkTech("Military Level", ot.ml, nt.ml)
     checkTech("Science Level", ot.sl, nt.sl)
     checkTech("Construction Tech", ot.cst, nt.cst)
     checkTech("Weapons Tech", ot.wep, nt.wep)

@@ -29,6 +29,13 @@ proc validateTechTree*(techTree: TechTree) =
       "SL (Science Level) cannot be less than 1. Found: " & $techTree.levels.sl &
         ". Use initTechTree() to create valid tech tree.",
     )
+  if techTree.levels.ml < 1:
+    raise newException(
+      ValueError,
+      "ML (Military Level) cannot be less than 1. Found: " &
+        $techTree.levels.ml &
+        ". Use initTechTree() to create valid tech tree.",
+    )
   if techTree.levels.el > 11:
     raise newException(
       ValueError,
@@ -38,4 +45,9 @@ proc validateTechTree*(techTree: TechTree) =
     raise newException(
       ValueError,
       "SL (Science Level) cannot exceed 11. Found: " & $techTree.levels.sl,
+    )
+  if techTree.levels.ml > 11:
+    raise newException(
+      ValueError,
+      "ML (Military Level) cannot exceed 11. Found: " & $techTree.levels.ml,
     )

@@ -24,6 +24,8 @@ proc progressionMaxLevel*(item: ResearchItem): int =
   case item.kind
   of ResearchItemKind.EconomicLevel:
     maxKey(gameConfig.tech.el.levels)
+  of ResearchItemKind.MilitaryLevel:
+    maxKey(gameConfig.tech.ml.levels)
   of ResearchItemKind.ScienceLevel:
     maxKey(gameConfig.tech.sl.levels)
   of ResearchItemKind.Technology:
@@ -56,6 +58,7 @@ proc progressionMaxLevel*(item: ResearchItem): int =
 proc maxProgressionLevel*(): int =
   maxFromValues([
     maxKey(gameConfig.tech.el.levels),
+    maxKey(gameConfig.tech.ml.levels),
     maxKey(gameConfig.tech.sl.levels),
     maxKey(gameConfig.tech.wep.levels),
     maxKey(gameConfig.tech.cst.levels),
@@ -75,8 +78,10 @@ proc techDescription*(item: ResearchItem): string =
   case item.kind
   of ResearchItemKind.EconomicLevel:
     "Improves industrial output and economic efficiency."
+  of ResearchItemKind.MilitaryLevel:
+    "Gates access to advanced military research tiers."
   of ResearchItemKind.ScienceLevel:
-    "Gates access to advanced research tiers."
+    "Gates access to advanced science research tiers."
   of ResearchItemKind.Technology:
     case item.field
     of TechField.WeaponsTech:
@@ -128,6 +133,14 @@ proc techEffectForLevel*(item: ResearchItem, level: int): string =
       "IU x" & formatMultiplier(mult)
     else:
       "IU x" & formatMultiplier(elModifier(int32(level)))
+  of ResearchItemKind.MilitaryLevel:
+    if level <= 1:
+      "Base doctrine"
+    elif gameConfig.tech.ml.levels.hasKey(int32(level)):
+      let data = gameConfig.tech.ml.levels[int32(level)]
+      "MRP " & $data.mrpRequired
+    else:
+      "Military tier " & $level
   of ResearchItemKind.ScienceLevel:
     if level <= 1:
       "Base infrastructure"
@@ -206,6 +219,8 @@ proc techCostForLevel*(item: ResearchItem, level: int): int =
     return 0
   if item.kind == ResearchItemKind.EconomicLevel:
     return elUpgradeCost(int32(level - 1)).int
+  if item.kind == ResearchItemKind.MilitaryLevel:
+    return mlUpgradeCost(int32(level - 1)).int
   if item.kind == ResearchItemKind.ScienceLevel:
     return slUpgradeCost(int32(level - 1)).int
   techUpgradeCost(item.field, int32(level - 1)).int
@@ -214,14 +229,19 @@ proc techProgressCost*(item: ResearchItem, currentLevel: int): int =
   case item.kind
   of ResearchItemKind.EconomicLevel:
     elUpgradeCost(int32(currentLevel)).int
+  of ResearchItemKind.MilitaryLevel:
+    mlUpgradeCost(int32(currentLevel)).int
   of ResearchItemKind.ScienceLevel:
     slUpgradeCost(int32(currentLevel)).int
   of ResearchItemKind.Technology:
     techUpgradeCost(item.field, int32(currentLevel)).int
 
-proc techSlRequiredForLevel*(item: ResearchItem, level: int): int =
-  if item.kind == ResearchItemKind.ScienceLevel or
-      item.kind == ResearchItemKind.EconomicLevel:
+proc techGateRequiredForLevel*(item: ResearchItem, level: int): int =
+  if item.kind in {
+    ResearchItemKind.EconomicLevel,
+    ResearchItemKind.MilitaryLevel,
+    ResearchItemKind.ScienceLevel
+  }:
     return 0
   if level <= 0:
     return 0
@@ -229,10 +249,10 @@ proc techSlRequiredForLevel*(item: ResearchItem, level: int): int =
   case item.field
   of TechField.ConstructionTech:
     if gameConfig.tech.cst.levels.hasKey(lvl):
-      return gameConfig.tech.cst.levels[lvl].slRequired.int
+      return gameConfig.tech.cst.levels[lvl].mlRequired.int
   of TechField.WeaponsTech:
     if gameConfig.tech.wep.levels.hasKey(lvl):
-      return gameConfig.tech.wep.levels[lvl].slRequired.int
+      return gameConfig.tech.wep.levels[lvl].mlRequired.int
   of TechField.TerraformingTech:
     if gameConfig.tech.ter.levels.hasKey(lvl):
       return gameConfig.tech.ter.levels[lvl].slRequired.int
@@ -253,14 +273,34 @@ proc techSlRequiredForLevel*(item: ResearchItem, level: int): int =
       return gameConfig.tech.stl.levels[lvl].slRequired.int
   of TechField.FlagshipCommandTech:
     if gameConfig.tech.fc.levels.hasKey(lvl):
-      return gameConfig.tech.fc.levels[lvl].slRequired.int
+      return gameConfig.tech.fc.levels[lvl].mlRequired.int
   of TechField.StrategicCommandTech:
     if gameConfig.tech.sc.levels.hasKey(lvl):
-      return gameConfig.tech.sc.levels[lvl].slRequired.int
+      return gameConfig.tech.sc.levels[lvl].mlRequired.int
   of TechField.FighterDoctrine:
     if gameConfig.tech.fd.levels.hasKey(lvl):
-      return gameConfig.tech.fd.levels[lvl].slRequired.int
+      return gameConfig.tech.fd.levels[lvl].mlRequired.int
   of TechField.AdvancedCarrierOps:
     if gameConfig.tech.aco.levels.hasKey(lvl):
-      return gameConfig.tech.aco.levels[lvl].slRequired.int
+      return gameConfig.tech.aco.levels[lvl].mlRequired.int
   return 0
+
+proc techGateRequiredForLevel*(field: TechField, level: int): int =
+  techGateRequiredForLevel(
+    ResearchItem(
+      category: "",
+      code: "",
+      name: "",
+      kind: ResearchItemKind.Technology,
+      field: field
+    ),
+    level
+  )
+
+proc techGateLabel*(item: ResearchItem): string =
+  if item.kind != ResearchItemKind.Technology:
+    return "-"
+  if item.field.isSrpField():
+    "SL"
+  else:
+    "ML"

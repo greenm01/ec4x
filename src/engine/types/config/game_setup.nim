@@ -20,6 +20,7 @@ type
     ## Uses standard tech abbreviations (see docs/specs/04-research_development.md)
     el*: int32   # Economic Level
     sl*: int32   # Science Level
+    ml*: int32   # Military Level
     wep*: int32  # Weapons Tech
     cst*: int32  # Construction Tech
     sld*: int32  # Shield Tech

@@ -35,6 +35,7 @@ proc parseStartingTech(node: KdlNode, ctx: var KdlConfigContext): StartingTechCo
   result = StartingTechConfig(
     el: node.requireInt32("economicLevel", ctx),
     sl: node.requireInt32("scienceLevel", ctx),
+    ml: node.requireInt32("militaryLevel", ctx),
     wep: node.requireInt32("weapons", ctx),
     cst: node.requireInt32("construction", ctx),
     sld: node.requireInt32("shields", ctx),

@@ -118,7 +118,7 @@ proc corruptStarbaseIntel*(
       (
         erp: corruptInt(alloc.erp, magnitude, rng),
         srp: corruptInt(alloc.srp, magnitude, rng),
-        trp: corruptInt(alloc.trp, magnitude, rng),
+        mrp: corruptInt(alloc.mrp, magnitude, rng),
       )
     )
 

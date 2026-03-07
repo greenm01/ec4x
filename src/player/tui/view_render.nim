@@ -2,7 +2,7 @@
 ##
 ## Rendering functions for the SAM-based TUI views.
 
-import std/[options, unicode, strutils, tables]
+import std/[options, unicode, strutils, tables, math]
 import std/tables as stdtables
 
 import ../../engine/types/[core, player_state as ps_types, fleet, colony,
@@ -1938,11 +1938,11 @@ proc renderLiquidationConfirm(canvas: Rect, buf: var CellBuffer, model: TuiModel
   let points = if model.view.researchPoints.isSome:
     model.view.researchPoints.get()
   else:
-    ResearchPoints(erp: 0, srp: 0, trp: 0)
+    ResearchPoints(erp: 0, srp: 0, mrp: 0)
   let poolName = case pool
     of ResearchPoolIdx.PoolERP: "ERP"
     of ResearchPoolIdx.PoolSRP: "SRP"
-    of ResearchPoolIdx.PoolTRP: "TRP"
+    of ResearchPoolIdx.PoolMRP: "MRP"
   let accumulated = research_projection.poolAccumulated(points, pool)
   let amount = model.ui.liquidationAmount.int
   let ppReturn = amount div 2
@@ -2006,13 +2006,13 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     model.view.techLevels.get()
   else:
     TechLevel(
-      el: 1, sl: 1, cst: 1, wep: 1, ter: 1, eli: 1, clk: 1,
+      el: 1, sl: 1, ml: 1, cst: 1, wep: 1, ter: 1, eli: 1, clk: 1,
       sld: 1, cic: 1, stl: 1, fc: 1, sc: 1, fd: 1, aco: 1
     )
   let points = if model.view.researchPoints.isSome:
     model.view.researchPoints.get()
   else:
-    ResearchPoints(erp: 0, srp: 0, trp: 0)
+    ResearchPoints(erp: 0, srp: 0, mrp: 0)
   let gho = research_projection.projectedResearchGho(
     levels,
     model.view.colonies,
@@ -2026,6 +2026,8 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     case item.kind
     of ResearchItemKind.EconomicLevel:
       "ERP"
+    of ResearchItemKind.MilitaryLevel:
+      "MRP"
     of ResearchItemKind.ScienceLevel:
       "SRP"
     of ResearchItemKind.Technology:
@@ -2035,17 +2037,22 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
           TechField.CounterIntelligence, TechField.StrategicLiftTech:
         "SRP"
       else:
-        "TRP"
+        "MRP"
 
   # Left pane required height (full list + three summary lines).
   var listRowCount = 0
-  var lastPool = ""
+  var lastBoundary = ""
   for item in items:
-    let pool = sizePoolLabel(item)
-    if lastPool.len > 0 and pool != lastPool:
+    let boundary =
+      case item.code
+      of "ML", "SL":
+        "break"
+      else:
+        sizePoolLabel(item)
+    if lastBoundary.len > 0 and boundary != lastBoundary:
       listRowCount.inc
     listRowCount.inc
-    lastPool = pool
+    lastBoundary = boundary
   let listColumns = @[
     tableColumn("Pool", 4, table.Alignment.Left),
     tableColumn("Tech", 4, table.Alignment.Left),
@@ -2067,16 +2074,17 @@ proc renderResearchModal*(canvas: Rect, buf: var CellBuffer,
     )
     let maxLevel = progressionMaxLevel(item)
     let maxLevelInt = max(1, maxLevel)
-    let slReq = techSlRequiredForLevel(item, projectedLevel)
+    let gateReq = techGateRequiredForLevel(item, projectedLevel)
+    let gateLabel = techGateLabel(item)
     let progColumns = @[
       tableColumn("Lvl", 3, table.Alignment.Center),
       tableColumn("Cost", 6, table.Alignment.Right),
-      tableColumn("SL", 4, table.Alignment.Right),
+      tableColumn(gateLabel, 4, table.Alignment.Right),
       tableColumn("Effect", 0, table.Alignment.Left, 16)
     ]
     let progProbe = table(progColumns).showBorders(effBorders)
     let progTableHeight = progProbe.renderHeight(maxLevelInt)
-    let optionalRows = 5 + (if slReq > 0: 1 else: 0)
+    let optionalRows = 5 + (if gateReq > 0: 1 else: 0)
     let detailInnerNeed = 3 + optionalRows + 1 + progTableHeight
     detailPaneNeed = detailInnerNeed + paneChromeRows
 
@@ -2099,6 +2107,8 @@ proc researchPoolLabel(item: ResearchItem): string =
   case item.kind
   of ResearchItemKind.EconomicLevel:
     "ERP"
+  of ResearchItemKind.MilitaryLevel:
+    "MRP"
   of ResearchItemKind.ScienceLevel:
     "SRP"
   of ResearchItemKind.Technology:
@@ -2108,7 +2118,7 @@ proc researchPoolLabel(item: ResearchItem): string =
         TechField.CounterIntelligence, TechField.StrategicLiftTech:
       "SRP"
     else:
-      "TRP"
+      "MRP"
 
 proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if area.isEmpty or area.height < 10:
@@ -2135,13 +2145,13 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     model.view.techLevels.get()
   else:
     TechLevel(
-      el: 1, sl: 1, cst: 1, wep: 1, ter: 1, eli: 1, clk: 1,
+      el: 1, sl: 1, ml: 1, cst: 1, wep: 1, ter: 1, eli: 1, clk: 1,
       sld: 1, cic: 1, stl: 1, fc: 1, sc: 1, fd: 1, aco: 1
     )
   let points = if model.view.researchPoints.isSome:
     model.view.researchPoints.get()
   else:
-    ResearchPoints(erp: 0, srp: 0, trp: 0)
+    ResearchPoints(erp: 0, srp: 0, mrp: 0)
   let gho = research_projection.projectedResearchGho(
     levels,
     model.view.colonies,
@@ -2149,7 +2159,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     model.view.houseTaxRate
   )
 
-  # Pool strip: ERP/SRP/TRP deposit cards at top
+  # Pool strip: ERP/SRP/MRP deposit cards at top
   const poolStripH = 7
   let psSections = vertical()
     .constraints(length(poolStripH), fill())
@@ -2166,13 +2176,13 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
   if not psInner.isEmpty:
     let cardsH = psInner.height
     let cardW3 = psInner.width div 3
-    let poolIdxs = [ResearchPoolIdx.PoolERP, ResearchPoolIdx.PoolSRP,
-                    ResearchPoolIdx.PoolTRP]
-    let poolNames = ["ERP", "SRP", "TRP"]
-    let poolRPs = [points.erp.int, points.srp.int, points.trp.int]
+    let poolIdxs = [ResearchPoolIdx.PoolERP, ResearchPoolIdx.PoolMRP,
+                    ResearchPoolIdx.PoolSRP]
+    let poolNames = ["ERP", "MRP", "SRP"]
+    let poolRPs = [points.erp.int, points.mrp.int, points.srp.int]
     let poolDeps = [model.ui.researchDeposits.erp,
-                    model.ui.researchDeposits.srp,
-                    model.ui.researchDeposits.trp]
+                    model.ui.researchDeposits.mrp,
+                    model.ui.researchDeposits.srp]
     for i in 0 ..< 3:
       let poolIdx = poolIdxs[i]
       let cw = if i < 2: cardW3 else: psInner.width - 2 * cardW3
@@ -2185,7 +2195,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       if cInner.isEmpty:
         continue
       let poolRP = research_projection.projectedPoolRP(
-        points, model.ui.researchDeposits, poolIdx, gho, levels.sl
+        points, model.ui.researchDeposits, poolIdx, gho, levels
       )
       let allocated = research_projection.poolAllocForPool(model.ui.researchAllocations, poolIdx)
       let cap = research_projection.poolCap(levels, poolIdx)
@@ -2201,12 +2211,13 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
             (barW, 0, 0)
           else:
             let dark = min(existingRP, totalBalance)
-            let light = totalBalance - dark
-            let empty = cap - totalBalance
-            let total = dark + light + empty
-            let d = if total > 0: dark * barW div total else: barW
-            let l = if total > 0: light * barW div total else: 0
-            (d, l, max(0, barW - d - l))
+            let filledEnd =
+              min(barW, int(round(float(totalBalance * barW) / float(cap))))
+            let darkEnd =
+              min(filledEnd, int(round(float(dark * barW) / float(cap))))
+            let d = min(barW, darkEnd)
+            let l = max(0, filledEnd - d)
+            (d, l, max(0, barW - filledEnd))
         var bx = cInner.x
         if darkCells > 0:
           discard buf.setString(bx, cInner.y,
@@ -2252,14 +2263,20 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     .rowStyle(normalStyle())
     .selectedStyle(if listFocused: selectedStyle() else: normalStyle())
 
-  var lastPool = ""
+  var lastBoundary = ""
   var rowIdx = 0
   var selectedRowIdx = -1
   for idx, item in items:
-    let pool = researchPoolLabel(item)
-    if lastPool.len > 0 and pool != lastPool:
+    let boundary =
+      case item.code
+      of "ML", "SL":
+        "break"
+      else:
+        researchPoolLabel(item)
+    if lastBoundary.len > 0 and boundary != lastBoundary:
       listTable.addSeparatorRow()
       rowIdx.inc
+    let pool = researchPoolLabel(item)
     let currentLevel = research_projection.currentTechLevel(levels, item)
     let projLevel = research_projection.projectedTechLevel(
       levels, points, model.ui.researchDeposits, model.ui.researchPurchases,
@@ -2283,9 +2300,19 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       else: ""
     var cellStyles: seq[Option[CellStyle]] = @[]
     cellStyles.setLen(listColumns.len)
+    let isSelected = idx == selection
     if blocked:
+      let blockedStyle =
+        if isSelected:
+          CellStyle(
+            fg: canvasDimStyle().fg,
+            bg: selectedStyle().bg,
+            attrs: selectedStyle().attrs
+          )
+        else:
+          canvasDimStyle()
       for i in 0 ..< cellStyles.len:
-        cellStyles[i] = some(canvasDimStyle())
+        cellStyles[i] = some(blockedStyle)
     listTable.addRow(TableRow(
       cells: @[
         pool,
@@ -2300,7 +2327,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     if idx == selection:
       selectedRowIdx = rowIdx
     rowIdx.inc
-    lastPool = pool
+    lastBoundary = boundary
 
   if items.len > 0 and selectedRowIdx >= 0:
     listTable = listTable.selectedIdx(selectedRowIdx)
@@ -2383,7 +2410,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let progColumns = @[
       tableColumn("Lvl", 3, table.Alignment.Center),
       tableColumn("Cost", 6, table.Alignment.Right),
-      tableColumn("SL", 4, table.Alignment.Right),
+      tableColumn(techGateLabel(item), 4, table.Alignment.Right),
       tableColumn("Effect", 0, table.Alignment.Left, 16)
     ]
 
@@ -2396,15 +2423,15 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     let maxLevelInt = max(1, maxLevel)
     for lvl in 1 .. maxLevelInt:
       let costFor = techCostForLevel(item, lvl)
-      let slFor = techSlRequiredForLevel(item, lvl)
+      let gateFor = techGateRequiredForLevel(item, lvl)
       let effect = techEffectForLevel(item, lvl)
-      let slLabel = if slFor > 0: $slFor else: "-"
-      progTable.addRow(@[$lvl, $costFor, slLabel, effect])
+      let gateText = if gateFor > 0: $gateFor else: "-"
+      progTable.addRow(@[$lvl, $costFor, gateText, effect])
 
     let selectedLevel = clamp(level - 1, 0, maxLevelInt - 1)
     progTable = progTable.selectedIdx(selectedLevel)
     let fullProgTableHeight = progTable.renderHeight(maxLevelInt)
-    let slReq = techSlRequiredForLevel(item, level)
+    let gateReq = techGateRequiredForLevel(item, level)
 
     # Reserve space for progression table first, then render lower-priority
     # detail lines only if room remains.
@@ -2443,14 +2470,14 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       )
       dy += 1
       optionalBudget -= 1
-    if slReq > 0 and optionalBudget > 0 and dy < detailInner.bottom:
-      let slLine = "SL Required: " & $slReq
+    if gateReq > 0 and optionalBudget > 0 and dy < detailInner.bottom:
+      let gateLine = techGateLabel(item) & " Required: " & $gateReq
       renderLine(
         detailInner,
         buf,
         detailInner.x,
         dy,
-        slLine,
+        gateLine,
         modalDimStyle()
       )
       dy += 1

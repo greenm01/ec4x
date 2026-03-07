@@ -34,6 +34,7 @@ startingTech {
     (docs)"docs/specs/01-gameplay.md#section-1-2"
     economicLevel 1
     scienceLevel 1
+    militaryLevel 1
     weapons 1
     construction 1
     shields 1

@@ -1,6 +1,6 @@
 # 4.0 Research & Development
 
-R&D follows a **Deposit/Purchase** model. You deposit Production Points into three research pools (ERP, SRP, TRP) during the Income Phase, where they convert into Research Points that accumulate across turns. You then purchase technology levels by spending accumulated RP from the appropriate pool. Pool capacity, conversion formulas, and emergency liquidation rules are defined in [Section 3.8](03-economy.md#38-research--development-investment).
+R&D follows a **Deposit/Purchase** model. You deposit Production Points into three research pools (ERP, SRP, MRP) during the Income Phase, where they convert into Research Points that accumulate across turns. You then purchase technology levels by spending accumulated RP from the appropriate pool. Pool capacity, conversion formulas, and emergency liquidation rules are defined in [Section 3.8](03-economy.md#38-research--development-investment).
 
 ## 4.0.1 Technology Architecture
 
@@ -12,16 +12,17 @@ These are checked at runtime from `house.techTree.levels` and apply to all appli
 
 | Tech | Full Name                  | Cost    | Application                                    | Apply Method |
 |:----:| -------------------------- |:-------:| ---------------------------------------------- |:------------:|
-| CST  | Construction Tech          | TRP     | Gates which ship classes can be built          | Build-time   |
+| CST  | Construction Tech          | MRP     | Gates which ship classes can be built          | Build-time   |
 | ELI  | Electronic Intelligence    | SRP     | Detection capability (all fleets/colonies)     | Runtime      |
 | CLK  | Cloaking Tech              | SRP     | Cloaking effectiveness for Raiders             | Runtime      |
-| ACO  | Advanced Carrier Ops       | TRP     | Carrier capacity (CV/CX hangar size)           | Runtime      |
+| ACO  | Advanced Carrier Ops       | MRP     | Carrier capacity (CV/CX hangar size)           | Runtime      |
 | STL  | Strategic Lift             | SRP     | Transport capacity (ETAC/TT carry limit)       | Runtime      |
-| FC   | Fleet Command              | TRP     | Maximum fleet size (ships per fleet)           | Runtime      |
-| SC   | Strategic Command          | TRP     | C2 Pool bonus for total navy capacity          | Runtime      |
-| FD   | Fighter Doctrine           | TRP     | Fighter capacity multiplier per colony         | Runtime      |
+| FC   | Fleet Command              | MRP     | Maximum fleet size (ships per fleet)           | Runtime      |
+| SC   | Strategic Command          | MRP     | C2 Pool bonus for total navy capacity          | Runtime      |
+| FD   | Fighter Doctrine           | MRP     | Fighter capacity multiplier per colony         | Runtime      |
 | EL   | Economic Level             | ERP     | Production multiplier (all colonies)           | Runtime      |
-| SL   | Science Level              | SRP     | Gates tech research                            | Build-time   |
+| ML   | Military Level             | MRP     | Gates MRP-funded military research             | Build-time   |
+| SL   | Science Level              | SRP     | Gates SRP-funded science research              | Build-time   |
 | TER  | Terraforming               | SRP     | Enables planet upgrades                        | Build-time   |
 | SLD  | Shields                    | SRP     | Shield construction capability                 | Build-time   |
 
@@ -63,7 +64,9 @@ Facilities are built at colonies and modified by house tech levels:
 
 ## 4.1 Science Level (SL)
 
-Science Level represents your House's overall technological sophistication and research infrastructure. SL gates access to advanced technologies—you cannot research a technology whose SL requirement exceeds your current Science Level.
+Science Level represents your House's science and research infrastructure. SL
+gates access to SRP-funded technologies only. You cannot research an
+SRP-funded technology whose SL requirement exceeds your current Science Level.
 
 **SL Progression:**
 
@@ -94,16 +97,16 @@ SL advances when the player explicitly purchases the next level, spending the re
 - Each purchase spends RP equal to the next level's cost from the accumulated pool.
 - Pool capacity and excess-PP handling are defined in [Section 3.8.1](03-economy.md#381-pool-capacity-soft-cap).
 - If staged SL investment reaches the next SL threshold this turn, the House
-  may also stage tech purchases gated by that new SL level.
+  may also stage SRP-tech purchases gated by that new SL level.
 - If staged SL investment is later reduced below the threshold, dependent staged
-  tech allocations are automatically cleared.
+  SRP-tech allocations are automatically cleared.
 
 **Strategic Implications:**
 
 SL advancement is non-linear and becomes progressively more expensive. Early SL
 tiers unlock rapidly with modest investment, but reaching SL 10 requires
-sustained R&D commitment over many turns. Houses that neglect research find
-themselves technologically outpaced and unable to field advanced unit types.
+sustained R&D commitment over many turns. Houses that neglect SRP research
+fall behind on shields, terraforming, logistics, and intelligence.
 
 ## 4.2 Economic Level (EL)
 
@@ -147,6 +150,42 @@ EL upgrades affect all colonies simultaneously. A House at EL V with 100 IU at e
 
 EL research provides exponential returns when combined with high IU counts. If you pursue industrial strategies, prioritize EL advancement alongside IU investment. However, EL is useless without IU to multiply—young colonies benefit more from direct IU spending than EL research.
 
+## 4.3 Military Level (ML)
+
+Military Level represents your House's command doctrine, military-industrial
+base, and warfighting sophistication. ML gates access to MRP-funded
+technologies only. You cannot research a MRP-funded technology whose ML
+requirement exceeds your current Military Level.
+
+**ML Progression:**
+
+| ML  | MRP Required | Cumulative MRP |
+|:---:|:------------:|:--------------:|
+| 1   | 0            | 0              |
+| 2   | 10           | 10             |
+| 3   | 13           | 23             |
+| 4   | 16           | 39             |
+| 5   | 21           | 60             |
+| 6   | 27           | 87             |
+| 7   | 35           | 122            |
+| 8   | 46           | 168            |
+| 9   | 60           | 228            |
+| 10  | 78           | 306            |
+
+ML advances when the player explicitly purchases the next level, spending the
+required MRP from the accumulated pool.
+
+- A House may purchase at most **one level per tech per turn**.
+- If staged ML investment reaches the next ML threshold this turn, the House
+  may also stage MRP-tech purchases gated by that new ML level.
+- If staged ML investment is later reduced below the threshold, dependent
+  MRP-tech allocations are automatically cleared.
+
+**Strategic Implications:**
+
+ML is the root of the MRP branch. It does not directly modify a unit stat; it
+unlocks the military stack beneath it: WEP, CST, FC, SC, FD, and ACO.
+
 ## 4.3 Weapons Technology (WEP)
 
 Weapons technology improves ship combat statistics across all hull classes. Each WEP tier increases Attack Strength (AS) and Defense Strength (DS) by 10% per level.
@@ -155,7 +194,7 @@ Weapons technology improves ship combat statistics across all hull classes. Each
 
 <!-- WEP_TABLE_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | AS/DS Modifier |
+| Tech Level | Prerequisites | MRP Cost | ML Required | AS/DS Modifier |
 |:----------:| ------------- |:--------:|:-----------:|:--------------:|
 | WEP I      | None          | N/A      | 1           | +0% (base)     |
 | WEP II     | WEP I         | 10       | 2           | +10%           |
@@ -246,7 +285,7 @@ Construction technology gates access to advanced hull classes, increases shipyar
 
 <!-- CST_TABLE_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier | Unlocked Hulls |
+| Tech Level | Prerequisites | MRP Cost | ML Required | Capacity Multiplier | Unlocked Hulls |
 |:----------:| ------------- |:--------:|:-----------:|:-------------------:| -------------- |
 | CST I      | None          | N/A      | 1           | 1.0x                | DD, CL, CA, CV |
 | CST II     | CST I         | 10       | 2           | 1.1x                | BC             |
@@ -475,7 +514,7 @@ Fleet Command improves the tactical doctrine and command systems used by your fl
 
 <!-- FC_TABLE_REVISED_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | **Max Ships Per Fleet** |
+| Tech Level | Prerequisites | MRP Cost | ML Required | **Max Ships Per Fleet** |
 |:----------:| ------------- |:--------:|:-----------:|:-----------------------:|
 | FC I       | None          | N/A      | 1           | 10 ships                |
 | FC II      | FC I          | 12       | 2           | 14 ships                |
@@ -508,7 +547,7 @@ Strategic Command represents your House's investment in its high-level naval sta
 
 <!-- SC_TABLE_NEW_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | **Max Fleets (Small)** | **Max Fleets (Medium)** | **Max Fleets (Large)** |
+| Tech Level | Prerequisites | MRP Cost | ML Required | **Max Fleets (Small)** | **Max Fleets (Medium)** | **Max Fleets (Large)** |
 |:----------:| ------------- |:--------:|:-----------:|:----------------------:|:-----------------------:|:----------------------:|
 | SC I       | None          | N/A      | 1           | 10                     | 10                      | 10                     |
 | SC II      | SC I          | 15       | 2           | 12                     | 13                      | 14                     |
@@ -579,7 +618,7 @@ Fighter Doctrine improves organizational efficiency and training throughput, inc
 
 <!-- FD_TABLE_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | Capacity Multiplier |
+| Tech Level | Prerequisites | MRP Cost | ML Required | Capacity Multiplier |
 |:----------:| ------------- |:--------:|:-----------:|:-------------------:|
 | FD I       | None          | N/A      | 1           | 1.0x                |
 | FD II      | FD I          | 15       | 2           | 1.5x                |
@@ -623,7 +662,7 @@ Advanced Carrier Operations improves carrier efficiency, allowing greater Fighte
 
 <!-- ACO_TABLE_START -->
 
-| Tech Level | Prerequisites | TRP Cost | SL Required | CV Capacity  | CX Capacity  |
+| Tech Level | Prerequisites | MRP Cost | ML Required | CV Capacity  | CX Capacity  |
 |:----------:| ------------- |:--------:|:-----------:|:------------:|:------------:|
 | ACO I      | None          | N/A      | 1           | 3 Fighters   | 5 Fighters   |
 | ACO II     | ACO I         | 20       | 4           | 4 Fighters   | 6 Fighters   |
@@ -657,7 +696,7 @@ For carrier combat mechanics, see [Section 2.4.1](02-assets.md#241-fighters--car
 
 ## 4.14 Strategic Considerations
 
-- **Balancing R&D Investments**: You must balance investments across ERP, SRP, and TRP to maximize your economic output, technological advancements, and military strength.
+- **Balancing R&D Investments**: You must balance investments across ERP, SRP, and MRP to maximize your economic output, technological advancements, and military strength.
 - **Economic Synergies**: SL unlocks advanced technologies, while EL increases
   PP output to fund further research.
 - **Adapting to Opponents**: Flexibility in R&D strategy is key. Prioritize weapons technology (WEP) during military conflicts or focus on terraforming (TER) for long-term economic growth—critical decisions based on the game state.

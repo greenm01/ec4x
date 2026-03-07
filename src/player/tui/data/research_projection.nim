@@ -1,7 +1,7 @@
 ## Shared projected research gating helpers for TUI.
 ##
 ## Pool-based deposit/purchase model:
-## - Players deposit PP into shared pools (ERP/SRP/TRP)
+## - Players deposit PP into shared pools (ERP/SRP/MRP)
 ## - Players explicitly purchase tech upgrades
 ## - No auto-advancement
 
@@ -15,6 +15,8 @@ proc currentTechLevel*(levels: TechLevel, item: ResearchItem): int =
   case item.kind
   of ResearchItemKind.EconomicLevel:
     levels.el.int
+  of ResearchItemKind.MilitaryLevel:
+    levels.ml.int
   of ResearchItemKind.ScienceLevel:
     levels.sl.int
   of ResearchItemKind.Technology:
@@ -48,28 +50,31 @@ proc poolAccumulated*(points: ResearchPoints, pool: ResearchPoolIdx): int =
   case pool
   of ResearchPoolIdx.PoolERP: points.erp.int
   of ResearchPoolIdx.PoolSRP: points.srp.int
-  of ResearchPoolIdx.PoolTRP: points.trp.int
+  of ResearchPoolIdx.PoolMRP: points.mrp.int
 
 proc currentResearchPoints*(points: ResearchPoints, item: ResearchItem): int =
   ## Return accumulated RP in the pool that funds this item.
   case item.kind
   of ResearchItemKind.EconomicLevel:
     points.erp.int
+  of ResearchItemKind.MilitaryLevel:
+    points.mrp.int
   of ResearchItemKind.ScienceLevel:
     points.srp.int
   of ResearchItemKind.Technology:
     if isSrpField(item.field):
       points.srp.int
     else:
-      points.trp.int
+      points.mrp.int
 
 proc researchItemPool*(item: ResearchItem): ResearchPoolIdx =
   case item.kind
   of ResearchItemKind.EconomicLevel: ResearchPoolIdx.PoolERP
+  of ResearchItemKind.MilitaryLevel: ResearchPoolIdx.PoolMRP
   of ResearchItemKind.ScienceLevel:  ResearchPoolIdx.PoolSRP
   of ResearchItemKind.Technology:
     if isSrpField(item.field): ResearchPoolIdx.PoolSRP
-    else: ResearchPoolIdx.PoolTRP
+    else: ResearchPoolIdx.PoolMRP
 
 proc estimateColonyGrossOutput(
     levels: TechLevel,
@@ -119,33 +124,67 @@ proc projectedPoolRP*(
     deposits: ResearchDeposits,
     pool: ResearchPoolIdx,
     gho: int32,
-    slLevel: int32
+    levels: TechLevel
 ): int =
   ## Accumulated RP + conversion of staged PP deposit for a pool.
   let effectiveGho = max(1'i32, gho)
   case pool
   of ResearchPoolIdx.PoolERP:
-    points.erp.int + (if deposits.erp > 0: convertPPToERP(deposits.erp, effectiveGho, slLevel).int else: 0)
+    points.erp.int + (
+      if deposits.erp > 0:
+        convertPPToERP(deposits.erp, effectiveGho, levels.sl).int
+      else:
+        0
+    )
   of ResearchPoolIdx.PoolSRP:
-    points.srp.int + (if deposits.srp > 0: convertPPToSRP(deposits.srp, effectiveGho, slLevel).int else: 0)
-  of ResearchPoolIdx.PoolTRP:
-    points.trp.int + (if deposits.trp > 0: convertPPToTRP(deposits.trp, effectiveGho, slLevel).int else: 0)
+    points.srp.int + (
+      if deposits.srp > 0:
+        convertPPToSRP(deposits.srp, effectiveGho, levels.sl).int
+      else:
+        0
+    )
+  of ResearchPoolIdx.PoolMRP:
+    points.mrp.int + (
+      if deposits.mrp > 0:
+        convertPPToMRP(deposits.mrp, effectiveGho, levels.ml).int
+      else:
+        0
+    )
 
 proc projectedDepositRP*(
     pool: ResearchPoolIdx,
     depositPp: int,
     gho: int32,
-    slLevel: int32
+    levels: TechLevel
 ): int =
   let effectiveGho = max(1'i32, gho)
   let safeDeposit = max(0, depositPp).int32
   case pool
   of ResearchPoolIdx.PoolERP:
-    convertPPToERP(safeDeposit, effectiveGho, slLevel).int
+    convertPPToERP(safeDeposit, effectiveGho, levels.sl).int
   of ResearchPoolIdx.PoolSRP:
-    convertPPToSRP(safeDeposit, effectiveGho, slLevel).int
-  of ResearchPoolIdx.PoolTRP:
-    convertPPToTRP(safeDeposit, effectiveGho, slLevel).int
+    convertPPToSRP(safeDeposit, effectiveGho, levels.sl).int
+  of ResearchPoolIdx.PoolMRP:
+    convertPPToMRP(safeDeposit, effectiveGho, levels.ml).int
+
+proc projectedMilitaryLevel*(
+    levels: TechLevel,
+    points: ResearchPoints,
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    gho: int32
+): int =
+  result = levels.ml.int
+  if not purchases.military:
+    return result
+  let nextCost = mlUpgradeCost(levels.ml).int
+  if nextCost <= 0:
+    return result
+  let poolRP = projectedPoolRP(
+    points, deposits, ResearchPoolIdx.PoolMRP, gho, levels
+  )
+  if poolRP >= nextCost:
+    result += 1
 
 proc projectedScienceLevel*(
     levels: TechLevel,
@@ -161,15 +200,39 @@ proc projectedScienceLevel*(
   let nextCost = slUpgradeCost(levels.sl).int
   if nextCost <= 0:
     return result
-  let poolRP = projectedPoolRP(points, deposits, ResearchPoolIdx.PoolSRP, gho, levels.sl)
+  let poolRP = projectedPoolRP(
+    points, deposits, ResearchPoolIdx.PoolSRP, gho, levels
+  )
   if poolRP >= nextCost:
     result += 1
 
 proc isPurchaseToggled*(purchases: TechPurchaseSet, item: ResearchItem): bool =
   case item.kind
   of ResearchItemKind.EconomicLevel: purchases.economic
+  of ResearchItemKind.MilitaryLevel: purchases.military
   of ResearchItemKind.ScienceLevel: purchases.science
   of ResearchItemKind.Technology: item.field in purchases.technology
+
+proc projectedGateLevel(
+    levels: TechLevel,
+    points: ResearchPoints,
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    item: ResearchItem,
+    gho: int32
+): int =
+  case item.kind
+  of ResearchItemKind.EconomicLevel:
+    0
+  of ResearchItemKind.MilitaryLevel:
+    projectedMilitaryLevel(levels, points, deposits, purchases, gho)
+  of ResearchItemKind.ScienceLevel:
+    projectedScienceLevel(levels, points, deposits, purchases, gho)
+  of ResearchItemKind.Technology:
+    if item.field.isSrpField():
+      projectedScienceLevel(levels, points, deposits, purchases, gho)
+    else:
+      projectedMilitaryLevel(levels, points, deposits, purchases, gho)
 
 proc poolCap*(levels: TechLevel, pool: ResearchPoolIdx): int =
   ## Soft cap: sum of RP costs for all unresearched levels in the pool.
@@ -194,14 +257,14 @@ proc maxDepositPPForPoolCap*(
 
   var low = 0
   var high = 1
-  while projectedDepositRP(pool, high, gho, levels.sl) < remainingRp:
+  while projectedDepositRP(pool, high, gho, levels) < remainingRp:
     if high >= int(high(int) div 2):
       break
     high *= 2
 
   while low < high:
     let mid = (low + high + 1) div 2
-    if projectedDepositRP(pool, mid, gho, levels.sl) <= remainingRp:
+    if projectedDepositRP(pool, mid, gho, levels) <= remainingRp:
       low = mid
     else:
       high = mid - 1
@@ -216,14 +279,16 @@ proc projectedPoolBalance*(
     gho: int32
 ): int =
   ## Pool RP remaining after deducting all valid, affordable purchases.
-  result = projectedPoolRP(points, deposits, pool, gho, levels.sl)
-  let projSL = projectedScienceLevel(levels, points, deposits, purchases, gho)
+  result = projectedPoolRP(points, deposits, pool, gho, levels)
   for item in researchItems():
     if researchItemPool(item) != pool: continue
     if not isPurchaseToggled(purchases, item): continue
     let lvl = currentTechLevel(levels, item)
     if lvl >= progressionMaxLevel(item): continue
-    if projSL < techSlRequiredForLevel(item, lvl + 1): continue
+    let gateLevel = projectedGateLevel(
+      levels, points, deposits, purchases, item, gho
+    )
+    if gateLevel < techGateRequiredForLevel(item, lvl + 1): continue
     let cost = techProgressCost(item, lvl)
     if result >= cost: result -= cost
 
@@ -242,21 +307,25 @@ proc projectedTechLevel*(
     return maxLevel
   if not isPurchaseToggled(purchases, item):
     return result
-  # SL gating check (use projected SL if SL purchase is also toggled)
-  let projectedSL = projectedScienceLevel(levels, points, deposits, purchases, gho)
-  let slRequired = techSlRequiredForLevel(item, result + 1)
-  if projectedSL < slRequired:
+  let gateLevel = projectedGateLevel(
+    levels, points, deposits, purchases, item, gho
+  )
+  let gateRequired = techGateRequiredForLevel(item, result + 1)
+  if gateLevel < gateRequired:
     return result
   # Affordability: compute running balance from prior items in same pool
   let pool = researchItemPool(item)
-  var balance = projectedPoolRP(points, deposits, pool, gho, levels.sl)
+  var balance = projectedPoolRP(points, deposits, pool, gho, levels)
   for priorItem in researchItems():
     if priorItem.code == item.code: break
     if researchItemPool(priorItem) != pool: continue
     if not isPurchaseToggled(purchases, priorItem): continue
     let pLvl = currentTechLevel(levels, priorItem)
     if pLvl >= progressionMaxLevel(priorItem): continue
-    if projectedSL < techSlRequiredForLevel(priorItem, pLvl + 1): continue
+    let priorGate = projectedGateLevel(
+      levels, points, deposits, purchases, priorItem, gho
+    )
+    if priorGate < techGateRequiredForLevel(priorItem, pLvl + 1): continue
     let pCost = techProgressCost(priorItem, pLvl)
     if balance >= pCost: balance -= pCost
   let cost = techProgressCost(item, result)
@@ -266,6 +335,7 @@ proc projectedTechLevel*(
 proc getAllocForItem*(alloc: ResearchAllocation, item: ResearchItem): int =
   case item.kind
   of ResearchItemKind.EconomicLevel: alloc.economic.int
+  of ResearchItemKind.MilitaryLevel: alloc.military.int
   of ResearchItemKind.ScienceLevel:  alloc.science.int
   of ResearchItemKind.Technology:
     if item.field in alloc.technology: alloc.technology[item.field].int else: 0
@@ -278,8 +348,8 @@ proc poolAllocForPool*(alloc: ResearchAllocation, pool: ResearchPoolIdx): int =
     for field, amt in alloc.technology:
       if isSrpField(field): t += amt.int
     t
-  of ResearchPoolIdx.PoolTRP:
-    var t = 0
+  of ResearchPoolIdx.PoolMRP:
+    var t = alloc.military.int
     for field, amt in alloc.technology:
       if not isSrpField(field): t += amt.int
     t
@@ -292,14 +362,19 @@ proc isBlockedProjected*(
     item: ResearchItem,
     gho: int32
 ): bool =
-  ## Item is blocked if maxed or SL-gated at current projected SL.
+  ## Item is blocked if maxed or gate-blocked at current projected level.
   let currentLevel = currentTechLevel(levels, item)
   let maxLevel = progressionMaxLevel(item)
   if currentLevel >= maxLevel:
     return true
-  if item.kind == ResearchItemKind.EconomicLevel or
-      item.kind == ResearchItemKind.ScienceLevel:
+  if item.kind in {
+    ResearchItemKind.EconomicLevel,
+    ResearchItemKind.MilitaryLevel,
+    ResearchItemKind.ScienceLevel
+  }:
     return false
-  let projectedSL = projectedScienceLevel(levels, points, deposits, purchases, gho)
-  let slRequired = techSlRequiredForLevel(item, currentLevel + 1)
-  projectedSL < slRequired
+  let gateLevel = projectedGateLevel(
+    levels, points, deposits, purchases, item, gho
+  )
+  let gateRequired = techGateRequiredForLevel(item, currentLevel + 1)
+  gateLevel < gateRequired

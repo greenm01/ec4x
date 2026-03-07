@@ -742,6 +742,7 @@ proc defaultTechLevels(): TechLevel =
   TechLevel(
     el: 1,
     sl: 1,
+    ml: 1,
     cst: 1,
     wep: 1,
     ter: 1,

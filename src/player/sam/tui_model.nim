@@ -10,7 +10,7 @@
 ##   F1 Overview   - Empire dashboard, leaderboard, alerts
 ##   F2 Colony     - Colony list and management
 ##   F3 Fleets     - Fleet console (system/list view)
-##   F4 Tech       - PP allocation -> ERP/SRP/TRP progress
+##   F4 Tech       - PP allocation -> ERP/SRP/MRP progress
 ##   F5 Espionage  - EBP/CIP budget, intel operations
 ##   F6 General    - Diplomacy, tax, empire policy
 ##   F7 (unused)   - Reserved
@@ -625,7 +625,7 @@ type
   ResearchPoolIdx* {.pure.} = enum
     PoolERP
     PoolSRP
-    PoolTRP
+    PoolMRP
 
   EspionageFocus* {.pure.} = enum
     Budget
@@ -733,6 +733,7 @@ type
 
   ResearchItemKind* {.pure.} = enum
     EconomicLevel
+    MilitaryLevel
     ScienceLevel
     Technology
 
@@ -746,16 +747,16 @@ type
 const ResearchItems* = [
   ResearchItem(
     category: "FOUNDATIONS",
-    code: "SL",
-    name: "Science Level",
-    kind: ResearchItemKind.ScienceLevel,
+    code: "EL",
+    name: "Economic Level",
+    kind: ResearchItemKind.EconomicLevel,
     field: TechField.WeaponsTech
   ),
   ResearchItem(
     category: "FOUNDATIONS",
-    code: "EL",
-    name: "Economic Level",
-    kind: ResearchItemKind.EconomicLevel,
+    code: "ML",
+    name: "Military Level",
+    kind: ResearchItemKind.MilitaryLevel,
     field: TechField.WeaponsTech
   ),
   ResearchItem(
@@ -799,6 +800,13 @@ const ResearchItems* = [
     name: "Carrier Ops",
     kind: ResearchItemKind.Technology,
     field: TechField.AdvancedCarrierOps
+  ),
+  ResearchItem(
+    category: "FOUNDATIONS",
+    code: "SL",
+    name: "Science Level",
+    kind: ResearchItemKind.ScienceLevel,
+    field: TechField.WeaponsTech
   ),
   ResearchItem(
     category: "SCIENCE",
@@ -2178,7 +2186,7 @@ proc stagedCommandCount*(model: TuiModel): int =
     count.inc
   let totalDeposits = int(model.ui.researchDeposits.erp) +
     int(model.ui.researchDeposits.srp) +
-    int(model.ui.researchDeposits.trp)
+    int(model.ui.researchDeposits.mrp)
   if totalDeposits > 0:
     count.inc
   let hasPurchases = model.ui.researchPurchases.economic or
@@ -2234,7 +2242,7 @@ proc stagedCommandCategorySummary*(
       $model.ui.stagedCipInvestment & " credits"))
   let totalDeposits2 = int(model.ui.researchDeposits.erp) +
     int(model.ui.researchDeposits.srp) +
-    int(model.ui.researchDeposits.trp)
+    int(model.ui.researchDeposits.mrp)
   if totalDeposits2 > 0:
     result.add(("Research deposits", $totalDeposits2 & " PP"))
   var purchaseCount = 0

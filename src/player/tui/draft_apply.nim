@@ -30,9 +30,9 @@ proc normalizeDraftPacket*(packet: CommandPacket): CommandPacket =
   )
 
 proc hasResearchDraft*(deposits: ResearchDeposits, purchases: TechPurchaseSet): bool =
-  if deposits.erp > 0 or deposits.srp > 0 or deposits.trp > 0:
+  if deposits.erp > 0 or deposits.srp > 0 or deposits.mrp > 0:
     return true
-  if purchases.economic or purchases.science:
+  if purchases.economic or purchases.military or purchases.science:
     return true
   if purchases.technology.len > 0:
     return true

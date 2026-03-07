@@ -311,6 +311,7 @@ proc processResearchDeposits(
     if gho <= 0:
       gho = 1
     let sl = house.techTree.levels.sl
+    let ml = house.techTree.levels.ml
 
     # --- Step 1: Liquidation (RP -> PP at 2:1 ratio) ---
     var liquidatedPP = 0'i32
@@ -322,9 +323,9 @@ proc processResearchDeposits(
       let amount = min(liquidation.srp, house.techTree.accumulated.srp)
       house.techTree.accumulated.srp -= amount
       liquidatedPP += amount div 2
-    if liquidation.trp > 0:
-      let amount = min(liquidation.trp, house.techTree.accumulated.trp)
-      house.techTree.accumulated.trp -= amount
+    if liquidation.mrp > 0:
+      let amount = min(liquidation.mrp, house.techTree.accumulated.mrp)
+      house.techTree.accumulated.mrp -= amount
       liquidatedPP += amount div 2
     if liquidatedPP > 0:
       house.treasury += liquidatedPP
@@ -332,7 +333,7 @@ proc processResearchDeposits(
         &"{houseId} liquidated RP for {liquidatedPP} PP")
 
     # --- Step 2: Validate and apply PP deposits ---
-    let totalDepositPP = deposits.erp + deposits.srp + deposits.trp
+    let totalDepositPP = deposits.erp + deposits.srp + deposits.mrp
     if totalDepositPP > 0:
       let affordable = min(totalDepositPP, house.treasury)
       let scale = if affordable < totalDepositPP:
@@ -342,22 +343,22 @@ proc processResearchDeposits(
 
       let erpPP = int32(float(deposits.erp) * scale)
       let srpPP = int32(float(deposits.srp) * scale)
-      let trpPP = int32(float(deposits.trp) * scale)
-      let actualPP = erpPP + srpPP + trpPP
+      let mrpPP = int32(float(deposits.mrp) * scale)
+      let actualPP = erpPP + srpPP + mrpPP
 
       # Convert PP -> RP per pool
       if erpPP > 0:
         house.techTree.accumulated.erp += convertPPToERP(erpPP, gho, sl)
       if srpPP > 0:
         house.techTree.accumulated.srp += convertPPToSRP(srpPP, gho, sl)
-      if trpPP > 0:
-        house.techTree.accumulated.trp += convertPPToTRP(trpPP, gho, sl)
+      if mrpPP > 0:
+        house.techTree.accumulated.mrp += convertPPToMRP(mrpPP, gho, ml)
 
       house.treasury -= actualPP
       logInfo("Research",
         &"{houseId} deposited {actualPP} PP into research pools")
 
-    # --- Step 3: Process tech purchases (SL first, then others) ---
+    # --- Step 3: Process root-level purchases, then branch techs ---
 
     # SL purchase first (gates other techs)
     if purchases.science:
@@ -375,6 +376,23 @@ proc processResearchDeposits(
         state.applyPrestigeEvent(houseId, pe)
         logInfo("Research",
           &"{houseId} purchased SL {currentSL} -> {currentSL + 1}")
+
+    if purchases.military:
+      let currentML = house.techTree.levels.ml
+      let cost = mlUpgradeCost(currentML)
+      if cost > 0 and house.techTree.accumulated.mrp >= cost:
+        house.techTree.accumulated.mrp -= cost
+        house.techTree.levels.ml += 1
+        let prestigeAmount = gameConfig.prestige.economic.techAdvancement
+        let pe = PrestigeEvent(
+          source: PrestigeSource.TechAdvancement,
+          amount: prestigeAmount,
+          description: "Military Level " & $currentML & " → " &
+            $(currentML + 1),
+        )
+        state.applyPrestigeEvent(houseId, pe)
+        logInfo("Research",
+          &"{houseId} purchased ML {currentML} -> {currentML + 1}")
 
     # EL purchase
     if purchases.economic:
@@ -414,15 +432,24 @@ proc processResearchDeposits(
       if cost <= 0:
         continue
 
+      let gateLevel =
+        if field.isSrpField():
+          house.techTree.levels.sl.int
+        else:
+          house.techTree.levels.ml.int
+      let reqLevel = techGateRequiredForLevel(field, currentLevel.int + 1)
+      if gateLevel < reqLevel:
+        continue
+
       # Deduct from appropriate pool
       if field.isSrpField():
         if house.techTree.accumulated.srp < cost:
           continue
         house.techTree.accumulated.srp -= cost
       else:
-        if house.techTree.accumulated.trp < cost:
+        if house.techTree.accumulated.mrp < cost:
           continue
-        house.techTree.accumulated.trp -= cost
+        house.techTree.accumulated.mrp -= cost
 
       # Advance level
       case field

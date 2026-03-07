@@ -45,6 +45,38 @@ scienceLevel {
     }
 }
 
+// Military Level Progression (MRP Costs)
+militaryLevel {
+    (docs)"docs/specs/04-research_development.md#section-4-3"
+    level 2 {
+        mrpRequired 10
+    }
+    level 3 {
+        mrpRequired 13
+    }
+    level 4 {
+        mrpRequired 16
+    }
+    level 5 {
+        mrpRequired 21
+    }
+    level 6 {
+        mrpRequired 27
+    }
+    level 7 {
+        mrpRequired 35
+    }
+    level 8 {
+        mrpRequired 46
+    }
+    level 9 {
+        mrpRequired 60
+    }
+    level 10 {
+        mrpRequired 78
+    }
+}
+
 // --- ECONOMIC RESEARCH (ERP) ---
 
 economicLevel {
@@ -96,47 +128,47 @@ economicLevel {
     }
 }
 
-// --- TECHNOLOGY RESEARCH (TRP) ---
+// --- TECHNOLOGY RESEARCH (MRP) ---
 
 weapons {
     (docs)"docs/specs/04-research_development.md#section-4-4-1"
     // Modifier: stat × (baseMultiplier ^ (level - 1))
     baseMultiplier 1.10  // WEP tech applies 10% compounding bonus per level
     level 2 {
-        slRequired 2
-        trpCost 10
+        mlRequired 2
+        mrpCost 10
     }
     level 3 {
-        slRequired 3
-        trpCost 12
+        mlRequired 3
+        mrpCost 12
     }
     level 4 {
-        slRequired 4
-        trpCost 15
+        mlRequired 4
+        mrpCost 15
     }
     level 5 {
-        slRequired 5
-        trpCost 19
+        mlRequired 5
+        mrpCost 19
     }
     level 6 {
-        slRequired 6
-        trpCost 24
+        mlRequired 6
+        mrpCost 24
     }
     level 7 {
-        slRequired 7
-        trpCost 31
+        mlRequired 7
+        mrpCost 31
     }
     level 8 {
-        slRequired 8
-        trpCost 40
+        mlRequired 8
+        mrpCost 40
     }
     level 9 {
-        slRequired 9
-        trpCost 52
+        mlRequired 9
+        mrpCost 52
     }
     level 10 {
-        slRequired 10
-        trpCost 68
+        mlRequired 10
+        mrpCost 68
     }
 }
 
@@ -147,44 +179,44 @@ construction {
     baseModifier 1.0        // Starting CST modifier at level 1
     incrementPerLevel 0.10  // CST increases by 10% per level (additive)
     level 2 {
-        slRequired 2
-        trpCost 10
+        mlRequired 2
+        mrpCost 10
         unlocks "BC"
     }
     level 3 {
-        slRequired 3
-        trpCost 12
+        mlRequired 3
+        mrpCost 12
     }
     level 4 {
-        slRequired 4
-        trpCost 15
+        mlRequired 4
+        mrpCost 15
         unlocks "BB" "CX"
     }
     level 5 {
-        slRequired 5
-        trpCost 19
+        mlRequired 5
+        mrpCost 19
     }
     level 6 {
-        slRequired 6
-        trpCost 24
+        mlRequired 6
+        mrpCost 24
         unlocks "DN"
     }
     level 7 {
-        slRequired 7
-        trpCost 31
+        mlRequired 7
+        mrpCost 31
     }
     level 8 {
-        slRequired 8
-        trpCost 40
+        mlRequired 8
+        mrpCost 40
         unlocks "SD"
     }
     level 9 {
-        slRequired 9
-        trpCost 52
+        mlRequired 9
+        mrpCost 52
     }
     level 10 {
-        slRequired 10
-        trpCost 68
+        mlRequired 10
+        mrpCost 68
         unlocks "PB"
     }
 }
@@ -192,33 +224,33 @@ construction {
 fleetCommand {
     (docs)"docs/specs/04-research_development.md#410-fleet-command-fc"
     level 1 {
-        slRequired 1
-        trpCost 0
+        mlRequired 1
+        mrpCost 0
         maxShipsPerFleet 10
     }
     level 2 {
-        slRequired 2
-        trpCost 12
+        mlRequired 2
+        mrpCost 12
         maxShipsPerFleet 14
     }
     level 3 {
-        slRequired 3
-        trpCost 15
+        mlRequired 3
+        mrpCost 15
         maxShipsPerFleet 18
     }
     level 4 {
-        slRequired 4
-        trpCost 20
+        mlRequired 4
+        mrpCost 20
         maxShipsPerFleet 22
     }
     level 5 {
-        slRequired 6
-        trpCost 25
+        mlRequired 6
+        mrpCost 25
         maxShipsPerFleet 26
     }
     level 6 {
-        slRequired 8
-        trpCost 32
+        mlRequired 8
+        mrpCost 32
         maxShipsPerFleet 30
     }
 }
@@ -226,38 +258,38 @@ fleetCommand {
 strategicCommand {
     (docs)"docs/specs/04-research_development.md#411-strategic-command-sc"
     level 1 {
-        slRequired 1
-        trpCost 0
+        mlRequired 1
+        mrpCost 0
         c2Bonus 50
         maxCombatFleetsBase 10
     }
     level 2 {
-        slRequired 2
-        trpCost 15
+        mlRequired 2
+        mrpCost 15
         c2Bonus 65
         maxCombatFleetsBase 12
     }
     level 3 {
-        slRequired 3
-        trpCost 18
+        mlRequired 3
+        mrpCost 18
         c2Bonus 80
         maxCombatFleetsBase 14
     }
     level 4 {
-        slRequired 5
-        trpCost 22
+        mlRequired 5
+        mrpCost 22
         c2Bonus 95
         maxCombatFleetsBase 16
     }
     level 5 {
-        slRequired 7
-        trpCost 28
+        mlRequired 7
+        mrpCost 28
         c2Bonus 110
         maxCombatFleetsBase 18
     }
     level 6 {
-        slRequired 9
-        trpCost 36
+        mlRequired 9
+        mrpCost 36
         c2Bonus 125
         maxCombatFleetsBase 20
     }
@@ -266,13 +298,13 @@ strategicCommand {
 fighterDoctrine {
     (docs)"docs/specs/04-research_development.md#section-4-4-5"
     level 2 {
-        slRequired 2
-        trpCost 15
+        mlRequired 2
+        mrpCost 15
         multiplier 1.5
     }
     level 3 {
-        slRequired 3
-        trpCost 17
+        mlRequired 3
+        mrpCost 17
         multiplier 2.0
     }
 }
@@ -478,7 +510,7 @@ counterIntelligence {
 advancedCarrierOperations {
     (docs)"docs/specs/04-research_development.md#section-4-13"
     capacityMultiplierPerLevel 1.0
-    level 1 { slRequired 1; trpCost 0; cvCapacity 3; cxCapacity 5; description "Standard carrier ops" }
-    level 2 { slRequired 4; trpCost 20; cvCapacity 4; cxCapacity 6; description "Enhanced carrier ops" }
-    level 3 { slRequired 5; trpCost 22; cvCapacity 5; cxCapacity 8; description "Advanced carrier ops" }
+    level 1 { mlRequired 1; mrpCost 0; cvCapacity 3; cxCapacity 5; description "Standard carrier ops" }
+    level 2 { mlRequired 4; mrpCost 20; cvCapacity 4; cxCapacity 6; description "Enhanced carrier ops" }
+    level 3 { mlRequired 5; mrpCost 22; cvCapacity 5; cxCapacity 8; description "Advanced carrier ops" }
 }

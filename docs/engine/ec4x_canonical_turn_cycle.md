@@ -1006,7 +1006,7 @@ Players see:
 - If any liquidation occurred, apply prestige penalty
 
 **Step 2: PP deposits into pools** (PP → RP conversion):
-- Calculate total PP cost for deposits (ERP + SRP + TRP)
+- Calculate total PP cost for deposits (ERP + SRP + MRP)
 - **Treasury scaling** (prevent negative treasury):
   - If treasury ≤ 0: Cancel all deposits (bankruptcy)
   - If cost > treasury: Scale deposits proportionally
@@ -1015,14 +1015,14 @@ Players see:
 - **Convert PP → RP** using GHO and Science Level (logarithmic scaling):
   - ERP (Economic Research Points): `PP * (1 + log₁₀(GHO)/3) * (1 + SL/10)`
   - SRP (Science Research Points): `PP * (1 + log₁₀(GHO)/4) * (1 + SL/5)`
-  - TRP (Technology Research Points): `PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)`
-  - **Rationale**: Logarithmic GHO scaling provides diminishing returns, preventing runaway economic snowballing while still rewarding growth. TRP now scales with SL (modest 5% per level) to reflect advanced research infrastructure.
-- **Accumulate RP** in shared pools: `accumulated.erp += earned`, `accumulated.srp += earned`, `accumulated.trp += earned`
+  - MRP (Military Research Points): `PP * (1 + log₁₀(GHO)/3.5) * (1 + ML/20)`
+  - **Rationale**: Logarithmic GHO scaling provides diminishing returns, preventing runaway economic snowballing while still rewarding growth. MRP scales with ML (modest 5% per level) to reflect military research infrastructure.
+- **Accumulate RP** in shared pools: `accumulated.erp += earned`, `accumulated.srp += earned`, `accumulated.mrp += earned`
 
 **Step 3: Explicit tech purchases** (spend accumulated pool RP):
 - Process SL purchase first (gates other purchases via SL requirements)
 - Process EL purchase
-- Process tech field purchases (each deducts from SRP or TRP based on field mapping)
+- Process tech field purchases (each deducts from SRP or MRP based on field mapping)
 - For each toggled purchase: check pool RP ≥ cost, deduct cost, advance level, award prestige
 - One level per tech per turn enforced by `TechPurchaseSet` (boolean per tech)
 - CST upgrade triggers dock capacity recalculation
@@ -1242,7 +1242,7 @@ Handled in `multi_house.nim:areHostile()` during combat resolution:
 **7. Research Breakthrough Rolls** (passive only)
 
 **7a. Breakthrough Rolls** (every 5 turns):
-- Calculate total RP invested in last 5 turns (ERP+SRP+TRP)
+- Calculate total RP invested in last 5 turns (ERP+SRP+MRP)
 - Roll for breakthrough (1d100 vs threshold based on investment)
 - Apply breakthrough effects:
   - Bonus RP (1-10% of investment)

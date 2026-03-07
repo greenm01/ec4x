@@ -281,7 +281,7 @@ proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int =
 
 proc stagedResearchPp*(deposits: ResearchDeposits): int =
   ## Sum staged PP deposited into research pools.
-  (deposits.erp + deposits.srp + deposits.trp).int
+  (deposits.erp + deposits.srp + deposits.mrp).int
 
 proc stagedEspionagePp*(stagedEbpInvestment, stagedCipInvestment: int32): int =
   ## Sum staged PP allocated to EBP/CIP investments.

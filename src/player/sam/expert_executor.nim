@@ -262,9 +262,9 @@ proc executeExpertCommand*(model: var TuiModel, cmd: ExpertCommand): tuple[succe
     case field
     of "erp", "eco": model.ui.researchDeposits.erp = int32(cmd.allocAmount)
     of "srp", "sci": model.ui.researchDeposits.srp = int32(cmd.allocAmount)
-    of "trp": model.ui.researchDeposits.trp = int32(cmd.allocAmount)
+    of "mrp": model.ui.researchDeposits.mrp = int32(cmd.allocAmount)
     else:
-      return (false, "Unknown pool: " & field & " (use erp/srp/trp)")
+      return (false, "Unknown pool: " & field & " (use erp/srp/mrp)")
 
     model.ui.modifiedSinceSubmit = true
     return (true, "Deposited " & $cmd.allocAmount & " PP into " & field)

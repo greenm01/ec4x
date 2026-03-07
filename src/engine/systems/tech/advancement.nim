@@ -63,6 +63,7 @@ proc applyDockCapacityUpgrade*(state: GameState, houseId: HouseId) =
 const
   maxEconomicLevel* = 11 # EL caps at 11 per economy.md:4.2
   maxScienceLevel* = 10 # SL caps at 10 per research_development.md:4.1
+  maxMilitaryLevel* = 10 # ML caps at 10 per research_development.md:4.3
   maxConstructionTech* = 15 # CST extended for long games
   maxWeaponsTech* = 15 # WEP extended for long games
   maxTerraformingTech* = 7 # TER limited to planet classes
@@ -253,12 +254,46 @@ proc attemptSLAdvancement*(
 
   return none(ResearchAdvancement)
 
+proc attemptMLAdvancement*(
+    tree: var TechTree, currentML: int
+): Option[ResearchAdvancement] =
+  ## Attempt to advance Military Level.
+  if currentML >= maxMilitaryLevel:
+    return none(ResearchAdvancement)
+
+  let cost = mlUpgradeCost(int32(currentML))
+
+  if tree.accumulated.mrp >= int32(cost):
+    tree.accumulated.mrp -= int32(cost)
+    tree.levels.ml = int32(currentML + 1)
+
+    let prestigeAmount = gameConfig.prestige.economic.techAdvancement
+    let prestigeEvent = PrestigeEvent(
+      source: PrestigeSource.TechAdvancement,
+      amount: prestigeAmount,
+      description: "Military Level " & $currentML & " → " &
+        $(currentML + 1),
+    )
+
+    return some(
+      ResearchAdvancement(
+        advancementType: AdvancementType.MilitaryLevel,
+        mlFromLevel: int32(currentML),
+        mlToLevel: int32(currentML + 1),
+        mlCost: int32(cost),
+        houseId: HouseId(0),
+        prestigeEvent: some(prestigeEvent),
+      )
+    )
+
+  return none(ResearchAdvancement)
+
 proc attemptTechAdvancement*(
     state: GameState, houseId: HouseId, tree: var TechTree, field: TechField
 ): Option[ResearchAdvancement] =
   ## Attempt to advance specific tech field
   ## Returns advancement if successful
-  ## Note: EL and SL use separate attemptELAdvancement/attemptSLAdvancement functions
+  ## Note: EL, SL, and ML use dedicated advancement helpers.
 
   let currentLevel =
     case field
@@ -298,7 +333,7 @@ proc attemptTechAdvancement*(
 
   # Check if enough pool RP accumulated
   let pool = if field.isSrpField(): tree.accumulated.srp
-             else: tree.accumulated.trp
+             else: tree.accumulated.mrp
   if pool < int32(cost):
     return none(ResearchAdvancement)
 
@@ -306,7 +341,7 @@ proc attemptTechAdvancement*(
   if field.isSrpField():
     tree.accumulated.srp -= int32(cost)
   else:
-    tree.accumulated.trp -= int32(cost)
+    tree.accumulated.mrp -= int32(cost)
 
   # Advance level
   case field

@@ -974,7 +974,7 @@ proc previewCommandPacketCost*(
   # Calculate research costs (pool deposits)
   result.researchCosts =
     packet.researchDeposits.erp + packet.researchDeposits.srp +
-    packet.researchDeposits.trp
+    packet.researchDeposits.mrp
 
   # Calculate espionage costs (40 PP per EBP/CIP)
   result.espionageCosts = (packet.ebpInvestment + packet.cipInvestment) * 40

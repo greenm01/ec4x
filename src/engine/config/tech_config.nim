@@ -58,6 +58,18 @@ proc parseScienceLevel(node: KdlNode, ctx: var KdlConfigContext): SlConfig =
           srpRequired: child.requireInt32("srpRequired", ctx)
         )
 
+proc parseMilitaryLevel(node: KdlNode, ctx: var KdlConfigContext): MlConfig =
+  ## Parse militaryLevel with hierarchical level nodes
+  result = MlConfig()
+
+  for child in node.children:
+    if child.name == "level" and child.args.len > 0:
+      let levelNum = child.args[0].kInt().int32
+      if levelNum >= 2 and levelNum <= 10:
+        result.levels[levelNum] = MlLevelData(
+          mrpRequired: child.requireInt32("mrpRequired", ctx)
+        )
+
 proc parseElectronicIntelligence(
   node: KdlNode,
   ctx: var KdlConfigContext
@@ -68,7 +80,7 @@ proc parseElectronicIntelligence(
   ## ```kdl
   ## electronicIntelligence {
   ##   capacityMultiplierPerLevel 0.10
-  ##   level 1 { slRequired 1; trpCost 10 }
+  ##   level 1 { slRequired 1; mrpCost 10 }
   ## }
   ## ```
   result = EliConfig()
@@ -102,7 +114,7 @@ proc parseCloaking(
   ## ```kdl
   ## cloaking {
   ##   capacityMultiplierPerLevel 0.10
-  ##   level 1 { slRequired 1; trpCost 10 }
+  ##   level 1 { slRequired 1; mrpCost 10 }
   ## }
   ## ```
   result = ClkConfig()
@@ -136,7 +148,7 @@ proc parseCounterIntelligence(
   ## ```kdl
   ## counterIntelligence {
   ##   capacityMultiplierPerLevel 0.10
-  ##   level 1 { slRequired 1; trpCost 10 }
+  ##   level 1 { slRequired 1; mrpCost 10 }
   ## }
   ## ```
   result = CicConfig()
@@ -170,7 +182,7 @@ proc parseStrategicLift(
   ## ```kdl
   ## strategicLift {
   ##   capacityMultiplierPerLevel 0.10
-  ##   level 1 { slRequired 1; trpCost 10 }
+  ##   level 1 { slRequired 1; mrpCost 10 }
   ## }
   ## ```
   result = StlConfig()
@@ -201,7 +213,7 @@ proc parseWeaponsTech(node: KdlNode, ctx: var KdlConfigContext): WepConfig =
   ## ```kdl
   ## weapons {
   ##   baseMultiplier 1.10
-  ##   level 2 { slRequired 2; trpCost 10 }
+  ##   level 2 { slRequired 2; mrpCost 10 }
   ## }
   ## ```
   result = WepConfig()
@@ -219,8 +231,8 @@ proc parseWeaponsTech(node: KdlNode, ctx: var KdlConfigContext): WepConfig =
       # Store with actual level number as key (2-10)
       if levelNum >= 2 and levelNum <= 10:
         result.levels[levelNum] = WepLevelData(
-          slRequired: child.requireInt32("slRequired", ctx),
-          trpCost: child.requireInt32("trpCost", ctx)
+          mlRequired: child.requireInt32("mlRequired", ctx),
+          mrpCost: child.requireInt32("mrpCost", ctx)
         )
 
 proc parseConstructionTech(
@@ -235,7 +247,7 @@ proc parseConstructionTech(
   ##   baseModifier 1.0
   ##   incrementPerLevel 0.10
   ##   capacityMultiplierPerLevel 0.10
-  ##   level 2 { slRequired 2; trpCost 10; unlocks "BC" }
+  ##   level 2 { slRequired 2; mrpCost 10; unlocks "BC" }
   ## }
   ## ```
   result = CstConfig(
@@ -275,8 +287,8 @@ proc parseConstructionTech(
         except: discard
 
         result.levels[levelNum] = CstLevelData(
-          slRequired: child.requireInt32("slRequired", ctx),
-          trpCost: child.requireInt32("trpCost", ctx),
+          mlRequired: child.requireInt32("mlRequired", ctx),
+          mrpCost: child.requireInt32("mrpCost", ctx),
           unlocks: unlocks
         )
 
@@ -426,7 +438,7 @@ proc parseFleetCommand(
   ## Expected structure:
   ## ```kdl
   ## fleetCommand {
-  ##   level 1 { slRequired 1; trpCost 0; maxShipsPerFleet 10 }
+  ##   level 1 { slRequired 1; mrpCost 0; maxShipsPerFleet 10 }
   ## }
   ## ```
   result = FcConfig()
@@ -438,8 +450,8 @@ proc parseFleetCommand(
       # Store with actual level number as key (1-6)
       if levelNum >= 1 and levelNum <= 6:
         result.levels[levelNum] = FcLevelData(
-          slRequired: child.requireInt32("slRequired", ctx),
-          trpCost: child.requireInt32("trpCost", ctx),
+          mlRequired: child.requireInt32("mlRequired", ctx),
+          mrpCost: child.requireInt32("mrpCost", ctx),
           maxShipsPerFleet: child.requireInt32("maxShipsPerFleet", ctx)
         )
 
@@ -452,7 +464,7 @@ proc parseStrategicCommand(
   ## Expected structure:
   ## ```kdl
   ## strategicCommand {
-  ##   level 1 { slRequired 1; trpCost 0; c2Bonus 50; maxCombatFleetsBase 10 }
+  ##   level 1 { slRequired 1; mrpCost 0; c2Bonus 50; maxCombatFleetsBase 10 }
   ## }
   ## ```
   result = ScConfig()
@@ -464,8 +476,8 @@ proc parseStrategicCommand(
       # Store with actual level number as key (1-6)
       if levelNum >= 1 and levelNum <= 6:
         result.levels[levelNum] = ScLevelData(
-          slRequired: child.requireInt32("slRequired", ctx),
-          trpCost: child.requireInt32("trpCost", ctx),
+          mlRequired: child.requireInt32("mlRequired", ctx),
+          mrpCost: child.requireInt32("mrpCost", ctx),
           c2Bonus: child.requireInt32("c2Bonus", ctx),
           maxCombatFleetsBase: child.requireInt32("maxCombatFleetsBase", ctx)
         )
@@ -481,7 +493,7 @@ proc parseFighterDoctrine(
   ## fighterDoctrine {
   ##   level 2 {
   ##     slRequired 2
-  ##     trpCost 15
+  ##     mrpCost 15
   ##     multiplier 1.5
   ##   }
   ## }
@@ -502,8 +514,8 @@ proc parseFighterDoctrine(
       # Store with actual level number as key (2-3)
       if levelNum >= 2 and levelNum <= 3:
         result.levels[levelNum] = FdLevelData(
-          slRequired: child.requireInt32("slRequired", ctx),
-          trpCost: child.requireInt32("trpCost", ctx),
+          mlRequired: child.requireInt32("mlRequired", ctx),
+          mrpCost: child.requireInt32("mrpCost", ctx),
           capacityMultiplier: child.requireFloat32("multiplier", ctx),
           description: description
         )
@@ -520,7 +532,7 @@ proc parseAdvancedCarrierOps(
   ##   capacityMultiplierPerLevel 0.15
   ##   level 1 {
   ##     slRequired 1
-  ##     trpCost 0
+  ##     mrpCost 0
   ##     cvCapacity 3
   ##     cxCapacity 5
   ##     description "Basic ops"
@@ -546,8 +558,8 @@ proc parseAdvancedCarrierOps(
       # Store with actual level number as key (1-3)
       if levelNum >= 1 and levelNum <= 3:
         result.levels[levelNum] = AcoLevelData(
-          slRequired: child.requireInt32("slRequired", ctx),
-          trpCost: child.requireInt32("trpCost", ctx),
+          mlRequired: child.requireInt32("mlRequired", ctx),
+          mrpCost: child.requireInt32("mrpCost", ctx),
           cvCapacity: child.requireInt32("cvCapacity", ctx),
           cxCapacity: child.requireInt32("cxCapacity", ctx),
           description: description
@@ -566,6 +578,10 @@ proc loadTechConfig*(configPath: string): TechConfig =
   ctx.withNode("scienceLevel"):
     let node = doc.requireNode("scienceLevel", ctx)
     result.sl = parseScienceLevel(node, ctx)
+
+  ctx.withNode("militaryLevel"):
+    let node = doc.requireNode("militaryLevel", ctx)
+    result.ml = parseMilitaryLevel(node, ctx)
 
   ctx.withNode("construction"):
     let node = doc.requireNode("construction", ctx)

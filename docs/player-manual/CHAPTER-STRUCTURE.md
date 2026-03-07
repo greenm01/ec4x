@@ -207,7 +207,7 @@ CHAPTER 11: GLOSSARY
 ├─ Spacelift & Infrastructure (ET, SP, SY, TT)
 ├─ Ship & Unit Statistics (AS, CC, CER, CL, CR, DS, MC, PC)
 ├─ Economy & Production (Colony, GCO, GHO, IU, NCV, PP, PU, PTU, Treasury)
-├─ Research & Technology (ACO, CLK, CST, EL, ELI, ERP, FD, SL, SRP, TL, TRP, WEP)
+├─ Research & Technology (ACO, CLK, CST, EL, ELI, ERP, FD, SL, SRP, TL, MRP, WEP)
 ├─ Combat & Military Operations
 │   ├─ Tactical Terms (Ambush, Blitz, Blockade, Bombardment)
 │   ├─ Strategic Terms (CER, Crippled, Destroyed, Retreat)
