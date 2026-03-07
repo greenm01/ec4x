@@ -5,7 +5,6 @@
 import std/[strutils, options, algorithm, tables]
 import ../sam/expert_parser
 import ../sam/tui_model
-import ../../engine/types/core
 
 type
   ExpertSuggestionType* {.pure.} = enum

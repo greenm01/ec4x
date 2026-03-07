@@ -35,7 +35,6 @@ import ../systems/diplomacy/resolution
 import ../systems/population/transfers
 import ../systems/colony/terraforming
 import ../systems/tech/advancement
-import ../prestige/engine
 import ../event_factory/[commands, intel, victory]
 import ../intel/generator
 import ../starmap

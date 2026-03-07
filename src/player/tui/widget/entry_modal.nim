@@ -13,7 +13,6 @@ import ../../../common/logger
 import ./modal
 import ./text/text_pkg
 import ./text_input
-import ./scrollbar
 import ./table
 import ../buffer
 import ../layout/rect
@@ -422,9 +421,9 @@ proc importBuffer*(state: EntryModalState): string =
 proc unlockWallet*(state: var EntryModalState): bool =
   ## Attempt to unlock the wallet
   let password = state.passwordInput.value()
-  let result = checkWallet(some(password))
-  if result.status == WalletLoadStatus.Success:
-    state.wallet = result.wallet.get()
+  let walletResult = checkWallet(some(password))
+  if walletResult.status == WalletLoadStatus.Success:
+    state.wallet = walletResult.wallet.get()
     state.identity = state.wallet.activeIdentity()
     state.mode = EntryModalMode.Normal
     state.passwordInput.clear()
@@ -487,9 +486,9 @@ proc confirmCreatePassword*(state: var EntryModalState): bool =
   if password != confirm:
     state.importError = "Passwords do not match"
     return false
-  let result = createAndSaveWallet(some(password))
-  if result.status == WalletLoadStatus.Success:
-    state.wallet = result.wallet.get()
+  let walletResult = createAndSaveWallet(some(password))
+  if walletResult.status == WalletLoadStatus.Success:
+    state.wallet = walletResult.wallet.get()
     state.identity = state.wallet.activeIdentity()
     state.mode = EntryModalMode.SecurityWarning
     state.createPasswordInput.clear()

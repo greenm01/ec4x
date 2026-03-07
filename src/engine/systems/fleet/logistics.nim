@@ -678,8 +678,6 @@ proc executeMergeFleets*(
     )
 
   let sourceFleet = sourceFleetOpt.get()
-  var targetFleet = targetFleetOpt.get()
-
   let shipsMerged = sourceFleet.ships.len
   let systemId = sourceFleet.location
 

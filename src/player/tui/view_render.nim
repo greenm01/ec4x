@@ -9,7 +9,6 @@ import ../../engine/types/[core, player_state as ps_types, fleet, colony,
   ground_unit, facilities, ship, tech, diplomacy, production]
 import ../../engine/state/engine
 import ../../engine/globals
-import ../../engine/systems/tech/costs
 import ../sam/sam_pkg
 import ../sam/client_limits
 import ../tui/expert_autocomplete
@@ -723,8 +722,6 @@ proc renderColonyList*(area: Rect, buf: var CellBuffer, model: TuiModel) =
       else: row.systemName
     let popLabel = if row.pop.isSome: $row.pop.get else: "-"
     let iuLabel = if row.iu.isSome: $row.iu.get else: "-"
-    let gcoLabel = if row.gco.isSome: $row.gco.get else: "-"
-    let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "-"
     let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "-"
     let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "-"
     let shieldLabel = if row.shieldPresent: "Y" else: "N"
@@ -812,8 +809,6 @@ proc buildPlanetsTable*(model: TuiModel, scroll: ScrollState): table.Table =
       else: row.systemName
     let popLabel = if row.pop.isSome: $row.pop.get else: "—"
     let iuLabel = if row.iu.isSome: $row.iu.get else: "—"
-    let gcoLabel = if row.gco.isSome: $row.gco.get else: "—"
-    let ncvLabel = if row.ncv.isSome: $row.ncv.get else: "—"
     let cdLabel = if row.cdTotal.isSome: $row.cdTotal.get else: "—"
     let rdLabel = if row.rdTotal.isSome: $row.rdTotal.get else: "—"
     let shieldLabel = if row.shieldPresent: "Y" else: "N"

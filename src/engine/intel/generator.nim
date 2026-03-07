@@ -4,7 +4,7 @@
 ## Reports can be gathered by scouts, combat fleets, or any unit observing enemy forces
 ## Per intel.md and operations.md specifications
 
-import std/[options, random, tables]
+import std/[options, random]
 import ../types/[core, game_state, player_state, fleet, combat, ground_unit, ship]
 import ../state/[engine, iterators]
 import corruption

@@ -12,7 +12,7 @@
 ##   import common/msgpack_types
 ##   # Now pack/unpack work automatically for HouseId, FleetId, etc.
 
-import std/[options, tables, streams]
+import std/[options, tables]
 import msgpack4nim
 import ../engine/types/core
 import ../engine/types/espionage

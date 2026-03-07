@@ -15,9 +15,9 @@
 ## }
 ## ```
 
-import std/[base64, sysrand, strutils, options]
+import std/[base64, sysrand, options]
 import nimcrypto/[pbkdf2, hmac, sha2]
-import nim_chacha20_poly1305/[chacha20, chacha20_poly1305, common, poly1305]
+import nim_chacha20_poly1305/[chacha20_poly1305, common]
 import kdl
 
 type

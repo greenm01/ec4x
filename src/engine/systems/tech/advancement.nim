@@ -14,7 +14,7 @@
 ## - If successful, second d20 roll determines breakthrough type
 ## - Provides bonus RP, cost reductions, or free level advancements
 
-import std/[random, tables, options]
+import std/[random, options]
 import costs, effects
 import ../../types/[core, game_state, tech, prestige]
 import ../../state/[engine, iterators]

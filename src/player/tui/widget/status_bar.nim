@@ -248,7 +248,7 @@ proc renderStatusBar*(area: Rect, buf: var CellBuffer,
       break
 
     # Choose style based on item mode
-    let (keyStyle, textStyle, sepStyle) = case item.mode
+    let (keyStyle, textStyle, _) = case item.mode
       of BarItemMode.Selected:
         (barSelectedKeyStyle(), barSelectedTextStyle(), barSelectedSepStyle())
       of BarItemMode.Unselected:
