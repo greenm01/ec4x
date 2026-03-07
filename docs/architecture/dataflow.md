@@ -116,7 +116,7 @@ Maintenance Phase
 1. Load `PlayerState` from SQLite (or receive from server)
 2. Player builds zero-turn commands (UI preview via optimistic updates)
 3. Submit `CommandPacket` containing zero-turn commands + operational orders
-4. Await next turn resolution (kind 30403 delta event)
+4. Await next turn resolution (`30403` delta + `30405` full state)
 5. Receive authoritative `ZeroTurnResult`s after turn resolves
 
 **Draft Workflow (Player TUI):**
@@ -135,7 +135,8 @@ Maintenance Phase
    `submitZeroTurnCommand(state, cmd, events)` for each house
 4. Emit `GameEvent`s for telemetry
 5. Continue with operational commands in same resolution pass
-6. After full resolution, generate `PlayerState` deltas per player
+6. After full resolution, generate per-house `PlayerState` delta and
+   authoritative full-state baseline
 
 ### PlayerState Persistence
 
@@ -174,7 +175,10 @@ After turn resolution, the server generates `PlayerState` for each house:
 
 When the Conflict Phase runs, the invasion fleet already has marines loaded and merged composition.
 
-**Note:** Because ZTC results are only available after full turn resolution, the Player TUI applies optimistic updates locally when commands are staged, then re-syncs on the turn delta.
+**Note:** Because ZTC results are only available after full turn
+resolution, the Player TUI applies optimistic updates locally when
+commands are staged, then re-syncs on authoritative `30403` / `30405`
+server state.
 
 **See:** [docs/engine/zero_turn.md](../engine/zero_turn.md) for complete API reference and location requirements.
 
@@ -477,7 +481,7 @@ For each house in game:
 All intel updates stored in GameState.intel (per-house IntelDatabase)
 ```
 
-### Delta Generation
+### Delta and Snapshot Generation
 
 **For each house:**
 
@@ -495,9 +499,9 @@ All intel updates stored in GameState.intel (per-house IntelDatabase)
    INSERT INTO player_state_snapshots (game_id, house_id, turn, state_msgpack, created_at)
    VALUES ('game-123', 'house-alpha', 42, msgpackData, unixepoch())
 
-4. Generate KDL delta (for Nostr distribution):
+4. Generate msgpack delta for Nostr distribution:
    Compare snapshot with previous turn's snapshot
-   Generate KDL with only changed entities
+   Generate `PlayerStateDeltaEnvelope` with only changed entities
 ```
 
 ## Phase 5: Result Distribution
@@ -531,51 +535,11 @@ using src/client/reports/turn_report.nim. This approach:
 
 ```
 For each house in game:
-  1. Query state_deltas for house_id
-  2. Generate delta JSON (see above)
-
-  3. Check size:
-     If delta JSON < 32 KB:
-       Create single EventKindStateDelta
-     Else:
-       Split into chunks
-       Create multiple EventKindDeltaChunk
-
-  4. Encrypt:
-     encrypted_content = nip44_encrypt(delta_json, house_pubkey, moderator_privkey)
-
-  5. Create Nostr event:
-     {
-       "kind": 30007,  // EventKindStateDelta
-       "pubkey": "moderator_pubkey",
-       "created_at": current_timestamp,
-       "content": encrypted_content,
-       "tags": [
-         ["g", "game-123"],
-         ["h", "house-alpha"],
-         ["t", "42"],
-         ["p", "house_alpha_pubkey"]
-       ]
-     }
-
-  6. Sign event with moderator's keypair
-
-  7. Insert into outbox queue:
-     INSERT INTO nostr_outbox (game_id, event_kind, recipient_pubkey, content, tags, sent)
-     VALUES ('game-123', 30007, 'house_alpha_pubkey', event_json, tags_json, 0);
-
-Public turn summary:
-  1. Generate public summary (no fog of war)
-  2. Create EventKindTurnComplete (unencrypted)
-  3. Insert into outbox queue
-
-Publishing loop (async):
-  Poll nostr_outbox WHERE sent = 0
-  For each event:
-    Publish to relay: ["EVENT", event_json]
-    Wait for OK/CLOSED response
-    If OK: Mark sent = 1
-    If CLOSED/error: Retry with exponential backoff
+  1. Build `30403` turn delta from previous snapshot
+  2. Build `30405` authoritative full `PlayerState`
+  3. Encrypt both to the house pubkey with NIP-44
+  4. Sign both with the daemon keypair
+  5. Publish both to the relay
 ```
 
 ## Phase 6: Player Receives Results
@@ -603,31 +567,36 @@ Client automatically:
 ### Nostr
 
 ```
-Client maintains subscription:
-  Filter: {
-    "kinds": [30007],  // StateDelta
-    "#g": ["game-123"],
-    "#p": ["own_pubkey"]
-  }
+Client maintains subscription for:
+  - `30403` turn results
+  - `30405` authoritative full state
 
 On EVENT received:
   1. Verify signature
   2. Check if new turn (not already processed)
-  3. Decrypt:
-     delta_json = nip44_decrypt(event.content, own_privkey, moderator_pubkey)
-
-  4. If delta_chunk:
-     Store in received_chunks table
-     Wait for all chunks
-     Reassemble
-
-  5. Apply delta to local cached state:
-     apply_delta(local_gamestate, delta_json)
-
+  3. Decrypt with own privkey and daemon pubkey
+  4. If `30403`, apply delta to local cached `PlayerState`
+  5. If `30405`, replace local cached `PlayerState`
   6. Update local SQLite cache
-  7. Notify player: "Turn 42 results received"
+  7. Notify player of refreshed state
 
 GUI client automatically refreshes to show updated state from local cache.
+```
+
+### Manual Resync Path
+
+```
+Client expert command `:resync`
+  ↓
+Re-subscribe to current game feed
+  ↓
+Publish `30407` StateSyncRequest to daemon
+  ↓
+Daemon validates sender pubkey -> house mapping
+  ↓
+Daemon republishes `30405` authoritative full state
+  ↓
+Client accepts same-turn full-state replacement and refreshes UI
 ```
 
 ## Complete Flow Diagram
@@ -654,16 +623,17 @@ Player A                     Daemon                      Player B
    │                           │ 6. Update game state       │
    │                           │ 7. Update intel tables     │
    │                           │ 8. Generate deltas         │
-   │                           │ 9. COMMIT                  │
+   │                           │ 9. Generate full state     │
+   │                           │ 10. COMMIT                 │
    │                           │                            │
-   │ 10. Receive delta A       │                            │
+   │ 11. Receive delta/full A  │                            │
    │◀──────────────────────────┤                            │
    │   (filtered view)         │                            │
-   │                           │ 11. Send delta B           │
+   │                           │ 12. Send delta/full B      │
    │                           ├───────────────────────────▶│
    │                           │   (different view)         │
    │                           │                            │
-   │ 12. View results          │                            │
+   │ 13. View results          │                            │
    │    (GUI client)           │                            │
    │                           │                 13. View   │
    │                           │                    results │

@@ -15,8 +15,8 @@
 All commands staged by the player are held locally until the turn is
 submitted. The server resolves them during `resolveTurnDeterministic`
 (ZTCs at CMD5, fleet commands at CMD6, production at CMD7, etc.). The
-client will not receive authoritative results until the next turn delta
-(Nostr kind 30403).
+client will not receive authoritative results until the next server sync
+arrives (`30403` turn delta and/or `30405` full state).
 
 The TUI must therefore show the effect of staged commands immediately
 rather than waiting for turn resolution. Two distinct patterns are used
@@ -225,6 +225,21 @@ honest and avoids confusing zero-effect submits.
 3. **Every command drop triggers a full rebuild.** Partial reverts are not attempted — `reapplyAllOptimisticUpdates` always resets to pristine and replays the full remaining list.
 4. **Replay order mirrors engine execution order.** ZTCs first (CMD5), then FleetCommands. Swapping this order would produce incorrect intermediate states.
 5. **DetachShips creates a temporary UI fleet entry.** A deterministic negative `FleetId` is generated from the current minimum fleet ID minus one, then inserted into both active fleet views. The engine still assigns the real `FleetId` during CMD5 and the next turn delta re-syncs the authoritative state.
+
+## Authoritative Recovery
+
+Optimistic state is only a local preview. The authoritative source is the
+daemon-published per-house `PlayerState`.
+
+Current recovery path:
+
+- normal turn advancement refreshes the client from `30403` and `30405`
+- expert command `:resync` requests a fresh `30405` snapshot via `30407`
+- same-turn full-state replacement is allowed specifically for this
+  recovery path
+
+This means optimistic UI drift is recoverable without exposing full
+omniscient `GameState` to the player client.
 6. **Pattern A domains never mutate `model.view.*`.** Tax, espionage, diplomacy, colony management, and research staged values live entirely in `model.ui.*` and are read by renderers and helpers directly.
 
 ---

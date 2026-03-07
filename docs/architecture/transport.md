@@ -45,7 +45,7 @@ communication via WebSocket connections to relays.
 - NIP-44 provides end-to-end encryption
 
 **EC4X Uses:**
-- 7 custom event kinds (30400-30406)
+- 8 custom event kinds (30400-30407)
 - Encrypted private messages (orders, state)
 - Public announcements (game metadata)
 - Relay infrastructure (no custom relay protocol needed)
@@ -61,8 +61,9 @@ communication via WebSocket connections to relays.
 | 30404 | JoinError        | Daemon → Player  | NIP-44     |
 | 30405 | GameState        | Daemon → Player  | NIP-44     |
 | 30406 | PlayerMessage    | Player ↔ Daemon  | NIP-44     |
+| 30407 | StateSyncRequest | Player → Daemon  | None       |
 
-**Defined in:** `src/daemon/transport/nostr/types.nim:67-74`
+**Defined in:** `src/daemon/transport/nostr/types.nim`
 
 ### Required Tags by Kind
 
@@ -75,6 +76,7 @@ communication via WebSocket connections to relays.
 | 30404 | `p` (player pubkey) |
 | 30405 | `d`, `turn`, `p` (player pubkey) |
 | 30406 | `d`, `p`, `from_house`, `to_house` |
+| 30407 | `d`, `turn`, `p` (daemon pubkey) |
 
 ### Wire Format
 
@@ -145,7 +147,8 @@ type NostrClient* = ref object
 2. Client connects to relay WebSocket
 3. Subscribe to EventKindGameDefinition with game_id filter
 4. Fetch game metadata (players, rules, status)
-5. Subscribe to EventKindGameState/TurnResults for selected pubkey
+5. Subscribe to `30403` turn results and `30405` full state for the
+   selected pubkey
 6. Cache state locally in SQLite
 ```
 
@@ -170,15 +173,27 @@ Normative behavior:
 
 #### Fetch Game State
 ```
-1. Subscribe to EventKindTurnResults with filters:
-   - d: game_id
-   - turn: range
-   - p: own_pubkey (encrypted to me)
-2. Receive delta events from relay
-3. Decrypt using NIP-44, decompress with zstd
-4. Parse msgpack to PlayerStateDeltaEnvelope
-5. Validate config schema/hash against active TuiRulesSnapshot
-6. Apply deltas to local cached state
+1. Load the latest cached `PlayerState` snapshot if present
+2. Subscribe to `30403` turn results and `30405` full state:
+   - `d`: game_id
+   - `p`: own_pubkey
+3. Receive daemon-signed events from the relay
+4. Decrypt using NIP-44, decompress with zstd
+5. Parse msgpack to:
+   - `PlayerStateDeltaEnvelope` for `30403`
+   - `PlayerStateEnvelope` for `30405`
+6. Validate config schema/hash against active `TuiRulesSnapshot`
+7. Apply deltas or replace local state from full snapshot
+```
+
+#### Manual Recovery / Resync
+```
+1. Player enters `:resync` in expert mode
+2. Client re-subscribes the game feed
+3. Client publishes `30407` StateSyncRequest to the daemon
+4. Daemon validates sender and house membership
+5. Daemon republishes `30405` authoritative full state
+6. Client replaces same-turn local state with the authoritative snapshot
 ```
 
 #### Authoritative Config Flow
@@ -216,18 +231,27 @@ Normative behavior:
 
 #### Listen for Commands
 ```
-1. Subscribe to EventKindTurnCommands (30402) with filters:
-   - d: game_id (for all managed games)
-   - p: daemon_pubkey
-2. Receive events from relay stream
-3. For each event:
+1. Subscribe to player events with filters:
+   - `30402` TurnCommands
+   - `30407` StateSyncRequest
+   - `30401` PlayerSlotClaim
+   - `30406` PlayerMessage
+2. Filter by:
+   - `d`: game_id
+   - `p`: daemon_pubkey where applicable
+3. Receive events from relay stream
+4. For `30402`:
    - Verify signature
    - Validate required tags (`d`, `turn`, `p`)
    - Reject if `turn` does not match current game turn
    - Decrypt and decompress content
    - Parse msgpack to `CommandPacket`
    - Upsert packet in commands table by `(game_id, turn, house_id)`
-4. Check if all commands received or deadline passed
+5. For `30407`:
+   - Verify signature
+   - Resolve sender pubkey to house in that game
+   - Republish `30405` full state for that house
+6. Check if all commands received or deadline passed
 ```
 
 Implementation references:
@@ -239,21 +263,16 @@ Implementation references:
 #### Publish Results
 ```
 1. For each house:
-   - Query state_deltas for house_id
-   - Serialize to msgpack
-   - Compress with zstd
-   - Encrypt to house's pubkey using NIP-44
-   - Create EventKindTurnResults (30403) with tags:
-     - d: game_id
-     - turn: turn_number
-     - p: house_pubkey
-   - Sign with daemon's keypair
-2. Batch publish to relay
+   - build and publish `30403` turn delta
+   - build and publish `30405` authoritative full state
+2. Sign both with daemon's keypair
+3. Publish both to the relay
 ```
 
 ### State Deltas
 
-Instead of sending full game state each turn, send only changes:
+Turn refresh uses deltas for efficiency, but each resolved turn now also
+publishes a fresh full-state baseline for recovery and resync.
 
 **Delta Structure (msgpack):**
 ```nim
@@ -413,7 +432,7 @@ All transport code lives in `src/daemon/transport/nostr/`:
 | `compression.nim` | zstd compression |
 | `delta_msgpack.nim` | PlayerStateDelta serialization |
 | `state_msgpack.nim` | Full PlayerState serialization |
-| `events.nim` | Event builders for 30400-30406 |
+| `events.nim` | Event builders for 30400-30407 |
 | `nip01.nim` | Basic Nostr protocol (REQ, EVENT, CLOSE) |
 | `filter.nim` | NostrFilter builder |
 

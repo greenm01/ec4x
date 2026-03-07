@@ -61,6 +61,7 @@ must be interpreted to match these rules.
 | 30404 | Join Error | Daemon | NIP-44 |
 | 30405 | Game State | Daemon | NIP-44 |
 | 30406 | Player Message | Player/Daemon | NIP-44 |
+| 30407 | State Sync Request | Player | None |
 
 ### Required Tags by Event Kind
 
@@ -73,6 +74,7 @@ must be interpreted to match these rules.
 | 30404 | `p` (player pubkey) |
 | 30405 | `d`, `turn`, `p` (player pubkey) |
 | 30406 | `d`, `p`, `from_house`, `to_house` |
+| 30407 | `d`, `turn`, `p` (daemon pubkey) |
 
 ### Canonical Wire Pipeline
 
@@ -191,6 +193,45 @@ message game="550e8400-e29b-41d4-a716-446655440000" {
 - `p`: recipient pubkey (daemon on send, player on forward)
 - `from_house`: sender house id
 - `to_house`: recipient house id (0 for broadcast)
+
+### State Sync Request (30407)
+
+`30407` is a player-to-daemon recovery event used when the client wants
+the daemon to republish the authoritative full `PlayerState` for the
+current turn.
+
+It is not encrypted because it carries no game payload, only routing
+metadata.
+
+Required tags:
+
+- `d`: game id
+- `turn`: current player turn
+- `p`: daemon pubkey
+
+Publisher:
+
+- Player TUI when expert command `:resync` is used
+
+Daemon behavior:
+
+- validate the event signature
+- resolve the sender pubkey to the claiming house for that game
+- republish `30405` for that house and turn
+
+### Full-State Publication Rules
+
+`30405` is the authoritative per-house `PlayerState` snapshot. It is
+not limited to join flow.
+
+The daemon publishes `30405` in these situations:
+
+- immediately after successful slot claim
+- when a player sends `30407` state sync request
+- after turn resolution, alongside `30403` turn delta publication
+
+This gives the relay a current authoritative baseline for recovery and
+same-turn resync.
 
 ### Identity Types
 

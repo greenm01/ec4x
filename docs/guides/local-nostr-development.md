@@ -99,9 +99,9 @@ messages_per_sec = 100         # High for local dev
 subscriptions_per_connection = 50
 
 [retention]
-# Keep EC4X events forever (kinds 30400-30405)
+# Keep EC4X events forever (kinds 30400-30407)
 [[retention.event_kinds]]
-kinds = [30400, 30401, 30402, 30403, 30405]
+kinds = [30400, 30401, 30402, 30403, 30405, 30407]
 time_limit = 0   # Permanent
 count_limit = 0  # Unlimited
 ```
@@ -237,7 +237,8 @@ cd ~/dev/ec4x
 
 The daemon:
 - Scans `data/games/*/ec4x.db` for active games
-- Subscribes to Nostr relay for command events (kind 30402)
+- Subscribes to Nostr relay for command and resync events
+  (kinds 30402, 30407)
 - Publishes game state events (kinds 30403, 30405)
 
 ---
@@ -295,6 +296,8 @@ identity at `~/.local/share/ec4x/identity.kdl`.
 After connecting to a game, the TUI:
 - Subscribes to game state events (kind 30405)
 - Receives and applies delta events (kind 30403)
+- Can request a fresh authoritative full state with `:resync`
+  (kind 30407)
 - Renders the game map and entity lists
 
 ---
@@ -349,6 +352,7 @@ rm -rf ~/dev/nostr-rs-relay/data/*
 websocat ws://localhost:8080
 # Then type:
 ["REQ","debug",{"kinds":[30400,30401,30402,30403,30405]}]
+["REQ","debug",{"kinds":[30400,30401,30402,30403,30405,30407]}]
 ```
 
 **Check game state:**

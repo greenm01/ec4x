@@ -34,7 +34,7 @@ The **daemon** is the autonomous turn processing service that powers EC4X. It mo
 │  │  • Validate commands                     │  │
 │  │  • Resolve 4-phase turn cycle          │  │
 │  │  • Update game state                   │  │
-│  │  • Generate deltas                     │  │
+│  │  • Generate deltas + full state        │  │
 │  │  • Update intel tables                 │  │
 │  └────────────────────────────────────────┘  │
 │  ┌────────────────────────────────────────┐  │
@@ -108,17 +108,26 @@ Loop every poll_interval:
 **Nostr Mode:**
 ```
 Maintain WebSocket subscription:
-  Filter: kind=30402, d=<game_ids>, p=<daemon_pubkey>
+  Filter:
+    - 30402 TurnCommands
+    - 30407 StateSyncRequest
+    - 30401 PlayerSlotClaim
+    - 30406 PlayerMessage
 
 On EVENT received:
-  Verify signature
-  Validate required tags (d, turn, p)
-  Validate turn matches current game turn
-  Decrypt with daemon private key
-  Parse msgpack CommandPacket
-  Upsert commands row by (game_id, turn, house_id)
-  Cache event ID for replay protection
-  Log command receipt
+  If 30402:
+    Verify signature
+    Validate required tags (d, turn, p)
+    Validate turn matches current game turn
+    Decrypt with daemon private key
+    Parse msgpack CommandPacket
+    Upsert commands row by (game_id, turn, house_id)
+    Cache event ID for replay protection
+    Log command receipt
+  If 30407:
+    Verify signature
+    Resolve sender pubkey to claiming house
+    Republish authoritative 30405 full state
 ```
 
 **Nostr Turn Command Lifecycle (30402):**
@@ -213,9 +222,10 @@ BEGIN TRANSACTION;
 8. Generate state deltas per player
    - Query intel tables for each house
    - Compute changes since last turn
-   - Store in state_deltas table
-
-9. Update turn deadline
+9. Publish per-house `30403` delta and `30405` full state
+   - delta for efficient turn refresh
+   - full state as authoritative recovery baseline
+10. Update turn deadline
    - Calculate next deadline (e.g., +48 hours)
    - Update games table
 
