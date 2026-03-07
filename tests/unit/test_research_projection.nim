@@ -1,24 +1,31 @@
 ## Unit tests for projected research gating helpers.
 
-import std/[unittest, tables]
+import std/unittest
 
-import ../../src/engine/systems/tech/costs
-import ../../src/engine/types/tech
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
+import ../../src/engine/systems/tech/costs
+import ../../src/engine/types/tech
 import ../../src/player/sam/tui_model
 import ../../src/player/tui/data/research_projection
 import ../../src/player/tui/data/tech_info
 
 gameConfig = config_engine.loadGameConfig()
 
-proc baseLevels(sl: int32 = 1, el: int32 = 1, wep: int32 = 1): TechLevel =
+proc baseLevels(
+    sl: int32 = 1,
+    ml: int32 = 1,
+    el: int32 = 1,
+    wep: int32 = 1,
+    ter: int32 = 1
+): TechLevel =
   TechLevel(
     el: el,
     sl: sl,
+    ml: ml,
     cst: 1,
     wep: wep,
-    ter: 1,
+    ter: ter,
     eli: 1,
     clk: 1,
     sld: 1,
@@ -31,119 +38,122 @@ proc baseLevels(sl: int32 = 1, el: int32 = 1, wep: int32 = 1): TechLevel =
   )
 
 proc emptyPoints(): ResearchPoints =
-  ResearchPoints(
-    economic: 0,
-    science: 0,
-    technology: initTable[TechField, int32]()
-  )
+  ResearchPoints(erp: 0, srp: 0, mrp: 0)
 
-proc emptyAllocation(): ResearchAllocation =
-  ResearchAllocation(
-    economic: 0,
-    science: 0,
-    technology: initTable[TechField, int32]()
-  )
+proc emptyDeposits(): ResearchDeposits =
+  ResearchDeposits(erp: 0, srp: 0, mrp: 0)
 
-suite "Research Projection: Science Level":
-  test "science allocation can project one SL level":
+proc emptyPurchases(): TechPurchaseSet =
+  TechPurchaseSet(economic: false, science: false, military: false)
+
+suite "Research Projection: Root Levels":
+  test "science purchase projects one SL level when affordable":
     let levels = baseLevels(sl = 1)
-    let points = emptyPoints()
-    var alloc = emptyAllocation()
-    alloc.science = slUpgradeCost(1)
-
-    check projectedScienceLevel(levels, points, alloc) == 2
-
-  test "projection never advances without threshold":
-    let levels = baseLevels(sl = 1)
-    let points = emptyPoints()
-    var alloc = emptyAllocation()
-    alloc.science = slUpgradeCost(1) - 1
-
-    check projectedScienceLevel(levels, points, alloc) == 1
-
-suite "Research Projection: Gating":
-  test "EL remains blocked without projected SL":
-    let levels = baseLevels(sl = 1, el = 1)
-    let points = emptyPoints()
-    let alloc = emptyAllocation()
-    let item = researchItemAt(researchIndexForCode("EL"))
-
-    check maxProjectedAllocation(levels, points, alloc, item) == 0
-    check isBlockedProjected(levels, points, alloc, item)
-
-  test "EL unlocks when SL projects to required tier":
-    let levels = baseLevels(sl = 1, el = 1)
-    let points = emptyPoints()
-    var alloc = emptyAllocation()
-    alloc.science = slUpgradeCost(1)
-    let item = researchItemAt(researchIndexForCode("EL"))
-
-    check maxProjectedAllocation(levels, points, alloc, item) ==
-      elUpgradeCost(1).int
-
-suite "Research Projection: Tech Level":
-  test "projected tech level stays at current without threshold":
-    let levels = baseLevels(sl = 2, wep = 1)
-    let points = emptyPoints()
-    let alloc = emptyAllocation()
-    let item = researchItemAt(researchIndexForCode("WEP"))
-
-    check projectedTechLevel(levels, points, alloc, item) == 1
-
-  test "projected tech level advances when staged PP meets threshold":
-    let levels = baseLevels(sl = 2, wep = 1)
-    let points = emptyPoints()
-    var alloc = emptyAllocation()
-    let item = researchItemAt(researchIndexForCode("WEP"))
-    alloc.technology[item.field] = techProgressCost(item, 1).int32
-
-    check projectedTechLevel(levels, points, alloc, item) == 2
-
-  test "projected tech level uses existing progress plus staged PP":
-    let levels = baseLevels(sl = 2, wep = 1)
     var points = emptyPoints()
-    var alloc = emptyAllocation()
-    let item = researchItemAt(researchIndexForCode("WEP"))
-    let cost = techProgressCost(item, 1)
-    points.technology[item.field] = (cost - 1).int32
-    alloc.technology[item.field] = 1
+    let deposits = emptyDeposits()
+    var purchases = emptyPurchases()
+    points.srp = slUpgradeCost(1)
+    purchases.science = true
 
-    check projectedTechLevel(levels, points, alloc, item) == 2
+    check projectedScienceLevel(
+      levels, points, deposits, purchases, 100
+    ) == 2
 
-  test "projected tech level is capped at max level":
-    let item = researchItemAt(researchIndexForCode("WEP"))
-    let maxLevel = progressionMaxLevel(item)
-    let levels = baseLevels(sl = 1, wep = maxLevel.int32)
+  test "military purchase projects one ML level when affordable":
+    let levels = baseLevels(ml = 1)
+    var points = emptyPoints()
+    let deposits = emptyDeposits()
+    var purchases = emptyPurchases()
+    points.mrp = mlUpgradeCost(1)
+    purchases.military = true
+
+    check projectedMilitaryLevel(
+      levels, points, deposits, purchases, 100
+    ) == 2
+
+  test "economic level remains ungated":
+    let levels = baseLevels(sl = 1, el = 1)
     let points = emptyPoints()
-    var alloc = emptyAllocation()
-    alloc.technology[item.field] = 999
-
-    check projectedTechLevel(levels, points, alloc, item) == maxLevel
-
-  test "projected tech level remains capped at one level per turn":
-    let levels = baseLevels(sl = 2, wep = 1)
-    let points = emptyPoints()
-    var alloc = emptyAllocation()
-    let item = researchItemAt(researchIndexForCode("WEP"))
-    alloc.technology[item.field] = 999
-
-    check projectedTechLevel(levels, points, alloc, item) == 2
-
-  test "EL projection respects SL gate even when ERP threshold met":
-    let levels = baseLevels(sl = 2, el = 2)
-    let points = emptyPoints()
-    var alloc = emptyAllocation()
+    let deposits = emptyDeposits()
+    let purchases = emptyPurchases()
     let item = researchItemAt(researchIndexForCode("EL"))
-    alloc.economic = elUpgradeCost(2)
 
-    check projectedTechLevel(levels, points, alloc, item) == 2
+    check not isBlockedProjected(
+      levels, points, deposits, purchases, item, 100
+    )
 
-  test "EL projection unlocks when staged science projects SL gate":
-    let levels = baseLevels(sl = 2, el = 2)
+suite "Research Projection: Branch Gating":
+  test "science tech stays blocked without projected SL":
+    let levels = baseLevels(sl = 1)
     let points = emptyPoints()
-    var alloc = emptyAllocation()
-    let item = researchItemAt(researchIndexForCode("EL"))
-    alloc.science = slUpgradeCost(2)
-    alloc.economic = elUpgradeCost(2)
+    let deposits = emptyDeposits()
+    let purchases = emptyPurchases()
+    let item = researchItemAt(researchIndexForCode("STL"))
 
-    check projectedTechLevel(levels, points, alloc, item) == 3
+    check isBlockedProjected(
+      levels, points, deposits, purchases, item, 100
+    )
+
+  test "science tech unlocks when staged SL purchase meets gate":
+    let levels = baseLevels(sl = 1)
+    var points = emptyPoints()
+    let deposits = emptyDeposits()
+    var purchases = emptyPurchases()
+    let item = researchItemAt(researchIndexForCode("STL"))
+    points.srp = slUpgradeCost(levels.sl)
+    purchases.science = true
+
+    check not isBlockedProjected(
+      levels, points, deposits, purchases, item, 100
+    )
+
+  test "military tech stays blocked without projected ML":
+    let levels = baseLevels(ml = 1, wep = 1)
+    let points = emptyPoints()
+    let deposits = emptyDeposits()
+    let purchases = emptyPurchases()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+
+    check isBlockedProjected(
+      levels, points, deposits, purchases, item, 100
+    )
+
+  test "military tech unlocks when staged ML purchase meets gate":
+    let levels = baseLevels(ml = 1, wep = 1)
+    var points = emptyPoints()
+    let deposits = emptyDeposits()
+    var purchases = emptyPurchases()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+    points.mrp = mlUpgradeCost(levels.ml)
+    purchases.military = true
+
+    check not isBlockedProjected(
+      levels, points, deposits, purchases, item, 100
+    )
+
+suite "Research Projection: Tech Purchases":
+  test "military tech purchase projects one level when affordable":
+    let levels = baseLevels(ml = 2, wep = 1)
+    var points = emptyPoints()
+    let deposits = emptyDeposits()
+    var purchases = emptyPurchases()
+    let item = researchItemAt(researchIndexForCode("WEP"))
+    points.mrp = techProgressCost(item, 1).int32
+    purchases.technology.incl item.field
+
+    check projectedTechLevel(
+      levels, points, deposits, purchases, item, 100
+    ) == 2
+
+  test "science tech purchase projects one level when affordable":
+    let levels = baseLevels(sl = 2)
+    var points = emptyPoints()
+    let deposits = emptyDeposits()
+    var purchases = emptyPurchases()
+    let item = researchItemAt(researchIndexForCode("STL"))
+    points.srp = techProgressCost(item, 1).int32
+    purchases.technology.incl item.field
+
+    check projectedTechLevel(
+      levels, points, deposits, purchases, item, 100
+    ) == 2

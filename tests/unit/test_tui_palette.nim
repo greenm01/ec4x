@@ -24,8 +24,8 @@ suite "TUI Palette":
     check TableBorderColor == RgbColor(r: 115, g: 122, b: 162) # #737aa2
     check TableGridColor == RgbColor(r: 115, g: 122, b: 162) # #737aa2
     check PanelTitleColor == RgbColor(r: 192, g: 202, b: 245) # #c0caf5
-    check ModalTitleColor == RgbColor(r: 192, g: 202, b: 245) # #c0caf5
-    check TableHeaderColor == RgbColor(r: 192, g: 202, b: 245) # #c0caf5
+    check ModalTitleColor == RgbColor(r: 187, g: 154, b: 247) # #bb9af7
+    check TableHeaderColor == RgbColor(r: 130, g: 170, b: 255) # #82aaff
     check HudBorderColor == RgbColor(r: 65, g: 72, b: 104) # #414868
     check SelectedBgColor == RgbColor(r: 130, g: 170, b: 255) # #82aaff
     check AccentColor == RgbColor(r: 192, g: 153, b: 255)    # #c099ff

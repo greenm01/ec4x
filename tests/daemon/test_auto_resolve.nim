@@ -2,8 +2,7 @@
 ##
 ## Tests the automatic turn resolution trigger when all players submit commands
 
-import std/[unittest, options, tables, os, strutils, times, asyncdispatch,
-  sets]
+import std/[unittest, options, tables, os, times]
 import db_connector/db_sqlite
 import ../../src/daemon/[daemon, sam_core]
 import ../../src/engine/init/game_state
@@ -69,14 +68,14 @@ proc drainDaemon(loop: DaemonLoop, cycles: int = 4) =
 suite "Auto-Resolve: Query Functions":
 
   test "countExpectedPlayers returns 0 when no pubkeys assigned":
-    let (dbPath, gameId, state) = createTestGame(4)
+    let (dbPath, gameId, _) = createTestGame(4)
     defer: cleanupTestGame(dbPath)
 
     let expected = countExpectedPlayers(dbPath, gameId)
     check expected == 0
 
   test "countExpectedPlayers counts only houses with pubkeys":
-    let (dbPath, gameId, state) = createTestGame(4)
+    let (dbPath, gameId, _) = createTestGame(4)
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to 2 houses
@@ -87,7 +86,7 @@ suite "Auto-Resolve: Query Functions":
     check expected == 2
 
   test "countExpectedPlayers handles all houses with pubkeys":
-    let (dbPath, gameId, state) = createTestGame(3)
+    let (dbPath, gameId, _) = createTestGame(3)
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to all houses
@@ -99,20 +98,20 @@ suite "Auto-Resolve: Query Functions":
     check expected == 3
 
   test "countTotalPlayers counts all house slots":
-    let (dbPath, gameId, state) = createTestGame(3)
+    let (dbPath, gameId, _) = createTestGame(3)
     defer: cleanupTestGame(dbPath)
 
     check countTotalPlayers(dbPath, gameId) == 3
 
   test "countPlayersSubmitted returns 0 when no commands":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     let submitted = countPlayersSubmitted(dbPath, gameId, 1)
     check submitted == 0
 
   test "countPlayersSubmitted counts distinct houses with commands":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     # House 1 submits multiple fleet commands (should count as 1)
@@ -145,7 +144,7 @@ suite "Auto-Resolve: Query Functions":
     check submitted == 1
 
   test "countPlayersSubmitted handles multiple houses":
-    let (dbPath, gameId, state) = createTestGame(3)
+    let (dbPath, gameId, _) = createTestGame(3)
     defer: cleanupTestGame(dbPath)
 
     # House 1 submits
@@ -192,7 +191,7 @@ suite "Auto-Resolve: Query Functions":
     check submitted == 2
 
   test "countPlayersSubmitted ignores processed commands":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     # House 1 submits
@@ -226,7 +225,7 @@ suite "Auto-Resolve: Query Functions":
 suite "Auto-Resolve: Readiness Detection":
 
   test "detects readiness with 2/2 players":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to both houses
@@ -283,7 +282,7 @@ suite "Auto-Resolve: Readiness Detection":
     check submitted == expected
 
   test "partial submission not ready":
-    let (dbPath, gameId, state) = createTestGame(3)
+    let (dbPath, gameId, _) = createTestGame(3)
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys to all 3 houses
@@ -337,7 +336,7 @@ suite "Auto-Resolve: Readiness Detection":
 suite "Auto-Resolve: Daemon Deadline Behavior":
 
   test "maintenance does not assign deadline when disabled":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     let loop = initTestDaemonLoop(dbPath.parentDir().parentDir().parentDir())
@@ -346,7 +345,7 @@ suite "Auto-Resolve: Daemon Deadline Behavior":
     loop.model.games[gameId] = GameInfo(
       id: gameId,
       dbPath: dbPath,
-      turn: state.turn.int,
+      turn: 1,
       phase: "Active",
       transportMode: "nostr",
       turnDeadline: none(int64)
@@ -363,7 +362,7 @@ suite "Auto-Resolve: Daemon Deadline Behavior":
     check loop.model.games[gameId].turnDeadline.isNone
 
   test "maintenance assigns deadline when enabled":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     let loop = initTestDaemonLoop(getTempDir())
@@ -372,7 +371,7 @@ suite "Auto-Resolve: Daemon Deadline Behavior":
     loop.model.games[gameId] = GameInfo(
       id: gameId,
       dbPath: dbPath,
-      turn: state.turn.int,
+      turn: 1,
       phase: "Active",
       transportMode: "nostr",
       turnDeadline: none(int64)
@@ -389,7 +388,7 @@ suite "Auto-Resolve: Daemon Deadline Behavior":
     check loop.model.games[gameId].turnDeadline.isSome
 
   test "overdue deadline requests resolution on tick":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     let overdue = some(getTime().toUnix() - 1)
@@ -400,7 +399,7 @@ suite "Auto-Resolve: Daemon Deadline Behavior":
     loop.model.games[gameId] = GameInfo(
       id: gameId,
       dbPath: dbPath,
-      turn: state.turn.int,
+      turn: 1,
       phase: "Active",
       transportMode: "nostr",
       turnDeadline: overdue
@@ -434,7 +433,7 @@ suite "Persistence: Schema Compatibility":
 suite "Auto-Resolve: Readiness Detection":
 
   test "command resubmission doesn't affect count":
-    let (dbPath, gameId, state) = createTestGame(2)
+    let (dbPath, gameId, _) = createTestGame(2)
     defer: cleanupTestGame(dbPath)
 
     # Assign pubkeys
@@ -488,7 +487,7 @@ suite "Auto-Resolve: Readiness Detection":
 suite "Auto-Resolve: Command Ordering":
 
   test "older submission does not overwrite newer command packet":
-    let (dbPath, gameId, state) = createTestGame(1)
+    let (dbPath, gameId, _) = createTestGame(1)
     defer: cleanupTestGame(dbPath)
 
     let olderPacket = CommandPacket(
@@ -533,7 +532,7 @@ suite "Auto-Resolve: Command Ordering":
       FleetCommandType.Patrol
 
   test "newer submission overwrites older command packet":
-    let (dbPath, gameId, state) = createTestGame(1)
+    let (dbPath, gameId, _) = createTestGame(1)
     defer: cleanupTestGame(dbPath)
 
     let olderPacket = CommandPacket(
@@ -578,7 +577,7 @@ suite "Auto-Resolve: Command Ordering":
       FleetCommandType.Patrol
 
   test "equal timestamp resubmission does not overwrite":
-    let (dbPath, gameId, state) = createTestGame(1)
+    let (dbPath, gameId, _) = createTestGame(1)
     defer: cleanupTestGame(dbPath)
 
     let firstPacket = CommandPacket(
@@ -625,7 +624,7 @@ suite "Auto-Resolve: Command Ordering":
 suite "Auto-Resolve: Phase Gating":
 
   test "Setup phase not counted":
-    let (dbPath, gameId, state) = createTestGame(2, "Setup")
+    let (dbPath, gameId, _) = createTestGame(2, "Setup")
     defer: cleanupTestGame(dbPath)
 
     # Even with all players ready, Setup games shouldn't trigger
@@ -681,7 +680,7 @@ suite "Auto-Resolve: Phase Gating":
     check phase == "Setup"
 
   test "Paused phase not counted":
-    let (dbPath, gameId, state) = createTestGame(2, "Paused")
+    let (dbPath, gameId, _) = createTestGame(2, "Paused")
     defer: cleanupTestGame(dbPath)
 
     setHousePubkey(dbPath, gameId, HouseId(1), "pubkey1")
@@ -693,7 +692,7 @@ suite "Auto-Resolve: Phase Gating":
     check phase == "Paused"
 
   test "Active phase allows auto-resolve":
-    let (dbPath, gameId, state) = createTestGame(2, "Active")
+    let (dbPath, gameId, _) = createTestGame(2, "Active")
     defer: cleanupTestGame(dbPath)
 
     let db = open(dbPath, "", "", "")
@@ -704,7 +703,7 @@ suite "Auto-Resolve: Phase Gating":
 suite "Auto-Resolve: Mixed Human/AI Games":
 
   test "3 claimed of 4 does not auto-resolve":
-    let (dbPath, gameId, state) = createTestGame(4, "Active")
+    let (dbPath, gameId, _) = createTestGame(4, "Active")
     defer: cleanupTestGame(dbPath)
 
     # Only 3 houses get pubkeys (4th slot remains unclaimed)
@@ -741,7 +740,7 @@ suite "Auto-Resolve: Mixed Human/AI Games":
     check not isAutoResolveReady(dbPath, gameId, 1)
 
   test "all slots unclaimed is not ready":
-    let (dbPath, gameId, state) = createTestGame(4, "Active")
+    let (dbPath, gameId, _) = createTestGame(4, "Active")
     defer: cleanupTestGame(dbPath)
 
     # No pubkeys assigned

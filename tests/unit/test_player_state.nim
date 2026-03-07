@@ -4,7 +4,7 @@
 
 import std/[unittest, options]
 import ../../src/engine/engine
-import ../../src/engine/state/[engine, iterators, player_state]
+import ../../src/engine/state/[iterators, player_state]
 import ../../src/daemon/persistence/msgpack_state
 
 suite "PlayerState: Tax Rate":

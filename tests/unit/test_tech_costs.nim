@@ -99,38 +99,38 @@ suite "Tech Costs: PP to SRP Conversion":
     let ratio = srp5.float / srp0.float
     check ratio > 1.9 and ratio < 2.1
 
-suite "Tech Costs: PP to TRP Conversion":
-  ## Tests for Technology Research Points conversion
-  ## Formula: TRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)
+suite "Tech Costs: PP to MRP Conversion":
+  ## Tests for Military Research Points conversion
+  ## Formula: MRP = PP * (1 + log₁₀(GHO)/3.5) * (1 + SL/20)
 
-  test "Zero PP gives zero TRP":
-    let trp = convertPPToTRP(0, 1000, 5)
-    check trp == 0
+  test "Zero PP gives zero MRP":
+    let mrp = convertPPToMRP(0, 1000, 5)
+    check mrp == 0
 
-  test "TRP has moderate GHO scaling":
+  test "MRP has moderate GHO scaling":
     let erp = convertPPToERP(100, 1000, 0)
-    let trp = convertPPToTRP(100, 1000, 0)
+    let mrp = convertPPToMRP(100, 1000, 0)
     let srp = convertPPToSRP(100, 1000, 0)
-    # TRP GHO modifier: 1 + 3/3.5 = 1.857
+    # MRP GHO modifier: 1 + 3/3.5 = 1.857
     # Between ERP (2.0) and SRP (1.75)
-    check trp < erp
-    check trp > srp
+    check mrp < erp
+    check mrp > srp
 
-  test "TRP has weakest SL scaling":
+  test "MRP has weakest SL scaling":
     let erp = convertPPToERP(100, 100, 10)
     let srp = convertPPToSRP(100, 100, 10)
-    let trp = convertPPToTRP(100, 100, 10)
-    # TRP SL modifier: 1 + 10/20 = 1.5
+    let mrp = convertPPToMRP(100, 100, 10)
+    # MRP SL modifier: 1 + 10/20 = 1.5
     # ERP SL modifier: 1 + 10/10 = 2.0
     # SRP SL modifier: 1 + 10/5 = 3.0
-    check trp < erp
-    check trp < srp
+    check mrp < erp
+    check mrp < srp
 
-  test "TRP modest benefit from science infrastructure":
-    let trp0 = convertPPToTRP(100, 100, 0)
-    let trp10 = convertPPToTRP(100, 100, 10)
+  test "MRP modest benefit from science infrastructure":
+    let mrp0 = convertPPToMRP(100, 100, 0)
+    let mrp10 = convertPPToMRP(100, 100, 10)
     # SL 10 gives 50% bonus (1 + 10/20 = 1.5)
-    let ratio = trp10.float / trp0.float
+    let ratio = mrp10.float / mrp0.float
     check ratio > 1.4 and ratio < 1.6
 
 suite "Tech Costs: Research Allocation":
@@ -143,9 +143,9 @@ suite "Tech Costs: Research Allocation":
       technology: initTable[TechField, int32]()
     )
     let rp = allocateResearch(allocation, 1000, 5)
-    check rp.economic == 0
-    check rp.science == 0
-    check rp.technology.len == 0
+    check rp.erp == 0
+    check rp.srp == 0
+    check rp.mrp == 0
 
   test "Economic allocation converts correctly":
     let allocation = ResearchAllocation(
@@ -155,7 +155,7 @@ suite "Tech Costs: Research Allocation":
     )
     let rp = allocateResearch(allocation, 1000, 5)
     let expected = convertPPToERP(100, 1000, 5)
-    check rp.economic == expected
+    check rp.erp == expected
 
   test "Science allocation converts correctly":
     let allocation = ResearchAllocation(
@@ -165,7 +165,7 @@ suite "Tech Costs: Research Allocation":
     )
     let rp = allocateResearch(allocation, 1000, 5)
     let expected = convertPPToSRP(100, 1000, 5)
-    check rp.science == expected
+    check rp.srp == expected
 
   test "Technology allocation converts correctly":
     var techAlloc = initTable[TechField, int32]()
@@ -176,8 +176,8 @@ suite "Tech Costs: Research Allocation":
       technology: techAlloc
     )
     let rp = allocateResearch(allocation, 1000, 5)
-    let expected = convertPPToTRP(100, 1000, 5)
-    check rp.technology[TechField.WeaponsTech] == expected
+    let expected = convertPPToMRP(100, 1000, 5)
+    check rp.mrp == expected
 
   test "Multiple tech fields convert independently":
     var techAlloc = initTable[TechField, int32]()
@@ -189,9 +189,8 @@ suite "Tech Costs: Research Allocation":
       technology: techAlloc
     )
     let rp = allocateResearch(allocation, 1000, 5)
-    let expected = convertPPToTRP(50, 1000, 5)
-    check rp.technology[TechField.WeaponsTech] == expected
-    check rp.technology[TechField.ConstructionTech] == expected
+    let expected = convertPPToMRP(50, 1000, 5)
+    check rp.mrp == expected * 2
 
 suite "Tech Costs: Total RP Calculation":
   ## Tests for calculateTotalRPInvested()

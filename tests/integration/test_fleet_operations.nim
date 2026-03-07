@@ -16,7 +16,7 @@
 ## NOTE: Capacity limits (dock counts, fleet counts, C2 pool, cargo capacity)
 ## are tested separately in test_capacity_limits.nim
 
-import std/[unittest, options, sequtils]
+import std/[unittest, options, sequtils, tables]
 import ../../src/engine/engine
 import ../../src/engine/types/[
   core, game_state, house, colony, ship, fleet, combat, ground_unit,
@@ -1514,10 +1514,14 @@ suite "Fleet Operations - Jump Lane Movement":
     # Calculate cost for a simple path
     let path = @[testSystems[0], testSystems[1]]
     let cost = pathCost(game, path, fleet)
-    
-    # Cost should be valid (not uint32.high which means invalid)
-    # Actual value depends on lane type between systems
-    check cost != uint32.high or path[0] == path[1]
+    let laneType = game.starMap.lanes.connectionInfo.getOrDefault(
+      (path[0], path[1]), LaneClass.Minor
+    )
+
+    if canFleetTraverseLane(game, fleet, laneType):
+      check cost != uint32.high
+    else:
+      check cost == uint32.high
 
 # =============================================================================
 # Test Summary
