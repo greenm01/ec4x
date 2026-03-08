@@ -686,6 +686,10 @@ type
     QuitStay
     QuitExit
 
+  SessionModalItem* {.pure.} = enum
+    Wallet
+    SwitchGame
+
   JoinGameInfo* = object
     id*: string
     name*: string
@@ -1031,6 +1035,11 @@ type
     quitConfirmationChoice*: QuitConfirmationChoice
     showHelpOverlay*: bool
     identityDeleteConfirmActive*: bool
+    sessionModalActive*: bool
+    sessionModalSelected*: SessionModalItem
+    sessionSwitchConfirmActive*: bool
+    resumeInGameAfterEntryModal*: bool
+    switchGameRequested*: bool
 
     # Map export flags
     exportMapRequested*: bool
@@ -1384,6 +1393,12 @@ proc initTuiUiState*(): TuiUiState =
     quitConfirmationActive: false,
     quitConfirmationChoice: QuitStay,
     showHelpOverlay: false,
+    identityDeleteConfirmActive: false,
+    sessionModalActive: false,
+    sessionModalSelected: SessionModalItem.Wallet,
+    sessionSwitchConfirmActive: false,
+    resumeInGameAfterEntryModal: false,
+    switchGameRequested: false,
     exportMapRequested: false,
     openMapRequested: false,
     syncNowRequested: false,

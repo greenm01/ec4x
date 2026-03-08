@@ -206,6 +206,7 @@ proc economyContextActions*(): seq[ContextAction] =
     ContextAction(key: "Left/Right", label: "Adjust tax", enabled: true),
     ContextAction(key: "J/K", label: "Select house", enabled: true),
     ContextAction(key: "E/P/A/R", label: "Diplomacy", enabled: true),
+    ContextAction(key: "S", label: "Session", enabled: true),
     ContextAction(key: "M", label: "Export map", enabled: true),
   ]
 

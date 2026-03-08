@@ -1331,6 +1331,12 @@ proc initBindings*() =
     context: BindingContext.Economy,
     longLabel: "EXPORT MAP", shortLabel: "M", priority: 40))
 
+  registerBinding(Binding(
+    key: KeyCode.KeyS, modifier: KeyModifier.None,
+    actionKind: ActionKind.economySessionOpen,
+    context: BindingContext.Economy,
+    longLabel: "SESSION", shortLabel: "S", priority: 41))
+
   # =========================================================================
   # Intel DB Context
   # =========================================================================
@@ -2296,6 +2302,24 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionEconomyDiplomacyAccept())
   of ActionKind.economyDiplomacyReject:
     return some(actionEconomyDiplomacyReject())
+  of ActionKind.economySessionOpen:
+    return some(actionEconomySessionOpen())
+  of ActionKind.economySessionClose:
+    return some(actionEconomySessionClose())
+  of ActionKind.economySessionUp:
+    return some(actionEconomySessionUp())
+  of ActionKind.economySessionDown:
+    return some(actionEconomySessionDown())
+  of ActionKind.economySessionSelect:
+    return some(actionEconomySessionSelect())
+  of ActionKind.economySessionWallet:
+    return some(actionEconomySessionWallet())
+  of ActionKind.economySessionSwitchGame:
+    return some(actionEconomySessionSwitchGame())
+  of ActionKind.economySessionSwitchConfirm:
+    return some(actionEconomySessionSwitchConfirm())
+  of ActionKind.economySessionSwitchCancel:
+    return some(actionEconomySessionSwitchCancel())
 
   else:
     discard
@@ -2317,8 +2341,17 @@ proc lookupGlobalAndDispatch*(key: KeyCode, modifier: KeyModifier,
   ## Look up a global binding and dispatch the action if found
   lookupAndDispatch(key, modifier, BindingContext.Global, model)
 
+proc entryOverlayActive(model: TuiModel): bool =
+  model.ui.appPhase == AppPhase.Lobby or
+    model.ui.entryModal.mode != EntryModalMode.Normal or
+    model.ui.entryModal.editingRelay
+
 proc backActionForState(model: TuiModel): Option[Proposal] =
   ## Return the layered back action for current state
+  if model.ui.sessionSwitchConfirmActive:
+    return some(actionEconomySessionSwitchCancel())
+  if model.ui.sessionModalActive:
+    return some(actionEconomySessionClose())
   if model.ui.liquidationConfirmActive:
     return some(actionResearchLiquidateCancel())
   if model.ui.submitConfirmActive:
@@ -2344,7 +2377,7 @@ proc backActionForState(model: TuiModel): Option[Proposal] =
     return some(actionCloseFleetDetailModal())
   if model.ui.expertModeActive:
     return some(actionExitExpertMode())
-  if model.ui.appPhase == AppPhase.Lobby:
+  if entryOverlayActive(model):
     if model.ui.entryModal.mode == EntryModalMode.SecurityWarning:
       return none(Proposal)  # Only Enter dismisses
     if model.ui.entryModal.mode == EntryModalMode.ImportNsec:
@@ -2431,6 +2464,32 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return some(actionResearchLiquidateAdjustDec())
     else:
       return none(Proposal)  # Swallow
+
+  if model.ui.sessionSwitchConfirmActive:
+    case key
+    of KeyCode.KeyEnter, KeyCode.KeyY:
+      return some(actionEconomySessionSwitchConfirm())
+    of KeyCode.KeyEscape, KeyCode.KeyN:
+      return some(actionEconomySessionSwitchCancel())
+    else:
+      return none(Proposal)
+
+  if model.ui.sessionModalActive:
+    case key
+    of KeyCode.KeyEscape:
+      return some(actionEconomySessionClose())
+    of KeyCode.KeyUp, KeyCode.KeyK:
+      return some(actionEconomySessionUp())
+    of KeyCode.KeyDown, KeyCode.KeyJ:
+      return some(actionEconomySessionDown())
+    of KeyCode.KeyEnter:
+      return some(actionEconomySessionSelect())
+    of KeyCode.KeyW:
+      return some(actionEconomySessionWallet())
+    of KeyCode.KeyG:
+      return some(actionEconomySessionSwitchGame())
+    else:
+      return none(Proposal)
 
   # Export confirmation popup - any key dismisses it
   if model.ui.exportConfirmActive:
@@ -2764,7 +2823,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
       return none(Proposal)
 
   # Lobby phase: special handling for text input modes
-  if model.ui.appPhase == AppPhase.Lobby:
+  if entryOverlayActive(model):
     # Identity delete confirmation popup takes priority
     if model.ui.identityDeleteConfirmActive:
       case key

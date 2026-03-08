@@ -168,6 +168,13 @@ proc helpLines*(ctx: HelpContext): seq[string] =
     result.add("Left/Right = panel nav or EBP/CIP in Budget")
     result.add("+/- = adjust budget or operation quantity")
     result.add("Enter = add selected operation")
+  if ctx == HelpContext.Economy:
+    result.add("Tab/Up/Down = cycle Tax / Diplomacy / Actions")
+    result.add("Left/Right and +/- = adjust tax rate")
+    result.add("J/K = select diplomatic target")
+    result.add("E/P/A/R = diplomacy actions")
+    result.add("S = session menu")
+    result.add("M = export starmap SVG")
   if ctx == HelpContext.Messages:
     result.add("Tab / Left / Right / H / L = switch list/detail panel")
     result.add("M = jump to Messages")

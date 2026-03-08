@@ -1906,6 +1906,28 @@ proc runTui*(gameId: string = "") =
     # -------------------------------------------------------------------------
     # Phase 7: Handle game loading and state changes
     # -------------------------------------------------------------------------
+    if sam.model.ui.switchGameRequested:
+      if activeGameId.len > 0:
+        if nostrClient != nil and ("game:" & activeGameId) in nostrSubscriptions:
+          asyncCheck nostrClient.unsubscribe("game:" & activeGameId)
+          nostrSubscriptions = nostrSubscriptions.filterIt(
+            it != ("game:" & activeGameId)
+          )
+        if int(viewingHouse) > 0:
+          tuiCache.clearOrderDraft(activeGameId, int(viewingHouse))
+      activeGameId = ""
+      viewingHouse = HouseId(0)
+      playerState = ps_types.PlayerState()
+      sam.model.view.playerStateLoaded = false
+      sam.model.ui.switchGameRequested = false
+      awaitingTurnAdvanceAfterSubmit = false
+      lastPostSubmitSyncCheckAt = 0.0
+      lastDraftFingerprint = ""
+      allowSameTurnFullStateRefresh = false
+      startupSyncPending = false
+      sam.model.ui.statusMessage = "Select a game"
+      needsRender = true
+
     if sam.model.ui.loadGameRequested:
       let gameId = sam.model.ui.loadGameId
       sam.model.view.playerStateLoaded = false

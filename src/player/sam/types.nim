@@ -279,6 +279,15 @@ type
     economyDiplomacyPropose
     economyDiplomacyAccept
     economyDiplomacyReject
+    economySessionOpen
+    economySessionClose
+    economySessionUp
+    economySessionDown
+    economySessionSelect
+    economySessionWallet
+    economySessionSwitchGame
+    economySessionSwitchConfirm
+    economySessionSwitchCancel
     submitConfirm
     submitCancel
 

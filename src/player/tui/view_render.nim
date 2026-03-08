@@ -344,6 +344,112 @@ proc renderQuitConfirmation*(buf: var CellBuffer, model: TuiModel) =
     x += 4
     discard buf.setString(x, currentY, stayMarkerRight, stayStyle)
 
+proc renderSessionModal*(buf: var CellBuffer, model: TuiModel) =
+  if not model.ui.sessionModalActive:
+    return
+  if model.ui.termWidth < 40 or model.ui.termHeight < 10:
+    return
+
+  let width = min(58, model.ui.termWidth - 4)
+  let height = 10
+  let x = (model.ui.termWidth - width) div 2
+  let y = (model.ui.termHeight - height) div 2
+  let modalArea = rect(x, y, width, height)
+  let modal = newModal()
+    .title("SESSION")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+    .borderStyle(outerBorderStyle())
+    .bgStyle(modalBgStyle())
+  modal.renderWithFooter(
+    modalArea,
+    buf,
+    "[↑↓] Navigate  [Enter] Select  [Esc] Close"
+  )
+  let inner = modal.contentArea(modalArea, hasFooter = true)
+  if inner.isEmpty:
+    return
+
+  discard buf.setString(
+    inner.x,
+    inner.y,
+    "Identity: " & model.ui.entryModal.identity.npubTruncated,
+    dimStyle()
+  )
+  let gameLabel =
+    if model.view.houseName.len > 0: model.view.houseName
+    else: "No game loaded"
+  discard buf.setString(
+    inner.x,
+    inner.y + 1,
+    "Session: " & gameLabel,
+    dimStyle()
+  )
+  let walletStyle =
+    if model.ui.sessionModalSelected == SessionModalItem.Wallet:
+      selectedStyle()
+    else:
+      normalStyle()
+  let switchStyle =
+    if model.ui.sessionModalSelected == SessionModalItem.SwitchGame:
+      selectedStyle()
+    else:
+      normalStyle()
+  discard buf.setString(
+    inner.x,
+    inner.y + 3,
+    "Wallet / Identity Manager",
+    walletStyle
+  )
+  discard buf.setString(
+    inner.x,
+    inner.y + 4,
+    "Switch Game",
+    switchStyle
+  )
+
+proc renderSessionSwitchConfirm*(buf: var CellBuffer, model: TuiModel) =
+  if not model.ui.sessionSwitchConfirmActive:
+    return
+  if model.ui.termWidth < 44 or model.ui.termHeight < 8:
+    return
+
+  let width = min(62, model.ui.termWidth - 4)
+  let height = 8
+  let x = (model.ui.termWidth - width) div 2
+  let y = (model.ui.termHeight - height) div 2
+  let modalArea = rect(x, y, width, height)
+  let modal = newModal()
+    .title("SWITCH GAME")
+    .minWidth(width)
+    .maxWidth(width)
+    .minHeight(height)
+    .showBackdrop(true)
+    .borderStyle(outerBorderStyle())
+    .bgStyle(modalBgStyle())
+  modal.renderWithFooter(
+    modalArea,
+    buf,
+    "[Enter/Y] Discard & Switch  [Esc/N] Stay"
+  )
+  let inner = modal.contentArea(modalArea, hasFooter = true)
+  if inner.isEmpty:
+    return
+  discard buf.setString(
+    inner.x,
+    inner.y + 1,
+    "Discard unsent staged commands for this game?",
+    warningStyle()
+  )
+  discard buf.setString(
+    inner.x,
+    inner.y + 2,
+    "Submitted turns and cached game state are not affected.",
+    dimStyle()
+  )
+
 proc renderExportConfirm*(buf: var CellBuffer, model: TuiModel) =
   ## Render SVG export confirmation popup showing the saved file path.
   if not model.ui.exportConfirmActive:
@@ -2851,7 +2957,7 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
 
   let taxPanelH = 6   # border (2) + 4 content rows
   let dipPanelH = max(4, targets.len + 2) # border + entries
-  let actPanelH = 3   # border (2) + 1 content row
+  let actPanelH = 4   # border (2) + 2 content rows
   let contentHeight = taxPanelH + dipPanelH + actPanelH + 2
   # Footer texts for each focus panel.
   const kFooterTaxRate =
@@ -2859,7 +2965,7 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
   const kFooterDiplomacy =
     "[J/K] Nav  [E]scalate  [P]ropose  [A]ccept  [R]eject  [↑↓/Tab] Panel"
   const kFooterActions =
-    "[M] Export SVG  [↑↓/Tab] Panel"
+    "[S] Session  [M] Export SVG  [↑↓/Tab] Panel"
   let footerText = case model.ui.economyFocus
     of EconomyFocus.TaxRate: kFooterTaxRate
     of EconomyFocus.Diplomacy: kFooterDiplomacy
@@ -3009,7 +3115,11 @@ proc renderEconomyModal*(canvas: Rect, buf: var CellBuffer,
     else:
       dimStyle()
     discard buf.setString(ai.x, ai.y,
-      "[M] Export Starmap SVG", actStyle)
+      "[S] Session", actStyle)
+    if ai.y + 1 < ai.bottom:
+      discard buf.setString(ai.x, ai.y + 1,
+        "[M] Export Starmap SVG", actStyle)
+
 
 proc renderInboxLeftPanel(area: Rect, buf: var CellBuffer,
                           model: var TuiModel) =
@@ -4337,6 +4447,12 @@ proc renderDashboard*(
 
   if model.ui.quitConfirmationActive:
     renderQuitConfirmation(buf, model)
+
+  if model.ui.sessionModalActive:
+    renderSessionModal(buf, model)
+
+  if model.ui.sessionSwitchConfirmActive:
+    renderSessionSwitchConfirm(buf, model)
 
   if model.ui.identityDeleteConfirmActive:
     renderIdentityDeleteConfirm(buf, model)

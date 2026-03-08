@@ -469,6 +469,33 @@ proc actionEconomyDiplomacyAccept*(): Proposal =
 proc actionEconomyDiplomacyReject*(): Proposal =
   gameActionProposal(ActionKind.economyDiplomacyReject, "")
 
+proc actionEconomySessionOpen*(): Proposal =
+  gameActionProposal(ActionKind.economySessionOpen, "")
+
+proc actionEconomySessionClose*(): Proposal =
+  gameActionProposal(ActionKind.economySessionClose, "")
+
+proc actionEconomySessionUp*(): Proposal =
+  gameActionProposal(ActionKind.economySessionUp, "")
+
+proc actionEconomySessionDown*(): Proposal =
+  gameActionProposal(ActionKind.economySessionDown, "")
+
+proc actionEconomySessionSelect*(): Proposal =
+  gameActionProposal(ActionKind.economySessionSelect, "")
+
+proc actionEconomySessionWallet*(): Proposal =
+  gameActionProposal(ActionKind.economySessionWallet, "")
+
+proc actionEconomySessionSwitchGame*(): Proposal =
+  gameActionProposal(ActionKind.economySessionSwitchGame, "")
+
+proc actionEconomySessionSwitchConfirm*(): Proposal =
+  gameActionProposal(ActionKind.economySessionSwitchConfirm, "")
+
+proc actionEconomySessionSwitchCancel*(): Proposal =
+  gameActionProposal(ActionKind.economySessionSwitchCancel, "")
+
 proc actionSubmitConfirm*(): Proposal =
   ## Confirm turn submission (from confirmation dialog)
   gameActionProposal(ActionKind.submitConfirm, "")

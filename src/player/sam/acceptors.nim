@@ -1872,6 +1872,97 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
       model.ui.statusMessage =
         "Staged: Reject proposal from " & tgtName
 
+    of ActionKind.economySessionOpen:
+      if model.ui.mode == ViewMode.Economy:
+        model.ui.sessionModalActive = true
+        model.ui.sessionSwitchConfirmActive = false
+        model.ui.sessionModalSelected = SessionModalItem.Wallet
+        model.ui.statusMessage = "Session menu"
+
+    of ActionKind.economySessionClose:
+      model.ui.sessionModalActive = false
+      model.ui.sessionSwitchConfirmActive = false
+      model.ui.statusMessage = "Session menu closed"
+
+    of ActionKind.economySessionUp:
+      if model.ui.sessionModalActive and
+          model.ui.sessionModalSelected == SessionModalItem.SwitchGame:
+        model.ui.sessionModalSelected = SessionModalItem.Wallet
+
+    of ActionKind.economySessionDown:
+      if model.ui.sessionModalActive and
+          model.ui.sessionModalSelected == SessionModalItem.Wallet:
+        model.ui.sessionModalSelected = SessionModalItem.SwitchGame
+
+    of ActionKind.economySessionSelect:
+      if model.ui.sessionModalActive:
+        case model.ui.sessionModalSelected
+        of SessionModalItem.Wallet:
+          model.ui.sessionModalActive = false
+          model.ui.sessionSwitchConfirmActive = false
+          model.ui.resumeInGameAfterEntryModal = true
+          model.ui.appPhase = AppPhase.Lobby
+          model.ui.entryModal.openIdentityManager()
+          model.ui.statusMessage = "Wallet manager"
+        of SessionModalItem.SwitchGame:
+          if model.stagedCommandCount() > 0:
+            model.ui.sessionSwitchConfirmActive = true
+            model.ui.statusMessage =
+              "Discard staged commands and switch games?"
+          else:
+            model.clearStagedCommands()
+            model.ui.modifiedSinceSubmit = false
+            model.ui.sessionModalActive = false
+            model.ui.sessionSwitchConfirmActive = false
+            model.ui.resumeInGameAfterEntryModal = false
+            model.ui.switchGameRequested = true
+            model.ui.appPhase = AppPhase.Lobby
+            model.ui.entryModal.openPlayerGamesManager()
+            model.ui.statusMessage = "Select a game"
+
+    of ActionKind.economySessionWallet:
+      model.ui.sessionModalSelected = SessionModalItem.Wallet
+      if model.ui.sessionModalActive:
+        model.ui.sessionModalActive = false
+        model.ui.sessionSwitchConfirmActive = false
+        model.ui.resumeInGameAfterEntryModal = true
+        model.ui.appPhase = AppPhase.Lobby
+        model.ui.entryModal.openIdentityManager()
+        model.ui.statusMessage = "Wallet manager"
+
+    of ActionKind.economySessionSwitchGame:
+      model.ui.sessionModalSelected = SessionModalItem.SwitchGame
+      if model.ui.sessionModalActive:
+        if model.stagedCommandCount() > 0:
+          model.ui.sessionSwitchConfirmActive = true
+          model.ui.statusMessage =
+            "Discard staged commands and switch games?"
+        else:
+          model.clearStagedCommands()
+          model.ui.modifiedSinceSubmit = false
+          model.ui.sessionModalActive = false
+          model.ui.sessionSwitchConfirmActive = false
+          model.ui.resumeInGameAfterEntryModal = false
+          model.ui.switchGameRequested = true
+          model.ui.appPhase = AppPhase.Lobby
+          model.ui.entryModal.openPlayerGamesManager()
+          model.ui.statusMessage = "Select a game"
+
+    of ActionKind.economySessionSwitchConfirm:
+      model.clearStagedCommands()
+      model.ui.modifiedSinceSubmit = false
+      model.ui.sessionModalActive = false
+      model.ui.sessionSwitchConfirmActive = false
+      model.ui.resumeInGameAfterEntryModal = false
+      model.ui.switchGameRequested = true
+      model.ui.appPhase = AppPhase.Lobby
+      model.ui.entryModal.openPlayerGamesManager()
+      model.ui.statusMessage = "Select a game"
+
+    of ActionKind.economySessionSwitchCancel:
+      model.ui.sessionSwitchConfirmActive = false
+      model.ui.statusMessage = "Stayed in current game"
+
     of ActionKind.dismissExportConfirm:
       model.ui.exportConfirmActive = false
 
@@ -2427,6 +2518,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.entryPlayerGamesMenu:
       if model.ui.entryModal.mode == EntryModalMode.ManagePlayerGames:
         model.ui.entryModal.closePlayerGamesManager()
+        if model.ui.resumeInGameAfterEntryModal:
+          model.ui.resumeInGameAfterEntryModal = false
+          model.ui.appPhase = AppPhase.InGame
       else:
         model.ui.entryModal.openPlayerGamesManager()
       model.ui.statusMessage = ""
@@ -2476,6 +2570,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.entryIdentityMenu:
       if model.ui.entryModal.mode == EntryModalMode.ManageIdentities:
         model.ui.entryModal.closeIdentityManager()
+        if model.ui.resumeInGameAfterEntryModal:
+          model.ui.resumeInGameAfterEntryModal = false
+          model.ui.appPhase = AppPhase.InGame
       elif model.ui.entryModal.mode == EntryModalMode.ChangePasswordPrompt:
         model.ui.entryModal.cancelChangePassword()
       else:
@@ -2501,6 +2598,9 @@ proc gameActionAcceptor*(model: var TuiModel, proposal: Proposal) =
     of ActionKind.entryIdentityActivate:
       discard model.ui.entryModal.applyIdentitySelection()
       model.ui.entryModal.closeIdentityManager()
+      if model.ui.resumeInGameAfterEntryModal:
+        model.ui.resumeInGameAfterEntryModal = false
+        model.ui.appPhase = AppPhase.InGame
       model.ui.statusMessage = "Identity activated"
     of ActionKind.entryCreatePasswordAppend:
       if proposal.gameActionData.len > 0:
