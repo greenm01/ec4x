@@ -2,9 +2,10 @@
 
 import std/[unittest, options, strutils, tables]
 
-import ../../src/player/sam/[tui_model, acceptors, actions]
+import ../../src/player/sam/[tui_model, acceptors, actions, client_limits]
 import ../../src/engine/config/engine
-import ../../src/engine/types/[core, espionage]
+import ../../src/engine/types/[core, espionage, production, ship, facilities,
+  ground_unit]
 import ../../src/engine/globals
 
 gameConfig = loadGameConfig()
@@ -96,3 +97,74 @@ suite "TUI Espionage Budget":
 
     gameActionAcceptor(model, actionListUp())
     check model.ui.espionageBudgetChannel == EspionageBudgetChannel.Ebp
+
+  test "CIP increment stops at treasury free":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Espionage
+    model.ui.espionageFocus = EspionageFocus.Budget
+    model.ui.espionageBudgetChannel = EspionageBudgetChannel.Cip
+    model.view.treasury = int32(gameConfig.espionage.costs.cipCostPp)
+
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedCipInvestment == 1
+
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedCipInvestment == 1
+    check model.ui.statusMessage.contains("Insufficient PP for CIP")
+
+  test "EBP increment accounts for staged build and research PP":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Espionage
+    model.ui.espionageFocus = EspionageFocus.Budget
+    model.ui.espionageBudgetChannel = EspionageBudgetChannel.Ebp
+    model.view.treasury = 135
+    model.ui.researchDeposits.erp = 50
+    model.ui.stagedBuildCommands = @[
+      BuildCommand(
+        colonyId: ColonyId(10),
+        buildType: BuildType.Ground,
+        quantity: 1,
+        shipClass: none(ShipClass),
+        facilityClass: none(FacilityClass),
+        groundClass: some(GroundClass.Army),
+        industrialUnits: 0,
+      ),
+    ]
+    let ebpCost = int(gameConfig.espionage.costs.ebpCostPp)
+    let currentFree = optimisticTreasury(
+      model.view.treasury,
+      model.ui.stagedBuildCommands,
+      model.ui.researchDeposits,
+      model.ui.stagedEbpInvestment,
+      model.ui.stagedCipInvestment
+    )
+    check currentFree >= ebpCost
+    check currentFree < ebpCost * 2
+
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedEbpInvestment == 1
+
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedEbpInvestment == 1
+    check model.ui.statusMessage.contains("Insufficient PP for EBP")
+
+  test "EBP and CIP share one treasury cap":
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.Espionage
+    model.ui.espionageFocus = EspionageFocus.Budget
+    model.view.treasury = int32(
+      gameConfig.espionage.costs.ebpCostPp +
+      gameConfig.espionage.costs.cipCostPp
+    )
+
+    model.ui.espionageBudgetChannel = EspionageBudgetChannel.Ebp
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedEbpInvestment == 1
+
+    model.ui.espionageBudgetChannel = EspionageBudgetChannel.Cip
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedCipInvestment == 1
+
+    gameActionAcceptor(model, actionEspionageBudgetAdjustInc())
+    check model.ui.stagedCipInvestment == 1
+    check model.ui.statusMessage.contains("Insufficient PP for CIP")

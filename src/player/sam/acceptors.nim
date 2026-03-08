@@ -386,12 +386,6 @@ proc toggleResearchPurchase(model: var TuiModel) =
     setAllocForItem(model.ui.researchAllocations, item, int32(maxAlloc))
   updateResearchPurchases(model)
 
-proc espionageBudgetCostPp(model: TuiModel): int =
-  let ebpCost = int(gameConfig.espionage.costs.ebpCostPp)
-  let cipCost = int(gameConfig.espionage.costs.cipCostPp)
-  int(model.ui.stagedEbpInvestment) * ebpCost +
-    int(model.ui.stagedCipInvestment) * cipCost
-
 proc reconcileEspionageQueueToAvailableEbp(
     model: var TuiModel
 ): int =
@@ -413,34 +407,42 @@ proc adjustEspionageBudget(
 ) =
   if model.ui.mode != ViewMode.Espionage:
     return
-  let totalResearchPp = totalDepositPP(model.ui.researchDeposits)
-  let currentBudgetPp = model.espionageBudgetCostPp()
   let ebpCostPp = int(gameConfig.espionage.costs.ebpCostPp)
   let cipCostPp = int(gameConfig.espionage.costs.cipCostPp)
   var currentPoints = 0
   var pointCost = 0
   var adjustEbp = false
+  var channelName = ""
   case model.ui.espionageBudgetChannel
   of EspionageBudgetChannel.Ebp:
     currentPoints = int(model.ui.stagedEbpInvestment)
     pointCost = ebpCostPp
     adjustEbp = true
+    channelName = "EBP"
   of EspionageBudgetChannel.Cip:
     currentPoints = int(model.ui.stagedCipInvestment)
     pointCost = cipCostPp
+    channelName = "CIP"
   if pointCost <= 0:
     return
   var nextPoints = currentPoints + delta
   if nextPoints < 0:
     nextPoints = 0
   if nextPoints > currentPoints:
-    let availablePp = max(
-      0,
-      model.view.treasury - totalResearchPp - currentBudgetPp
+    let currentFree = optimisticTreasury(
+      model.view.treasury,
+      model.ui.stagedBuildCommands,
+      model.ui.researchDeposits,
+      model.ui.stagedEbpInvestment,
+      model.ui.stagedCipInvestment
     )
-    let maxIncrease = availablePp div pointCost
+    let maxIncrease = currentFree div pointCost
+    if maxIncrease <= 0:
+      model.ui.statusMessage = "Insufficient PP for " & channelName
+      return
     if nextPoints > currentPoints + maxIncrease:
-      nextPoints = currentPoints + maxIncrease
+      model.ui.statusMessage = "Insufficient PP for " & channelName
+      return
   case model.ui.espionageBudgetChannel
   of EspionageBudgetChannel.Ebp:
     model.ui.stagedEbpInvestment = int32(nextPoints)

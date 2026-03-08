@@ -2561,8 +2561,6 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   let cipTotal = model.espionageCipTotal()
   let ebpPp = ebpInvest * ebpCostPp
   let cipPp = cipInvest * cipCostPp
-  let queuedEbp = model.espionageQueuedTotalEbp()
-  let availableEbp = model.espionageEbpAvailable()
   let stagedEspionagePp = stagedEspionagePp(
     model.ui.stagedEbpInvestment,
     model.ui.stagedCipInvestment
@@ -2596,7 +2594,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
   )
   var opsTableProbe = table(opColumns).showBorders(true)
   let opsTableHeightNeeded = opsTableProbe.renderHeight(operations.len) + 2
-  let budgetHeight = 10
+  let budgetHeight = 9
   let bodyHeight = max(6, max(opsTableHeightNeeded, targets.len + 2))
   let desiredMainHeight = budgetHeight + bodyHeight
   let modalMainHeight = min(desiredMainHeight, max(8, canvas.height - 6))
@@ -2740,9 +2738,7 @@ proc renderEspionageModal*(canvas: Rect, buf: var CellBuffer,
     dimStyle()
   )
   let summary = "Staged PP: " & formatNumber(stagedEspionagePp) &
-    "   Treasury Free: " & formatNumber(treasuryFree) &
-    "   EBP Queued: " & formatNumber(queuedEbp) &
-    "   EBP Avail: " & formatNumber(availableEbp)
+    "   Treasury Free: " & formatNumber(treasuryFree)
   drawTextLine(
     buf,
     bInner.x,
