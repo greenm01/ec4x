@@ -45,6 +45,35 @@ proc getPropOrErr(node: KdlNode, key: string): KdlVal =
     return node.props[key]
   raise newException(KdlParseError, "Missing property '" & key & "' for node " & node.name)
 
+proc parseTechField(s: string): TechField =
+  case s.toLowerAscii().replace("-", "")
+  of "cst", "construction", "constructiontech":
+    TechField.ConstructionTech
+  of "wep", "weapons", "weaponstech":
+    TechField.WeaponsTech
+  of "ter", "terraforming", "terraformingtech":
+    TechField.TerraformingTech
+  of "eli", "electronicintelligence":
+    TechField.ElectronicIntelligence
+  of "clk", "cloaking", "cloakingtech":
+    TechField.CloakingTech
+  of "sld", "shield", "shields", "shieldtech":
+    TechField.ShieldTech
+  of "cic", "counterintelligence":
+    TechField.CounterIntelligence
+  of "stl", "strategiclift", "strategiclifttech":
+    TechField.StrategicLiftTech
+  of "fc", "flagshipcommand", "flagshipcommandtech":
+    TechField.FlagshipCommandTech
+  of "sc", "strategiccommand", "strategiccommandtech":
+    TechField.StrategicCommandTech
+  of "fd", "fighterdoctrine":
+    TechField.FighterDoctrine
+  of "aco", "advancedcarrierops":
+    TechField.AdvancedCarrierOps
+  else:
+    raise newException(KdlParseError, "Invalid tech field: " & s)
+
 # =============================================================================
 # Command Parsers
 # =============================================================================
@@ -210,26 +239,97 @@ proc parseColonyManagement(node: KdlNode, colonyId: ColonyId): ColonyManagementC
         
   return cmd
 
-proc parseResearch(node: KdlNode): ResearchAllocation =
-  # Syntax: research { economic 100 ... tech { wep 40 } }
-  # ResearchAllocation structure: economic, science, technology (Table)
-  result = ResearchAllocation(
-    economic: 0,
-    science: 0,
-    technology: initTable[TechField, int32]()
-  )
-  
+proc parseRepairCommand(node: KdlNode, colonyId: ColonyId): seq[RepairCommand] =
+  # Syntax: repair (ColonyId)1 { ship (ShipId)42 priority=1 }
+  result = @[]
+
+  for child in node.children:
+    var cmd = RepairCommand(colonyId: colonyId, priority: 0)
+
+    case child.name.toLowerAscii():
+    of "ship":
+      cmd.targetType = RepairTargetType.Ship
+    of "starbase":
+      cmd.targetType = RepairTargetType.Starbase
+    of "ground-unit":
+      cmd.targetType = RepairTargetType.GroundUnit
+    of "facility":
+      cmd.targetType = RepairTargetType.Facility
+    else:
+      raise newException(
+        KdlParseError, "Unknown repair target type: " & child.name
+      )
+
+    if child.args.len == 0:
+      raise newException(
+        KdlParseError, "Repair command missing target ID for " & child.name
+      )
+    cmd.targetId = parseId[uint32](child.args[0])
+
+    if child.props.hasKey("priority"):
+      cmd.priority = child.props["priority"].kInt().int32
+
+    result.add(cmd)
+
+proc parseResearch(
+    node: KdlNode
+): tuple[
+    deposits: ResearchDeposits,
+    purchases: TechPurchaseSet,
+    liquidation: ResearchLiquidation
+] =
+  # Syntax:
+  # research {
+  #   erp 100
+  #   purchase economic
+  #   purchase cst
+  #   liquidate srp 25
+  # }
+  result.deposits = ResearchDeposits()
+  result.purchases = TechPurchaseSet()
+  result.liquidation = ResearchLiquidation()
+
   for child in node.children:
     case child.name.toLowerAscii():
-    of "economic":
-      result.economic = child.args[0].kInt().int32
-    of "science":
-      result.science = child.args[0].kInt().int32
-    of "tech":
-      for techNode in child.children:
-        let field = parseEnumFromStr[TechField](techNode.name)
-        let amount = techNode.args[0].kInt().int32
-        result.technology[field] = amount
+    of "erp":
+      result.deposits.erp = child.args[0].kInt().int32
+    of "srp":
+      result.deposits.srp = child.args[0].kInt().int32
+    of "mrp":
+      result.deposits.mrp = child.args[0].kInt().int32
+    of "purchase":
+      if child.args.len == 0:
+        raise newException(KdlParseError, "Purchase command missing target")
+      let target = child.args[0].kString().toLowerAscii()
+      case target
+      of "economic", "el":
+        result.purchases.economic = true
+      of "science", "sl":
+        result.purchases.science = true
+      of "military", "ml":
+        result.purchases.military = true
+      else:
+        result.purchases.technology.incl(parseTechField(target))
+    of "liquidate":
+      if child.args.len < 2:
+        raise newException(
+          KdlParseError, "Liquidate command requires pool and amount"
+        )
+      let pool = child.args[0].kString().toLowerAscii()
+      let amount = child.args[1].kInt().int32
+      case pool
+      of "erp":
+        result.liquidation.erp = amount
+      of "srp":
+        result.liquidation.srp = amount
+      of "mrp":
+        result.liquidation.mrp = amount
+      else:
+        raise newException(KdlParseError, "Invalid liquidation pool: " & pool)
+    else:
+      raise newException(
+        KdlParseError, "Unknown research node: " & child.name
+      )
 
 proc parseDiplomacy(node: KdlNode): seq[DiplomaticCommand] =
   # Syntax: diplomacy { declare-hostile target=(HouseId)3 ... }
@@ -246,6 +346,9 @@ proc parseDiplomacy(node: KdlNode): seq[DiplomaticCommand] =
       
     if child.props.hasKey("id"): # Proposal ID
       cmd.proposalId = some(parseId[ProposalId](child.props["id"]))
+
+    if child.props.hasKey("message"):
+      cmd.message = some(child.props["message"].kString())
       
     # Handle 'to' for propose-deescalate
     # to=neutral -> ProposalType (e.g. DeescalateToNeutral)
@@ -418,6 +521,9 @@ proc parseOrdersKdl*(doc: KdlDoc): CommandPacket =
     repairCommands: @[],
     scrapCommands: @[],
     researchAllocation: ResearchAllocation(),
+    researchDeposits: ResearchDeposits(),
+    techPurchases: TechPurchaseSet(),
+    researchLiquidation: ResearchLiquidation(),
     diplomaticCommand: @[],
     populationTransfers: @[],
     terraformCommands: @[],
@@ -438,9 +544,9 @@ proc parseOrdersKdl*(doc: KdlDoc): CommandPacket =
         let colonyId = parseId[ColonyId](node.args[0])
         packet.buildCommands.add(parseBuildCommand(node, colonyId))
     of "repair":
-      # repair (ColonyId)1 { ... }
-      # Implementation logic similar to build/scrap
-      discard
+      if node.args.len > 0:
+        let colonyId = parseId[ColonyId](node.args[0])
+        packet.repairCommands.add(parseRepairCommand(node, colonyId))
     of "scrap":
       if node.args.len > 0:
         let colonyId = parseId[ColonyId](node.args[0])
@@ -450,7 +556,10 @@ proc parseOrdersKdl*(doc: KdlDoc): CommandPacket =
         let colonyId = parseId[ColonyId](node.args[0])
         packet.colonyManagement.add(parseColonyManagement(node, colonyId))
     of "research":
-      packet.researchAllocation = parseResearch(node)
+      let research = parseResearch(node)
+      packet.researchDeposits = research.deposits
+      packet.techPurchases = research.purchases
+      packet.researchLiquidation = research.liquidation
     of "diplomacy":
       packet.diplomaticCommand.add(parseDiplomacy(node))
     of "espionage":

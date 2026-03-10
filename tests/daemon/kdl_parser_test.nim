@@ -1,7 +1,8 @@
 import unittest
 import std/[options]
 import ../../src/daemon/parser/kdl_commands
-import ../../src/engine/types/[command, fleet, production, zero_turn, ship]
+import ../../src/engine/types/[command, core, fleet, production, zero_turn, ship,
+  tech, diplomacy]
 
 test "Parse Fleet Command":
   let kdl = """
@@ -46,6 +47,114 @@ test "Parse Build Command":
   check cmd2.colonyId.int == 10
   check cmd2.buildType == BuildType.Facility
   check cmd2.quantity == 1
+
+test "Parse Research Deposits":
+  let kdl = """
+    orders turn=5 house=(HouseId)2 {
+      research {
+        erp 120
+        srp 80
+        mrp 25
+      }
+    }
+  """
+  let packet = parseOrdersString(kdl)
+  check packet.houseId.int == 2
+  check packet.researchDeposits == ResearchDeposits(
+    erp: 120,
+    srp: 80,
+    mrp: 25
+  )
+  check packet.researchAllocation == ResearchAllocation()
+
+test "Parse Repair Commands":
+  let kdl = """
+    orders turn=5 house=(HouseId)2 {
+      repair (ColonyId)10 {
+        ship (ShipId)42 priority=1
+        starbase (KastraId)3 priority=2
+        ground-unit (GroundUnitId)15 priority=3
+        facility (NeoriaId)7 priority=4
+      }
+    }
+  """
+  let packet = parseOrdersString(kdl)
+  check packet.repairCommands.len == 4
+  check packet.repairCommands[0] == RepairCommand(
+    colonyId: ColonyId(10),
+    targetType: RepairTargetType.Ship,
+    targetId: 42,
+    priority: 1
+  )
+  check packet.repairCommands[1] == RepairCommand(
+    colonyId: ColonyId(10),
+    targetType: RepairTargetType.Starbase,
+    targetId: 3,
+    priority: 2
+  )
+  check packet.repairCommands[2] == RepairCommand(
+    colonyId: ColonyId(10),
+    targetType: RepairTargetType.GroundUnit,
+    targetId: 15,
+    priority: 3
+  )
+  check packet.repairCommands[3] == RepairCommand(
+    colonyId: ColonyId(10),
+    targetType: RepairTargetType.Facility,
+    targetId: 7,
+    priority: 4
+  )
+
+test "Parse Research Deposits Purchases and Liquidation":
+  let kdl = """
+    orders turn=5 house=(HouseId)2 {
+      research {
+        erp 120
+        srp 80
+        mrp 25
+        purchase economic
+        purchase science
+        purchase military
+        purchase cst
+        purchase wep
+        liquidate erp 10
+        liquidate srp 20
+        liquidate mrp 30
+      }
+    }
+  """
+  let packet = parseOrdersString(kdl)
+  check packet.researchDeposits == ResearchDeposits(
+    erp: 120,
+    srp: 80,
+    mrp: 25
+  )
+  check packet.techPurchases.economic
+  check packet.techPurchases.science
+  check packet.techPurchases.military
+  check TechField.ConstructionTech in packet.techPurchases.technology
+  check TechField.WeaponsTech in packet.techPurchases.technology
+  check packet.researchLiquidation == ResearchLiquidation(
+    erp: 10,
+    srp: 20,
+    mrp: 30
+  )
+  check packet.researchAllocation == ResearchAllocation()
+
+test "Parse Diplomacy Message":
+  let kdl = """
+    orders turn=5 house=(HouseId)2 {
+      diplomacy {
+        declare-hostile target=(HouseId)1 message="Border pressure response"
+      }
+    }
+  """
+  let packet = parseOrdersString(kdl)
+  check packet.diplomaticCommand.len == 1
+  check packet.diplomaticCommand[0].actionType ==
+    DiplomaticActionType.DeclareHostile
+  check packet.diplomaticCommand[0].targetHouse == HouseId(1)
+  check packet.diplomaticCommand[0].message == some("Border pressure response")
 
 test "Parse ZTC - DetachShips with shipIds":
   let kdl = """

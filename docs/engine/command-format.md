@@ -310,52 +310,49 @@ orders turn=5 house=(HouseId)1 {
 
 ---
 
-### 6. Research Allocation
+### 6. Research Deposits
 
-R&D investment (PP converted to Research Points).
+R&D uses the modern deposit/purchase/liquidation model.
 
 ```kdl
 orders turn=5 house=(HouseId)1 {
   research {
-    // Core levels
-    economic 100    // Economic Level (EL)
-    science 50      // Science Level (SL)
-    
-    // Technology fields
-    tech {
-      cst 25        // Construction Tech
-      wep 50        // Weapons Tech
-      ter 0         // Terraforming Tech
-      eli 25        // Electronic Intelligence
-      clk 0         // Cloaking Tech
-      sld 0         // Shield Tech
-      cic 10        // Counter-Intelligence
-      stl 0         // Strategic Lift Tech
-      fc 0          // Flagship Command Tech
-      sc 0          // Strategic Command Tech
-      fd 0          // Fighter Doctrine
-      aco 0         // Advanced Carrier Ops
-    }
+    // PP deposits this turn
+    erp 100
+    srp 50
+    mrp 25
+
+    // Explicit tech purchases (one level each if affordable)
+    purchase economic
+    purchase science
+    purchase military
+    purchase cst
+    purchase wep
+
+    // RP liquidation back into PP
+    liquidate erp 10
+    liquidate srp 5
   }
 }
 ```
 
-**Tech field abbreviations:**
+**Supported research nodes:**
 
-| Abbrev | Full Name | Effect |
-|--------|-----------|--------|
-| `cst` | Construction Tech | Ship classes, dock capacity |
-| `wep` | Weapons Tech | Ship AS/DS (+10%/level) |
-| `ter` | Terraforming Tech | Planet upgrades |
-| `eli` | Electronic Intelligence | Detection capability |
-| `clk` | Cloaking Tech | Raider stealth |
-| `sld` | Shield Tech | Planetary shields |
-| `cic` | Counter-Intelligence | Espionage defense |
-| `stl` | Strategic Lift Tech | Transport capacity |
-| `fc` | Flagship Command Tech | Ships per fleet |
-| `sc` | Strategic Command Tech | Max fleet count |
-| `fd` | Fighter Doctrine | Fighter capacity |
-| `aco` | Advanced Carrier Ops | Carrier capacity |
+| Node | Meaning |
+|------|---------|
+| `erp N` | Deposit `N` PP into ERP |
+| `srp N` | Deposit `N` PP into SRP |
+| `mrp N` | Deposit `N` PP into MRP |
+| `purchase economic` | Buy next EL if affordable |
+| `purchase science` | Buy next SL if affordable |
+| `purchase military` | Buy next ML if affordable |
+| `purchase <tech>` | Buy next level of a tech field |
+| `liquidate erp N` | Liquidate `N` ERP into PP |
+| `liquidate srp N` | Liquidate `N` SRP into PP |
+| `liquidate mrp N` | Liquidate `N` MRP into PP |
+
+**Tech purchase abbreviations:** `cst`, `wep`, `ter`, `eli`, `clk`, `sld`,
+`cic`, `stl`, `fc`, `sc`, `fd`, `aco`
 
 ---
 
@@ -410,7 +407,7 @@ Diplomatic status changes and proposals.
 ```kdl
 orders turn=5 house=(HouseId)1 {
   diplomacy {
-    declare-hostile target=(HouseId)3
+    declare-hostile target=(HouseId)3 message="Border incident"
     declare-enemy target=(HouseId)4
     set-neutral target=(HouseId)5
     propose-deescalate target=(HouseId)2 to=neutral
@@ -433,6 +430,8 @@ orders turn=5 house=(HouseId)1 {
 | `reject-proposal` | id | Reject pending proposal |
 
 **De-escalation targets:** `neutral`, `hostile`
+
+**Optional property:** `message="..."` on any diplomacy action
 
 ---
 
