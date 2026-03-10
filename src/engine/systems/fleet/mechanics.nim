@@ -44,6 +44,18 @@ proc completeFleetCommand*(
 
   logInfo("Orders", &"Fleet {fleetId} {orderType} command completed")
 
+proc startsScoutMissionOnArrival(
+    state: GameState,
+    fleet: Fleet,
+    command: FleetCommand
+): bool =
+  ## Traveling scout missions currently move under a temporary Move command.
+  ## Restrict mission-start handling to pure Scout fleets so ETAC colonize
+  ## and other non-intel travel does not emit scout events on arrival.
+  fleet.missionState == MissionState.Traveling and
+    command.commandType == FleetCommandType.Move and
+    state.isScoutOnly(fleet)
+
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a system is hostile to a house based on known intel (fog-of-war)
   ## System is hostile if player KNOWS it contains:
@@ -394,7 +406,7 @@ proc resolveMovementCommand*(
     )
 
     # Check if this fleet is on a scout mission and start mission on arrival
-    if fleet.missionState == MissionState.Traveling:
+    if state.startsScoutMissionOnArrival(fleet, command):
       fleet.missionState = MissionState.ScoutLocked
       fleet.missionStartTurn = state.turn
 

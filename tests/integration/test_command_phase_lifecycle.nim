@@ -14,6 +14,7 @@ import ../../src/engine/types/[command, core, event, fleet, ship, tech,
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/ship_ops
 import ../../src/engine/systems/command/commands
+import ../../src/engine/systems/fleet/mechanics
 import ../../src/engine/turn_cycle/[command_phase, engine as turn_engine]
 import ../../src/engine/event_factory/init
 
@@ -218,3 +219,41 @@ suite "Command Phase Lifecycle":
     check updatedFleet.command.commandType == FleetCommandType.Hold
     check updatedFleet.missionState == MissionState.None
     check updatedFleet.missionTarget.isNone
+
+  test "colonize arrival does not emit spy mission started":
+    var state = newGame(gameName = "Colonize Arrival Labels")
+    let houseId = state.allHouses().toSeq[0].id
+    let colonizeFleet = state.firstFleetWithShipClass(
+      houseId,
+      ShipClass.ETAC
+    )
+    let targetSystem =
+      state.starMap.adjacentSystems(colonizeFleet.location)[0]
+
+    var fleetMut = state.fleet(colonizeFleet.id).get()
+    fleetMut.missionState = MissionState.Traveling
+    fleetMut.missionTarget = some(targetSystem)
+    state.updateFleet(colonizeFleet.id, fleetMut)
+
+    let moveCommand = FleetCommand(
+      fleetId: colonizeFleet.id,
+      commandType: FleetCommandType.Move,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )
+
+    var events: seq[GameEvent] = @[]
+    state.resolveMovementCommand(houseId, moveCommand, events)
+
+    check events.anyIt(
+      it.eventType == GameEventType.CommandCompleted and
+      it.orderType == some("Move") and
+      it.fleetId == some(colonizeFleet.id)
+    )
+    check not events.anyIt(
+      it.eventType == GameEventType.CommandCompleted and
+      it.orderType == some("SpyMissionStarted") and
+      it.fleetId == some(colonizeFleet.id)
+    )
