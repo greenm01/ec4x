@@ -17,6 +17,17 @@ type
     starbases: int
     shields: int
 
+proc canSupportEtacBuild*(
+    snapshot: ColonyLimitSnapshot,
+    stagedEtacPtu: int,
+): bool =
+  ## Returns true when a colony can spare this many PTU and still remain
+  ## above the minimum viable population threshold.
+  let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
+  let requiredSouls =
+    stagedEtacPtu * int(gameConfig.economy.ptuDefinition.soulsPerPtu)
+  requiredSouls == 0 or snapshot.souls - requiredSouls >= minSouls
+
 proc shipLookup(ps: PlayerState): Table[ShipId, Ship] =
   result = initTable[ShipId, Ship]()
   for ship in ps.ownShips:
@@ -227,10 +238,10 @@ proc validateStagedBuildLimits*(
 
   for colonyId, base in model.view.colonyLimits.pairs:
     let pending = staged.byColony.getOrDefault(colonyId)
-    let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
     let etacSoulsRequired =
       pending.etacPtu * int(gameConfig.economy.ptuDefinition.soulsPerPtu)
-    if etacSoulsRequired > 0 and base.souls - etacSoulsRequired < minSouls:
+    if not canSupportEtacBuild(base, pending.etacPtu):
+      let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
       result.add(
         "ETAC PTU limit exceeded at colony " & $colonyId &
         " (need " & $etacSoulsRequired & " souls plus " & $minSouls &

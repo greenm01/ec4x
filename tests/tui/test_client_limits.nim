@@ -298,6 +298,23 @@ suite "Client limits":
     check errs.len > 0
     check errs[0].contains("ETAC PTU limit exceeded")
 
+  test "canSupportEtacBuild enforces minimum viable population":
+    let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
+    let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+    let soulsPerPtu = int(gameConfig.economy.ptuDefinition.soulsPerPtu)
+
+    let insufficient = ColonyLimitSnapshot(
+      souls: minSouls + (ptu * soulsPerPtu) - 1,
+      industrialUnits: 200,
+    )
+    check not canSupportEtacBuild(insufficient, ptu)
+
+    let exact = ColonyLimitSnapshot(
+      souls: minSouls + (ptu * soulsPerPtu),
+      industrialUnits: 200,
+    )
+    check canSupportEtacBuild(exact, ptu)
+
   test "join fleet FC limit blocks command":
     var model = initTuiModel()
     model.view.fleets = @[

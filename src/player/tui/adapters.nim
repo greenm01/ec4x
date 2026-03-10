@@ -20,8 +20,8 @@ import ../sam/client_limits
 import ./widget/hexmap/hexmap_pkg
 import ./hex_labels
 import ./widget/hexmap/symbols
-from ../sam/tui_model import BuildOption, BuildOptionKind, DockSummary,
-  commandLabel, fleetCommandNumber
+from ../sam/tui_model import BuildOption, BuildOptionKind,
+  ColonyLimitSnapshot, DockSummary, commandLabel, fleetCommandNumber
 
 proc industrialUnitCostPreview(
     populationUnits: int,
@@ -992,6 +992,21 @@ proc colonyToDetailData*(
       queue.add(buildCommandToQueueItem(cmd))
 
   var buildOptions: seq[BuildOption] = @[]
+  var stagedEtacPtu = 0
+  let colonySnapshot = ColonyLimitSnapshot(
+    souls: int(colony.souls),
+    industrialUnits: int(colony.industrial.units),
+    fighters: colony.fighterIds.len,
+    spaceports: 0,
+    starbases: 0,
+    shields: 0,
+  )
+  for cmd in stagedBuilds:
+    if cmd.colonyId == colonyId and
+        cmd.buildType == BuildType.Ship and
+        cmd.shipClass == some(ShipClass.ETAC):
+      let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+      stagedEtacPtu += ptu * max(0, int(cmd.quantity))
   let hasSpaceport =
     hasOperationalFacility(state, colony, NeoriaClass.Spaceport)
   let hasShipyard =
@@ -1002,6 +1017,10 @@ proc colonyToDetailData*(
       gameConfig.ships.ships[shipClass].minCST.int
     if techLevels.cst < cstReq:
       continue
+    if shipClass == ShipClass.ETAC:
+      let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+      if not canSupportEtacBuild(colonySnapshot, stagedEtacPtu + ptu):
+        continue
     if shipClass == ShipClass.Fighter:
       if not state.canCommissionFighter(colony):
         continue
@@ -1604,6 +1623,7 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
   let colonyLimits = colonyLimitSnapshotsFromPlayerState(ps)
   let snapshot = colonyLimits.getOrDefault(int(colonyId))
   var stagedIndustrialUnits = 0
+  var stagedEtacPtu = 0
   var stagedSpaceports = 0
   var stagedStarbases = 0
   for cmd in stagedBuilds:
@@ -1611,6 +1631,10 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
       continue
     if cmd.buildType == BuildType.Industrial:
       stagedIndustrialUnits += max(0, int(cmd.industrialUnits))
+    elif cmd.buildType == BuildType.Ship and
+        cmd.shipClass == some(ShipClass.ETAC):
+      let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+      stagedEtacPtu += ptu * max(0, int(cmd.quantity))
     elif cmd.buildType == BuildType.Facility and cmd.facilityClass.isSome:
       case cmd.facilityClass.get()
       of FacilityClass.Spaceport:
@@ -1664,6 +1688,10 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     let cstReq = gameConfig.ships.ships[shipClass].minCST.int
     if techLevels.cst < cstReq:
       continue
+    if shipClass == ShipClass.ETAC:
+      let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+      if not canSupportEtacBuild(snapshot, stagedEtacPtu + ptu):
+        continue
     if shipClass == ShipClass.Fighter and snapshot.fighters >= fighterMax:
       continue
     if shipClass == ShipClass.PlanetBreaker and pbCurrent >= pbMax:
