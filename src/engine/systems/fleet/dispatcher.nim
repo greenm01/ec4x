@@ -844,10 +844,10 @@ proc executeScoutColonyCommand(
         return OrderOutcome.Failed
 
   # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
-  let scoutCount = int32(fleet.ships.len)
-
   # Set fleet mission state
-  var updatedFleet = fleet
+  let fleetState = state.fleet(fleet.id).get(fleet)
+  var updatedFleet = fleetState
+  updatedFleet.command = command
   updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
@@ -871,17 +871,8 @@ proc executeScoutColonyCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate command accepted event
-    events.add(
-      commandCompleted(
-        fleet.houseId,
-        fleet.id,
-        "SpyPlanet",
-        details =
-          &"scout fleet traveling to {targetSystem} for scout mission ({scoutCount} scouts)",
-        systemId = some(fleet.location),
-      )
-    )
+    logDebug("Fleet",
+      &"Scout fleet {fleet.id} traveling to {targetSystem} for colony intel")
   else:
     # Already at target - start mission immediately
     updatedFleet.missionState = MissionState.ScoutLocked
@@ -894,16 +885,8 @@ proc executeScoutColonyCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate mission start event
-    events.add(
-      commandCompleted(
-        fleet.houseId,
-        fleet.id,
-        "SpyPlanet",
-        details = &"scout mission started at {targetSystem} ({scoutCount} scouts)",
-        systemId = some(targetSystem),
-      )
-    )
+    logDebug("Fleet",
+      &"Scout colony mission started for fleet {fleet.id} at {targetSystem}")
 
   return OrderOutcome.Success
 
@@ -978,10 +961,10 @@ proc executeHackStarbaseCommand(
       return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
-  let scoutCount = int32(fleet.ships.len)
-
   # Set fleet mission state
-  var updatedFleet = fleet
+  let fleetState = state.fleet(fleet.id).get(fleet)
+  var updatedFleet = fleetState
+  updatedFleet.command = command
   updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
@@ -1005,17 +988,8 @@ proc executeHackStarbaseCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate command accepted event
-    events.add(
-      commandCompleted(
-        fleet.houseId,
-        fleet.id,
-        "HackStarbase",
-        details =
-          &"scout fleet traveling to {targetSystem} to hack starbase ({scoutCount} scouts)",
-        systemId = some(fleet.location),
-      )
-    )
+    logDebug("Fleet",
+      &"Scout fleet {fleet.id} traveling to {targetSystem} for starbase hack")
   else:
     # Already at target - start mission immediately
     updatedFleet.missionState = MissionState.ScoutLocked
@@ -1026,17 +1000,8 @@ proc executeHackStarbaseCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate mission start event
-    events.add(
-      commandCompleted(
-        fleet.houseId,
-        fleet.id,
-        "HackStarbase",
-        details =
-          &"starbase hack mission started at {targetSystem} ({scoutCount} scouts)",
-        systemId = some(targetSystem),
-      )
-    )
+    logDebug("Fleet",
+      &"Hack mission started for fleet {fleet.id} at {targetSystem}")
 
   return OrderOutcome.Success
 
@@ -1087,10 +1052,10 @@ proc executeScoutSystemCommand(
         return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
-  let scoutCount = int32(fleet.ships.len)
-
   # Set fleet mission state
-  var updatedFleet = fleet
+  let fleetState = state.fleet(fleet.id).get(fleet)
+  var updatedFleet = fleetState
+  updatedFleet.command = command
   updatedFleet.missionState = MissionState.Traveling
   updatedFleet.missionTarget = some(targetSystem)
 
@@ -1114,17 +1079,8 @@ proc executeScoutSystemCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate command accepted event
-    events.add(
-      commandCompleted(
-        fleet.houseId,
-        fleet.id,
-        "ScoutSystem",
-        details =
-          &"scout fleet traveling to {targetSystem} for system reconnaissance ({scoutCount} scouts)",
-        systemId = some(fleet.location),
-      )
-    )
+    logDebug("Fleet",
+      &"Scout fleet {fleet.id} traveling to {targetSystem} for system recon")
   else:
     # Already at target - start mission immediately
     updatedFleet.missionState = MissionState.ScoutLocked
@@ -1135,17 +1091,8 @@ proc executeScoutSystemCommand(
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
-    # Generate mission start event
-    events.add(
-      commandCompleted(
-        fleet.houseId,
-        fleet.id,
-        "ScoutSystem",
-        details =
-          &"system reconnaissance mission started at {targetSystem} ({scoutCount} scouts)",
-        systemId = some(targetSystem),
-      )
-    )
+    logDebug("Fleet",
+      &"Scout system mission started for fleet {fleet.id} at {targetSystem}")
 
   return OrderOutcome.Success
 

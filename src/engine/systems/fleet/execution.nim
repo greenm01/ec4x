@@ -239,6 +239,7 @@ proc performCommandMaintenance*(
     rng: var Rand,
     categoryFilter: OrderCategoryFilter,
     phaseDescription: string,
+    skipTravelingFleets: bool = false,
 ) =
   ## Manage fleet command lifecycle: validation, completion detection, and execution
   ## This is the core fleet command maintenance logic shared across phases
@@ -331,6 +332,23 @@ proc performCommandMaintenance*(
       continue
 
     fleetsProcessed.incl(command.fleetId)
+
+    let currentFleetOpt = state.fleet(command.fleetId)
+    if currentFleetOpt.isNone:
+      logWarn(
+        "Commands",
+        &"  [SKIPPED] Fleet {command.fleetId} no longer exists",
+      )
+      continue
+
+    if skipTravelingFleets:
+      let currentFleet = currentFleetOpt.get()
+      if currentFleet.missionState == MissionState.Traveling:
+        logDebug(
+          "Commands",
+          &"  [DEFERRED] Fleet {command.fleetId} still traveling",
+        )
+        continue
 
     # EXECUTION-TIME VALIDATION: Fail-safe check if conditions changed since submission
     let validation = validateCommandAtExecution(state, command, houseId)

@@ -12,7 +12,7 @@ import ../../src/engine/starmap
 import ../../src/engine/types/[command, core, event, fleet, ship, tech,
   colony]
 import ../../src/engine/state/[engine, iterators]
-import ../../src/engine/entities/ship_ops
+import ../../src/engine/entities/[ship_ops, fleet_ops]
 import ../../src/engine/systems/command/commands
 import ../../src/engine/systems/fleet/mechanics
 import ../../src/engine/turn_cycle/[command_phase, engine as turn_engine]
@@ -219,6 +219,77 @@ suite "Command Phase Lifecycle":
     check updatedFleet.command.commandType == FleetCommandType.Hold
     check updatedFleet.missionState == MissionState.None
     check updatedFleet.missionTarget.isNone
+
+  test "traveling move orders do not take a second jump in PRD1c":
+    var state = newGame(gameName = "Production Move No Double Step")
+    let houseId = state.allHouses().toSeq[0].id
+    let moveFleet = state.firstFleetWithShipClass(houseId, ShipClass.Destroyer)
+
+    let adjacent = state.starMap.adjacentSystems(moveFleet.location)
+    let midpoint = adjacent[0]
+    let targetOptions = state.starMap.adjacentSystems(midpoint).filterIt(
+      it != moveFleet.location and it notin adjacent
+    )
+    check targetOptions.len > 0
+    let targetSystem = targetOptions[0]
+
+    var packet = emptyPacket(houseId, state.turn)
+    packet.fleetCommands = @[FleetCommand(
+      fleetId: moveFleet.id,
+      commandType: FleetCommandType.Move,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: some(6'i32)
+    )]
+
+    var orders = initTable[HouseId, CommandPacket]()
+    orders[houseId] = packet
+
+    var rng = initRand(29)
+    discard turn_engine.resolveTurn(state, orders, rng)
+
+    let updatedFleet = state.fleet(moveFleet.id).get()
+    check updatedFleet.location != targetSystem
+    check updatedFleet.command.commandType == FleetCommandType.Move
+    check updatedFleet.missionState == MissionState.Traveling
+    check updatedFleet.missionTarget == some(targetSystem)
+
+  test "traveling scout-system orders persist into next turn":
+    var state = newGame(gameName = "Scout System Persists")
+    let houseId = state.allHouses().toSeq[0].id
+    let homeSystem = state.firstOwnedColony(houseId).systemId
+    let scoutFleet = state.createFleet(houseId, homeSystem)
+    discard state.createShip(houseId, scoutFleet.id, ShipClass.Scout)
+
+    let adjacent = state.starMap.adjacentSystems(homeSystem)
+    let midpoint = adjacent[0]
+    let targetOptions = state.starMap.adjacentSystems(midpoint).filterIt(
+      it != scoutFleet.location and it notin adjacent
+    )
+    check targetOptions.len > 0
+    let targetSystem = targetOptions[0]
+
+    var packet = emptyPacket(houseId, state.turn)
+    packet.fleetCommands = @[FleetCommand(
+      fleetId: scoutFleet.id,
+      commandType: FleetCommandType.ScoutSystem,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )]
+
+    var orders = initTable[HouseId, CommandPacket]()
+    orders[houseId] = packet
+
+    var rng = initRand(31)
+    discard turn_engine.resolveTurn(state, orders, rng)
+
+    let updatedFleet = state.fleet(scoutFleet.id).get()
+    check updatedFleet.command.commandType == FleetCommandType.ScoutSystem
+    check updatedFleet.missionState == MissionState.Traveling
+    check updatedFleet.missionTarget == some(targetSystem)
 
   test "colonize arrival does not emit spy mission started":
     var state = newGame(gameName = "Colonize Arrival Labels")

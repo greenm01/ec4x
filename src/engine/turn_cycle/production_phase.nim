@@ -225,6 +225,7 @@ proc processAdministrativeCompletion(
     rng,
     isProductionCommand,
     "Production Phase PRD1c",
+    skipTravelingFleets = true,
   )
   
   logInfo("Production", "[PRD1c] Complete")
