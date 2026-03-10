@@ -26,6 +26,25 @@ type
     shouldAbort*: bool # True if command should be converted to SeekHome/Hold
     reason*: string
 
+proc missionStateForSubmittedCommand(
+    fleet: Fleet,
+    command: FleetCommand
+): MissionState =
+  ## Submitted commands start traveling only while en route.
+  ## Commands already at their target enter Executing so the current phase can
+  ## resolve them without re-marking the fleet as traveling.
+  case command.commandType
+  of FleetCommandType.Hold:
+    MissionState.None
+  else:
+    if command.targetSystem.isSome and
+        fleet.location == command.targetSystem.get():
+      MissionState.Executing
+    elif command.targetSystem.isSome or command.targetFleet.isSome:
+      MissionState.Traveling
+    else:
+      MissionState.None
+
 proc validateCommandAtExecution(
     state: GameState, command: FleetCommand, houseId: HouseId
 ): ExecutionValidationResult =
@@ -258,7 +277,8 @@ proc performCommandMaintenance*(
           # Assign command to fleet (entity-manager pattern)
           var updatedFleet = fleet
           updatedFleet.command = command
-          updatedFleet.missionState = MissionState.Traveling
+          updatedFleet.missionState =
+            missionStateForSubmittedCommand(fleet, command)
           updatedFleet.missionTarget = command.targetSystem
           state.updateFleet(command.fleetId, updatedFleet)
 

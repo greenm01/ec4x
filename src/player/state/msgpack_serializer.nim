@@ -10,4 +10,6 @@ export msgpack_types
 
 proc serializeCommandPacket*(packet: CommandPacket): string =
   ## Serialize CommandPacket to msgpack binary
-  pack(packet)
+  var stream = MsgStream.init(0, MSGPACK_OBJ_TO_MAP)
+  stream.pack(packet)
+  stream.data

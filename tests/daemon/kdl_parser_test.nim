@@ -1,6 +1,6 @@
 import unittest
 import std/[options]
-import ../../src/daemon/parser/kdl_commands
+import ../../src/daemon/parser/[kdl_commands, msgpack_commands]
 import ../../src/engine/types/[command, core, fleet, production, zero_turn, ship,
   tech, diplomacy]
 
@@ -155,6 +155,36 @@ test "Parse Diplomacy Message":
     DiplomaticActionType.DeclareHostile
   check packet.diplomaticCommand[0].targetHouse == HouseId(1)
   check packet.diplomaticCommand[0].message == some("Border pressure response")
+
+test "CommandPacket msgpack roundtrip preserves modern research fields":
+  let kdl = """
+    orders turn=5 house=(HouseId)2 {
+      fleet (FleetId)9 {
+        move to=(SystemId)7 roe=6
+      }
+      build (ColonyId)10 {
+        ship corvette quantity=2
+      }
+      research {
+        erp 120
+        srp 80
+        mrp 25
+        purchase economic
+        purchase science
+        purchase military
+        purchase cst
+        purchase wep
+        liquidate srp 20
+      }
+    }
+  """
+  let packet = parseOrdersString(kdl)
+  let roundtrip = parseOrdersMsgpack(serializeCommandPacket(packet))
+  check roundtrip.researchDeposits == packet.researchDeposits
+  check roundtrip.techPurchases == packet.techPurchases
+  check roundtrip.researchLiquidation == packet.researchLiquidation
+  check roundtrip.fleetCommands.len == 1
+  check roundtrip.buildCommands.len == 1
 
 test "Parse ZTC - DetachShips with shipIds":
   let kdl = """

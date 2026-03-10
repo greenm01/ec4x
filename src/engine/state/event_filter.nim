@@ -40,6 +40,20 @@ proc isEventVisibleToHouse*(
   else:
     discard
 
+  # Enemy command-lifecycle events are not public by default. Showing them
+  # solely because a system is visible leaks hostile operational intent.
+  if evt.houseId.isSome and evt.houseId.get() != houseId:
+    case evt.eventType
+    of GameEventType.CommandIssued,
+        GameEventType.CommandCompleted,
+        GameEventType.CommandRejected,
+        GameEventType.CommandFailed,
+        GameEventType.CommandAborted,
+        GameEventType.FleetArrived:
+      return false
+    else:
+      discard
+
   # Events in visible systems (Scouted or better)
   if evt.systemId.isSome:
     let sysId = evt.systemId.get()

@@ -19,12 +19,12 @@ import std/[os, options, times, strutils, base64, tables]
 import db_connector/db_sqlite
 import kdl
 import msgpack4nim
-
 import ../../common/logger
 import ../../engine/types/player_state
 import ../../engine/types/command
 import ../../common/message_types
 import ../../common/config_sync
+import ../../daemon/parser/msgpack_commands
 import ./game_name_resolver
 
 const
@@ -640,7 +640,7 @@ proc saveOrderDraft*(cache: TuiCache, gameId: string, houseId: int,
                      packet: CommandPacket) =
   ## Save staged CommandPacket draft for a game/house.
   let now = epochTime().int64
-  let binary = pack(packet)
+  let binary = serializeCommandPacket(packet)
   let payload = encode(binary)
   cache.db.exec(sql"""
     INSERT INTO order_drafts (
@@ -671,7 +671,7 @@ proc loadOrderDraft*(cache: TuiCache, gameId: string,
 
   try:
     let binary = decode(row[4])
-    let packet = unpack(binary, CommandPacket)
+    let packet = parseOrdersMsgpack(binary)
     some(CachedOrderDraft(
       gameId: row[0],
       houseId: parseInt(row[1]),

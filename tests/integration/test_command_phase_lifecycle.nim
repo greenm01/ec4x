@@ -14,7 +14,7 @@ import ../../src/engine/types/[command, core, event, fleet, ship, tech,
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/ship_ops
 import ../../src/engine/systems/command/commands
-import ../../src/engine/turn_cycle/command_phase
+import ../../src/engine/turn_cycle/[command_phase, engine as turn_engine]
 import ../../src/engine/event_factory/init
 
 proc emptyPacket(houseId: HouseId, turn: int32): CommandPacket =
@@ -190,3 +190,31 @@ suite "Command Phase Lifecycle":
     check updatedFleet.command.targetSystem == some(targetSystem)
     check updatedFleet.missionState == MissionState.Traveling
     check updatedFleet.missionTarget == some(targetSystem)
+
+  test "production-completed move orders are reset before next player turn":
+    var state = newGame(gameName = "Production Cleanup Move")
+    let houseId = state.allHouses().toSeq[0].id
+    let moveFleet = state.firstFleetWithShipClass(houseId, ShipClass.Destroyer)
+    let targetSystem = state.starMap.adjacentSystems(moveFleet.location)[0]
+
+    var packet = emptyPacket(houseId, state.turn)
+    packet.fleetCommands = @[FleetCommand(
+      fleetId: moveFleet.id,
+      commandType: FleetCommandType.Move,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: some(6'i32)
+    )]
+
+    var orders = initTable[HouseId, CommandPacket]()
+    orders[houseId] = packet
+
+    var rng = initRand(23)
+    discard turn_engine.resolveTurn(state, orders, rng)
+
+    let updatedFleet = state.fleet(moveFleet.id).get()
+    check updatedFleet.location == targetSystem
+    check updatedFleet.command.commandType == FleetCommandType.Hold
+    check updatedFleet.missionState == MissionState.None
+    check updatedFleet.missionTarget.isNone

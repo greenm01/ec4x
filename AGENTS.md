@@ -45,6 +45,11 @@ When in **plan mode** (user has requested planning before execution), STRICTLY e
    - ❌ WRONG: `ship_ops.destroyShip(state, shipId)`
    - Apply to ALL functions where first parameter is `state: GameState`
 9. **Follow entity patterns** from `src/engine/architecture.md`
+10. **No backward compatibility by default**
+   - Prefer clean cutovers over dual-format or legacy compatibility code
+   - Assume caches, local state, saved games, and test data can be cleared
+   - Do NOT add migration or fallback paths unless explicitly requested
+     or required by a concrete production need
 
 **Reference:** `docs/api/api.json` contains src tree API for efficient context.
 

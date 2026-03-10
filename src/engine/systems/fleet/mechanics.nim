@@ -376,26 +376,18 @@ proc resolveMovementCommand*(
   state.moveFleet(command.fleetId, newLocation)
   fleet = state.fleet(command.fleetId).get()
 
-  # Generate OrderCompleted event for fleet movement
-  let moveDetails =
-    if newLocation == targetId:
-      &"arrived at {targetId}"
-    else:
-      &"moved from {startId} to {newLocation} ({actualJumps} jump(s))"
-
-  events.add(
-    commandCompleted(
-      houseId,
-      command.fleetId,
-      "Move",
-      details = moveDetails,
-      systemId = some(newLocation),
-    )
-  )
-
   # Check if we've arrived at final destination (N+1 behavior)
-  # Event generated above, cleanup handled by Command Phase
   if newLocation == targetId:
+    events.add(
+      commandCompleted(
+        houseId,
+        command.fleetId,
+        "Move",
+        details = &"arrived at {targetId}",
+        systemId = some(newLocation),
+      )
+    )
+
     logInfo(
       "Fleet",
       &"Fleet {command.fleetId} arrived at destination {targetId}, command complete",

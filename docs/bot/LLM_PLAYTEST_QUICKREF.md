@@ -139,6 +139,10 @@ Requirements:
 5. Wait for auto-resolve after all players submit.
 6. Re-read state for the next turn.
 
+For a full fresh restart after engine/daemon changes, see the
+`Fresh Reset After Engine/Daemon/TUI Changes` section in
+[PLAYTEST_SETUP.md](PLAYTEST_SETUP.md).
+
 ---
 
 ## KDL Skeleton
@@ -216,6 +220,33 @@ Midgame onward:
 - Used the wrong game slug or wrong turn in KDL.
 - Submitted before all seats were claimed and expected auto-resolve.
 - Used bare `localhost:8080` instead of `ws://localhost:8080`.
+- Forgot that `start_opencode_playtest.sh` clears the normal player cache, but
+  does not clear the separate LLM wallet root at `~/.local/share/ec4x-llm`.
+- Played against a stale daemon binary after changing engine/msgpack code.
+
+---
+
+## Bug Hunt Pass
+
+After each resolved turn, do a quick verification pass before continuing:
+
+```bash
+nim r tools/dump_state.nim <game-slug> --house 1
+nim r tools/dump_state.nim <game-slug> --house 2
+journalctl --user -u ec4x-daemon -n 120 --no-pager
+```
+
+Look for:
+- `Turn: <N+1>` in both house dumps
+- expected colonies/fleets/builds present in state
+- one-turn completed moves now showing `Cmd: Hold` and `Mission: None`
+- research deposits and purchases reflected in tech levels / RP pools
+- no bogus `CommandRejected` after a successful colonize
+- no hostile command-event leaks that the player should not know
+- daemon log lines showing both command packets saved and turn resolution completed
+
+If the TUI was left open during auto-resolve, also confirm it repainted to the
+new turn instead of staying on the old header.
 
 ---
 
@@ -230,4 +261,6 @@ right turn?
 orders use real IDs?
 submitted over Nostr?
 all seats claimed?
+daemon rebuilt/redeployed after engine changes?
+llm cache cleared for fresh games?
 ```

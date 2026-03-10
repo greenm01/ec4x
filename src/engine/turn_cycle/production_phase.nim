@@ -417,7 +417,55 @@ proc processTerraforming(
 # PRD6: CLEANUP AND PREPARATION
 # =============================================================================
 
-proc performCleanup(state: GameState) =
+proc cleanupCompletedProductionCommands(
+    state: GameState,
+    events: seq[GameEvent],
+) =
+  ## Reset commands that reached a terminal production outcome this turn.
+  ##
+  ## Command Phase cleanup runs before Production, so arrivals/completions that
+  ## happen in PRD1 must be normalized here before the next player-facing turn.
+  var completedFleets = initHashSet[FleetId]()
+
+  for event in events:
+    if event.fleetId.isNone or event.orderType.isNone:
+      continue
+
+    let orderType = event.orderType.get()
+    case event.eventType
+    of GameEventType.FleetArrived:
+      if orderType in ["Move", "SeekHome", "View", "Rendezvous"]:
+        completedFleets.incl(event.fleetId.get())
+    of GameEventType.CommandCompleted:
+      if orderType in ["JoinFleet", "Reserve", "Mothball", "ViewWorld"]:
+        completedFleets.incl(event.fleetId.get())
+    else:
+      discard
+
+  var resetCount = 0
+  for fleetId in completedFleets:
+    let fleetOpt = state.fleet(fleetId)
+    if fleetOpt.isNone:
+      continue
+
+    var fleet = fleetOpt.get()
+    fleet.command = FleetCommand(
+      fleetId: fleetId,
+      commandType: FleetCommandType.Hold,
+      targetSystem: none(SystemId),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: fleet.command.roe,
+    )
+    fleet.missionState = MissionState.None
+    fleet.missionTarget = none(SystemId)
+    state.updateFleet(fleetId, fleet)
+    resetCount += 1
+
+  logInfo("Production",
+    &"[PRD6] Reset {resetCount} completed production commands to Hold")
+
+proc performCleanup(state: GameState, events: seq[GameEvent]) =
   ## PRD6: Cleanup and preparation for next turn
   ##
   ## - Remove destroyed entities (handled implicitly by combat)
@@ -428,10 +476,12 @@ proc performCleanup(state: GameState) =
   ## primarily a placeholder for future expansion.
   
   logInfo("Production", "[PRD6] Performing cleanup...")
-  
+
+  cleanupCompletedProductionCommands(state, events)
+
   # Timer logic moved to Income Phase Step 11
   # Other cleanup handled implicitly by combat/intel systems
-  
+
   logInfo("Production", "[PRD6] Complete")
 
 # =============================================================================
@@ -544,7 +594,7 @@ proc resolveProductionPhase*(
   processDiplomacy(state, orders, events)
   processPopulationTransfers(state, events)
   processTerraforming(state, events)
-  performCleanup(state)
+  performCleanup(state, events)
   
   # =========================================================================
   # PRD7: RESEARCH ADVANCEMENT

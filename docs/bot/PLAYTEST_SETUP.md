@@ -52,6 +52,45 @@ All three must exist. Run `ls bin/` to confirm.
 
 Recommended for iterative balancing and bug hunting.
 
+### Fresh Reset After Engine/Daemon/TUI Changes
+
+Use this whenever command formats, turn resolution, player-state sync, or
+daemon behavior changed. It avoids stale binaries, stale game DB rows, and
+mixed human/LLM wallet state.
+
+```bash
+# 1. Rebuild and redeploy the user daemon
+./scripts/deploy_daemon_user.sh --logs
+
+# 2. Clear the LLM wallet/cache root used by OpenCode
+rm -rf "$HOME/.local/share/ec4x-llm"
+
+# 3. Create a fresh 2-player game and clear normal player cache/data
+./scripts/start_opencode_playtest.sh
+```
+
+What this does:
+- `deploy_daemon_user.sh` rebuilds `bin/ec4x-daemon`, installs it to the user
+  bin dir, and restarts `ec4x-daemon`
+- `start_opencode_playtest.sh` in default `full` mode runs
+  `nim r tools/clean_dev.nim --clean --logs`, then creates a fresh
+  `standard-2-player` game and prints invite codes
+- the normal player cache under `~/.local/share/ec4x/` is cleared while
+  preserving `daemon_identity.kdl`
+- the LLM cache is **not** cleared by that script; delete
+  `~/.local/share/ec4x-llm` separately
+
+Quick validation after reset:
+
+```bash
+./scripts/status_daemon_user.sh
+```
+
+Confirm:
+- `ec4x-daemon` is active
+- `nostr-relay.service` is active
+- only the new game slug exists under `data/games/`
+
 ### Setup
 
 ```bash
@@ -95,12 +134,41 @@ If you need to preserve existing cache/identity for a quick rerun:
 
 6. Analyze outcomes together and repeat.
 
+### Recommended Reset + Join Loop
+
+For the fastest reproducible human-vs-OpenCode cycle:
+
+1. Run the three reset commands in `Fresh Reset After Engine/Daemon/TUI Changes`.
+2. Human joins one invite in `./bin/tui`.
+3. Human submits turn 1 normally through the TUI.
+4. OpenCode claims the other invite with the separate LLM wallet root.
+5. OpenCode inspects state with `tools/dump_state.nim`.
+6. OpenCode submits through real KDL-over-Nostr, not by DB injection.
+7. Verify auto-resolve in daemon logs before trusting the next-turn UI/state.
+
 ### Notes
 
 - For this workflow, set daemon to manual-only mode to avoid accidental
   auto-advance while only one seat is claimed.
 - Runbook: [Turn Resolution Operations](../guides/turn-resolution-operations.md)
 - Tool reference: [Dev Tools Reference](../tools/ec4x-play.md)
+
+### Fast Bug Repro Checklist
+
+Use this after each resolved turn when testing engine or TUI fixes:
+
+- `nim r tools/dump_state.nim <game-slug> --house 1`
+- `nim r tools/dump_state.nim <game-slug> --house 2`
+- `journalctl --user -u ec4x-daemon -n 120 --no-pager`
+
+Check for:
+- turn advanced for both houses
+- one-hop moves that arrived now show `Hold` and `Mission: None`
+- colonize orders do not both succeed and later reject
+- commissioned ships join fleets actually at the commissioning colony
+- research deposits/purchases appear in the next-turn tech state
+- enemy command events are not leaking unexpectedly into player turn events
+- a left-open TUI refreshes to the new turn after daemon publish
 
 ---
 
