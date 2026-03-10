@@ -208,6 +208,8 @@ type
     fleetDetailCancel
     fleetDetailPageUp
     fleetDetailPageDown
+    fleetDetailQtyInc
+    fleetDetailQtyDec
     fleetDetailDigitInput
     fleetDetailOpenZTC
     fleetDetailSelectZTC

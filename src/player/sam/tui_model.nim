@@ -342,6 +342,13 @@ type
     defenseStrength*: int
     combatStatus*: string
 
+  CarrierPickerRow* = object
+    ## Carrier entry for fighter load/unload picker.
+    shipId*: ShipId
+    classLabel*: string
+    fighterCount*: int
+    unloadCount*: int
+
   SystemPickerFilterResult* = object
     systems*: seq[SystemPickerEntry]
     emptyMessage*: string
@@ -355,6 +362,7 @@ type
     NoticePrompt
     SystemPicker      # Target system selection table (for Move, Patrol, etc.)
     FleetPicker       # Select target fleet (for JoinFleet command)
+    CarrierPicker     # Select source carrier for fighter operations
     Staged            # Terminal state: command staged successfully
     ZTCPicker         # Zero-Turn Command picker (1-9)
     ShipSelector      # Ship checkbox list (for Detach/Transfer ZTCs) - placeholder
@@ -395,6 +403,9 @@ type
     fleetPickerIdx*: int       # Selected fleet index in picker
     fleetPickerScroll*: ScrollState  # Scroll state for fleet picker list
     fleetPickerCandidates*: seq[FleetConsoleFleet]  # Other fleets at same system
+    carrierPickerIdx*: int
+    carrierPickerCandidates*: seq[CarrierPickerRow]
+    selectedCarrierShipId*: Option[ShipId]
     # ZTCPicker state (for Zero-Turn Commands)
     ztcIdx*: int               # Selected ZTC index in filtered picker list
     ztcDigitBuffer*: string    # Single-digit quick select buffer (1-9)
@@ -1534,6 +1545,9 @@ proc initTuiUiState*(): TuiUiState =
       fleetPickerIdx: 0,
       fleetPickerScroll: initScrollState(),
       fleetPickerCandidates: @[],
+      carrierPickerIdx: 0,
+      carrierPickerCandidates: @[],
+      selectedCarrierShipId: none(ShipId),
       ztcIdx: 0,
       ztcDigitBuffer: "",
       ztcPickerCommands: @[],

@@ -524,6 +524,9 @@ proc resetFleetDetailSubModal(model: var TuiModel) =
   model.ui.fleetDetailModal.noticeReturnSubModal = FleetSubModal.None
   model.ui.fleetDetailModal.fleetPickerCandidates = @[]
   model.ui.fleetDetailModal.fleetPickerIdx = 0
+  model.ui.fleetDetailModal.carrierPickerCandidates = @[]
+  model.ui.fleetDetailModal.carrierPickerIdx = 0
+  model.ui.fleetDetailModal.selectedCarrierShipId = none(ShipId)
   model.ui.fleetDetailModal.systemPickerIdx = 0
   model.ui.fleetDetailModal.systemPickerSystems = @[]
   model.ui.fleetDetailModal.systemPickerFilter = ""
@@ -649,6 +652,76 @@ proc parseInputQuantity(input: TextInputState): int =
     max(0, parseInt(raw))
   except:
     0
+
+proc fighterQtyMax(model: TuiModel): int =
+  if model.ui.fleetDetailModal.ztcType.isNone:
+    return 0
+  let ztcType = model.ui.fleetDetailModal.ztcType.get()
+  let sourceFleetId = model.ui.fleetDetailModal.fleetId
+  if sourceFleetId notin model.view.ownFleetsById:
+    return 0
+  let sourceFleet = model.view.ownFleetsById[sourceFleetId]
+  case ztcType
+  of ZeroTurnCommandType.LoadFighters:
+    if int(sourceFleet.location) notin model.view.ownColoniesBySystem:
+      return 0
+    model.view.ownColoniesBySystem[int(sourceFleet.location)].fighterIds.len
+  of ZeroTurnCommandType.UnloadFighters:
+    if model.ui.fleetDetailModal.selectedCarrierShipId.isNone:
+      return 0
+    let carrierId = int(model.ui.fleetDetailModal.selectedCarrierShipId.get())
+    if carrierId notin model.view.ownShipsById:
+      return 0
+    model.view.ownShipsById[carrierId].embarkedFighters.len
+  of ZeroTurnCommandType.TransferFighters:
+    if model.ui.fleetDetailModal.selectedCarrierShipId.isNone:
+      return 0
+    let carrierId = int(model.ui.fleetDetailModal.selectedCarrierShipId.get())
+    if carrierId notin model.view.ownShipsById:
+      return 0
+    model.view.ownShipsById[carrierId].embarkedFighters.len
+  else:
+    0
+
+proc setFighterQuantityInput(model: var TuiModel, qty: int) =
+  model.ui.fleetDetailModal.fighterQuantityInput.clear()
+  let clampedQty = max(0, min(qty, fighterQtyMax(model)))
+  if clampedQty == 0:
+    return
+  for ch in $clampedQty:
+    discard model.ui.fleetDetailModal.fighterQuantityInput.appendChar(ch)
+
+proc buildCarrierPickerCandidatesForZtc(
+    model: var TuiModel,
+    sourceFleetId: int
+): bool =
+  if sourceFleetId notin model.view.ownFleetsById:
+    model.ui.statusMessage = "Source fleet not found"
+    return false
+  let sourceFleet = model.view.ownFleetsById[sourceFleetId]
+  model.ui.fleetDetailModal.carrierPickerCandidates = @[]
+  model.ui.fleetDetailModal.carrierPickerIdx = 0
+  for shipId in sourceFleet.ships:
+    let sid = int(shipId)
+    if sid notin model.view.ownShipsById:
+      continue
+    let ship = model.view.ownShipsById[sid]
+    if ship.state == CombatState.Destroyed:
+      continue
+    if ship.shipClass notin {ShipClass.Carrier, ShipClass.SuperCarrier}:
+      continue
+    if ship.embarkedFighters.len == 0:
+      continue
+    model.ui.fleetDetailModal.carrierPickerCandidates.add(CarrierPickerRow(
+      shipId: ship.id,
+      classLabel: $ship.shipClass,
+      fighterCount: ship.embarkedFighters.len,
+      unloadCount: 0
+    ))
+  if model.ui.fleetDetailModal.carrierPickerCandidates.len == 0:
+    model.ui.statusMessage = "No embarked fighters on any carrier"
+    return false
+  true
 
 proc buildFleetPickerCandidatesForZtc(
     model: var TuiModel,
@@ -4368,6 +4441,13 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.fleetPickerIdx -= 1
       else:
         model.ui.fleetDetailModal.fleetPickerIdx = maxIdx
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker:
+      let maxIdx = max(0,
+        model.ui.fleetDetailModal.carrierPickerCandidates.len - 1)
+      if model.ui.fleetDetailModal.carrierPickerIdx > 0:
+        model.ui.fleetDetailModal.carrierPickerIdx -= 1
+      else:
+        model.ui.fleetDetailModal.carrierPickerIdx = maxIdx
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
       discard
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
@@ -4375,9 +4455,7 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.fighterQuantityInput
       ))
       if current > 0:
-        model.ui.fleetDetailModal.fighterQuantityInput.clear()
-        for ch in $(current - 1):
-          discard model.ui.fleetDetailModal.fighterQuantityInput.appendChar(ch)
+        model.setFighterQuantityInput(current - 1)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
       let maxIdx = max(0,
         model.ui.fleetDetailModal.systemPickerSystems.len - 1)
@@ -4429,15 +4507,19 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.fleetDetailModal.fleetPickerIdx += 1
       elif maxIdx >= 0:
         model.ui.fleetDetailModal.fleetPickerIdx = 0
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker:
+      let maxIdx = model.ui.fleetDetailModal.carrierPickerCandidates.len - 1
+      if model.ui.fleetDetailModal.carrierPickerIdx < maxIdx:
+        model.ui.fleetDetailModal.carrierPickerIdx += 1
+      elif maxIdx >= 0:
+        model.ui.fleetDetailModal.carrierPickerIdx = 0
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
       discard
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
       let current = max(0, parseInputQuantity(
         model.ui.fleetDetailModal.fighterQuantityInput
       ))
-      model.ui.fleetDetailModal.fighterQuantityInput.clear()
-      for ch in $(current + 1):
-        discard model.ui.fleetDetailModal.fighterQuantityInput.appendChar(ch)
+      model.setFighterQuantityInput(current + 1)
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
       let maxIdx = model.ui.fleetDetailModal.systemPickerSystems.len - 1
       if model.ui.fleetDetailModal.systemPickerIdx < maxIdx:
@@ -4449,6 +4531,20 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let scroll = model.ui.fleetDetailModal.shipScroll
       model.ui.fleetDetailModal.shipScroll.verticalOffset = min(maxOffset,
         scroll.verticalOffset + 1)
+  of ActionKind.fleetDetailQtyInc:
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker:
+      let idx = model.ui.fleetDetailModal.carrierPickerIdx
+      if idx >= 0 and idx < model.ui.fleetDetailModal.carrierPickerCandidates.len:
+        var row = model.ui.fleetDetailModal.carrierPickerCandidates[idx]
+        row.unloadCount = min(row.fighterCount, row.unloadCount + 1)
+        model.ui.fleetDetailModal.carrierPickerCandidates[idx] = row
+  of ActionKind.fleetDetailQtyDec:
+    if model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker:
+      let idx = model.ui.fleetDetailModal.carrierPickerIdx
+      if idx >= 0 and idx < model.ui.fleetDetailModal.carrierPickerCandidates.len:
+        var row = model.ui.fleetDetailModal.carrierPickerCandidates[idx]
+        row.unloadCount = max(0, row.unloadCount - 1)
+        model.ui.fleetDetailModal.carrierPickerCandidates[idx] = row
   of ActionKind.fleetDetailSelectCommand:
     if model.ui.fleetDetailModal.subModal == FleetSubModal.CommandPicker:
       # Check if there's a pending single digit - map to command code
@@ -4738,7 +4834,12 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
             model.ui.statusMessage = "Select exactly one source fleet"
             return
           model.ui.fleetDetailModal.fighterQuantityInput.clear()
-          model.ui.fleetDetailModal.subModal = FleetSubModal.FighterParams
+          if ztcType == ZeroTurnCommandType.UnloadFighters:
+            if not model.buildCarrierPickerCandidatesForZtc(sourceFleetIds[0]):
+              return
+            model.ui.fleetDetailModal.subModal = FleetSubModal.CarrierPicker
+          else:
+            model.ui.fleetDetailModal.subModal = FleetSubModal.FighterParams
         of ZeroTurnCommandType.TransferFighters:
           if sourceFleetIds.len != 1:
             model.ui.statusMessage = "Select exactly one source fleet"
@@ -4875,7 +4976,9 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           elif ztcType == ZeroTurnCommandType.TransferFighters:
             model.ui.fleetDetailModal.ztcTargetFleetId = target.fleetId
             model.ui.fleetDetailModal.fighterQuantityInput.clear()
-            model.ui.fleetDetailModal.subModal = FleetSubModal.FighterParams
+            if not model.buildCarrierPickerCandidatesForZtc(sourceFleetId):
+              return
+            model.ui.fleetDetailModal.subModal = FleetSubModal.CarrierPicker
         else:
           let fcErr = validateJoinFleetFc(
             model,
@@ -4898,6 +5001,62 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
           model.ui.mode = ViewMode.Fleets
           model.clearFleetSelection()
           model.resetBreadcrumbs(ViewMode.Fleets)
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker:
+      let candidates = model.ui.fleetDetailModal.carrierPickerCandidates
+      let idx = model.ui.fleetDetailModal.carrierPickerIdx
+      if model.ui.fleetDetailModal.ztcType.isSome and
+          model.ui.fleetDetailModal.ztcType.get() ==
+            ZeroTurnCommandType.UnloadFighters:
+        let sourceFleetId = model.ui.fleetDetailModal.fleetId
+        if sourceFleetId notin model.view.ownFleetsById:
+          model.ui.statusMessage = "Source fleet not found"
+          return
+        let sourceFleet = model.view.ownFleetsById[sourceFleetId]
+        let houseId = HouseId(model.view.viewingHouse.uint32)
+        var stagedCount = 0
+        for carrier in candidates:
+          if carrier.unloadCount <= 0:
+            continue
+          let shipId = int(carrier.shipId)
+          if shipId notin model.view.ownShipsById:
+            continue
+          var fighterIds = model.view.ownShipsById[shipId].embarkedFighters
+          if carrier.unloadCount < fighterIds.len:
+            fighterIds = fighterIds[0 ..< carrier.unloadCount]
+          if fighterIds.len == 0:
+            continue
+          let cmd = ZeroTurnCommand(
+            houseId: houseId,
+            commandType: ZeroTurnCommandType.UnloadFighters,
+            colonySystem: some(SystemId(sourceFleet.location.uint32)),
+            sourceFleetId: some(FleetId(sourceFleetId)),
+            targetFleetId: none(FleetId),
+            shipIndices: @[],
+            shipIds: @[],
+            cargoType: none(CargoClass),
+            cargoQuantity: none(int),
+            fighterIds: fighterIds,
+            carrierShipId: some(carrier.shipId),
+            sourceCarrierShipId: none(ShipId),
+            targetCarrierShipId: none(ShipId),
+            newFleetId: none(FleetId),
+          )
+          model.ui.stagedZeroTurnCommands.add(cmd)
+          stagedCount += 1
+        if stagedCount == 0:
+          model.ui.statusMessage = "Set an unload quantity first"
+          return
+        model.ui.modifiedSinceSubmit = true
+        model.ui.statusMessage = "Staged Unload Fighters"
+        model.ztcCloseToFleets()
+      else:
+        if idx < 0 or idx >= candidates.len:
+          model.ui.statusMessage = "No carrier selected"
+          return
+        model.ui.fleetDetailModal.selectedCarrierShipId =
+          some(candidates[idx].shipId)
+        model.ui.fleetDetailModal.fighterQuantityInput.clear()
+        model.ui.fleetDetailModal.subModal = FleetSubModal.FighterParams
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.CargoParams:
       if model.ui.fleetDetailModal.ztcType.isNone:
         model.ui.statusMessage = "No ZTC command selected"
@@ -4954,19 +5113,24 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       let sourceFleet = model.view.ownFleetsById[sourceFleetId]
       let ztcType = model.ui.fleetDetailModal.ztcType.get()
       let houseId = HouseId(model.view.viewingHouse.uint32)
-      let qty = parseInputQuantity(model.ui.fleetDetailModal.fighterQuantityInput)
-      var sourceCarrier = none(ShipId)
-      for shipId in sourceFleet.ships:
-        if int(shipId) notin model.view.ownShipsById:
-          continue
-        let ship = model.view.ownShipsById[int(shipId)]
-        if ship.state == CombatState.Destroyed:
-          continue
-        if ship.shipClass in {ShipClass.Carrier, ShipClass.SuperCarrier}:
-          sourceCarrier = some(ship.id)
-          break
+      let maxQty = model.fighterQtyMax()
+      let rawQty = parseInputQuantity(
+        model.ui.fleetDetailModal.fighterQuantityInput
+      )
+      let qty = if rawQty == 0: maxQty else: min(rawQty, maxQty)
+      var sourceCarrier = model.ui.fleetDetailModal.selectedCarrierShipId
+      if ztcType == ZeroTurnCommandType.LoadFighters and sourceCarrier.isNone:
+        for shipId in sourceFleet.ships:
+          if int(shipId) notin model.view.ownShipsById:
+            continue
+          let ship = model.view.ownShipsById[int(shipId)]
+          if ship.state == CombatState.Destroyed:
+            continue
+          if ship.shipClass in {ShipClass.Carrier, ShipClass.SuperCarrier}:
+            sourceCarrier = some(ship.id)
+            break
       if sourceCarrier.isNone:
-        model.ui.statusMessage = "No operational carrier in source fleet"
+        model.ui.statusMessage = "No carrier selected"
         return
       if ztcType == ZeroTurnCommandType.LoadFighters:
         if int(sourceFleet.location) notin model.view.ownColoniesBySystem:
@@ -5296,9 +5460,18 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         # Cancel ZTC picker, go back to main detail view
         model.ui.fleetDetailModal.subModal = FleetSubModal.None
     elif model.ui.fleetDetailModal.subModal in {FleetSubModal.ShipSelector,
-        FleetSubModal.CargoParams, FleetSubModal.FighterParams}:
+        FleetSubModal.CargoParams}:
       # Cancel placeholder sub-modal, go back to ZTC picker
       model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.FighterParams:
+      if model.ui.fleetDetailModal.ztcType.isSome and
+          model.ui.fleetDetailModal.ztcType.get() in {
+            ZeroTurnCommandType.UnloadFighters,
+            ZeroTurnCommandType.TransferFighters
+          }:
+        model.ui.fleetDetailModal.subModal = FleetSubModal.CarrierPicker
+      else:
+        model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
     elif model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker:
       # Cancel system picker, go back to command picker
       model.ui.fleetDetailModal.systemPickerSystems = @[]
@@ -5311,6 +5484,8 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
       else:
         # Fleet command flow: back to command picker.
         model.ui.fleetDetailModal.subModal = FleetSubModal.CommandPicker
+    elif model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker:
+      model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
     else:
       # Fallback: treat cancel as close when no sub-modal is active
       # Always navigate back to Fleets view
@@ -5457,9 +5632,13 @@ proc fleetDetailModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         let ch = if proposal.gameActionData.len > 0:
           proposal.gameActionData[0] else: '\0'
         if ch >= '0' and ch <= '9':
-          if model.ui.fleetDetailModal.fighterQuantityInput.value() == "0":
-            model.ui.fleetDetailModal.fighterQuantityInput.clear()
-          discard model.ui.fleetDetailModal.fighterQuantityInput.appendChar(ch)
+          var candidate = model.ui.fleetDetailModal.fighterQuantityInput.value()
+          if candidate == "0":
+            candidate = ""
+          candidate.add(ch)
+          var tempInput = initTextInputState()
+          tempInput.setText(candidate)
+          model.setFighterQuantityInput(parseInputQuantity(tempInput))
   else:
     discard
 

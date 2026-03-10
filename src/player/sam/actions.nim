@@ -1704,6 +1704,14 @@ proc actionFleetDetailPageDown*(): Proposal =
   ## Page down in fleet detail ship list
   gameActionProposal(ActionKind.fleetDetailPageDown, "")
 
+proc actionFleetDetailQtyInc*(): Proposal =
+  ## Increase in-place quantity in fleet detail sub-modals
+  gameActionProposal(ActionKind.fleetDetailQtyInc, "")
+
+proc actionFleetDetailQtyDec*(): Proposal =
+  ## Decrease in-place quantity in fleet detail sub-modals
+  gameActionProposal(ActionKind.fleetDetailQtyDec, "")
+
 proc actionFleetDetailDigitInput*(digit: char): Proposal =
   ## Handle digit input for quick command selection (00-19)
   gameActionProposal(ActionKind.fleetDetailDigitInput, $digit)

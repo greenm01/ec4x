@@ -307,6 +307,8 @@ proc isBindingEnabled*(b: Binding, model: TuiModel): bool =
     model.ui.fleetDetailModal.subModal == FleetSubModal.ZTCPicker
   of "isFleetPicker":
     model.ui.fleetDetailModal.subModal == FleetSubModal.FleetPicker
+  of "isCarrierPicker":
+    model.ui.fleetDetailModal.subModal == FleetSubModal.CarrierPicker
   of "isSystemPicker":
     model.ui.fleetDetailModal.subModal == FleetSubModal.SystemPicker
   of "isShipSelector":
@@ -903,6 +905,13 @@ proc initBindings*() =
     actionKind: ActionKind.fleetDetailSelectCommand,
     context: BindingContext.FleetDetail,
     longLabel: "SELECT", shortLabel: "Enter", priority: 34,
+    enabledCheck: "isCarrierPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyEnter, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailSelectCommand,
+    context: BindingContext.FleetDetail,
+    longLabel: "SELECT", shortLabel: "Enter", priority: 34,
     enabledCheck: "isSystemPicker"))
 
   registerBinding(Binding(
@@ -968,6 +977,20 @@ proc initBindings*() =
     actionKind: ActionKind.fleetDetailPageDown,
     context: BindingContext.FleetDetail,
     longLabel: "PAGE DOWN", shortLabel: "PgDn", priority: 51))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailQtyInc,
+    context: BindingContext.FleetDetail,
+    longLabel: "QTY+", shortLabel: "+", priority: 52,
+    enabledCheck: "isCarrierPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailQtyDec,
+    context: BindingContext.FleetDetail,
+    longLabel: "QTY-", shortLabel: "-", priority: 53,
+    enabledCheck: "isCarrierPicker"))
 
   # ROE Picker sub-modal (shares bindings with command picker for navigation)
   # Up/Down keys already bound above
@@ -2190,6 +2213,10 @@ proc dispatchAction*(b: Binding, model: TuiModel,
     return some(actionFleetDetailPageUp())
   of ActionKind.fleetDetailPageDown:
     return some(actionFleetDetailPageDown())
+  of ActionKind.fleetDetailQtyInc:
+    return some(actionFleetDetailQtyInc())
+  of ActionKind.fleetDetailQtyDec:
+    return some(actionFleetDetailQtyDec())
   of ActionKind.fleetDetailDigitInput:
     # This is handled specially - digit passed via gameActionData
     return none(Proposal)

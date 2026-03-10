@@ -354,6 +354,51 @@ proc renderFleetPicker(state: FleetDetailModalState, area: Rect,
     selectedIdx = state.fleetPickerIdx,
     itemCount = count)
 
+proc renderCarrierPicker(state: FleetDetailModalState, area: Rect,
+                         buf: var CellBuffer) =
+  if area.isEmpty:
+    return
+
+  let headers = @["ShipId", "Class", "Fighters", "Unload"]
+  var rows: seq[seq[string]] = @[]
+  for carrier in state.carrierPickerCandidates:
+    rows.add(@[
+      $int(carrier.shipId),
+      carrier.classLabel,
+      $carrier.fighterCount,
+      $carrier.unloadCount
+    ])
+  let widths = measuredColumnWidths(headers, rows, @[6, 10, 8, 6])
+
+  var carrierTable = table([
+    tableColumn("ShipId", width = widths[0],
+      minWidth = widths[0], align = table.Alignment.Right),
+    tableColumn("Class", width = widths[1],
+      minWidth = widths[1], align = table.Alignment.Left),
+    tableColumn("Fighters", width = widths[2],
+      minWidth = widths[2], align = table.Alignment.Right),
+    tableColumn("Unload", width = widths[3],
+      minWidth = widths[3], align = table.Alignment.Right)
+  ])
+    .showBorders(true)
+    .showHeader(true)
+    .showSeparator(true)
+    .cellPadding(1)
+    .rowStyle(canvasStyle())
+    .selectedStyle(selectedStyle())
+
+  for row in rows:
+    carrierTable.addRow(row)
+
+  let count = max(1, state.carrierPickerCandidates.len)
+  renderPickerTable(
+    carrierTable,
+    area,
+    buf,
+    selectedIdx = state.carrierPickerIdx,
+    itemCount = count
+  )
+
 proc renderSystemPicker(state: FleetDetailModalState,
                         area: Rect,
                         buf: var CellBuffer) =
@@ -480,6 +525,18 @@ proc renderFighterParams(state: FleetDetailModalState, area: Rect,
   var y = area.y
   discard buf.setString(area.x, y, "FIGHTER PARAMETERS", canvasHeaderStyle())
   y += 2
+  if state.selectedCarrierShipId.isSome:
+    discard buf.setString(area.x, y,
+      "Carrier: #" & $int(state.selectedCarrierShipId.get()),
+      canvasStyle())
+    y += 1
+    for carrier in state.carrierPickerCandidates:
+      if int(carrier.shipId) == int(state.selectedCarrierShipId.get()):
+        discard buf.setString(area.x, y,
+          "Embarked Fighters: " & $carrier.fighterCount,
+          canvasStyle())
+        y += 1
+        break
   let qtyRaw = state.fighterQuantityInput.value().strip()
   let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
   discard buf.setString(area.x, y, "Quantity: " & qty, canvasStyle())
@@ -590,6 +647,17 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
         ])
       measuredTableInnerWidth(@["Fleet", "Ships", "AS", "DS"],
         rows, @[5, 5, 2, 2])
+    of FleetSubModal.CarrierPicker:
+      var rows: seq[seq[string]] = @[]
+      for carrier in state.carrierPickerCandidates:
+        rows.add(@[
+          $int(carrier.shipId),
+          carrier.classLabel,
+          $carrier.fighterCount,
+          $carrier.unloadCount
+        ])
+      measuredTableInnerWidth(@["ShipId", "Class", "Fighters", "Unload"],
+        rows, @[6, 10, 8, 6])
     of FleetSubModal.ZTCPicker:
       var rows: seq[seq[string]] = @[]
       for idx, ztcType in state.ztcPickerCommands:
@@ -629,11 +697,11 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.FighterParams:
       let qtyRaw = state.fighterQuantityInput.value().strip()
       let qty = if qtyRaw.len == 0: "0 (all)" else: qtyRaw
-      let lines = @[
-        "FIGHTER PARAMETERS",
-        "Quantity: " & qty,
-        "Use [↑↓] or [0-9], [Enter] confirm"
-      ]
+      var lines = @["FIGHTER PARAMETERS"]
+      if state.selectedCarrierShipId.isSome:
+        lines.add("Carrier: #" & $int(state.selectedCarrierShipId.get()))
+      lines.add("Quantity: " & qty)
+      lines.add("Use [↑↓] or [0-9], [Enter] confirm")
       maxStringLen(lines)
     of FleetSubModal.ConfirmPrompt:
       max(state.confirmMessage.len, "Proceed? [Y]es / [N]o".len)
@@ -679,6 +747,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       measuredTableContentHeight(state.systemPickerSystems.len)
     of FleetSubModal.FleetPicker:
       measuredTableContentHeight(state.fleetPickerCandidates.len)
+    of FleetSubModal.CarrierPicker:
+      measuredTableContentHeight(state.carrierPickerCandidates.len)
     of FleetSubModal.Staged:
       8
     of FleetSubModal.ZTCPicker:
@@ -706,6 +776,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
   let isZtcContext = state.ztcType.isSome or
     state.subModal in {
       FleetSubModal.ZTCPicker,
+      FleetSubModal.CarrierPicker,
       FleetSubModal.ShipSelector,
       FleetSubModal.CargoParams,
       FleetSubModal.FighterParams
@@ -723,6 +794,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       (true, "[↑↓]Select [1-9]Quick [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.FleetPicker:
       (true, "[↑↓]Select [Enter]Confirm [Esc]Cancel")
+    of FleetSubModal.CarrierPicker:
+      (true, "[↑↓]Select [+/-]Qty [Enter]Confirm [Esc]Cancel")
     of FleetSubModal.SystemPicker:
       (true, "[↑↓]Nav [A-Z0-9]Jump [PgUp/Dn/ESC]")
     of FleetSubModal.ShipSelector:
@@ -797,6 +870,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     renderSystemPicker(state, inner, buf)
   of FleetSubModal.FleetPicker:
     renderFleetPicker(state, inner, buf)
+  of FleetSubModal.CarrierPicker:
+    renderCarrierPicker(state, inner, buf)
   of FleetSubModal.Staged:
     # Show success message
     let centerY = inner.y + inner.height div 2
