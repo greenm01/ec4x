@@ -1018,6 +1018,8 @@ type
     pristineFleetConsoleFleetsBySystem*:
       Table[int, seq[FleetConsoleFleet]]
     pristineOwnFleetsById*: Table[int, Fleet]
+    pristineOwnColoniesBySystem*: Table[int, Colony]
+    pristineOwnShipsById*: Table[int, Ship]
 
     # Fleet list state (ListView mode)
     fleetListState*: FleetListState
@@ -1385,6 +1387,8 @@ proc initTuiUiState*(): TuiUiState =
     pristineFleetConsoleFleetsBySystem:
       initTable[int, seq[FleetConsoleFleet]](),
     pristineOwnFleetsById: initTable[int, Fleet](),
+    pristineOwnColoniesBySystem: initTable[int, Colony](),
+    pristineOwnShipsById: initTable[int, Ship](),
     fleetListState: FleetListState(
       sortState: initTableSortState(12),
       searchActive: false,
@@ -3664,10 +3668,149 @@ proc applyZeroTurnCommandOptimistically*(
     if srcShipCount <= 0:
       model.removeFleetFromViews(srcId)
 
-  else:
-    # LoadCargo, UnloadCargo, LoadFighters, UnloadFighters,
-    # TransferFighters: FleetInfo has no marine/fighter count fields.
-    # No optimistic update possible until model is extended.
+  of ZeroTurnCommandType.LoadFighters,
+     ZeroTurnCommandType.UnloadFighters,
+     ZeroTurnCommandType.TransferFighters:
+    if cmd.sourceFleetId.isNone:
+      return
+    let srcId = int(cmd.sourceFleetId.get())
+
+    if cmd.commandType == ZeroTurnCommandType.LoadFighters:
+      if cmd.carrierShipId.isNone or cmd.colonySystem.isNone:
+        return
+      let carrierId = int(cmd.carrierShipId.get())
+      let colonySystem = int(cmd.colonySystem.get())
+      if colonySystem notin model.view.ownColoniesBySystem or
+          carrierId notin model.view.ownShipsById or
+          srcId notin model.view.ownFleetsById:
+        return
+      var colony = model.view.ownColoniesBySystem[colonySystem]
+      var carrier = model.view.ownShipsById[carrierId]
+      var srcFleet = model.view.ownFleetsById[srcId]
+      for fighterId in cmd.fighterIds:
+        let sid = int(fighterId)
+        if sid notin model.view.ownShipsById:
+          continue
+        colony.fighterIds.keepItIf(it != fighterId)
+        var fighter = model.view.ownShipsById[sid]
+        fighter.assignedToCarrier = some(ShipId(carrierId))
+        fighter.fleetId = FleetId(srcId)
+        if fighterId notin carrier.embarkedFighters:
+          carrier.embarkedFighters.add(fighterId)
+        if fighterId notin srcFleet.ships:
+          srcFleet.ships.add(fighterId)
+        model.view.ownShipsById[sid] = fighter
+      model.view.ownColoniesBySystem[colonySystem] = colony
+      model.view.ownShipsById[carrierId] = carrier
+      model.view.ownFleetsById[srcId] = srcFleet
+    elif cmd.commandType == ZeroTurnCommandType.UnloadFighters:
+      if cmd.carrierShipId.isNone or cmd.colonySystem.isNone:
+        return
+      let carrierId = int(cmd.carrierShipId.get())
+      let colonySystem = int(cmd.colonySystem.get())
+      if colonySystem notin model.view.ownColoniesBySystem or
+          carrierId notin model.view.ownShipsById or
+          srcId notin model.view.ownFleetsById:
+        return
+      var colony = model.view.ownColoniesBySystem[colonySystem]
+      var carrier = model.view.ownShipsById[carrierId]
+      var srcFleet = model.view.ownFleetsById[srcId]
+      for fighterId in cmd.fighterIds:
+        let sid = int(fighterId)
+        if sid notin model.view.ownShipsById:
+          continue
+        carrier.embarkedFighters.keepItIf(it != fighterId)
+        if fighterId notin colony.fighterIds:
+          colony.fighterIds.add(fighterId)
+        srcFleet.ships.keepItIf(it != fighterId)
+        var fighter = model.view.ownShipsById[sid]
+        fighter.assignedToCarrier = none(ShipId)
+        fighter.fleetId = FleetId(0)
+        model.view.ownShipsById[sid] = fighter
+      model.view.ownColoniesBySystem[colonySystem] = colony
+      model.view.ownShipsById[carrierId] = carrier
+      model.view.ownFleetsById[srcId] = srcFleet
+    else:
+      if cmd.sourceCarrierShipId.isNone or cmd.targetCarrierShipId.isNone or
+          cmd.targetFleetId.isNone:
+        return
+      let sourceCarrierId = int(cmd.sourceCarrierShipId.get())
+      let targetCarrierId = int(cmd.targetCarrierShipId.get())
+      let tgtId = int(cmd.targetFleetId.get())
+      if sourceCarrierId notin model.view.ownShipsById or
+          targetCarrierId notin model.view.ownShipsById or
+          srcId notin model.view.ownFleetsById or
+          tgtId notin model.view.ownFleetsById:
+        return
+      var sourceCarrier = model.view.ownShipsById[sourceCarrierId]
+      var targetCarrier = model.view.ownShipsById[targetCarrierId]
+      var srcFleet = model.view.ownFleetsById[srcId]
+      var tgtFleet = model.view.ownFleetsById[tgtId]
+      for fighterId in cmd.fighterIds:
+        let sid = int(fighterId)
+        if sid notin model.view.ownShipsById:
+          continue
+        sourceCarrier.embarkedFighters.keepItIf(it != fighterId)
+        if fighterId notin targetCarrier.embarkedFighters:
+          targetCarrier.embarkedFighters.add(fighterId)
+        if srcId != tgtId:
+          srcFleet.ships.keepItIf(it != fighterId)
+          if fighterId notin tgtFleet.ships:
+            tgtFleet.ships.add(fighterId)
+        var fighter = model.view.ownShipsById[sid]
+        fighter.assignedToCarrier = some(ShipId(targetCarrierId))
+        fighter.fleetId = FleetId(tgtId)
+        model.view.ownShipsById[sid] = fighter
+      model.view.ownShipsById[sourceCarrierId] = sourceCarrier
+      model.view.ownShipsById[targetCarrierId] = targetCarrier
+      model.view.ownFleetsById[srcId] = srcFleet
+      model.view.ownFleetsById[tgtId] = tgtFleet
+
+      let tgtStatsAfter = model.fleetStatsFromOwn(tgtId)
+      for fleet in model.view.fleets.mitems:
+        if fleet.id == tgtId:
+          fleet.shipCount = tgtStatsAfter.count
+          fleet.attackStrength = tgtStatsAfter.attack
+          fleet.defenseStrength = tgtStatsAfter.defense
+          fleet.hasCombatShips = tgtStatsAfter.hasCombat
+          fleet.hasSupportShips = tgtStatsAfter.hasSupport
+          fleet.hasScouts = tgtStatsAfter.hasScouts
+          fleet.hasTroopTransports = tgtStatsAfter.hasTroops
+          fleet.hasEtacs = tgtStatsAfter.hasEtacs
+          fleet.isScoutOnly = tgtStatsAfter.hasScouts and
+            not tgtStatsAfter.hasCombat and not tgtStatsAfter.hasSupport
+        if fleet.id == srcId and srcId == tgtId:
+          break
+      for _, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+        for flt in fleets.mitems:
+          if flt.fleetId == tgtId:
+            flt.shipCount = tgtStatsAfter.count
+            flt.attackStrength = tgtStatsAfter.attack
+            flt.defenseStrength = tgtStatsAfter.defense
+
+    let srcStatsAfter = model.fleetStatsFromOwn(srcId)
+    for fleet in model.view.fleets.mitems:
+      if fleet.id == srcId:
+        fleet.shipCount = srcStatsAfter.count
+        fleet.attackStrength = srcStatsAfter.attack
+        fleet.defenseStrength = srcStatsAfter.defense
+        fleet.hasCombatShips = srcStatsAfter.hasCombat
+        fleet.hasSupportShips = srcStatsAfter.hasSupport
+        fleet.hasScouts = srcStatsAfter.hasScouts
+        fleet.hasTroopTransports = srcStatsAfter.hasTroops
+        fleet.hasEtacs = srcStatsAfter.hasEtacs
+        fleet.isScoutOnly = srcStatsAfter.hasScouts and
+          not srcStatsAfter.hasCombat and not srcStatsAfter.hasSupport
+        break
+    for _, fleets in model.ui.fleetConsoleFleetsBySystem.mpairs:
+      for flt in fleets.mitems:
+          if flt.fleetId == srcId:
+            flt.shipCount = srcStatsAfter.count
+            flt.attackStrength = srcStatsAfter.attack
+            flt.defenseStrength = srcStatsAfter.defense
+            break
+  of ZeroTurnCommandType.LoadCargo,
+     ZeroTurnCommandType.UnloadCargo:
     discard
 
 proc reapplyAllOptimisticUpdates*(model: var TuiModel) =
@@ -3680,6 +3823,8 @@ proc reapplyAllOptimisticUpdates*(model: var TuiModel) =
   model.ui.fleetConsoleFleetsBySystem =
     model.ui.pristineFleetConsoleFleetsBySystem
   model.view.ownFleetsById = model.ui.pristineOwnFleetsById
+  model.view.ownColoniesBySystem = model.ui.pristineOwnColoniesBySystem
+  model.view.ownShipsById = model.ui.pristineOwnShipsById
   # ZTCs execute first during CMD5
   for cmd in model.ui.stagedZeroTurnCommands:
     model.applyZeroTurnCommandOptimistically(cmd)

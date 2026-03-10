@@ -986,7 +986,21 @@ proc initBindings*() =
     enabledCheck: "isCarrierPicker"))
 
   registerBinding(Binding(
+    key: KeyCode.KeyPlus, modifier: KeyModifier.Shift,
+    actionKind: ActionKind.fleetDetailQtyInc,
+    context: BindingContext.FleetDetail,
+    longLabel: "QTY+", shortLabel: "+", priority: 52,
+    enabledCheck: "isCarrierPicker"))
+
+  registerBinding(Binding(
     key: KeyCode.KeyMinus, modifier: KeyModifier.None,
+    actionKind: ActionKind.fleetDetailQtyDec,
+    context: BindingContext.FleetDetail,
+    longLabel: "QTY-", shortLabel: "-", priority: 53,
+    enabledCheck: "isCarrierPicker"))
+
+  registerBinding(Binding(
+    key: KeyCode.KeyMinus, modifier: KeyModifier.Shift,
     actionKind: ActionKind.fleetDetailQtyDec,
     context: BindingContext.FleetDetail,
     longLabel: "QTY-", shortLabel: "-", priority: 53,
@@ -2658,6 +2672,24 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
           BindingContext.FleetDetail, model)
       if fleetDetailResult.isSome:
         return fleetDetailResult
+      if modifier == KeyModifier.Shift and key == KeyCode.KeyPlus:
+        let plusFallback = lookupAndDispatch(
+          key,
+          KeyModifier.None,
+          BindingContext.FleetDetail,
+          model
+        )
+        if plusFallback.isSome:
+          return plusFallback
+      if modifier == KeyModifier.Shift and key == KeyCode.KeyMinus:
+        let minusFallback = lookupAndDispatch(
+          key,
+          KeyModifier.None,
+          BindingContext.FleetDetail,
+          model
+        )
+        if minusFallback.isSome:
+          return minusFallback
       # Allow global bindings to pass through, block other keys
       if modifier != ViewModifier:
         return none(Proposal)

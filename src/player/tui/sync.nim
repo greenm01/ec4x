@@ -1294,6 +1294,8 @@ proc syncPlayerStateToModel*(
   model.ui.pristineFleetConsoleFleetsBySystem =
     model.ui.fleetConsoleFleetsBySystem
   model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+  model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+  model.ui.pristineOwnShipsById = model.view.ownShipsById
 
   # Generate client-side narrative reports from PlayerState.
   # prevPs enables diff-based reports for turns > 1.

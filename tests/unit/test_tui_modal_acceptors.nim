@@ -7,6 +7,16 @@ import ../../src/player/tui/build_spec
 import ../../src/engine/types/[core, fleet, ship, colony, production,
   combat, facilities, command, diplomacy, espionage, zero_turn]
 
+proc pressKey(
+    sam: var SamInstance[TuiModel],
+    key: KeyCode,
+    modifier: KeyModifier = KeyModifier.None
+) =
+  let proposalOpt = mapKeyToAction(key, modifier, sam.state)
+  check proposalOpt.isSome
+  if proposalOpt.isSome:
+    sam.present(proposalOpt.get())
+
 suite "TUI modal acceptors":
   test "population transfer modal stages command":
     var model = initTuiModel()
@@ -355,6 +365,176 @@ suite "TUI modal acceptors":
       actionKind: ActionKind.toggleFleetSelect
     ))
     check model.ui.selectedFleetIds.len == 0
+
+  test "carrier picker accepts shifted plus and stages fighter unload":
+    initBindings()
+    var sam = initTuiSam()
+    var model = initTuiModel()
+    model.ui.appPhase = AppPhase.InGame
+    model.ui.mode = ViewMode.FleetDetail
+    model.view.viewingHouse = 1
+    model.view.fleets = @[
+      FleetInfo(
+        id: 300,
+        name: "A5",
+        location: 201,
+        locationName: "Gamma",
+        sectorLabel: "B1",
+        shipCount: 3,
+        owner: 1,
+        command: int(FleetCommandType.Hold),
+        commandLabel: "Hold",
+        isIdle: true,
+        roe: 6,
+        attackStrength: 18,
+        defenseStrength: 48,
+        statusLabel: "Active",
+        destinationLabel: "-",
+        destinationSystemId: 0,
+        eta: 0,
+      )
+    ]
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(42), ShipId(43), ShipId(44)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[ShipId(44)]
+    )
+    model.view.ownShipsById[43] = Ship(
+      id: ShipId(43),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Destroyer,
+      state: CombatState.Nominal
+    )
+    model.view.ownShipsById[44] = Ship(
+      id: ShipId(44),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Fighter,
+      state: CombatState.Nominal,
+      assignedToCarrier: some(ShipId(42))
+    )
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      initTable[int, seq[FleetConsoleFleet]]()
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+    model.ui.fleetDetailModal.fleetId = 300
+    model.ui.fleetDetailModal.ztcType =
+      some(ZeroTurnCommandType.UnloadFighters)
+    model.ui.fleetDetailModal.carrierPickerCandidates = @[
+      CarrierPickerRow(
+        shipId: ShipId(42),
+        classLabel: "Carrier",
+        fighterCount: 1,
+        unloadCount: 0
+      )
+    ]
+    model.ui.fleetDetailModal.subModal = FleetSubModal.CarrierPicker
+    sam.setInitialState(model)
+
+    sam.pressKey(KeyCode.KeyPlus, KeyModifier.Shift)
+    check sam.state.ui.fleetDetailModal.carrierPickerCandidates.len == 1
+    check sam.state.ui.fleetDetailModal.carrierPickerCandidates[0].unloadCount == 1
+
+    sam.pressKey(KeyCode.KeyEnter)
+    check sam.state.ui.stagedZeroTurnCommands.len == 1
+    if sam.state.ui.stagedZeroTurnCommands.len == 1:
+      check sam.state.ui.stagedZeroTurnCommands[0].commandType ==
+        ZeroTurnCommandType.UnloadFighters
+    check sam.state.ui.mode == ViewMode.Fleets
+    check sam.state.view.ownColoniesBySystem[201].fighterIds == @[ShipId(44)]
+    check sam.state.view.ownShipsById[42].embarkedFighters.len == 0
+    check sam.state.view.ownShipsById[44].assignedToCarrier.isNone
+    check ShipId(44) notin sam.state.view.ownFleetsById[300].ships
+
+  test "optimistic replay preserves staged fighter unload state":
+    var model = initTuiModel()
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(42), ShipId(44)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[ShipId(44)]
+    )
+    model.view.ownShipsById[44] = Ship(
+      id: ShipId(44),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Fighter,
+      state: CombatState.Nominal,
+      assignedToCarrier: some(ShipId(42))
+    )
+    model.view.fleets = @[
+      FleetInfo(id: 300, name: "A5", location: 201, shipCount: 2,
+        attackStrength: 12, defenseStrength: 25)
+    ]
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      initTable[int, seq[FleetConsoleFleet]]()
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+    model.ui.stagedZeroTurnCommands = @[
+      ZeroTurnCommand(
+        houseId: HouseId(1),
+        commandType: ZeroTurnCommandType.UnloadFighters,
+        colonySystem: some(SystemId(201)),
+        sourceFleetId: some(FleetId(300)),
+        targetFleetId: none(FleetId),
+        shipIndices: @[],
+        shipIds: @[],
+        cargoType: none(CargoClass),
+        cargoQuantity: none(int),
+        fighterIds: @[ShipId(44)],
+        carrierShipId: some(ShipId(42)),
+        sourceCarrierShipId: none(ShipId),
+        targetCarrierShipId: none(ShipId),
+        newFleetId: none(FleetId),
+      )
+    ]
+
+    model.reapplyAllOptimisticUpdates()
+
+    check model.view.ownColoniesBySystem[201].fighterIds == @[ShipId(44)]
+    check model.view.ownShipsById[42].embarkedFighters.len == 0
+    check model.view.ownShipsById[44].assignedToCarrier.isNone
+    check ShipId(44) notin model.view.ownFleetsById[300].ships
 
   test "fleet toggle proposal keeps selected fleet id stable":
     initBindings()
