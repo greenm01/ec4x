@@ -52,6 +52,14 @@ All readiness gate checks pass:
    from real command submission loops.
    - `docs/guides/player-tui-playtest-checklist.md`
    - `docs/guides/player-tui-issue-template.md`
+   - Latest finding: long-lived TUI sessions could miss a server turn
+     publish and remain on the previous revision until `:sync now` or
+     restart, even though daemon logs and `dump_state` had advanced.
+   - Fix landed in commit `e8428bcc` by adding periodic authoritative
+     in-game resync for open TUI sessions.
+   - Remaining follow-up: harden relay disconnect/reconnect detection
+     and automatic re-subscribe so the client recovers cleanly from
+     dropped long-lived subscriptions, not just missed events.
 2. Add targeted regressions for issues found during playtests, keeping
    coverage near the modal/acceptor path where the bug occurs.
 3. Track and prioritize gameplay-facing polish items that impact command
