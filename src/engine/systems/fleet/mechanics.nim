@@ -372,9 +372,9 @@ proc resolveMovementCommand*(
   let actualJumps = min(jumpsAllowed, pathResult.path.len - 1)
   let newLocation = pathResult.path[actualJumps]
 
-  # Update fleet location
-  fleet.location = newLocation
-  state.updateFleet(command.fleetId, fleet)
+  # Update fleet location and keep the bySystem index consistent.
+  state.moveFleet(command.fleetId, newLocation)
+  fleet = state.fleet(command.fleetId).get()
 
   # Generate OrderCompleted event for fleet movement
   let moveDetails =

@@ -202,6 +202,7 @@ proc runTui*(gameId: string = "") =
     while proposalQueue.len > 0:
       let p = proposalQueue[0]
       proposalQueue.delete(0)
+      recentProposals.excl(proposalSignature(p))
       sam.present(p)
 
   proc syncCachedIntelNotes(model: var TuiModel) =
@@ -1890,8 +1891,19 @@ proc runTui*(gameId: string = "") =
     # -------------------------------------------------------------------------
     # Phase 6: Process async operations (Nostr WebSocket events)
     # -------------------------------------------------------------------------
-    if hasPendingOperations():
-      poll(0)  # Non-blocking poll for async events
+    # Keep the async dispatcher moving once the Nostr client has started.
+    # At startup, before any handles are registered, asyncdispatch.poll() will
+    # raise "No handles or timers registered in dispatcher."
+    if nostrClient != nil and
+        (nostrListenerStarted or
+         nostrPublishFuture != nil or
+         nostrSubmitFuture != nil or
+         sam.model.ui.nostrStatus == "connecting" or
+         sam.model.ui.nostrEnabled):
+      try:
+        poll(0)  # Non-blocking poll for async events
+      except ValueError:
+        discard
 
     processNostr()
     

@@ -11,14 +11,18 @@
 
 import std/[unittest, options, sequtils, tables, random]
 import ../../src/engine/engine
+import ../../src/engine/starmap
 import ../../src/engine/turn_cycle/engine as turn_engine
 import ../../src/engine/types/[
   core, house, colony, facilities, ship, fleet,
   production, command, event, combat, ground_unit, tech
 ]
 import ../../src/engine/state/[engine, iterators]
+import ../../src/engine/entities/fleet_ops
+import ../../src/engine/entities/ship_ops
 import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
+import ../../src/engine/systems/fleet/mechanics
 import ../../src/engine/systems/production/[
   construction, projects, queue_advancement, commissioning, accessors, repairs
 ]
@@ -359,6 +363,131 @@ suite "Construction: Ship Commissioning":
 
     # At least one fleet should exist at location
     check newFleetsAtSystem >= 1
+
+  test "commissionShips ignores fleet moved off system by command resolution":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    for c in game.allColonies():
+      let neighbors = game.starMap.adjacentSystems(c.systemId)
+      if neighbors.len > 0:
+        colony = c
+        break
+
+    let destination = game.starMap.adjacentSystems(colony.systemId)[0]
+    var movedFleetId = FleetId(0)
+    var foundCombatFleet = false
+    var fleetsToRelocate: seq[FleetId] = @[]
+
+    for fleet in game.fleetsAtSystem(colony.systemId):
+      if fleet.houseId != colony.owner:
+        continue
+
+      var hasCombatShip = false
+      for shipId in fleet.ships:
+        let ship = game.ship(shipId).get()
+        if ship.shipClass != ShipClass.Scout and
+            ship.shipClass != ShipClass.ETAC:
+          hasCombatShip = true
+          break
+
+      if hasCombatShip and not foundCombatFleet:
+        movedFleetId = fleet.id
+        foundCombatFleet = true
+        continue
+
+      fleetsToRelocate.add(fleet.id)
+
+    check foundCombatFleet
+
+    for fleetId in fleetsToRelocate:
+      game.moveFleet(fleetId, destination)
+
+    let moveCommand = FleetCommand(
+      fleetId: movedFleetId,
+      commandType: FleetCommandType.Move,
+      targetSystem: some(destination),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )
+
+    resolveMovementCommand(game, colony.owner, moveCommand, events)
+
+    let movedAfter = game.fleet(movedFleetId).get()
+    let movedShipCount = movedAfter.ships.len
+    check movedAfter.location == destination
+
+    var ownerFleetsAtOrigin = 0
+    for fleet in game.fleetsAtSystem(colony.systemId):
+      if fleet.houseId == colony.owner:
+        ownerFleetsAtOrigin += 1
+    check ownerFleetsAtOrigin == 0
+
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ship,
+      shipClass: some(ShipClass.Corvette),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+
+    commissionShips(game, @[completed], events)
+
+    let movedAfterCommission = game.fleet(movedFleetId).get()
+    check movedAfterCommission.location == destination
+    check movedAfterCommission.ships.len == movedShipCount
+
+    var corvetteAtOrigin = false
+    for fleet in game.fleetsAtSystem(colony.systemId):
+      if fleet.houseId != colony.owner:
+        continue
+
+      for shipId in fleet.ships:
+        let ship = game.ship(shipId).get()
+        if ship.shipClass == ShipClass.Corvette:
+          corvetteAtOrigin = true
+          break
+
+      if corvetteAtOrigin:
+        break
+
+    check corvetteAtOrigin
+
+  test "commissionShips ignores stale bySystem fleet entries":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+
+    let staleFleet = game.createFleet(colony.owner, colony.systemId)
+    discard game.createShip(colony.owner, staleFleet.id, ShipClass.Cruiser)
+
+    let destination = game.starMap.adjacentSystems(colony.systemId)[0]
+    game.moveFleet(staleFleet.id, destination)
+    game.registerFleetLocation(staleFleet.id, colony.systemId)
+
+    let completed = CompletedProject(
+      colonyId: colony.id,
+      projectType: BuildType.Ship,
+      shipClass: some(ShipClass.Corvette),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+      neoriaId: none(NeoriaId)
+    )
+
+    commissionShips(game, @[completed], events)
+
+    let staleAfter = game.fleet(staleFleet.id).get()
+    check staleAfter.location == destination
+    check staleAfter.ships.len == 1
 
 suite "Construction: Facility Damage Effects":
 

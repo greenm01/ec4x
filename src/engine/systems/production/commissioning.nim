@@ -689,6 +689,8 @@ proc commissionShip(
   else:
     # Find appropriate existing fleet
     for fleet in state.fleetsAtSystem(systemId):
+      if fleet.location != systemId:
+        continue
       if fleet.houseId != owner:
         continue
 
