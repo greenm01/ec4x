@@ -662,6 +662,7 @@ proc isCombatFleet(state: GameState, fleet: Fleet): bool =
 proc commissionShip(
     state: GameState,
     owner: HouseId,
+    colonyId: ColonyId,
     systemId: SystemId,
     shipClass: ShipClass,
     techLevel: int32,
@@ -716,8 +717,47 @@ proc commissionShip(
     logInfo("Fleet",
       &"Created new {fleetType} fleet {targetFleetId} at {systemId}")
 
+  if shipClass == ShipClass.ETAC:
+    let colonyOpt = state.colony(colonyId)
+    if colonyOpt.isNone:
+      logError(
+        "Economy",
+        &"Cannot commission ETAC at {systemId} - colony {colonyId} missing",
+      )
+      state.destroyFleet(targetFleetId)
+      return
+
+    let colony = colonyOpt.get()
+    let ptuCapacity = shipConfig(ShipClass.ETAC).carryLimit
+    let requiredSouls = ptuCapacity * soulsPerPtu()
+    let minSouls = gameConfig.limits.populationLimits.minColonyPopulation
+    if colony.souls - requiredSouls < minSouls:
+      logError(
+        "Economy",
+        &"Cannot commission ETAC at {colonyId} - insufficient colonists " &
+          &"({colony.souls} souls, need {requiredSouls} + {minSouls} minimum)",
+      )
+      state.destroyFleet(targetFleetId)
+      return
+
   # Create and add ship to fleet
   let ship = state.createShip(owner, targetFleetId, shipClass)
+  if shipClass == ShipClass.ETAC:
+    let ptuCapacity = shipConfig(ShipClass.ETAC).carryLimit
+    var shipMut = ship
+    shipMut.cargo = some(ShipCargo(
+      cargoType: CargoClass.Colonists,
+      quantity: ptuCapacity,
+      capacity: ptuCapacity,
+    ))
+    state.updateShip(ship.id, shipMut)
+
+    let colonyOpt = state.colony(colonyId)
+    if colonyOpt.isSome:
+      var colony = colonyOpt.get()
+      colony.souls -= ptuCapacity * soulsPerPtu()
+      colony.population = colony.souls div 1_000_000
+      state.updateColony(colonyId, colony)
 
   let fleetShipCount = state.fleet(targetFleetId).get().ships.len
   logInfo("Fleet",
@@ -796,7 +836,15 @@ proc commissionShips*(
 
     # Commission ship (auto-assigns to appropriate fleet)
     # Scouts -> pure scout fleets; ETACs -> solo fleet; others -> combat fleets
-    commissionShip(state, owner, colony.systemId, shipClass, techLevel, events)
+    commissionShip(
+      state,
+      owner,
+      completed.colonyId,
+      colony.systemId,
+      shipClass,
+      techLevel,
+      events,
+    )
 
 proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
   ## Clear construction and repair queues for crippled/destroyed facilities.

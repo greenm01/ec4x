@@ -252,6 +252,52 @@ suite "Client limits":
     check errs.len > 0
     check errs[0].contains("Planet-breaker limit exceeded")
 
+  test "ETAC build blocks when colony cannot spare full PTU load":
+    var model = initTuiModel()
+    model.view.treasury = 10_000
+    let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
+    let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+    let soulsPerPtu = int(gameConfig.economy.ptuDefinition.soulsPerPtu)
+    model.view.colonyLimits[10] = ColonyLimitSnapshot(
+      souls: minSouls + (ptu * soulsPerPtu) - 1,
+      industrialUnits: 200,
+    )
+    let cmd = BuildCommand(
+      colonyId: ColonyId(10),
+      buildType: BuildType.Ship,
+      quantity: 1,
+      shipClass: some(ShipClass.ETAC),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+    )
+    let errs = validateStagedBuildLimits(model, @[cmd])
+    check errs.len > 0
+    check errs[0].contains("ETAC PTU limit exceeded")
+
+  test "ETAC staged quantity aggregates PTU requirement per colony":
+    var model = initTuiModel()
+    model.view.treasury = 10_000
+    let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
+    let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+    let soulsPerPtu = int(gameConfig.economy.ptuDefinition.soulsPerPtu)
+    model.view.colonyLimits[10] = ColonyLimitSnapshot(
+      souls: minSouls + (ptu * soulsPerPtu),
+      industrialUnits: 200,
+    )
+    let cmd = BuildCommand(
+      colonyId: ColonyId(10),
+      buildType: BuildType.Ship,
+      quantity: 2,
+      shipClass: some(ShipClass.ETAC),
+      facilityClass: none(FacilityClass),
+      groundClass: none(GroundClass),
+      industrialUnits: 0,
+    )
+    let errs = validateStagedBuildLimits(model, @[cmd])
+    check errs.len > 0
+    check errs[0].contains("ETAC PTU limit exceeded")
+
   test "join fleet FC limit blocks command":
     var model = initTuiModel()
     model.view.fleets = @[

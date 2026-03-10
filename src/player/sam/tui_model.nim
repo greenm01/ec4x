@@ -210,6 +210,7 @@ type
     repairTotal*: int
 
   ColonyLimitSnapshot* = object
+    souls*: int
     industrialUnits*: int
     fighters*: int
     spaceports*: int

@@ -9,7 +9,7 @@
 ##
 ## Per docs/specs/05-construction.md
 
-import std/[unittest, options, sequtils, tables, random]
+import std/[unittest, options, sequtils, tables, random, strutils]
 import ../../src/engine/engine
 import ../../src/engine/starmap
 import ../../src/engine/turn_cycle/engine as turn_engine
@@ -21,11 +21,13 @@ import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/fleet_ops
 import ../../src/engine/entities/ship_ops
 import ../../src/engine/globals
+import ../../src/engine/utils
 import ../../src/engine/config/engine as config_engine
 import ../../src/engine/systems/fleet/mechanics
 import ../../src/engine/systems/production/[
   construction, projects, queue_advancement, commissioning, accessors, repairs
 ]
+import ../../src/engine/systems/command/commands
 
 # Initialize config once for all tests (needed for tests that don't call newGame)
 gameConfig = config_engine.loadGameConfig()
@@ -966,10 +968,56 @@ suite "Commissioning: All Ship Classes Can Be Commissioned":
     )
     
     let initialShips = game.allShips().toSeq.len
+    let initialShipIds = game.allShips().toSeq.mapIt(it.id)
+    let initialSouls = colony.souls
     commissionShips(game, @[completed], events)
     let finalShips = game.allShips().toSeq.len
-    
+
     check finalShips == initialShips + 1
+    let etacCarryLimit = shipConfig(ShipClass.ETAC).carryLimit
+    let commissionedColony = game.colony(colony.id).get()
+    check commissionedColony.souls ==
+      initialSouls - (etacCarryLimit * soulsPerPtu())
+
+    var commissionedEtac: Option[Ship] = none(Ship)
+    for ship in game.allShips():
+      if ship.id notin initialShipIds and ship.shipClass == ShipClass.ETAC:
+        commissionedEtac = some(ship)
+        break
+    check commissionedEtac.isSome
+    let cargo = commissionedEtac.get().cargo.get()
+    check cargo.cargoType == CargoClass.Colonists
+    check cargo.quantity == etacCarryLimit
+    check cargo.capacity == etacCarryLimit
+
+  test "ETAC build validation rejects colonies without full PTU load":
+    let game = newGame()
+
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+
+    var updatedColony = colony
+    let minSouls = gameConfig.limits.populationLimits.minColonyPopulation
+    let etacSouls =
+      shipConfig(ShipClass.ETAC).carryLimit * soulsPerPtu()
+    updatedColony.souls = minSouls + etacSouls - 1
+    game.updateColony(updatedColony.id, updatedColony)
+
+    let packet = CommandPacket(
+      houseId: colony.owner,
+      turn: game.turn,
+      buildCommands: @[makeBuildCommand(
+        colony.id,
+        BuildType.Ship,
+        shipClass = some(ShipClass.ETAC)
+      )]
+    )
+
+    let validation = validateCommandPacket(packet, game)
+    check validation.valid == false
+    check validation.error.toLowerAscii().contains("lacks population")
 
   test "Fighters remain colony-assigned (not in fleets)":
     let game = newGame()

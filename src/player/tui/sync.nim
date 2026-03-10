@@ -93,6 +93,7 @@ proc syncGameStateToModel*(
   for colony in state.coloniesOwned(viewingHouse):
     model.view.ownColoniesBySystem[int(colony.systemId)] = colony
     var snapshot = ColonyLimitSnapshot(
+      souls: int(colony.souls),
       industrialUnits: int(colony.industrial.units),
       fighters: colony.fighterIds.len,
       spaceports: 0,

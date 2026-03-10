@@ -18,6 +18,7 @@ import ../../types/[
 ]
 import ../../state/[engine, iterators, fleet_queries]
 import ../../globals
+import ../../utils
 import ../../../common/logger
 import ../production/[projects, accessors]
 import ../production/facility_queries
@@ -32,6 +33,16 @@ export fleet.FleetCommandType, fleet.FleetCommand
 export production.BuildCommand, production.BuildType
 export diplomacy.DiplomaticCommand, diplomacy.DiplomaticActionType
 export colony.TerraformCommand, colony.PopulationTransferCommand
+
+proc etacRequiredPtu(quantity: int32): int32 =
+  shipConfig(ShipClass.ETAC).carryLimit * max(1'i32, quantity)
+
+proc colonyAvailableColonistPtu(colony: Colony): int32 =
+  let minSouls = gameConfig.limits.populationLimits.minColonyPopulation
+  let availableSouls = colony.souls - minSouls
+  if availableSouls <= 0:
+    return 0'i32
+  availableSouls div soulsPerPtu()
 
 # Command validation
 
@@ -134,19 +145,16 @@ proc validateFleetCommand*(
       &"{issuingHouse} Validating Colonize command for {cmd.fleetId} at " &
         &"{fleet.location} ({fleet.ships.len} ships)",
     )
-    var hasETAC = false
-    for etac in state.etacsInFleet(fleet):
-      if etac.state != CombatState.Crippled:
-        hasETAC = true
-        break
-
-    if not hasETAC:
+    if not state.hasColonists(fleet):
       logWarn(
         "Commands",
         &"{issuingHouse} Colonize command REJECTED: {cmd.fleetId} - " &
-          &"no functional ETAC",
+          &"no ETAC with loaded colonists",
       )
-      return ValidationResult(valid: false, error: "Colonize requires functional ETAC")
+      return ValidationResult(
+        valid: false,
+        error: "Colonize requires ETAC with loaded colonists",
+      )
 
     if cmd.targetSystem.isNone:
       logWarn(
@@ -379,6 +387,7 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
 
   # Validate build commands (check colony ownership, production capacity)
   var validBuildCommands = 0
+  var reservedEtacPtu = initTable[ColonyId, int32]()
   for cmd in packet.buildCommands:
     # Check colony exists and is owned by house
     let colonyOpt = state.colony(cmd.colonyId)
@@ -426,6 +435,27 @@ proc validateCommandPacket*(packet: CommandPacket, state: GameState): Validation
             error:
               &"Build command: {shipClass} requires CST{required_cst}, house has CST{house_cst}",
           )
+
+      if shipClass == ShipClass.ETAC:
+        let requestedPtu = etacRequiredPtu(cmd.quantity)
+        let alreadyReserved = reservedEtacPtu.getOrDefault(cmd.colonyId)
+        let availablePtu = colonyAvailableColonistPtu(colony)
+        if availablePtu - alreadyReserved < requestedPtu:
+          let requiredSouls = requestedPtu * soulsPerPtu()
+          let minSouls = gameConfig.limits.populationLimits.minColonyPopulation
+          logWarn(
+            "Commands",
+            &"{packet.houseId} Build command REJECTED: ETAC at {cmd.colonyId} " &
+              &"requires {requiredSouls} souls plus {minSouls} minimum viable " &
+              &"(available PTU={availablePtu}, reserved PTU={alreadyReserved})",
+          )
+          return ValidationResult(
+            valid: false,
+            error:
+              "Build command: colony lacks population to commission ETAC " &
+              "with full colonists",
+          )
+        reservedEtacPtu[cmd.colonyId] = alreadyReserved + requestedPtu
 
     # Check CST tech requirement and prerequisites for buildings (assets.md:2.4.4)
     if cmd.buildType == BuildType.Facility and cmd.facilityClass.isSome:

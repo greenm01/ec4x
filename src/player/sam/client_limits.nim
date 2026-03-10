@@ -11,6 +11,7 @@ import ../../engine/globals
 
 type
   StagedColonyLimits = object
+    etacPtu*: int
     fighters: int
     spaceports: int
     starbases: int
@@ -98,6 +99,9 @@ proc stagedCounts(
     of BuildType.Ship:
       if cmd.shipClass.isSome:
         case cmd.shipClass.get()
+        of ShipClass.ETAC:
+          let ptu = int(gameConfig.ships.ships[ShipClass.ETAC].carryLimit)
+          limits.etacPtu += ptu * qty
         of ShipClass.Fighter:
           limits.fighters += qty
         of ShipClass.PlanetBreaker:
@@ -223,6 +227,15 @@ proc validateStagedBuildLimits*(
 
   for colonyId, base in model.view.colonyLimits.pairs:
     let pending = staged.byColony.getOrDefault(colonyId)
+    let minSouls = int(gameConfig.limits.populationLimits.minColonyPopulation)
+    let etacSoulsRequired =
+      pending.etacPtu * int(gameConfig.economy.ptuDefinition.soulsPerPtu)
+    if etacSoulsRequired > 0 and base.souls - etacSoulsRequired < minSouls:
+      result.add(
+        "ETAC PTU limit exceeded at colony " & $colonyId &
+        " (need " & $etacSoulsRequired & " souls plus " & $minSouls &
+        " minimum viable)"
+      )
 
     let fightersTotal = base.fighters + pending.fighters
     let fightersMax = fighterCapacity(base.industrialUnits,
@@ -396,6 +409,7 @@ proc colonyLimitSnapshotsFromPlayerState*(
   result = initTable[int, ColonyLimitSnapshot]()
   for colony in ps.ownColonies:
     var snapshot = ColonyLimitSnapshot(
+      souls: int(colony.souls),
       industrialUnits: int(colony.industrial.units),
       fighters: colony.fighterIds.len,
       spaceports: 0,
