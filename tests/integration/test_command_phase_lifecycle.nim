@@ -5,7 +5,7 @@
 ## 2. Completed colonize orders are not re-rejected after ETAC consumption
 ## 3. Incomplete movement orders remain active for Production Phase travel
 
-import std/[unittest, options, random, tables, sequtils]
+import std/[unittest, options, random, tables, sequtils, strutils]
 
 import ../../src/engine/engine
 import ../../src/engine/starmap
@@ -13,6 +13,7 @@ import ../../src/engine/types/[command, core, event, fleet, ship, tech,
   colony]
 import ../../src/engine/state/[engine, iterators]
 import ../../src/engine/entities/[ship_ops, fleet_ops]
+import ../../src/engine/utils
 import ../../src/engine/systems/command/commands
 import ../../src/engine/systems/fleet/mechanics
 import ../../src/engine/turn_cycle/[command_phase, engine as turn_engine]
@@ -291,6 +292,50 @@ suite "Command Phase Lifecycle":
     check updatedFleet.missionState == MissionState.Traveling
     check updatedFleet.missionTarget == some(targetSystem)
 
+  test "scout missions reject uncolonized and starbase-less targets":
+    var state = newGame(gameName = "Scout Mission Target Validation")
+    let houseId = state.allHouses().toSeq[0].id
+    let enemyHouseId = state.allHouses().toSeq[1].id
+    let homeSystem = state.firstOwnedColony(houseId).systemId
+    let scoutFleet = state.createFleet(houseId, homeSystem)
+    discard state.createShip(houseId, scoutFleet.id, ShipClass.Scout)
+
+    let uncolonizedTarget =
+      state.starMap.adjacentSystems(homeSystem).filterIt(
+        state.colonyBySystem(it).isNone
+      )[0]
+    let enemyColony = state.firstOwnedColony(enemyHouseId)
+
+    let scoutSystemValidation = validateFleetCommand(
+      FleetCommand(
+        fleetId: scoutFleet.id,
+        commandType: FleetCommandType.ScoutSystem,
+        targetSystem: some(uncolonizedTarget),
+        targetFleet: none(FleetId),
+        priority: 0,
+        roe: none(int32)
+      ),
+      state,
+      houseId,
+    )
+    check not scoutSystemValidation.valid
+    check scoutSystemValidation.error.contains("enemy colony")
+
+    let hackValidation = validateFleetCommand(
+      FleetCommand(
+        fleetId: scoutFleet.id,
+        commandType: FleetCommandType.HackStarbase,
+        targetSystem: some(enemyColony.systemId),
+        targetFleet: none(FleetId),
+        priority: 0,
+        roe: none(int32)
+      ),
+      state,
+      houseId,
+    )
+    check not hackValidation.valid
+    check hackValidation.error.contains("enemy starbase")
+
   test "colonize arrival does not emit spy mission started":
     var state = newGame(gameName = "Colonize Arrival Labels")
     let houseId = state.allHouses().toSeq[0].id
@@ -328,3 +373,77 @@ suite "Command Phase Lifecycle":
       it.orderType == some("SpyMissionStarted") and
       it.fleetId == some(colonizeFleet.id)
     )
+
+  test "solo ETAC colonization removes the consumed fleet":
+    var state = newGame(gameName = "Colonize Removes Empty Fleet")
+    let houseId = state.allHouses().toSeq[0].id
+    let homeSystem = state.firstOwnedColony(houseId).systemId
+    let colonizeFleet = state.createFleet(houseId, homeSystem)
+    let etacShip = state.createShip(houseId, colonizeFleet.id, ShipClass.ETAC)
+    let ptuCapacity = shipConfig(ShipClass.ETAC).carryLimit
+    var etacMut = etacShip
+    etacMut.cargo = some(ShipCargo(
+      cargoType: CargoClass.Colonists,
+      quantity: ptuCapacity,
+      capacity: ptuCapacity,
+    ))
+    state.updateShip(etacShip.id, etacMut)
+
+    let targetSystem =
+      state.starMap.adjacentSystems(colonizeFleet.location)[0]
+    let colonizeCommand = FleetCommand(
+      fleetId: colonizeFleet.id,
+      commandType: FleetCommandType.Colonize,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )
+
+    var fleetMut = state.fleet(colonizeFleet.id).get()
+    fleetMut.location = targetSystem
+    fleetMut.command = colonizeCommand
+    fleetMut.missionState = MissionState.Executing
+    fleetMut.missionTarget = some(targetSystem)
+    state.updateFleet(colonizeFleet.id, fleetMut)
+
+    var events: seq[GameEvent] = @[]
+    state.resolveColonizationCommand(houseId, colonizeCommand, events)
+
+    check state.colonyBySystem(targetSystem).isSome
+    check state.fleet(colonizeFleet.id).isNone
+
+  test "adjacent ETAC colonize resolves in the submitted turn":
+    var state = newGame(gameName = "Colonize Same Turn On Arrival")
+    let houseId = state.allHouses().toSeq[0].id
+    let homeSystem = state.firstOwnedColony(houseId).systemId
+    let colonizeFleet = state.createFleet(houseId, homeSystem)
+    let etacShip = state.createShip(houseId, colonizeFleet.id, ShipClass.ETAC)
+    let ptuCapacity = shipConfig(ShipClass.ETAC).carryLimit
+    var etacMut = etacShip
+    etacMut.cargo = some(ShipCargo(
+      cargoType: CargoClass.Colonists,
+      quantity: ptuCapacity,
+      capacity: ptuCapacity,
+    ))
+    state.updateShip(etacShip.id, etacMut)
+
+    let targetSystem = state.starMap.adjacentSystems(homeSystem)[0]
+    var packet = emptyPacket(houseId, state.turn)
+    packet.fleetCommands = @[FleetCommand(
+      fleetId: colonizeFleet.id,
+      commandType: FleetCommandType.Colonize,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )]
+
+    var orders = initTable[HouseId, CommandPacket]()
+    orders[houseId] = packet
+
+    var rng = initRand(41)
+    discard turn_engine.resolveTurn(state, orders, rng)
+
+    check state.colonyBySystem(targetSystem).isSome
+    check state.fleet(colonizeFleet.id).isNone

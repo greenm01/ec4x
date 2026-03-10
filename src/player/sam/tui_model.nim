@@ -234,6 +234,7 @@ type
     availableOptions*: seq[BuildOption]
     dockSummary*: DockSummary
     cstLevel*: int
+    remainingPp*: int
     stagedBuildCommands*: seq[BuildCommand]
     buildListScroll*: ScrollState
     queueScroll*: ScrollState
@@ -1467,6 +1468,7 @@ proc initTuiUiState*(): TuiUiState =
       selectedQueueIdx: 0,
       availableOptions: @[],
       cstLevel: 1,
+      remainingPp: 0,
       stagedBuildCommands: @[],
       buildListScroll: initScrollState(),
       queueScroll: initScrollState()
@@ -3016,9 +3018,9 @@ proc buildSystemPickerListForCommand*(
     result.emptyMessage = "No known enemy colonies to scout"
   of FleetCommandType.ScoutSystem:
     result.systems = filterSystemsBySet(
-      allSystems, visibleNonOwnedSystems
+      allSystems, model.view.knownEnemyColonySystemIds
     )
-    result.emptyMessage = "No visible non-owned systems to scout"
+    result.emptyMessage = "No known enemy colonies to scout"
   of FleetCommandType.View:
     result.systems = filterSystemsBySet(
       allSystems, visibleNonOwnedSystems

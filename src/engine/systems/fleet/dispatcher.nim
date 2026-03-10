@@ -824,24 +824,47 @@ proc executeScoutColonyCommand(
 
   let targetSystem = command.targetSystem.get()
 
-  # Validate target house is not eliminated (leaderboard is public info)
   let colonyOpt = state.colonyBySystem(targetSystem)
-  if colonyOpt.isSome:
-    let colony = colonyOpt.get()
-    let targetHouseOpt = state.house(colony.owner)
-    if targetHouseOpt.isSome:
-      let targetHouse = targetHouseOpt.get()
-      if targetHouse.isEliminated:
-        events.add(
-          commandFailed(
-            fleet.houseId,
-            fleet.id,
-            "SpyPlanet",
-            reason = "target house eliminated",
-            systemId = some(fleet.location),
-          )
+  if colonyOpt.isNone:
+    events.add(
+      commandFailed(
+        fleet.houseId,
+        fleet.id,
+        "SpyPlanet",
+        reason = "target system has no enemy colony",
+        systemId = some(fleet.location),
+      )
+    )
+    return OrderOutcome.Failed
+
+  let colony = colonyOpt.get()
+  if colony.owner == fleet.houseId:
+    events.add(
+      commandFailed(
+        fleet.houseId,
+        fleet.id,
+        "SpyPlanet",
+        reason = "target system is friendly colony",
+        systemId = some(fleet.location),
+      )
+    )
+    return OrderOutcome.Failed
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
+      events.add(
+        commandFailed(
+          fleet.houseId,
+          fleet.id,
+          "SpyPlanet",
+          reason = "target house eliminated",
+          systemId = some(fleet.location),
         )
-        return OrderOutcome.Failed
+      )
+      return OrderOutcome.Failed
 
   # Count scouts for mesh network bonus (validation already confirmed scout-only fleet)
   # Set fleet mission state
@@ -1032,24 +1055,47 @@ proc executeScoutSystemCommand(
 
   let targetSystem = command.targetSystem.get()
 
-  # Validate target house is not eliminated (leaderboard is public info)
   let colonyOpt = state.colonyBySystem(targetSystem)
-  if colonyOpt.isSome:
-    let colony = colonyOpt.get()
-    let targetHouseOpt = state.house(colony.owner)
-    if targetHouseOpt.isSome:
-      let targetHouse = targetHouseOpt.get()
-      if targetHouse.isEliminated:
-        events.add(
-          commandFailed(
-            fleet.houseId,
-            fleet.id,
-            "ScoutSystem",
-            reason = "target house eliminated",
-            systemId = some(fleet.location),
-          )
+  if colonyOpt.isNone:
+    events.add(
+      commandFailed(
+        fleet.houseId,
+        fleet.id,
+        "ScoutSystem",
+        reason = "target system has no enemy colony",
+        systemId = some(fleet.location),
+      )
+    )
+    return OrderOutcome.Failed
+
+  let colony = colonyOpt.get()
+  if colony.owner == fleet.houseId:
+    events.add(
+      commandFailed(
+        fleet.houseId,
+        fleet.id,
+        "ScoutSystem",
+        reason = "target system is friendly colony",
+        systemId = some(fleet.location),
+      )
+    )
+    return OrderOutcome.Failed
+
+  # Validate target house is not eliminated (leaderboard is public info)
+  let targetHouseOpt = state.house(colony.owner)
+  if targetHouseOpt.isSome:
+    let targetHouse = targetHouseOpt.get()
+    if targetHouse.isEliminated:
+      events.add(
+        commandFailed(
+          fleet.houseId,
+          fleet.id,
+          "ScoutSystem",
+          reason = "target house eliminated",
+          systemId = some(fleet.location),
         )
-        return OrderOutcome.Failed
+      )
+      return OrderOutcome.Failed
 
   # Count scouts for mission (validation already confirmed scout-only fleet)
   # Set fleet mission state

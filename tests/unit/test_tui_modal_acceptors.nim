@@ -1,8 +1,9 @@
 ## Unit tests for colony command modals in SAM acceptors.
 
-import std/[unittest, options, tables]
+import std/[unittest, options, tables, sets]
 
 import ../../src/player/sam/sam_pkg
+import ../../src/player/tui/build_spec
 import ../../src/engine/types/[core, fleet, ship, colony, production,
   combat, facilities, command, diplomacy, espionage, zero_turn]
 
@@ -478,6 +479,69 @@ suite "TUI modal acceptors":
     let refreshed = model.buildZtcPickerList()
     check ZeroTurnCommandType.Reactivate in refreshed
 
+  test "scout-system picker excludes uncolonized visible systems":
+    var model = initTuiModel()
+    model.view.systems[(q: 0, r: 0)] = SystemInfo(
+      id: 71,
+      name: "Enemy",
+      coords: (q: 0, r: 0)
+    )
+    model.view.systems[(q: 1, r: 0)] = SystemInfo(
+      id: 72,
+      name: "Empty",
+      coords: (q: 1, r: 0)
+    )
+    model.view.knownEnemyColonySystemIds.incl(71)
+    model.view.intelRows = @[
+      IntelRow(systemId: 71, systemName: "Enemy"),
+      IntelRow(systemId: 72, systemName: "Empty")
+    ]
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.ScoutSystem,
+      @[]
+    )
+
+    check picker.systems.len == 1
+    check picker.systems[0].systemId == 71
+    check picker.emptyMessage == "No known enemy colonies to scout"
+
+  test "hack-starbase picker excludes enemy colonies without starbases":
+    var model = initTuiModel()
+    model.view.systems[(q: 0, r: 0)] = SystemInfo(
+      id: 81,
+      name: "NoStarbase",
+      coords: (q: 0, r: 0)
+    )
+    model.view.systems[(q: 1, r: 0)] = SystemInfo(
+      id: 82,
+      name: "Starbase",
+      coords: (q: 1, r: 0)
+    )
+    model.view.knownEnemyColonySystemIds.incl(81)
+    model.view.knownEnemyColonySystemIds.incl(82)
+    model.view.intelRows = @[
+      IntelRow(
+        systemId: 81,
+        systemName: "NoStarbase",
+        starbaseCount: some(0)
+      ),
+      IntelRow(
+        systemId: 82,
+        systemName: "Starbase",
+        starbaseCount: some(1)
+      )
+    ]
+
+    let picker = model.buildSystemPickerListForCommand(
+      FleetCommandType.HackStarbase,
+      @[]
+    )
+
+    check picker.systems.len == 1
+    check picker.systems[0].systemId == 82
+    check picker.emptyMessage == "No known enemy starbases to hack"
+
   test "maintenance scrap sets queue-loss acknowledgement when needed":
     var model = initTuiModel()
     model.ui.mode = ViewMode.Planets
@@ -698,4 +762,43 @@ suite "TUI modal acceptors":
     buildModalAcceptor(model, actionBuildQtyInc())
 
     check model.ui.stagedBuildCommands.len == 0
-    check model.ui.statusMessage == "Insufficient PP"
+    check model.ui.statusMessage == "Not buildable"
+
+  test "build modal navigation skips rows that exceed remaining PP":
+    var model = initTuiModel()
+    model.ui.buildModal.active = true
+    model.ui.buildModal.category = BuildCategory.Ships
+    model.ui.buildModal.focus = BuildModalFocus.BuildList
+    model.ui.buildModal.selectedBuildIdx = 1
+    model.ui.buildModal.cstLevel = 3
+    model.ui.buildModal.remainingPp = 100
+    model.ui.buildModal.dockSummary = DockSummary(
+      constructionAvailable: 3,
+      constructionTotal: 3,
+      repairAvailable: 0,
+      repairTotal: 0,
+    )
+    model.ui.buildModal.availableOptions = @[
+      BuildOption(
+        kind: BuildOptionKind.Ship,
+        name: "Frigate",
+        cost: ShipSpecRows[1].pc,
+        cstReq: ShipSpecRows[1].cst,
+      ),
+      BuildOption(
+        kind: BuildOptionKind.Ship,
+        name: "Destroyer",
+        cost: ShipSpecRows[2].pc,
+        cstReq: ShipSpecRows[2].cst,
+      ),
+      BuildOption(
+        kind: BuildOptionKind.Ship,
+        name: "Scout",
+        cost: ShipSpecRows[12].pc,
+        cstReq: ShipSpecRows[12].cst,
+      ),
+    ]
+
+    buildModalAcceptor(model, actionBuildListDown())
+
+    check model.ui.buildModal.selectedBuildIdx == 12

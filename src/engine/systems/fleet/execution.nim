@@ -169,6 +169,32 @@ proc validateCommandAtExecution(
         shouldAbort: false,
         reason: "Fleet has non-Scout ships (scout missions require pure Scout fleets)",
       )
+
+    if command.targetSystem.isSome:
+      let targetId = command.targetSystem.get()
+      let colonyOpt = state.colonyBySystem(targetId)
+      if colonyOpt.isNone:
+        return ExecutionValidationResult(
+          valid: false,
+          shouldAbort: false,
+          reason: "Target system no longer has enemy colony",
+        )
+
+      let colony = colonyOpt.get()
+      if colony.owner == houseId:
+        return ExecutionValidationResult(
+          valid: false,
+          shouldAbort: false,
+          reason: "Target system is no longer enemy colony",
+        )
+
+      if command.commandType == FleetCommandType.HackStarbase and
+          colony.kastraIds.len == 0:
+        return ExecutionValidationResult(
+          valid: false,
+          shouldAbort: false,
+          reason: "Target enemy colony no longer has starbase",
+        )
   of FleetCommandType.Patrol:
     # Check if patrol system is now hostile (lost to enemy)
     if command.targetSystem.isSome:

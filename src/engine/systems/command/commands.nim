@@ -44,6 +44,28 @@ proc colonyAvailableColonistPtu(colony: Colony): int32 =
     return 0'i32
   availableSouls div soulsPerPtu()
 
+proc validateEnemyColonyTarget(
+    state: GameState,
+    issuingHouse: HouseId,
+    targetSystem: SystemId,
+    commandName: string
+): ValidationResult =
+  let colonyOpt = state.colonyBySystem(targetSystem)
+  if colonyOpt.isNone:
+    return ValidationResult(
+      valid: false,
+      error: commandName & " requires known enemy colony target",
+    )
+
+  let colony = colonyOpt.get()
+  if colony.owner == issuingHouse:
+    return ValidationResult(
+      valid: false,
+      error: commandName & " requires enemy colony target",
+    )
+
+  ValidationResult(valid: true, error: "")
+
 # Command validation
 
 proc validateFleetCommand*(
@@ -255,10 +277,42 @@ proc validateFleetCommand*(
       )
       return ValidationResult(valid: false, error: "Scout mission requires target system")
 
+    let targetSystem = cmd.targetSystem.get()
+    if cmd.commandType in {
+      FleetCommandType.ScoutColony,
+      FleetCommandType.ScoutSystem,
+      FleetCommandType.HackStarbase,
+    }:
+      let targetValidation = state.validateEnemyColonyTarget(
+        issuingHouse,
+        targetSystem,
+        $cmd.commandType,
+      )
+      if not targetValidation.valid:
+        logWarn(
+          "Commands",
+          &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
+            targetValidation.error,
+        )
+        return targetValidation
+
+    if cmd.commandType == FleetCommandType.HackStarbase:
+      let colony = state.colonyBySystem(targetSystem).get()
+      if colony.kastraIds.len == 0:
+        logWarn(
+          "Commands",
+          &"{issuingHouse} {cmd.commandType} command REJECTED: {cmd.fleetId} - " &
+            &"target enemy colony has no starbase",
+        )
+        return ValidationResult(
+          valid: false,
+          error: "HackStarbase requires known enemy starbase target",
+        )
+
     logDebug(
       "Commands",
       &"{issuingHouse} {cmd.commandType} command VALID: {cmd.fleetId} → " &
-        &"{cmd.targetSystem.get()}",
+        &"{targetSystem}",
     )
   of FleetCommandType.JoinFleet:
     if cmd.targetFleet.isNone:
