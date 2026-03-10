@@ -868,18 +868,6 @@ proc executeScoutColonyCommand(
       )
       return OrderOutcome.Failed
 
-    # Create movement command
-    let travelCommand = FleetCommand(
-      fleetId: fleet.id,
-      commandType: FleetCommandType.Move,
-      targetSystem: some(targetSystem),
-      targetFleet: none(FleetId),
-      priority: 0,
-    )
-
-    # Assign command to fleet (entity-manager pattern)
-    updatedFleet.command = travelCommand
-
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
@@ -1014,18 +1002,6 @@ proc executeHackStarbaseCommand(
       )
       return OrderOutcome.Failed
 
-    # Create movement command
-    let travelCommand = FleetCommand(
-      fleetId: fleet.id,
-      commandType: FleetCommandType.Move,
-      targetSystem: some(targetSystem),
-      targetFleet: none(FleetId),
-      priority: 0,
-    )
-
-    # Assign command to fleet (entity-manager pattern)
-    updatedFleet.command = travelCommand
-
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)
 
@@ -1134,18 +1110,6 @@ proc executeScoutSystemCommand(
         )
       )
       return OrderOutcome.Failed
-
-    # Create movement command
-    let travelCommand = FleetCommand(
-      fleetId: fleet.id,
-      commandType: FleetCommandType.Move,
-      targetSystem: some(targetSystem),
-      targetFleet: none(FleetId),
-      priority: 0,
-    )
-
-    # Assign command to fleet (entity-manager pattern)
-    updatedFleet.command = travelCommand
 
     # Update fleet in state
     state.updateFleet(fleet.id, updatedFleet)

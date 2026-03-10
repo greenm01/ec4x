@@ -22,6 +22,8 @@ import ../../src/engine/globals
 import ../../src/engine/config/engine as config_engine
 import ../../src/engine/entities/[ship_ops, fleet_ops, kastra_ops]
 import ../../src/engine/intel/starbase_surveillance
+import ../../src/engine/systems/fleet/dispatcher
+import ../../src/engine/systems/espionage/resolution
 
 # Initialize config
 gameConfig = config_engine.loadGameConfig()
@@ -289,7 +291,6 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
   test "Multiple starbases give single +2 ELI bonus":
     var setup = setupTwoHousesWithStarbase()
     var state = setup.state
-    let observer = setup.observer
     let observerColony = setup.observerColony
     
     # Add a second starbase at the same colony
@@ -303,6 +304,85 @@ suite "Intel & Espionage: Starbase Surveillance (Section 9.1.4)":
     # Detection bonus is +2 regardless of starbase count
     # (tested in detection.nim unit tests)
     check true
+
+suite "Intel & Espionage: Scout mission lifecycle":
+
+  test "traveling scout mission keeps original command type":
+    var state = createTestGame()
+    let houses = state.allHouses().toSeq
+    let attacker = houses[0].id
+    let defender = houses[1].id
+    let targetSystem = state.coloniesOwned(defender).toSeq[0].systemId
+    let homeSystem = state.coloniesOwned(attacker).toSeq[0].systemId
+
+    let fleet = state.createFleet(attacker, homeSystem)
+    discard state.createShip(attacker, fleet.id, ShipClass.Scout)
+    discard state.createShip(attacker, fleet.id, ShipClass.Scout)
+
+    let command = FleetCommand(
+      fleetId: fleet.id,
+      commandType: FleetCommandType.ScoutColony,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )
+
+    var fleetMut = state.fleet(fleet.id).get()
+    fleetMut.command = command
+    state.updateFleet(fleet.id, fleetMut)
+
+    var events: seq[GameEvent] = @[]
+    let outcome = state.executeFleetCommand(attacker, command, events)
+
+    check outcome == OrderOutcome.Success
+    let updatedFleet = state.fleet(fleet.id).get()
+    check updatedFleet.command.commandType == FleetCommandType.ScoutColony
+    check updatedFleet.missionState == MissionState.Traveling
+    check updatedFleet.missionTarget == some(targetSystem)
+
+  test "arrived scout mission resolves from executing state":
+    var state = createTestGame()
+    let houses = state.allHouses().toSeq
+    let attacker = houses[0].id
+    let defender = houses[1].id
+    let targetSystem = state.coloniesOwned(defender).toSeq[0].systemId
+    let homeSystem = state.coloniesOwned(attacker).toSeq[0].systemId
+
+    let fleet = state.createFleet(attacker, homeSystem)
+    discard state.createShip(attacker, fleet.id, ShipClass.Scout)
+    discard state.createShip(attacker, fleet.id, ShipClass.Scout)
+
+    var fleetMut = state.fleet(fleet.id).get()
+    fleetMut.command = FleetCommand(
+      fleetId: fleet.id,
+      commandType: FleetCommandType.ScoutColony,
+      targetSystem: some(targetSystem),
+      targetFleet: none(FleetId),
+      priority: 0,
+      roe: none(int32)
+    )
+    fleetMut.location = targetSystem
+    fleetMut.missionState = MissionState.Executing
+    fleetMut.missionTarget = some(targetSystem)
+    state.updateFleet(fleet.id, fleetMut)
+
+    var rng = initRand(7)
+    var events: seq[GameEvent] = @[]
+    state.resolveScoutMissions(rng, events)
+
+    let postFleetOpt = state.fleet(fleet.id)
+    if postFleetOpt.isSome:
+      let postFleet = postFleetOpt.get()
+      check postFleet.missionState == MissionState.ScoutLocked
+      check postFleet.command.commandType == FleetCommandType.ScoutColony
+    check events.anyIt(
+      it.eventType in {
+        GameEventType.SpyMissionSucceeded,
+        GameEventType.ScoutDetected,
+        GameEventType.ScoutDestroyed
+      }
+    )
 
 when isMainModule:
   echo "========================================"

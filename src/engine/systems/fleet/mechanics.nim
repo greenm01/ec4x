@@ -12,7 +12,7 @@ import ../../types/[
   core, game_state, command, fleet, event, diplomacy,
   player_state, starmap, ship, prestige, colony, ground_unit, combat
 ]
-import ../../state/[engine, iterators, fleet_queries]
+import ../../state/[engine, iterators]
 import ../../globals # For gameConfig
 import ../ship/entity # Ship helper functions
 import ../../entities/[colony_ops, fleet_ops, ship_ops]
@@ -43,18 +43,6 @@ proc completeFleetCommand*(
   )
 
   logInfo("Orders", &"Fleet {fleetId} {orderType} command completed")
-
-proc startsScoutMissionOnArrival(
-    state: GameState,
-    fleet: Fleet,
-    command: FleetCommand
-): bool =
-  ## Traveling scout missions currently move under a temporary Move command.
-  ## Restrict mission-start handling to pure Scout fleets so ETAC colonize
-  ## and other non-intel travel does not emit scout events on arrival.
-  fleet.missionState == MissionState.Traveling and
-    command.commandType == FleetCommandType.Move and
-    state.isScoutOnly(fleet)
 
 proc isSystemHostile*(state: GameState, systemId: SystemId, houseId: HouseId): bool =
   ## Check if a system is hostile to a house based on known intel (fog-of-war)
@@ -405,40 +393,6 @@ proc resolveMovementCommand*(
       &"Fleet {command.fleetId} arrived at destination {targetId}, command complete",
     )
 
-    # Check if this fleet is on a scout mission and start mission on arrival
-    if state.startsScoutMissionOnArrival(fleet, command):
-      fleet.missionState = MissionState.ScoutLocked
-      fleet.missionStartTurn = state.turn
-
-      let scoutCount = state.countScoutShips(fleet)
-
-      # Register active mission
-
-      # Update fleet in state
-      state.updateFleet(command.fleetId, fleet)
-
-      # Generate mission start event
-      let missionName =
-        case command.commandType
-        of FleetCommandType.ScoutColony: "scout mission"
-        of FleetCommandType.HackStarbase: "starbase hack"
-        of FleetCommandType.ScoutSystem: "system reconnaissance"
-        else: "unknown mission"
-
-      events.add(
-        commandCompleted(
-          houseId,
-          command.fleetId,
-          "SpyMissionStarted",
-          details = &"{missionName} started at {targetId} ({scoutCount} scouts)",
-          systemId = some(targetId),
-        )
-      )
-
-      logInfo(
-        "Fleet",
-        &"Fleet {command.fleetId} scout mission started at {targetId}",
-      )
   else:
     logInfo(
       "Fleet",

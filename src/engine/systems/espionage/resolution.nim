@@ -79,8 +79,11 @@ proc resolveScoutMissions*(
 
   var newMissionsProcessed = 0
 
-  # Use iterator: fleetsWithArrivedConflictCommands filters spy commands
+  var arrivedScoutMissions: seq[(FleetId, Fleet, FleetCommand)] = @[]
   for (fleetId, fleet, command) in state.fleetsWithArrivedConflictCommands():
+    arrivedScoutMissions.add((fleetId, fleet, command))
+
+  for (fleetId, fleet, command) in arrivedScoutMissions:
     # Filter for scout mission types only
     if command.commandType notin [
       FleetCommandType.ScoutColony,
@@ -95,9 +98,9 @@ proc resolveScoutMissions*(
         " fleetId=", fleetId)
       continue
 
-    # Validate Traveling state (should be arriving from Production Phase)
-    if fleet.missionState != MissionState.Traveling:
-      logWarn("Espionage", "Fleet not in Traveling state",
+    # Newly arrived conflict commands are promoted to Executing in PRD1b.
+    if fleet.missionState != MissionState.Executing:
+      logWarn("Espionage", "Fleet not in Executing state",
         " fleetId=", fleetId, " state=", fleet.missionState)
       continue
 
@@ -117,7 +120,7 @@ proc resolveScoutMissions*(
 
     let defender = colonyOpt.get().owner
 
-    # TRANSITION: Traveling → OnSpyMission (before detection)
+    # TRANSITION: Executing → ScoutLocked (before detection)
     var updatedFleet = fleet
     updatedFleet.missionState = MissionState.ScoutLocked
     updatedFleet.missionStartTurn = state.turn
@@ -171,8 +174,11 @@ proc resolveScoutMissions*(
 
   var existingMissionsProcessed = 0
 
-  # Query all fleets with active scout missions (entity-manager pattern)
+  var activeScoutMissions: seq[Fleet] = @[]
   for fleet in state.allFleets():
+    activeScoutMissions.add(fleet)
+
+  for fleet in activeScoutMissions:
     # Filter: Only fleets with active scout missions from PREVIOUS turns
     if fleet.missionState != MissionState.ScoutLocked:
       continue
