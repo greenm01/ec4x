@@ -60,6 +60,37 @@ proc validateGameDefinitionEvent*(
     return GameDefinitionEventValidation.UnknownServer
   GameDefinitionEventValidation.Accept
 
+proc shouldRequestPeriodicInGameSync*(
+  activeGameId: string,
+  playerStateLoaded: bool,
+  connected: bool,
+  awaitingTurnAdvanceAfterSubmit: bool,
+  nowTime: float,
+  lastSyncAt: float,
+  intervalMinutes: int
+): bool =
+  if activeGameId.len == 0 or not playerStateLoaded or not connected:
+    return false
+  if awaitingTurnAdvanceAfterSubmit or intervalMinutes <= 0:
+    return false
+  let intervalSec = float(intervalMinutes * 60)
+  nowTime - lastSyncAt >= intervalSec
+
+proc shouldRequestStaleSubscriptionResync*(
+  activeGameId: string,
+  playerStateLoaded: bool,
+  connected: bool,
+  awaitingTurnAdvanceAfterSubmit: bool,
+  nowTime: float,
+  lastActivityAt: float,
+  staleAfterSec: int
+): bool =
+  if activeGameId.len == 0 or not playerStateLoaded or not connected:
+    return false
+  if awaitingTurnAdvanceAfterSubmit or staleAfterSec <= 0:
+    return false
+  nowTime - lastActivityAt >= float(staleAfterSec)
+
 proc runTui*(gameId: string = "") =
   ## Main TUI execution (called from player entry point)
   logInfo("TUI Player SAM", "Starting EC4X TUI Player with SAM pattern...")
@@ -97,6 +128,7 @@ proc runTui*(gameId: string = "") =
   var awaitingTurnAdvanceAfterSubmit = false
   var lastPostSubmitSyncCheckAt: float = 0.0
   var lastInGameSyncCheckAt: float = 0.0
+  var lastNostrActivityAt = epochTime()
   var allowSameTurnFullStateRefresh = false
   var startupSyncPending = false
   var lastAutoResyncTurn = -1
@@ -522,6 +554,7 @@ proc runTui*(gameId: string = "") =
 
       nostrHandlers.onDelta = proc(event: NostrEvent, payload: string) =
         try:
+          lastNostrActivityAt = epochTime()
           let previousTurn = int(playerState.turn)
           if not authoritativeConfigLoaded:
             sam.model.ui.statusMessage =
@@ -626,6 +659,7 @@ proc runTui*(gameId: string = "") =
 
       nostrHandlers.onFullState = proc(event: NostrEvent, payload: string) =
         try:
+          lastNostrActivityAt = epochTime()
           let previousTurn = int(playerState.turn)
           let hadLoadedState = sam.model.view.playerStateLoaded
           logDebug("TUI/State", "onFullState called",
@@ -787,9 +821,11 @@ proc runTui*(gameId: string = "") =
           enqueueProposal(emptyProposal())
 
       nostrHandlers.onMessage = proc(event: NostrEvent, msg: GameMessage) =
+        lastNostrActivityAt = epochTime()
         handleIncomingMessage(event, msg)
 
       nostrHandlers.onEvent = proc(subId: string, event: NostrEvent) =
+        lastNostrActivityAt = epochTime()
         logInfo("EVENT", "Received event: subId=", subId, " kind=", event.kind,
           " id=", event.id[0..min(8, event.id.len-1)])
         try:
@@ -1447,6 +1483,7 @@ proc runTui*(gameId: string = "") =
     if sam.model.ui.nostrStatus == "connecting" and nostrClient != nil:
       if nostrClient.isConnected():
         logInfo("Nostr", "Connected successfully")
+        lastNostrActivityAt = epochTime()
         sam.model.ui.nostrStatus = "connected"
         sam.model.ui.statusMessage = "Nostr connected"
         nostrConnectStartTime = 0.0
@@ -1501,6 +1538,7 @@ proc runTui*(gameId: string = "") =
       nostrReconnectFuture = nil
       if nostrClient != nil and nostrClient.isConnected():
         logInfo("Nostr", "Reconnect completed")
+        lastNostrActivityAt = epochTime()
         sam.model.ui.nostrStatus = "connected"
         sam.model.ui.nostrLastError = ""
         sam.model.ui.statusMessage = "Relay reconnected"
@@ -1786,18 +1824,32 @@ proc runTui*(gameId: string = "") =
         triggerGameSyncCheck(false, "post-submit")
         lastPostSubmitSyncCheckAt = epochTime()
 
-    if activeGameId.len > 0 and
-        sam.model.view.playerStateLoaded and
-        nostrClient != nil and
-        nostrClient.isConnected() and
-        not awaitingTurnAdvanceAfterSubmit:
-      let intervalSec = float(tuiConfig.inGameSyncMinutes * 60)
-      if intervalSec > 0 and
-          epochTime() - lastInGameSyncCheckAt >= intervalSec:
-        allowSameTurnFullStateRefresh = true
-        sam.model.ui.syncIntegrityState = "syncing"
-        triggerGameSyncCheck(false, "periodic")
-        lastInGameSyncCheckAt = epochTime()
+    let nowTime = epochTime()
+    if shouldRequestStaleSubscriptionResync(
+        activeGameId,
+        sam.model.view.playerStateLoaded,
+        nostrClient != nil and nostrClient.isConnected(),
+        awaitingTurnAdvanceAfterSubmit,
+        nowTime,
+        lastNostrActivityAt,
+        tuiConfig.staleSubscriptionSeconds):
+      allowSameTurnFullStateRefresh = true
+      sam.model.ui.syncIntegrityState = "stale"
+      triggerGameSyncCheck(false, "stale-subscription")
+      lastInGameSyncCheckAt = nowTime
+      lastNostrActivityAt = nowTime
+    elif shouldRequestPeriodicInGameSync(
+        activeGameId,
+        sam.model.view.playerStateLoaded,
+        nostrClient != nil and nostrClient.isConnected(),
+        awaitingTurnAdvanceAfterSubmit,
+        nowTime,
+        lastInGameSyncCheckAt,
+        tuiConfig.inGameSyncMinutes):
+      allowSameTurnFullStateRefresh = true
+      sam.model.ui.syncIntegrityState = "syncing"
+      triggerGameSyncCheck(false, "periodic")
+      lastInGameSyncCheckAt = nowTime
 
   # =========================================================================
   # Main Loop (Input-first with frame-based rendering)

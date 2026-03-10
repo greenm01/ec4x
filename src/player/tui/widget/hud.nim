@@ -37,7 +37,7 @@ type
     commandMax*: int        ## Maximum command capacity
     alertCount*: int        ## Number of alerts/warnings
     unreadMessages*: int    ## Unread messages/reports
-    syncIntegrityState*: string ## "ok", "syncing", or "desync"
+    syncIntegrityState*: string ## ok/syncing/reconnecting/stale/desync
     submissionRevision*: int  ## Current submission revision (0 = none)
     modifiedSinceSubmit*: bool ## True if staged cmds changed post-submit
 
@@ -77,20 +77,36 @@ proc formatNumber*(n: int): string =
     count.inc
   res
 
-proc syncBadgeText(data: HudData): string =
+proc syncBadgeText*(data: HudData): string =
   case data.syncIntegrityState
   of "syncing":
     "SYNC"
+  of "reconnecting":
+    "RELAY"
+  of "stale":
+    "STALE"
   of "desync":
     "DESYNC"
   else:
     ""
 
-proc syncBadgeStyle(data: HudData): CellStyle =
+proc syncBadgeStyle*(data: HudData): CellStyle =
   case data.syncIntegrityState
   of "syncing":
     CellStyle(
       fg: color(WarningColor),
+      bg: color(HudBgColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of "reconnecting":
+    CellStyle(
+      fg: color(SelectedFgColor),
+      bg: color(HudBgColor),
+      attrs: {StyleAttr.Bold}
+    )
+  of "stale":
+    CellStyle(
+      fg: color(AlertColor),
       bg: color(HudBgColor),
       attrs: {StyleAttr.Bold}
     )

@@ -612,6 +612,7 @@ Player preferences stored at `~/.config/ec4x/config.kdl`:
 config {
   default-relay "wss://relay.ec4x.io"
   in-game-sync-minutes 2
+  stale-subscription-seconds 45
   post-submit-sync-minutes 15
 
   relay-aliases {

@@ -109,6 +109,7 @@ Set in `~/.config/ec4x/config.kdl`:
 ```kdl
 config {
   in-game-sync-minutes 2
+  stale-subscription-seconds 45
   post-submit-sync-minutes 15
 }
 ```
@@ -116,6 +117,10 @@ config {
 `in-game-sync-minutes` controls how often an open TUI asks for a fresh
 authoritative snapshot while you are sitting in a game. This is the
 background safety net for missed live turn updates.
+
+`stale-subscription-seconds` controls how quickly the TUI treats a
+quiet-but-still-connected game feed as suspicious and forces an earlier
+re-subscribe plus authoritative sync.
 
 `post-submit-sync-minutes` controls how often the TUI asks for a
 fresh authoritative game snapshot after a successful submit while

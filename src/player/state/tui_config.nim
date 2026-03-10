@@ -6,6 +6,7 @@
 ##   config {
 ##     default-relay "wss://relay.ec4x.io"
 ##     in-game-sync-minutes 2
+##     stale-subscription-seconds 45
 ##     post-submit-sync-minutes 15
 ##     
 ##     relay-aliases {
@@ -30,6 +31,7 @@ type
     defaultRelay*: string
     mapExportDir*: string
     inGameSyncMinutes*: int
+    staleSubscriptionSeconds*: int
     postSubmitSyncMinutes*: int
     relayAliases*: Table[string, string]
     showTableBorders*: bool
@@ -61,6 +63,7 @@ proc loadTuiConfig*(): TuiConfig =
     defaultRelay: "",
     mapExportDir: "",
     inGameSyncMinutes: 2,
+    staleSubscriptionSeconds: 45,
     postSubmitSyncMinutes: 15,
     relayAliases: initTable[string, string](),
     showTableBorders: true,
@@ -92,6 +95,9 @@ proc loadTuiConfig*(): TuiConfig =
         of "in-game-sync-minutes":
           if child.args.len > 0:
             result.inGameSyncMinutes = child.args[0].kInt().int
+        of "stale-subscription-seconds":
+          if child.args.len > 0:
+            result.staleSubscriptionSeconds = child.args[0].kInt().int
         of "post-submit-sync-minutes":
           if child.args.len > 0:
             result.postSubmitSyncMinutes = child.args[0].kInt().int
@@ -124,6 +130,10 @@ proc loadTuiConfig*(): TuiConfig =
     result.inGameSyncMinutes = 1
   if result.inGameSyncMinutes > 1440:
     result.inGameSyncMinutes = 1440
+  if result.staleSubscriptionSeconds < 5:
+    result.staleSubscriptionSeconds = 5
+  if result.staleSubscriptionSeconds > 3600:
+    result.staleSubscriptionSeconds = 3600
 
 proc saveTuiConfig*(config: TuiConfig) =
   ## Save the TUI config to disk
@@ -140,6 +150,8 @@ proc saveTuiConfig*(config: TuiConfig) =
 
   content.add("  in-game-sync-minutes " &
     $config.inGameSyncMinutes & "\n")
+  content.add("  stale-subscription-seconds " &
+    $config.staleSubscriptionSeconds & "\n")
   content.add("  post-submit-sync-minutes " &
     $config.postSubmitSyncMinutes & "\n")
   
