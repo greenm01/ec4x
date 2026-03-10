@@ -5,6 +5,7 @@
 ## Config file format:
 ##   config {
 ##     default-relay "wss://relay.ec4x.io"
+##     in-game-sync-minutes 2
 ##     post-submit-sync-minutes 15
 ##     
 ##     relay-aliases {
@@ -28,6 +29,7 @@ type
   TuiConfig* = object
     defaultRelay*: string
     mapExportDir*: string
+    inGameSyncMinutes*: int
     postSubmitSyncMinutes*: int
     relayAliases*: Table[string, string]
     showTableBorders*: bool
@@ -58,6 +60,7 @@ proc loadTuiConfig*(): TuiConfig =
   result = TuiConfig(
     defaultRelay: "",
     mapExportDir: "",
+    inGameSyncMinutes: 2,
     postSubmitSyncMinutes: 15,
     relayAliases: initTable[string, string](),
     showTableBorders: true,
@@ -86,6 +89,9 @@ proc loadTuiConfig*(): TuiConfig =
         of "map-export-dir":
           if child.args.len > 0:
             result.mapExportDir = child.args[0].kString()
+        of "in-game-sync-minutes":
+          if child.args.len > 0:
+            result.inGameSyncMinutes = child.args[0].kInt().int
         of "post-submit-sync-minutes":
           if child.args.len > 0:
             result.postSubmitSyncMinutes = child.args[0].kInt().int
@@ -114,6 +120,10 @@ proc loadTuiConfig*(): TuiConfig =
     result.postSubmitSyncMinutes = 1
   if result.postSubmitSyncMinutes > 1440:
     result.postSubmitSyncMinutes = 1440
+  if result.inGameSyncMinutes < 1:
+    result.inGameSyncMinutes = 1
+  if result.inGameSyncMinutes > 1440:
+    result.inGameSyncMinutes = 1440
 
 proc saveTuiConfig*(config: TuiConfig) =
   ## Save the TUI config to disk
@@ -128,6 +138,8 @@ proc saveTuiConfig*(config: TuiConfig) =
   if config.mapExportDir.len > 0:
     content.add("  map-export-dir \"" & config.mapExportDir & "\"\n")
 
+  content.add("  in-game-sync-minutes " &
+    $config.inGameSyncMinutes & "\n")
   content.add("  post-submit-sync-minutes " &
     $config.postSubmitSyncMinutes & "\n")
   

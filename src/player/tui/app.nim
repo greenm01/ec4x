@@ -94,6 +94,7 @@ proc runTui*(gameId: string = "") =
   var nostrSubmitStartTime: float = 0.0  # When submit started
   var awaitingTurnAdvanceAfterSubmit = false
   var lastPostSubmitSyncCheckAt: float = 0.0
+  var lastInGameSyncCheckAt: float = 0.0
   var allowSameTurnFullStateRefresh = false
   var startupSyncPending = false
   var lastAutoResyncTurn = -1
@@ -570,6 +571,7 @@ proc runTui*(gameId: string = "") =
             playerState = applied.playerState
             sam.model.ui.syncIntegrityState = "ok"
             let newTurn = int(applied.turn)
+            lastInGameSyncCheckAt = epochTime()
             sam.model.view.turn = newTurn
             sam.model.view.playerStateLoaded = true
             # Load prev-turn snapshot before caching current
@@ -692,6 +694,7 @@ proc runTui*(gameId: string = "") =
             let newTurn = int(playerState.turn)
             allowSameTurnFullStateRefresh = false
             lastAutoResyncTurn = -1
+            lastInGameSyncCheckAt = epochTime()
             sam.model.ui.syncIntegrityState = "ok"
             sam.model.view.playerStateLoaded = true
             viewingHouse = playerState.viewingHouse
@@ -1745,6 +1748,19 @@ proc runTui*(gameId: string = "") =
         triggerGameSyncCheck(false, "post-submit")
         lastPostSubmitSyncCheckAt = epochTime()
 
+    if activeGameId.len > 0 and
+        sam.model.view.playerStateLoaded and
+        nostrClient != nil and
+        nostrClient.isConnected() and
+        not awaitingTurnAdvanceAfterSubmit:
+      let intervalSec = float(tuiConfig.inGameSyncMinutes * 60)
+      if intervalSec > 0 and
+          epochTime() - lastInGameSyncCheckAt >= intervalSec:
+        allowSameTurnFullStateRefresh = true
+        sam.model.ui.syncIntegrityState = "syncing"
+        triggerGameSyncCheck(false, "periodic")
+        lastInGameSyncCheckAt = epochTime()
+
   # =========================================================================
   # Main Loop (Input-first with frame-based rendering)
   # =========================================================================
@@ -1934,6 +1950,7 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.switchGameRequested = false
       awaitingTurnAdvanceAfterSubmit = false
       lastPostSubmitSyncCheckAt = 0.0
+      lastInGameSyncCheckAt = 0.0
       lastDraftFingerprint = ""
       allowSameTurnFullStateRefresh = false
       startupSyncPending = false
@@ -1945,6 +1962,7 @@ proc runTui*(gameId: string = "") =
       sam.model.view.playerStateLoaded = false
       awaitingTurnAdvanceAfterSubmit = false
       lastPostSubmitSyncCheckAt = 0.0
+      lastInGameSyncCheckAt = 0.0
       authoritativeConfigLoaded = false
       authoritativeConfigHash = ""
       authoritativeConfigSchema = 0
@@ -2089,6 +2107,7 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.syncIntegrityState = "syncing"
       triggerGameSyncCheck(false, "startup")
       startupSyncPending = false
+      lastInGameSyncCheckAt = epochTime()
       sam.model.ui.statusMessage = "Verifying cached state"
       needsRender = true
 
