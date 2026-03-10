@@ -327,7 +327,10 @@ For Advanced Carrier Operations (ACO) research, see [Section 4.13](04-research_d
 
 **Combat Mechanics**:
 
-Colony-assigned Fighters automatically participate in orbital defense (see [Section 7.6](07-combat.md#76-orbital-combat)). Carrier-based Fighters participate in space combat with their carrier's fleet.
+Colony-assigned Fighters automatically participate in orbital defense
+(see [Section 7.6](07-combat.md#76-orbital-combat)). Carrier-based
+Fighters participate with their carrier's fleet in both space and
+orbital combat.
 
 Each Fighter contributes:
 

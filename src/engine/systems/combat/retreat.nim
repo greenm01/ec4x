@@ -188,7 +188,11 @@ proc noCombatantsRemain*(state: GameState, battle: Battle): bool =
   ## Per docs/specs/07-combat.md Section 7.2.3
 
   let attackerShips = countOperationalShips(state, battle.attacker.fleets)
-  let defenderShips = countOperationalShips(state, battle.defender.fleets)
+  let defenderShips = state.countDefenderOperationalShips(
+    battle.defender,
+    battle.systemId,
+    battle.theater,
+  )
 
   return attackerShips == 0 or defenderShips == 0
 

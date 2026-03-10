@@ -701,6 +701,121 @@ suite "Combat: Starbase Combat (Section 7.6.3)":
     # orbitalAS should be baseAS + kastraAS (if any kastras exist)
     check orbitalAS >= baseAS
 
+  test "defender AS includes colony fighters in orbital combat":
+    let game = newGame()
+    var owner: HouseId
+    var colonyId: ColonyId
+    var colonySystemId: SystemId
+
+    for house in game.allHouses():
+      owner = house.id
+      for colony in game.coloniesOwned(owner):
+        colonyId = colony.id
+        colonySystemId = colony.systemId
+        break
+      break
+
+    let fleet = game.createFleet(owner, colonySystemId)
+    discard createTestShip(
+      game,
+      owner,
+      fleet.id,
+      ShipClass.Destroyer,
+      CombatState.Nominal,
+    )
+
+    let fighter = game.createShip(owner, FleetId(0), ShipClass.Fighter)
+    var colony = game.colony(colonyId).get()
+    colony.fighterIds.add(fighter.id)
+    game.updateColony(colonyId, colony)
+
+    let force = HouseCombatForce(
+      houseId: owner,
+      fleets: @[fleet.id],
+      clkLevel: 1,
+      eliLevel: 1,
+      isDefendingHomeworld: false,
+      morale: 0,
+    )
+
+    let baseAS = calculateHouseAS(game, force)
+    let fighterAS = game.ship(fighter.id).get().stats.attackStrength
+    let orbitalAS = calculateDefenderAS(
+      game,
+      force,
+      colonySystemId,
+      CombatTheater.Orbital,
+    )
+
+    check orbitalAS >= baseAS + fighterAS
+
+  test "orbital combatants include colony fighters":
+    let game = newGame()
+    var attacker: HouseId
+    var defender: HouseId
+    var defenderColonyId: ColonyId
+    var systemId: SystemId
+
+    var houses: seq[HouseId] = @[]
+    for house in game.allHouses():
+      houses.add(house.id)
+    attacker = houses[0]
+    defender = houses[1]
+
+    for colony in game.coloniesOwned(defender):
+      defenderColonyId = colony.id
+      systemId = colony.systemId
+      break
+
+    let attackerFleet = game.createFleet(attacker, systemId)
+    discard createTestShip(
+      game,
+      attacker,
+      attackerFleet.id,
+      ShipClass.Destroyer,
+      CombatState.Nominal,
+    )
+
+    let fighter = game.createShip(defender, FleetId(0), ShipClass.Fighter)
+    var colony = game.colony(defenderColonyId).get()
+    colony.fighterIds.add(fighter.id)
+    game.updateColony(defenderColonyId, colony)
+
+    let battle = Battle(
+      theater: CombatTheater.Orbital,
+      systemId: systemId,
+      attacker: HouseCombatForce(
+        houseId: attacker,
+        fleets: @[attackerFleet.id],
+        clkLevel: 1,
+        eliLevel: 1,
+        isDefendingHomeworld: false,
+      ),
+      defender: HouseCombatForce(
+        houseId: defender,
+        fleets: @[],
+        clkLevel: 1,
+        eliLevel: 1,
+        isDefendingHomeworld: false,
+      ),
+      detectionResult: DetectionResult.Intercept,
+      attackerRetreatedFleets: @[],
+      defenderRetreatedFleets: @[],
+    )
+
+    check noCombatantsRemain(game, battle) == false
+    check game.defenderCombatShips(
+      battle.defender,
+      systemId,
+      CombatTheater.Orbital,
+    ) == @[fighter.id]
+
+    var destroyedFighter = game.ship(fighter.id).get()
+    destroyedFighter.state = CombatState.Destroyed
+    game.updateShip(fighter.id, destroyedFighter)
+
+    check noCombatantsRemain(game, battle) == true
+
   test "starbases cannot retreat - fight to destruction":
     # Per spec Section 7.6.3: "Cannot retreat—fight to destruction or victory"
     # Verified by design - Kastras are not in fleets and have no retreat logic

@@ -123,6 +123,42 @@ proc calculateColonyKastraDS*(state: GameState, colonyId: ColonyId): int32 =
   for kastra in state.kastrasAtColony(colonyId):
     result += calculateKastraDS(state, kastra)
 
+proc colonyFighterShipIdsAtSystem*(
+  state: GameState,
+  houseId: HouseId,
+  systemId: SystemId
+): seq[ShipId] =
+  ## Get colony-based fighters defending a house's colony in this system.
+  for colony in state.coloniesOwned(houseId):
+    if colony.systemId != systemId:
+      continue
+
+    for fighter in state.fightersAtColony(colony.id):
+      result.add(fighter.id)
+    break
+
+proc calculateColonyFighterAS*(
+  state: GameState,
+  houseId: HouseId,
+  systemId: SystemId
+): int32 =
+  ## Sum AS from colony-based fighters defending this system.
+  for shipId in state.colonyFighterShipIdsAtSystem(houseId, systemId):
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      result += calculateShipAS(state, shipOpt.get())
+
+proc calculateColonyFighterDS*(
+  state: GameState,
+  houseId: HouseId,
+  systemId: SystemId
+): int32 =
+  ## Sum DS from colony-based fighters defending this system.
+  for shipId in state.colonyFighterShipIdsAtSystem(houseId, systemId):
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      result += calculateShipDS(state, shipOpt.get())
+
 proc calculateFleetAS*(state: GameState, fleetId: FleetId): int32 =
   ## Sum AS from all ships in fleet
   ## Per docs/specs/07-combat.md Section 7.2.2
@@ -183,8 +219,10 @@ proc calculateDefenderAS*(
   
   result = calculateHouseAS(state, force)
   
-  # Add Kastra AS for orbital combat only
+  # Add colony fighters and Kastra AS for orbital combat only
   if theater == CombatTheater.Orbital:
+    result += calculateColonyFighterAS(state, force.houseId, systemId)
+
     # Find colony in this system owned by defender
     for colony in state.coloniesOwned(force.houseId):
       if colony.systemId == systemId:
@@ -203,8 +241,10 @@ proc calculateDefenderDS*(
   
   result = calculateHouseDS(state, force)
   
-  # Add Kastra DS for orbital combat only
+  # Add colony fighters and Kastra DS for orbital combat only
   if theater == CombatTheater.Orbital:
+    result += calculateColonyFighterDS(state, force.houseId, systemId)
+
     # Find colony in this system owned by defender
     for colony in state.coloniesOwned(force.houseId):
       if colony.systemId == systemId:
@@ -221,6 +261,17 @@ proc allShips*(state: GameState, fleets: seq[FleetId]): seq[ShipId] =
     let combatShips = combatShipsInFleet(state, fleetId)
     result.add(combatShips)
 
+proc defenderCombatShips*(
+  state: GameState,
+  force: HouseCombatForce,
+  systemId: SystemId,
+  theater: CombatTheater
+): seq[ShipId] =
+  ## Get all defender combatants, including colony fighters in orbital combat.
+  result = allShips(state, force.fleets)
+  if theater == CombatTheater.Orbital:
+    result.add(state.colonyFighterShipIdsAtSystem(force.houseId, systemId))
+
 proc countOperationalShips*(state: GameState, fleets: seq[FleetId]): int =
   ## Count ships that can still fight (Nominal or Crippled)
   ## Used for combat termination checks
@@ -236,6 +287,22 @@ proc countOperationalShips*(state: GameState, fleets: seq[FleetId]): int =
           let ship = shipOpt.get()
           if ship.state != CombatState.Destroyed:
             result += 1
+
+proc countDefenderOperationalShips*(
+  state: GameState,
+  force: HouseCombatForce,
+  systemId: SystemId,
+  theater: CombatTheater
+): int =
+  ## Count operational defender combatants, including colony fighters in orbit.
+  result = countOperationalShips(state, force.fleets)
+  if theater != CombatTheater.Orbital:
+    return
+
+  for shipId in state.colonyFighterShipIdsAtSystem(force.houseId, systemId):
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome and shipOpt.get().state != CombatState.Destroyed:
+      result += 1
 
 ## Design Notes:
 ##

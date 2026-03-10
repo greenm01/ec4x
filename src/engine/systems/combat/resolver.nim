@@ -10,22 +10,35 @@ import ../../types/[game_state, combat, ship]
 import ../../state/engine
 import ./[strength, cer, drm, hits, retreat]
 
-proc getCombatStateSignature(state: GameState, force: HouseCombatForce): int =
+proc getCombatStateSignature(
+  state: GameState,
+  force: HouseCombatForce,
+  theater: CombatTheater,
+  systemId: SystemId,
+  isDefender: bool
+): int =
   result = 0
-  for fleetId in force.fleets:
-    let fleetOpt = state.fleet(fleetId)
-    if fleetOpt.isSome:
-      for shipId in fleetOpt.get().ships:
-        let shipOpt = state.ship(shipId)
-        if shipOpt.isSome:
-          result += ord(shipOpt.get().state)
+  let combatants =
+    if isDefender:
+      state.defenderCombatShips(force, systemId, theater)
+    else:
+      allShips(state, force.fleets)
+
+  for shipId in combatants:
+    let shipOpt = state.ship(shipId)
+    if shipOpt.isSome:
+      result += ord(shipOpt.get().state)
 
 proc determineOutcome*(state: GameState, battle: Battle): CombatResult =
   ## Determine battle outcome based on survivors
   ## Per docs/specs/07-combat.md Section 7.2
 
   let attackerShips = countOperationalShips(state, battle.attacker.fleets)
-  let defenderShips = countOperationalShips(state, battle.defender.fleets)
+  let defenderShips = state.countDefenderOperationalShips(
+    battle.defender,
+    battle.systemId,
+    battle.theater,
+  )
 
   return CombatResult(
     theater: battle.theater,
@@ -83,14 +96,30 @@ proc resolveBattle*(
 
     # Apply hits (changes ship.state across all fleets)
     let attackerShips = allShips(state, battle.attacker.fleets)
-    let defenderShips = allShips(state, battle.defender.fleets)
+    let defenderShips = state.defenderCombatShips(
+      battle.defender,
+      battle.systemId,
+      battle.theater,
+    )
 
-    let sigBefore = getCombatStateSignature(state, battle.attacker) + getCombatStateSignature(state, battle.defender)
+    let sigBefore =
+      getCombatStateSignature(
+        state, battle.attacker, battle.theater, battle.systemId, false
+      ) +
+      getCombatStateSignature(
+        state, battle.defender, battle.theater, battle.systemId, true
+      )
 
     applyHits(state, defenderShips, attackerHits, battle.systemId, events, attackerCERResult.isCriticalHit, battle.attacker.houseId)
     applyHits(state, attackerShips, defenderHits, battle.systemId, events, defenderCERResult.isCriticalHit, battle.defender.houseId)
 
-    let sigAfter = getCombatStateSignature(state, battle.attacker) + getCombatStateSignature(state, battle.defender)
+    let sigAfter =
+      getCombatStateSignature(
+        state, battle.attacker, battle.theater, battle.systemId, false
+      ) +
+      getCombatStateSignature(
+        state, battle.defender, battle.theater, battle.systemId, true
+      )
 
     if sigBefore == sigAfter:
       if isDesperation:

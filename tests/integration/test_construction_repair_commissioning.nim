@@ -366,7 +366,7 @@ suite "Construction: Ship Commissioning":
     # At least one fleet should exist at location
     check newFleetsAtSystem >= 1
 
-  test "commissionShips auto-embarks fighters onto commissioned carriers":
+  test "commissionShips keeps fighters colony-based before auto-embark":
     let game = newGame()
     var events: seq[GameEvent] = @[]
 
@@ -399,6 +399,7 @@ suite "Construction: Ship Commissioning":
     commissionShips(game, completed, events)
 
     var embarked = false
+    let updatedColony = game.colony(colony.id).get()
     for ship in game.allShips():
       if ship.houseId != colony.owner:
         continue
@@ -407,6 +408,7 @@ suite "Construction: Ship Commissioning":
         let carrier = game.ship(carrierId).get()
         check carrier.shipClass == ShipClass.Carrier
         check ship.id in carrier.embarkedFighters
+        check ship.id notin updatedColony.fighterIds
         embarked = true
         break
 

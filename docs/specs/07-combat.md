@@ -410,7 +410,9 @@ Fighters provide a die roll modifier based on numerical advantage. Calculate eac
 
 Fighters come in two assignments:
 - **Colony-assigned**: Stationed at colony, defend location, cannot travel. Participate in space/orbital combat at their colony.
-- **Carrier-assigned**: Housed in carriers, travel with fleet, deploy in combat anywhere. Lost if carrier destroyed while embarked.
+- **Carrier-assigned**: Housed in carriers, travel with fleet, deploy
+  with that fleet in both space and orbital combat. Lost if carrier
+  destroyed while embarked.
 
 Both types contribute to Fighter Superiority calculation during combat.
 
