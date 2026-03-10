@@ -467,13 +467,15 @@ proc processIncomingCommand(event: NostrEvent) {.async.} =
 
     if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
         event.kind, event.id, reader.ReplayDirection.Inbound):
-      logWarn("Nostr", "Duplicate command event ignored: ", event.id[0..7])
+      logDebug("Nostr", "Duplicate command event ignored: ", event.id[0..7])
       return
 
     # Validate turn matches current game turn
     if turn != gameInfo.turn:
-      logWarn("Nostr", "Command for wrong turn: event has turn=", $turn,
-        " but game is on turn=", $gameInfo.turn, " - ignoring")
+      writer.insertProcessedEvent(gameInfo.dbPath, gameId,
+        turn.int32, event.kind, event.id, reader.ReplayDirection.Inbound)
+      logDebug("Nostr", "Command for wrong turn: event has turn=", $turn,
+        " but game is on turn=", $gameInfo.turn, " - ignoring replayed event")
       return
 
     # Decrypt command payload (msgpack binary)
@@ -536,7 +538,7 @@ proc processStateSyncRequest(event: NostrEvent) {.async.} =
     let gameInfo = daemonLoop.model.games[gameId]
     if reader.hasProcessedEvent(gameInfo.dbPath, gameId,
         event.kind, event.id, reader.ReplayDirection.Inbound):
-      logWarn("Nostr", "Duplicate sync request ignored: ",
+      logDebug("Nostr", "Duplicate sync request ignored: ",
         event.id[0..7])
       return
 
@@ -600,12 +602,8 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
         gameInfoOpt = some(matches[0])
         resolvedGameId = matches[0].id
       elif matches.len == 0:
-        logWarn("Nostr", "Invite code not found in any game")
-        if daemonLoop.model.nostrPublisher != nil:
-          await daemonLoop.model.nostrPublisher.publishJoinError(
-            event.pubkey,
-            "Invite code not found"
-          )
+        logDebug("Nostr",
+          "Ignoring replayed invite-only slot claim for missing game")
         return
       else:
         logWarn("Nostr", "Invite code matches multiple games")
@@ -625,7 +623,7 @@ proc processSlotClaim*(event: NostrEvent) {.async.} =
 
     if reader.hasProcessedEvent(gameInfo.dbPath, resolvedGameId,
         event.kind, event.id, reader.ReplayDirection.Inbound):
-      logWarn("Nostr", "Duplicate slot claim ignored: ", event.id[0..7])
+      logDebug("Nostr", "Duplicate slot claim ignored: ", event.id[0..7])
       return
 
     if not isValidInviteCode(inviteCode):
