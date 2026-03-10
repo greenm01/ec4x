@@ -229,6 +229,68 @@ suite "Construction: Build Order Processing":
         queuedProjects += neoria.activeConstructions.len
     check queuedProjects == 4
 
+  test "ship build spillover charges spaceport penalty after shipyards fill":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    var foundColony = false
+    for c in game.allColonies():
+      var hasShipyard = false
+      var hasSpaceport = false
+      for neoriaId in c.neoriaIds:
+        let neoriaOpt = game.neoria(neoriaId)
+        if neoriaOpt.isNone:
+          continue
+        case neoriaOpt.get().neoriaClass
+        of NeoriaClass.Shipyard:
+          hasShipyard = true
+        of NeoriaClass.Spaceport:
+          hasSpaceport = true
+        else:
+          discard
+      if hasShipyard and hasSpaceport:
+        colony = c
+        foundColony = true
+        break
+
+    check foundColony
+
+    let owner = colony.owner
+    var house = game.house(owner).get()
+    let baseCost = accessors.shipConstructionCost(ShipClass.Destroyer)
+    for neoriaId in colony.neoriaIds:
+      let neoriaOpt = game.neoria(neoriaId)
+      if neoriaOpt.isSome and
+          neoriaOpt.get().neoriaClass == NeoriaClass.Shipyard:
+        var shipyard = neoriaOpt.get()
+        shipyard.baseDocks = 1
+        shipyard.effectiveDocks = 1
+        game.updateNeoria(neoriaId, shipyard)
+
+    house.treasury = baseCost * 4
+    game.updateHouse(owner, house)
+
+    let packet = CommandPacket(
+      houseId: owner,
+      buildCommands: @[makeBuildCommand(
+        colony.id,
+        BuildType.Ship,
+        shipClass = some(ShipClass.Destroyer),
+        quantity = 2,
+      )]
+    )
+
+    resolveBuildOrders(game, packet, events)
+
+    let updatedHouse = game.house(owner).get()
+    check updatedHouse.treasury ==
+      house.treasury - (baseCost + (baseCost * 2))
+
+    let constructionEvents =
+      events.filterIt(it.eventType == GameEventType.ConstructionStarted)
+    check constructionEvents.len == 2
+
   test "build command rejected for insufficient funds":
     let game = newGame()
     var events: seq[GameEvent] = @[]

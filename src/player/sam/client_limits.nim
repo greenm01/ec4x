@@ -6,7 +6,7 @@ import std/[options, tables, math]
 
 import ./tui_model
 import ../../engine/types/[core, player_state, ship, production, facilities,
-  ground_unit, fleet, tech]
+  ground_unit, fleet, tech, combat]
 import ../../engine/globals
 
 type
@@ -16,6 +16,273 @@ type
     spaceports: int
     starbases: int
     shields: int
+
+  ShipCostBreakdown* = object
+    totalCost*: int
+    nextIncrementCost*: int
+    nextIncrementSource*: ShipBuildSource
+    shipyardSlotsRemaining*: int
+    triggersSpillover*: bool
+
+  ColonyDockState = object
+    shipyardRemaining: int
+    spaceportRemaining: int
+
+proc effectiveDockCount(baseDocks: int32, techLevels: Option[TechLevel]): int =
+  let cstLevel =
+    if techLevels.isSome:
+      max(1'i32, techLevels.get().cst)
+    else:
+      1'i32
+  int(floor(
+    float32(baseDocks) *
+    (gameConfig.tech.cst.baseModifier +
+      (float32(cstLevel - 1'i32) * gameConfig.tech.cst.incrementPerLevel))
+  ))
+
+proc shipUnitCost(shipClass: ShipClass, source: ShipBuildSource): int =
+  let baseCost = int(gameConfig.ships.ships[shipClass].productionCost)
+  case source
+  of ShipBuildSource.Spaceport:
+    baseCost * 2
+  else:
+    baseCost
+
+proc initColonyDockState(
+    snapshot: ColonyLimitSnapshot,
+    techLevels: Option[TechLevel],
+): ColonyDockState =
+  ColonyDockState(
+    shipyardRemaining: snapshot.shipyards * effectiveDockCount(
+      gameConfig.facilities.facilities[FacilityClass.Shipyard].docks,
+      techLevels,
+    ),
+    spaceportRemaining: snapshot.spaceports * effectiveDockCount(
+      gameConfig.facilities.facilities[FacilityClass.Spaceport].docks,
+      techLevels,
+    ),
+  )
+
+proc initColonyDockState(docks: DockSummary): ColonyDockState =
+  ColonyDockState(
+    shipyardRemaining: max(0, docks.shipyardAvailable),
+    spaceportRemaining: max(0, docks.spaceportAvailable),
+  )
+
+proc consumeShipDock(
+    state: var ColonyDockState,
+    shipClass: ShipClass,
+): ShipBuildSource =
+  if shipClass == ShipClass.Fighter:
+    return ShipBuildSource.Planetside
+
+  if state.shipyardRemaining > 0:
+    state.shipyardRemaining.dec
+    return ShipBuildSource.Shipyard
+
+  if state.spaceportRemaining > 0:
+    state.spaceportRemaining.dec
+    return ShipBuildSource.Spaceport
+
+  ShipBuildSource.None
+
+proc simulateShipCommandCost(
+    dockState: var ColonyDockState,
+    shipClass: ShipClass,
+    quantity: int,
+    trackNextIncrement: bool = false,
+): ShipCostBreakdown =
+  let qty = max(0, quantity)
+  for _ in 0 ..< qty:
+    let source = consumeShipDock(dockState, shipClass)
+    if source == ShipBuildSource.None:
+      break
+    result.totalCost += shipUnitCost(shipClass, source)
+
+  result.shipyardSlotsRemaining = max(0, dockState.shipyardRemaining)
+
+  if not trackNextIncrement:
+    return
+
+  let directSource = consumeShipDock(dockState, shipClass)
+  result.nextIncrementSource = directSource
+  if directSource != ShipBuildSource.None:
+    result.nextIncrementCost = shipUnitCost(shipClass, directSource)
+    result.shipyardSlotsRemaining = max(0, dockState.shipyardRemaining)
+
+proc commandIncrementPreview*(
+    stagedBuildCommands: seq[BuildCommand],
+    colonyId: ColonyId,
+    shipClass: ShipClass,
+    dockSummary: DockSummary,
+): ShipCostBreakdown =
+  var currentDocks = initColonyDockState(dockSummary)
+  var hypotheticalDocks = initColonyDockState(dockSummary)
+
+  var currentCost = 0
+  var hypotheticalCost = 0
+  var matchedExisting = false
+  var preview = ShipCostBreakdown(
+    nextIncrementSource: ShipBuildSource.None,
+  )
+
+  for cmd in stagedBuildCommands:
+    if cmd.colonyId != colonyId:
+      continue
+
+    let qty = max(0, int(cmd.quantity))
+    if cmd.buildType != BuildType.Ship or cmd.shipClass.isNone:
+      continue
+
+    let cmdShipClass = cmd.shipClass.get()
+    currentCost += simulateShipCommandCost(
+      currentDocks,
+      cmdShipClass,
+      qty,
+    ).totalCost
+
+    if cmdShipClass == shipClass and not matchedExisting:
+      matchedExisting = true
+      let currentBreakdown = simulateShipCommandCost(
+        hypotheticalDocks,
+        cmdShipClass,
+        qty,
+        trackNextIncrement = true,
+      )
+      hypotheticalCost += currentBreakdown.totalCost
+      preview = currentBreakdown
+
+      if currentBreakdown.nextIncrementSource != ShipBuildSource.None:
+        hypotheticalCost += shipUnitCost(
+          shipClass,
+          currentBreakdown.nextIncrementSource,
+        )
+    else:
+      hypotheticalCost += simulateShipCommandCost(
+        hypotheticalDocks,
+        cmdShipClass,
+        qty,
+      ).totalCost
+
+  if not matchedExisting:
+    preview = simulateShipCommandCost(
+      hypotheticalDocks,
+      shipClass,
+      0,
+      trackNextIncrement = true,
+    )
+    if preview.nextIncrementSource != ShipBuildSource.None:
+      hypotheticalCost = currentCost + shipUnitCost(
+        shipClass,
+        preview.nextIncrementSource,
+      )
+    else:
+      hypotheticalCost = currentCost
+
+  preview.totalCost = currentCost
+  preview.nextIncrementCost = max(0, hypotheticalCost - currentCost)
+  let directCost = shipUnitCost(shipClass, preview.nextIncrementSource)
+  preview.triggersSpillover =
+    preview.nextIncrementSource != ShipBuildSource.None and
+    preview.nextIncrementCost > directCost
+  preview
+
+proc stagedShipCommandCosts*(
+    stagedBuildCommands: seq[BuildCommand],
+    colonyLimits: Table[int, ColonyLimitSnapshot],
+    techLevels: Option[TechLevel],
+): seq[int] =
+  result = newSeq[int](stagedBuildCommands.len)
+  var dockStates = initTable[int, ColonyDockState]()
+
+  for idx, cmd in stagedBuildCommands:
+    let qty = max(0, int(cmd.quantity))
+    case cmd.buildType
+    of BuildType.Ship:
+      if cmd.shipClass.isSome:
+        let shipClass = cmd.shipClass.get()
+        if shipClass != ShipClass.Fighter:
+          let key = int(cmd.colonyId)
+          if key notin colonyLimits:
+            result[idx] = qty * shipUnitCost(
+              shipClass,
+              ShipBuildSource.Shipyard,
+            )
+            continue
+          if key notin dockStates:
+            let snapshot = colonyLimits.getOrDefault(key)
+            dockStates[key] = initColonyDockState(snapshot, techLevels)
+          result[idx] = simulateShipCommandCost(
+            dockStates[key],
+            shipClass,
+            qty,
+          ).totalCost
+        else:
+          result[idx] = qty * shipUnitCost(
+            shipClass,
+            ShipBuildSource.Planetside,
+          )
+    of BuildType.Facility:
+      if cmd.facilityClass.isSome:
+        let facilityClass = cmd.facilityClass.get()
+        result[idx] =
+          qty * int(gameConfig.facilities.facilities[facilityClass].buildCost)
+    of BuildType.Ground:
+      if cmd.groundClass.isSome:
+        let groundClass = cmd.groundClass.get()
+        result[idx] =
+          qty * int(gameConfig.groundUnits.units[groundClass].productionCost)
+    of BuildType.Industrial:
+      let cost = int(gameConfig.economy.industrialInvestment.baseCost)
+      let units = max(0, int(cmd.industrialUnits))
+      result[idx] = cost * units
+    else:
+      discard
+
+proc stagedShipCommandCostsAtColony*(
+    stagedBuildCommands: seq[BuildCommand],
+    colonyId: ColonyId,
+    dockSummary: DockSummary,
+): seq[int] =
+  result = newSeq[int](stagedBuildCommands.len)
+  var dockState = initColonyDockState(dockSummary)
+
+  for idx, cmd in stagedBuildCommands:
+    if cmd.colonyId != colonyId:
+      continue
+
+    let qty = max(0, int(cmd.quantity))
+    case cmd.buildType
+    of BuildType.Ship:
+      if cmd.shipClass.isSome:
+        let shipClass = cmd.shipClass.get()
+        if shipClass != ShipClass.Fighter:
+          result[idx] = simulateShipCommandCost(
+            dockState,
+            shipClass,
+            qty,
+          ).totalCost
+        else:
+          result[idx] = qty * shipUnitCost(
+            shipClass,
+            ShipBuildSource.Planetside,
+          )
+    of BuildType.Facility:
+      if cmd.facilityClass.isSome:
+        let facilityClass = cmd.facilityClass.get()
+        result[idx] =
+          qty * int(gameConfig.facilities.facilities[facilityClass].buildCost)
+    of BuildType.Ground:
+      if cmd.groundClass.isSome:
+        let groundClass = cmd.groundClass.get()
+        result[idx] =
+          qty * int(gameConfig.groundUnits.units[groundClass].productionCost)
+    of BuildType.Industrial:
+      let cost = int(gameConfig.economy.industrialInvestment.baseCost)
+      let units = max(0, int(cmd.industrialUnits))
+      result[idx] = cost * units
+    else:
+      discard
 
 proc canSupportEtacBuild*(
     snapshot: ColonyLimitSnapshot,
@@ -164,7 +431,13 @@ proc validateStagedBuildLimits*(
     model: TuiModel,
     stagedCommands: seq[BuildCommand] = @[],
 ): seq[string]
-proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int
+proc stagedPpCost*(
+    stagedBuildCommands: seq[BuildCommand],
+    colonyLimits: Table[int, ColonyLimitSnapshot] = initTable[
+      int, ColonyLimitSnapshot
+    ](),
+    techLevels: Option[TechLevel] = none(TechLevel),
+): int
 proc stagedResearchPp*(deposits: ResearchDeposits): int
 proc stagedEspionagePp*(stagedEbpInvestment, stagedCipInvestment: int32): int
 
@@ -179,7 +452,7 @@ proc remainingBuildPp*(model: TuiModel,
   max(
     0,
     model.view.treasury -
-      stagedPpCost(commands) -
+      stagedPpCost(commands, model.view.colonyLimits, model.view.techLevels) -
       stagedResearchPp(model.ui.researchDeposits) -
       stagedEspionagePp(
         model.ui.stagedEbpInvestment,
@@ -210,7 +483,11 @@ proc validateStagedBuildLimits*(
       stagedCommands
     else:
       model.ui.stagedBuildCommands
-  let buildPp = stagedPpCost(commands)
+  let buildPp = stagedPpCost(
+    commands,
+    model.view.colonyLimits,
+    model.view.techLevels,
+  )
   let researchPp = stagedResearchPp(model.ui.researchDeposits)
   let espionagePp = stagedEspionagePp(
     model.ui.stagedEbpInvestment,
@@ -311,33 +588,21 @@ proc optimisticC2Used*(baseUsed: int,
                        stagedBuildCommands: seq[BuildCommand]): int =
   baseUsed + stagedC2Delta(stagedBuildCommands)
 
-proc stagedPpCost*(stagedBuildCommands: seq[BuildCommand]): int =
+proc stagedPpCost*(
+    stagedBuildCommands: seq[BuildCommand],
+    colonyLimits: Table[int, ColonyLimitSnapshot] = initTable[
+      int, ColonyLimitSnapshot
+    ](),
+    techLevels: Option[TechLevel] = none(TechLevel),
+): int =
   ## Sum PP committed by staged build commands (client-side preview).
-  for cmd in stagedBuildCommands:
-    let qty = max(0, int(cmd.quantity))
-    case cmd.buildType
-    of BuildType.Ship:
-      if cmd.shipClass.isSome:
-        let shipClass = cmd.shipClass.get()
-        let cost = int(gameConfig.ships.ships[shipClass].productionCost)
-        result += cost * qty
-    of BuildType.Facility:
-      if cmd.facilityClass.isSome:
-        let facilityClass = cmd.facilityClass.get()
-        let cost =
-          int(gameConfig.facilities.facilities[facilityClass].buildCost)
-        result += cost * qty
-    of BuildType.Ground:
-      if cmd.groundClass.isSome:
-        let groundClass = cmd.groundClass.get()
-        let cost = int(gameConfig.groundUnits.units[groundClass].productionCost)
-        result += cost * qty
-    of BuildType.Industrial:
-      let cost = int(gameConfig.economy.industrialInvestment.baseCost)
-      let units = max(0, int(cmd.industrialUnits))
-      result += cost * units
-    else:
-      discard
+  let perCommandCosts = stagedShipCommandCosts(
+    stagedBuildCommands,
+    colonyLimits,
+    techLevels,
+  )
+  for cost in perCommandCosts:
+    result += cost
 
 proc stagedResearchPp*(deposits: ResearchDeposits): int =
   ## Sum staged PP deposited into research pools.
@@ -424,6 +689,7 @@ proc colonyLimitSnapshotsFromPlayerState*(
       industrialUnits: int(colony.industrial.units),
       fighters: colony.fighterIds.len,
       spaceports: 0,
+      shipyards: 0,
       starbases: 0,
       shields: 0,
     )
@@ -431,8 +697,15 @@ proc colonyLimitSnapshotsFromPlayerState*(
     for neoriaId in colony.neoriaIds:
       if neoriaId notin neorias:
         continue
-      if neorias[neoriaId].neoriaClass == NeoriaClass.Spaceport:
+      if neorias[neoriaId].state in {CombatState.Crippled, CombatState.Destroyed}:
+        continue
+      case neorias[neoriaId].neoriaClass
+      of NeoriaClass.Spaceport:
         snapshot.spaceports.inc
+      of NeoriaClass.Shipyard:
+        snapshot.shipyards.inc
+      else:
+        discard
 
     for kastraId in colony.kastraIds:
       if kastraId notin kastras:

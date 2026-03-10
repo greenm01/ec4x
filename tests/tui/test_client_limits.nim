@@ -85,6 +85,49 @@ suite "Client limits":
     check stagedPpCost(staged) == expected
     check optimisticTreasury(1000, staged) == 1000 - expected
 
+  test "ship build preview uses shipyards first then spills to spaceports":
+    let colonyId = ColonyId(10)
+    let baseCost = int(gameConfig.ships.ships[ShipClass.Destroyer].productionCost)
+    let staged = @[
+      BuildCommand(
+        colonyId: colonyId,
+        buildType: BuildType.Ship,
+        quantity: 5,
+        shipClass: some(ShipClass.Destroyer),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+      ),
+      BuildCommand(
+        colonyId: colonyId,
+        buildType: BuildType.Ship,
+        quantity: 5,
+        shipClass: some(ShipClass.LightCruiser),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+      ),
+    ]
+    let preview = commandIncrementPreview(
+      staged,
+      colonyId,
+      ShipClass.Destroyer,
+      DockSummary(
+        constructionAvailable: 15,
+        constructionTotal: 15,
+        shipyardAvailable: 10,
+        shipyardTotal: 10,
+        spaceportAvailable: 5,
+        spaceportTotal: 5,
+        repairAvailable: 0,
+        repairTotal: 0,
+      ),
+    )
+
+    check preview.nextIncrementSource == ShipBuildSource.Shipyard
+    check preview.nextIncrementCost > baseCost
+    check preview.triggersSpillover == true
+
   test "validateStagedBuildLimits blocks PP overspend across systems":
     var model = initTuiModel()
     model.view.treasury = 100

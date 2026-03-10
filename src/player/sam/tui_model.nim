@@ -185,6 +185,12 @@ proc fleetDetailMaxRows*(termHeight: int): int =
   max(0, maxInnerHeight - baseInnerHeight)
 
 type
+  ShipBuildSource* {.pure.} = enum
+    None
+    Planetside
+    Shipyard
+    Spaceport
+
   BuildOptionKind* {.pure.} = enum
     Ship
     Ground
@@ -195,7 +201,11 @@ type
     kind*: BuildOptionKind
     name*: string
     cost*: int
+    baseCost*: int
     cstReq*: int
+    shipBuildSource*: ShipBuildSource
+    shipyardSlotsBeforeSpaceport*: int
+    triggersSpaceportSpillover*: bool
 
   BuildRowKey* = object
     kind*: BuildOptionKind
@@ -206,6 +216,10 @@ type
   DockSummary* = object
     constructionAvailable*: int
     constructionTotal*: int
+    shipyardAvailable*: int
+    shipyardTotal*: int
+    spaceportAvailable*: int
+    spaceportTotal*: int
     repairAvailable*: int
     repairTotal*: int
 
@@ -214,6 +228,7 @@ type
     industrialUnits*: int
     fighters*: int
     spaceports*: int
+    shipyards*: int
     starbases*: int
     shields*: int
 
@@ -245,6 +260,7 @@ type
     colonyName*: string
     selectedIdx*: int
     stagedBuildCommands*: seq[BuildCommand]
+    dockSummary*: DockSummary
     scroll*: ScrollState
 
   TransferModalFocus* {.pure.} = enum
@@ -1467,6 +1483,7 @@ proc initTuiUiState*(): TuiUiState =
       selectedBuildIdx: 0,
       selectedQueueIdx: 0,
       availableOptions: @[],
+      dockSummary: DockSummary(),
       cstLevel: 1,
       remainingPp: 0,
       stagedBuildCommands: @[],
@@ -1479,6 +1496,7 @@ proc initTuiUiState*(): TuiUiState =
       colonyName: "",
       selectedIdx: 0,
       stagedBuildCommands: @[],
+      dockSummary: DockSummary(),
       scroll: initScrollState()
     ),
     populationTransferModal: PopulationTransferModalState(

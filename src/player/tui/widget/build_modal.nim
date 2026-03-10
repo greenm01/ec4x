@@ -20,6 +20,7 @@ import ../../sam/tui_model
 import ../../../engine/types/[core, production]
 import ../../../engine/types/[ship, ground_unit, facilities]
 import ../../../engine/systems/capacity/construction_docks
+import ../../sam/client_limits
 
 type
   BuildModalWidget* = object
@@ -192,11 +193,16 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
           let cls =
             parseEnum[ShipClass](opt.name.replace(" ", ""))
           if cls == key.shipClass.get():
+            if opt.cost > state.remainingPp:
+              return false
             if construction_docks.shipRequiresDock(cls):
-              let pendingUsed = pendingDockUse(state)
-              let available =
-                state.dockSummary.constructionAvailable - pendingUsed
-              return available > 0
+              let preview = commandIncrementPreview(
+                state.stagedBuildCommands,
+                ColonyId(state.colonyId.uint32),
+                cls,
+                state.dockSummary,
+              )
+              return preview.nextIncrementSource != ShipBuildSource.None
             return true
         except:
           discard
@@ -220,8 +226,62 @@ proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
           discard
     of BuildOptionKind.Industrial:
       if key.kind == BuildOptionKind.Industrial:
+        if opt.cost > state.remainingPp:
+          return false
         return true
   false
+
+proc matchingBuildOption(
+    state: BuildModalState,
+    key: BuildRowKey
+): Option[BuildOption] =
+  for opt in state.availableOptions:
+    case opt.kind
+    of BuildOptionKind.Ship:
+      if key.shipClass.isSome:
+        try:
+          let cls = parseEnum[ShipClass](opt.name.replace(" ", ""))
+          if cls == key.shipClass.get():
+            return some(opt)
+        except:
+          discard
+    of BuildOptionKind.Ground:
+      if key.groundClass.isSome:
+        try:
+          let cls = parseEnum[GroundClass](opt.name.replace(" ", ""))
+          if cls == key.groundClass.get():
+            return some(opt)
+        except:
+          discard
+    of BuildOptionKind.Facility:
+      if key.facilityClass.isSome:
+        try:
+          let cls = parseEnum[FacilityClass](opt.name.replace(" ", ""))
+          if cls == key.facilityClass.get():
+            return some(opt)
+        except:
+          discard
+    of BuildOptionKind.Industrial:
+      if key.kind == BuildOptionKind.Industrial:
+        return some(opt)
+  none(BuildOption)
+
+proc effectiveRowCost(state: BuildModalState, key: BuildRowKey): int =
+  let opt = matchingBuildOption(state, key)
+  if opt.isSome:
+    return opt.get().cost
+  buildRowCost(key)
+
+proc shipSourceLabel(source: ShipBuildSource): string =
+  case source
+  of ShipBuildSource.Planetside:
+    "Planetside"
+  of ShipBuildSource.Shipyard:
+    "Shipyard"
+  of ShipBuildSource.Spaceport:
+    "Spaceport"
+  of ShipBuildSource.None:
+    "Unavailable"
 
 proc renderBuildTable(
     state: BuildModalState, area: Rect, buf: var CellBuffer
@@ -276,7 +336,7 @@ proc renderBuildTable(
         row.code,
         row.name,
         $row.cst,
-        $row.pc,
+        $effectiveRowCost(state, key),
         pct(row.mcPct),
         dashIf(row.attack),
         dashIf(row.defense),
@@ -407,6 +467,51 @@ proc renderFooter(state: BuildModalState, area: Rect,
       break
     x += width
 
+proc renderShipSourceDetail(
+    state: BuildModalState,
+    area: Rect,
+    buf: var CellBuffer
+) =
+  if area.isEmpty or state.category != BuildCategory.Ships:
+    return
+
+  let key = buildRowKey(state.category, state.selectedBuildIdx)
+  let opt = matchingBuildOption(state, key)
+  if opt.isNone or key.shipClass.isNone:
+    return
+
+  fillRow(area, buf, modalBgStyle())
+  let shipClass = key.shipClass.get()
+  let preview = commandIncrementPreview(
+    state.stagedBuildCommands,
+    ColonyId(state.colonyId.uint32),
+    shipClass,
+    state.dockSummary,
+  )
+  let sourceText =
+    if shipClass == ShipClass.Fighter:
+      "Source: Planetside manufacturing"
+    else:
+      "Source: " & shipSourceLabel(preview.nextIncrementSource)
+  let spillText =
+    if shipClass == ShipClass.Fighter:
+      ""
+    elif preview.triggersSpillover:
+      "  Spillover: later queued ships pushed to Spaceport"
+    elif preview.shipyardSlotsRemaining > 0:
+      "  Shipyard slots before spaceport: " & $preview.shipyardSlotsRemaining
+    else:
+      ""
+  let text = sourceText & spillText
+  var x = area.x
+  for rune in text.runes:
+    if x >= area.right:
+      break
+    let width = buf.put(x, area.y, rune.toUTF8, modalDimStyle())
+    if width <= 0:
+      break
+    x += width
+
 proc render*(
     widget: BuildModalWidget, state: BuildModalState,
     viewport: Rect, buf: var CellBuffer
@@ -429,7 +534,7 @@ proc render*(
     TableChromeRows + 5
   )
   let tableHeight = tableView.renderHeight(visibleRows)
-  let contentHeight = tableHeight + 5
+  let contentHeight = tableHeight + 6
   let maxTableWidth = viewport.width - 4
   let tableWidth = tableWidthFromColumns(
     columns, maxTableWidth, showBorders = true
@@ -464,8 +569,10 @@ proc render*(
 
   # Content area (single table)
   let contentArea = rect(
-    inner.x, separatorY + 1, inner.width, inner.height - 5
+    inner.x, separatorY + 1, inner.width, inner.height - 6
   )
+
+  let detailArea = rect(inner.x, inner.bottom - 2, inner.width, 1)
 
   # Footer area (above the bottom separator)
   let footerArea = rect(inner.x, inner.bottom - 1, inner.width, 1)
@@ -474,4 +581,5 @@ proc render*(
   renderCategoryTabs(state, tabsArea, buf)
   renderDockSummary(state, docksArea, buf)
   renderBuildTable(state, contentArea, buf)
+  renderShipSourceDetail(state, detailArea, buf)
   renderFooter(state, footerArea, buf)

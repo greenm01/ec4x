@@ -97,14 +97,23 @@ proc syncGameStateToModel*(
       industrialUnits: int(colony.industrial.units),
       fighters: colony.fighterIds.len,
       spaceports: 0,
+      shipyards: 0,
       starbases: 0,
       shields: 0,
     )
     for neoriaId in colony.neoriaIds:
       let neoriaOpt = state.neoria(neoriaId)
-      if neoriaOpt.isSome and
-          neoriaOpt.get().neoriaClass == NeoriaClass.Spaceport:
-        snapshot.spaceports.inc
+      if neoriaOpt.isSome:
+        let neoria = neoriaOpt.get()
+        if neoria.state in {CombatState.Crippled, CombatState.Destroyed}:
+          continue
+        case neoria.neoriaClass
+        of NeoriaClass.Spaceport:
+          snapshot.spaceports.inc
+        of NeoriaClass.Shipyard:
+          snapshot.shipyards.inc
+        else:
+          discard
     for kastraId in colony.kastraIds:
       let kastraOpt = state.kastra(kastraId)
       if kastraOpt.isSome and
@@ -117,6 +126,8 @@ proc syncGameStateToModel*(
         snapshot.shields.inc
     model.view.colonyLimits[int(colony.id)] = snapshot
   for fleet in state.fleetsOwned(viewingHouse):
+    if fleet.ships.len == 0:
+      continue
     model.view.ownFleetsById[int(fleet.id)] = fleet
     for shipId in fleet.ships:
       let shipOpt = state.ship(shipId)
@@ -270,6 +281,8 @@ proc syncGameStateToModel*(
   # Build fleets list
   model.view.fleets = @[]
   for fleet in state.fleetsOwned(viewingHouse):
+    if fleet.ships.len == 0:
+      continue
     let sysOpt = state.system(fleet.location)
     var locName = "???"
     var sectorLabel = "?"
@@ -1593,6 +1606,7 @@ proc syncBuildModalData*(
   )
   model.ui.buildModal.availableOptions = result.options
   model.ui.buildModal.dockSummary = result.dockSummary
+  model.ui.buildModal.remainingPp = remainingBuildPp(model)
   model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
   if ps.techLevels.isSome:
     model.ui.buildModal.cstLevel = ps.techLevels.get().cst

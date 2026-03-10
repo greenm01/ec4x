@@ -21,7 +21,8 @@ import ./widget/hexmap/hexmap_pkg
 import ./hex_labels
 import ./widget/hexmap/symbols
 from ../sam/tui_model import BuildOption, BuildOptionKind,
-  ColonyLimitSnapshot, DockSummary, commandLabel, fleetCommandNumber
+  ColonyLimitSnapshot, DockSummary, ShipBuildSource, commandLabel,
+  fleetCommandNumber
 
 proc industrialUnitCostPreview(
     populationUnits: int,
@@ -782,6 +783,10 @@ proc dockSummary(state: GameState, colonyId: ColonyId): DockSummary =
   let capacities = state.analyzeColonyCapacity(colonyId)
   var constructionTotal = 0
   var constructionUsed = 0
+  var shipyardTotal = 0
+  var shipyardUsed = 0
+  var spaceportTotal = 0
+  var spaceportUsed = 0
   var repairTotal = 0
   var repairUsed = 0
 
@@ -796,6 +801,12 @@ proc dockSummary(state: GameState, colonyId: ColonyId): DockSummary =
     of NeoriaClass.Spaceport, NeoriaClass.Shipyard:
       constructionTotal += int(maxDocks)
       constructionUsed += int(usedDocks)
+      if facility.facilityType == NeoriaClass.Shipyard:
+        shipyardTotal += int(maxDocks)
+        shipyardUsed += int(usedDocks)
+      else:
+        spaceportTotal += int(maxDocks)
+        spaceportUsed += int(usedDocks)
     of NeoriaClass.Drydock:
       repairTotal += int(maxDocks)
       repairUsed += int(usedDocks)
@@ -805,6 +816,10 @@ proc dockSummary(state: GameState, colonyId: ColonyId): DockSummary =
   DockSummary(
     constructionAvailable: constructionAvailable,
     constructionTotal: constructionTotal,
+    shipyardAvailable: max(0, shipyardTotal - shipyardUsed),
+    shipyardTotal: shipyardTotal,
+    spaceportAvailable: max(0, spaceportTotal - spaceportUsed),
+    spaceportTotal: spaceportTotal,
     repairAvailable: repairAvailable,
     repairTotal: repairTotal,
   )
@@ -998,6 +1013,7 @@ proc colonyToDetailData*(
     industrialUnits: int(colony.industrial.units),
     fighters: colony.fighterIds.len,
     spaceports: 0,
+    shipyards: 0,
     starbases: 0,
     shields: 0,
   )
@@ -1032,14 +1048,31 @@ proc colonyToDetailData*(
       continue
     if requiresDock and dockInfo.constructionTotal <= 0:
       continue
-    let cost = int(
-      gameConfig.ships.ships[shipClass].productionCost
+    let preview = commandIncrementPreview(
+      stagedBuilds,
+      colonyId,
+      shipClass,
+      dockInfo,
     )
+    let baseCost = int(gameConfig.ships.ships[shipClass].productionCost)
+    let cost =
+      if shipClass == ShipClass.Fighter:
+        baseCost
+      else:
+        preview.nextIncrementCost
     buildOptions.add(BuildOption(
       kind: BuildOptionKind.Ship,
       name: humanizeEnum($shipClass),
       cost: cost,
-      cstReq: cstReq
+      baseCost: baseCost,
+      cstReq: cstReq,
+      shipBuildSource:
+        if shipClass == ShipClass.Fighter:
+          ShipBuildSource.Planetside
+        else:
+          preview.nextIncrementSource,
+      shipyardSlotsBeforeSpaceport: preview.shipyardSlotsRemaining,
+      triggersSpaceportSpillover: preview.triggersSpillover,
     ))
 
   for groundClass in GroundClass:
@@ -1057,7 +1090,11 @@ proc colonyToDetailData*(
       kind: BuildOptionKind.Ground,
       name: humanizeEnum($groundClass),
       cost: cost,
-      cstReq: cstReq
+      baseCost: cost,
+      cstReq: cstReq,
+      shipBuildSource: ShipBuildSource.None,
+      shipyardSlotsBeforeSpaceport: 0,
+      triggersSpaceportSpillover: false,
     ))
 
   for facilityClass in FacilityClass:
@@ -1084,7 +1121,11 @@ proc colonyToDetailData*(
       kind: BuildOptionKind.Facility,
       name: humanizeEnum($facilityClass),
       cost: cost,
-      cstReq: cstReq
+      baseCost: cost,
+      cstReq: cstReq,
+      shipBuildSource: ShipBuildSource.None,
+      shipyardSlotsBeforeSpaceport: 0,
+      triggersSpaceportSpillover: false,
     ))
 
   let industrialCost = industrialUnitCostPreview(
@@ -1095,7 +1136,11 @@ proc colonyToDetailData*(
     kind: BuildOptionKind.Industrial,
     name: "Industrial Units",
     cost: industrialCost,
-    cstReq: 1
+    baseCost: industrialCost,
+    cstReq: 1,
+    shipBuildSource: ShipBuildSource.None,
+    shipyardSlotsBeforeSpaceport: 0,
+    triggersSpaceportSpillover: false,
   ))
 
   PlanetDetailData(
@@ -1519,6 +1564,10 @@ proc colonyToDetailDataFromPS*(
         dockSummary: DockSummary(
           constructionAvailable: 0,  # Would need construction project data
           constructionTotal: colony.constructionDocks.int,
+          shipyardAvailable: 0,
+          shipyardTotal: 0,
+          spaceportAvailable: 0,
+          spaceportTotal: 0,
           repairAvailable: 0,
           repairTotal: colony.repairDocks.int,
         ),
@@ -1580,6 +1629,10 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
       dockSummary: DockSummary(
         constructionAvailable: 0,
         constructionTotal: 0,
+        shipyardAvailable: 0,
+        shipyardTotal: 0,
+        spaceportAvailable: 0,
+        spaceportTotal: 0,
         repairAvailable: 0,
         repairTotal: 0
       )
@@ -1592,9 +1645,13 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     techLevels = ps.techLevels.get()
 
   # Get dock summary from colony data
-  let dockInfo = DockSummary(
+  var dockInfo = DockSummary(
     constructionAvailable: max(0, col.constructionDocks.int),
     constructionTotal: col.constructionDocks.int,
+    shipyardAvailable: 0,
+    shipyardTotal: 0,
+    spaceportAvailable: 0,
+    spaceportTotal: 0,
     repairAvailable: max(0, col.repairDocks.int),
     repairTotal: col.repairDocks.int
   )
@@ -1615,8 +1672,12 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     case neoria.neoriaClass
     of NeoriaClass.Spaceport:
       hasOperationalSpaceport = true
+      dockInfo.spaceportTotal += neoria.effectiveDocks.int
+      dockInfo.spaceportAvailable += neoria.effectiveDocks.int
     of NeoriaClass.Shipyard:
       hasOperationalShipyard = true
+      dockInfo.shipyardTotal += neoria.effectiveDocks.int
+      dockInfo.shipyardAvailable += neoria.effectiveDocks.int
     else:
       discard
 
@@ -1699,12 +1760,31 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     let requiresDock = construction_docks.shipRequiresDock(shipClass)
     if requiresDock and dockInfo.constructionTotal <= 0:
       continue
-    let cost = int(gameConfig.ships.ships[shipClass].productionCost)
+    let preview = commandIncrementPreview(
+      stagedBuilds,
+      colonyId,
+      shipClass,
+      dockInfo,
+    )
+    let baseCost = int(gameConfig.ships.ships[shipClass].productionCost)
+    let cost =
+      if shipClass == ShipClass.Fighter:
+        baseCost
+      else:
+        preview.nextIncrementCost
     options.add(BuildOption(
       kind: BuildOptionKind.Ship,
       name: humanizeEnum($shipClass),
       cost: cost,
-      cstReq: cstReq
+      baseCost: baseCost,
+      cstReq: cstReq,
+      shipBuildSource:
+        if shipClass == ShipClass.Fighter:
+          ShipBuildSource.Planetside
+        else:
+          preview.nextIncrementSource,
+      shipyardSlotsBeforeSpaceport: preview.shipyardSlotsRemaining,
+      triggersSpaceportSpillover: preview.triggersSpillover,
     ))
 
   # Ground units
@@ -1720,7 +1800,11 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
       kind: BuildOptionKind.Ground,
       name: humanizeEnum($groundClass),
       cost: cost,
-      cstReq: cstReq
+      baseCost: cost,
+      cstReq: cstReq,
+      shipBuildSource: ShipBuildSource.None,
+      shipyardSlotsBeforeSpaceport: 0,
+      triggersSpaceportSpillover: false,
     ))
 
   # Facilities
@@ -1745,7 +1829,11 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
       kind: BuildOptionKind.Facility,
       name: humanizeEnum($facilityClass),
       cost: cost,
-      cstReq: cstReq
+      baseCost: cost,
+      cstReq: cstReq,
+      shipBuildSource: ShipBuildSource.None,
+      shipyardSlotsBeforeSpaceport: 0,
+      triggersSpaceportSpillover: false,
     ))
 
   let industrialCost = industrialUnitCostPreview(
@@ -1756,7 +1844,11 @@ proc computeBuildOptionsFromPS*(ps: PlayerState,
     kind: BuildOptionKind.Industrial,
     name: "Industrial Units",
     cost: industrialCost,
-    cstReq: 1
+    baseCost: industrialCost,
+    cstReq: 1,
+    shipBuildSource: ShipBuildSource.None,
+    shipyardSlotsBeforeSpaceport: 0,
+    triggersSpaceportSpillover: false,
   ))
 
   (options: options, dockSummary: dockInfo)

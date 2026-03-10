@@ -11,10 +11,10 @@ import ./scroll_state
 import ../buffer
 import ../layout/rect
 import ../styles/ec_palette
-import ../build_spec
 import ../table_layout_policy
 import ../../sam/tui_model
-import ../../../engine/types/[core, production, ship, ground_unit, facilities]
+import ../../sam/client_limits
+import ../../../engine/types/[core, production]
 import ../columns
 
 type
@@ -46,59 +46,49 @@ proc humanizeEnum(name: string): string =
         result.add(' ')
     result.add(ch)
 
-proc rowForCommand(cmd: BuildCommand): QueueRow =
+proc rowForCommand(cmd: BuildCommand, totalCost: int): QueueRow =
   var kindLabel = "Other"
   var itemLabel = "Unknown"
-  var cost = 0
   case cmd.buildType
   of BuildType.Ship:
     kindLabel = "Ship"
     if cmd.shipClass.isSome:
       itemLabel = humanizeEnum($cmd.shipClass.get())
-      cost = buildRowCost(BuildRowKey(
-        kind: BuildOptionKind.Ship,
-        shipClass: cmd.shipClass,
-        groundClass: none(GroundClass),
-        facilityClass: none(FacilityClass)
-      ))
   of BuildType.Ground:
     kindLabel = "Ground"
     if cmd.groundClass.isSome:
       itemLabel = humanizeEnum($cmd.groundClass.get())
-      cost = buildRowCost(BuildRowKey(
-        kind: BuildOptionKind.Ground,
-        shipClass: none(ShipClass),
-        groundClass: cmd.groundClass,
-        facilityClass: none(FacilityClass)
-      ))
   of BuildType.Facility:
     kindLabel = "Facility"
     if cmd.facilityClass.isSome:
       itemLabel = humanizeEnum($cmd.facilityClass.get())
-      cost = buildRowCost(BuildRowKey(
-        kind: BuildOptionKind.Facility,
-        shipClass: none(ShipClass),
-        groundClass: none(GroundClass),
-        facilityClass: cmd.facilityClass
-      ))
   else:
     discard
   QueueRow(
     kindLabel: kindLabel,
     itemLabel: itemLabel,
     qty: cmd.quantity.int,
-    totalCost: cost * cmd.quantity.int,
+    totalCost: totalCost,
     status: "Staged"
   )
 
 proc queueRows(state: QueueModalState): seq[QueueRow] =
+  var colonyCommands: seq[BuildCommand] = @[]
   let colonyId = ColonyId(state.colonyId.uint32)
   for cmd in state.stagedBuildCommands:
     if cmd.colonyId != colonyId:
       continue
     if cmd.quantity <= 0:
       continue
-    result.add(rowForCommand(cmd))
+    colonyCommands.add(cmd)
+
+  let costs = stagedShipCommandCostsAtColony(
+    colonyCommands,
+    colonyId,
+    state.dockSummary,
+  )
+  for idx, cmd in colonyCommands:
+    result.add(rowForCommand(cmd, costs[idx]))
 
 proc render*(
     widget: QueueModalWidget,

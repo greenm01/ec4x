@@ -775,6 +775,10 @@ suite "TUI modal acceptors":
     model.ui.buildModal.dockSummary = DockSummary(
       constructionAvailable: 3,
       constructionTotal: 3,
+      shipyardAvailable: 3,
+      shipyardTotal: 3,
+      spaceportAvailable: 0,
+      spaceportTotal: 0,
       repairAvailable: 0,
       repairTotal: 0,
     )

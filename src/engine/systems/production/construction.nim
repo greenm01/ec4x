@@ -21,15 +21,89 @@
 ## - THIS MODULE: "How commands work" (validation, routing, treasury)
 ## - queue_advancement.nim: "Queue management" (advancement)
 
-import std/[options, strformat]
+import std/[options, strformat, tables, algorithm]
 import ../../types/[core, game_state, production, command, event]
-import ../../types/[colony, facilities]
+import ../../types/[colony, facilities, ship, combat]
 import ../../state/engine
+import ../../entities/project_ops
 import ../../../common/logger
 import ../capacity/construction_docks
 import ./queue_advancement
 import ./[projects, accessors, facility_queries]
 import ../../event_factory/economic
+
+proc shipProjectCost(
+    shipClass: ShipClass,
+    assignedFacility: Option[tuple[facilityId: NeoriaId, facilityType: NeoriaClass]],
+): int32 =
+  let baseCost = accessors.shipConstructionCost(shipClass)
+  if shipClass == ShipClass.Fighter:
+    return baseCost
+  if assignedFacility.isSome and
+      assignedFacility.get().facilityType == NeoriaClass.Spaceport:
+    return baseCost * 2
+  baseCost
+
+proc availableAssignedFacilities(
+    state: GameState,
+    colonyId: ColonyId,
+    pendingUsage: Table[NeoriaId, int32],
+): seq[tuple[facilityId: NeoriaId, facilityType: NeoriaClass, availableDocks: int32]] =
+  let colonyOpt = state.colony(colonyId)
+  if colonyOpt.isNone:
+    return @[]
+
+  let colony = colonyOpt.get()
+  for neoriaId in colony.neoriaIds:
+    let neoriaOpt = state.neoria(neoriaId)
+    if neoriaOpt.isNone:
+      continue
+    let neoria = neoriaOpt.get()
+    if neoria.state == CombatState.Crippled or
+        neoria.neoriaClass == NeoriaClass.Drydock:
+      continue
+
+    let reserved = pendingUsage.getOrDefault(neoriaId, 0'i32)
+    let usedDocks = int32(
+      neoria.activeConstructions.len + neoria.activeRepairs.len
+    ) + reserved
+    let available = neoria.effectiveDocks - usedDocks
+    if available > 0'i32:
+      result.add((neoriaId, neoria.neoriaClass, available))
+
+  result.sort do(
+    a, b: tuple[facilityId: NeoriaId, facilityType: NeoriaClass,
+      availableDocks: int32]
+  ) -> int:
+    if a.facilityType == NeoriaClass.Shipyard and
+        b.facilityType == NeoriaClass.Spaceport:
+      return -1
+    if a.facilityType == NeoriaClass.Spaceport and
+        b.facilityType == NeoriaClass.Shipyard:
+      return 1
+    cmp(b.availableDocks, a.availableDocks)
+
+proc assignFacilityForPacket(
+    state: GameState,
+    colonyId: ColonyId,
+    pendingUsage: Table[NeoriaId, int32],
+): Option[tuple[facilityId: NeoriaId, facilityType: NeoriaClass]] =
+  let available = state.availableAssignedFacilities(colonyId, pendingUsage)
+  if available.len == 0:
+    return none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
+  let best = available[0]
+  some((best.facilityId, best.facilityType))
+
+proc queueProjectToAssignedFacility(
+    state: GameState,
+    colonyId: ColonyId,
+    project: ConstructionProject,
+    facilityId: NeoriaId,
+): bool =
+  var assignedProject = project
+  assignedProject.neoriaId = some(facilityId)
+  discard state.queueConstructionProject(colonyId, assignedProject)
+  true
 
 proc resolveBuildOrders*(
     state: GameState, packet: CommandPacket, events: var seq[GameEvent]
@@ -59,6 +133,7 @@ proc resolveBuildOrders*(
 
   var requestedUnits = 0
   var acceptedUnits = 0
+  var pendingDockUsage = initTable[NeoriaId, int32]()
 
   for command in packet.buildCommands:
     let requestedCount = case command.buildType
@@ -114,8 +189,9 @@ proc resolveBuildOrders*(
         none(tuple[facilityId: NeoriaId, facilityType: NeoriaClass])
 
       if requiresDock:
-        assignedFacility = construction_docks.assignFacility(
-          state, command.colonyId, BuildType.Ship
+        assignedFacility = state.assignFacilityForPacket(
+          command.colonyId,
+          pendingDockUsage,
         )
         if assignedFacility.isNone:
           let (current, maximum) =
@@ -131,7 +207,7 @@ proc resolveBuildOrders*(
       let projectCost = case command.buildType
         of BuildType.Ship:
           if command.shipClass.isSome:
-            accessors.shipConstructionCost(command.shipClass.get())
+            shipProjectCost(command.shipClass.get(), assignedFacility)
           else:
             0'i32
         of BuildType.Facility:
@@ -178,6 +254,8 @@ proc resolveBuildOrders*(
 
         let shipClass = command.shipClass.get()
         project = createShipProject(shipClass)
+        project.costTotal = projectCost
+        project.costPaid = projectCost
         projectDesc = "Ship construction: " & $shipClass
       of BuildType.Facility:
         if command.facilityClass.isNone:
@@ -208,12 +286,16 @@ proc resolveBuildOrders*(
       var queueLocation = ""
 
       if requiresDock and assignedFacility.isSome:
-        success = construction_docks.assignAndQueueProject(
-          state, command.colonyId, project
+        let (facilityId, _) = assignedFacility.get()
+        success = state.queueProjectToAssignedFacility(
+          command.colonyId,
+          project,
+          facilityId,
         )
         if success:
-          let (facilityId, _) = assignedFacility.get()
           queueLocation = &"facility {facilityId}"
+          pendingDockUsage[facilityId] =
+            pendingDockUsage.getOrDefault(facilityId, 0'i32) + 1'i32
       else:
         var mutableColony = colony
         if state.startConstruction(mutableColony, project):

@@ -6,7 +6,7 @@
 ##
 ## Acceptor signature: proc(model: var M, proposal: Proposal)
 
-import std/[options, times, strutils, tables, sets]
+import std/[options, times, strutils, tables, sets, math]
 import ./types
 import ./tui_model
 import ./actions
@@ -26,7 +26,6 @@ import ../../common/logger
 import ../../engine/globals
 import ../../engine/types/[core, production, ship, facilities, ground_unit,
   fleet, command, tech, espionage, combat, colony]
-import ../../engine/systems/capacity/construction_docks
 import ../../engine/systems/tech/costs
 import ../tui/data/research_projection
 import ../tui/data/tech_info
@@ -3194,29 +3193,40 @@ proc buildOptionMatchesRow(opt: BuildOption, key: BuildRowKey): bool =
   of BuildOptionKind.Industrial:
     key.kind == BuildOptionKind.Industrial
 
+proc matchingBuildOption(
+    state: BuildModalState,
+    key: BuildRowKey
+): Option[BuildOption] =
+  for opt in state.availableOptions:
+    if buildOptionMatchesRow(opt, key):
+      return some(opt)
+  none(BuildOption)
+
+proc effectiveBuildRowCost(state: BuildModalState, key: BuildRowKey): int =
+  let opt = matchingBuildOption(state, key)
+  if opt.isSome:
+    return opt.get().cost
+  buildRowCost(key)
+
 proc isBuildable(state: BuildModalState, key: BuildRowKey): bool =
   if buildRowCst(key) > state.cstLevel:
     return false
-  for opt in state.availableOptions:
-    if buildOptionMatchesRow(opt, key):
-      if key.kind == BuildOptionKind.Ship and key.shipClass.isSome:
-        let cls = key.shipClass.get()
-        if construction_docks.shipRequiresDock(cls):
-          var pendingUsed = 0
-          let colonyId = ColonyId(state.colonyId.uint32)
-          for cmd in state.stagedBuildCommands:
-            if cmd.colonyId != colonyId:
-              continue
-            if cmd.buildType == BuildType.Ship and
-                cmd.shipClass.isSome and
-                construction_docks.shipRequiresDock(cmd.shipClass.get()):
-              pendingUsed += cmd.quantity.int
-          let available =
-            state.dockSummary.constructionAvailable - pendingUsed
-          if available <= 0:
-            return false
-      return true
-  false
+  let opt = matchingBuildOption(state, key)
+  if opt.isNone:
+    return false
+  if opt.get().cost > state.remainingPp:
+    return false
+  if key.kind == BuildOptionKind.Ship and key.shipClass.isSome:
+    let cls = key.shipClass.get()
+    if cls != ShipClass.Fighter:
+      let preview = commandIncrementPreview(
+        state.stagedBuildCommands,
+        ColonyId(state.colonyId.uint32),
+        cls,
+        state.dockSummary,
+      )
+      return preview.nextIncrementSource != ShipBuildSource.None
+  true
 
 proc stagedBuildIdx(
     state: BuildModalState, key: BuildRowKey
@@ -3248,6 +3258,7 @@ proc stagedBuildIdx(
 
 proc syncStagedBuildMirrors(model: var TuiModel) =
   model.ui.buildModal.stagedBuildCommands = model.ui.stagedBuildCommands
+  model.ui.buildModal.remainingPp = remainingBuildPp(model)
   if model.ui.queueModal.active:
     model.ui.queueModal.stagedBuildCommands = model.ui.stagedBuildCommands
 
@@ -3315,7 +3326,7 @@ proc incSelectedQty(model: var TuiModel) =
   if not isBuildable(model.ui.buildModal, key):
     model.ui.statusMessage = "Not buildable"
     return
-  let cost = buildRowCost(key)
+  let cost = effectiveBuildRowCost(model.ui.buildModal, key)
   if remainingBuildPp(model) < cost:
     model.ui.statusMessage = "Insufficient PP"
     return
@@ -3436,6 +3447,7 @@ proc buildModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         model.ui.buildModal.cstLevel = model.view.techLevels.get().cst
       else:
         model.ui.buildModal.cstLevel = 1
+      model.ui.buildModal.remainingPp = remainingBuildPp(model)
       model.ui.buildModal.stagedBuildCommands =
         model.ui.stagedBuildCommands
       # Note: availableOptions and dockSummary will be populated by the reactor
@@ -3535,6 +3547,47 @@ proc queueStagedIndices(model: TuiModel): seq[int] =
     if cmd.colonyId == colonyId and cmd.quantity > 0:
       result.add(idx)
 
+proc queueDockSummary(model: TuiModel, colonyId: int): DockSummary =
+  if model.ui.buildModal.active and model.ui.buildModal.colonyId == colonyId:
+    return model.ui.buildModal.dockSummary
+
+  let infoOpt = model.colonyInfoById(colonyId)
+  if infoOpt.isNone:
+    return DockSummary()
+
+  let info = infoOpt.get()
+  let snapshot = model.view.colonyLimits.getOrDefault(colonyId)
+  let cstLevel =
+    if model.view.techLevels.isSome:
+      max(1'i32, model.view.techLevels.get().cst)
+    else:
+      1'i32
+  let dockMultiplier =
+    gameConfig.tech.cst.baseModifier +
+    (float32(cstLevel - 1'i32) * gameConfig.tech.cst.incrementPerLevel)
+  let shipyardBase = gameConfig.facilities.facilities[FacilityClass.Shipyard].docks
+  let spaceportBase =
+    gameConfig.facilities.facilities[FacilityClass.Spaceport].docks
+  let shipyardTotal = int(floor(float32(shipyardBase) * dockMultiplier)) *
+    snapshot.shipyards
+  let spaceportTotal = int(floor(float32(spaceportBase) * dockMultiplier)) *
+    snapshot.spaceports
+  let shipyardAvailable = min(shipyardTotal, info.constructionDockAvailable)
+  let spaceportAvailable = max(
+    0,
+    info.constructionDockAvailable - shipyardAvailable,
+  )
+  DockSummary(
+    constructionAvailable: info.constructionDockAvailable,
+    constructionTotal: info.constructionDockTotal,
+    shipyardAvailable: shipyardAvailable,
+    shipyardTotal: shipyardTotal,
+    spaceportAvailable: spaceportAvailable,
+    spaceportTotal: spaceportTotal,
+    repairAvailable: info.repairDockAvailable,
+    repairTotal: info.repairDockTotal,
+  )
+
 proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
   ## Handle queue modal proposals
   if proposal.kind != ProposalKind.pkGameAction:
@@ -3562,6 +3615,10 @@ proc queueModalAcceptor*(model: var TuiModel, proposal: Proposal) =
         if infoOpt.isSome:
           model.ui.queueModal.colonyName = infoOpt.get().systemName
         model.ui.queueModal.colonyId = colonyId
+      model.ui.queueModal.dockSummary = queueDockSummary(
+        model,
+        model.ui.queueModal.colonyId,
+      )
       model.ui.queueModal.selectedIdx = 0
       model.ui.queueModal.stagedBuildCommands =
         model.ui.stagedBuildCommands
