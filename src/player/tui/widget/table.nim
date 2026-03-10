@@ -672,12 +672,13 @@ proc render*(t: Table, area: Rect, buf: var CellBuffer) =
 proc shipListTable*(): Table =
   ## Create a table for ship lists in Fleet Detail view.
   table([
-    tableColumn("Class", width = 14, align = Alignment.Left),
+    tableColumn("Class", width = 16, align = Alignment.Left),
     tableColumn("State", width = 8, align = Alignment.Left),
     tableColumn("AS", width = 4, align = Alignment.Right),
     tableColumn("DS", width = 4, align = Alignment.Right),
     tableColumn("WEP", width = 4, align = Alignment.Right),
-    tableColumn("Mar", width = 4, align = Alignment.Right)
+    tableColumn("Marines", width = 7, align = Alignment.Right),
+    tableColumn("Fighters", width = 8, align = Alignment.Right)
   ])
 
 proc fleetListTable*(): Table =

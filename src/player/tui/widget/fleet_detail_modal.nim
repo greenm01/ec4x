@@ -24,8 +24,8 @@ proc newFleetDetailModalWidget*(): FleetDetailModalWidget =
   ## Create a new fleet detail modal widget
   FleetDetailModalWidget(
     modal: newModal()
-      .maxWidth(90)
-      .minWidth(70)
+      .maxWidth(104)
+      .minWidth(78)
       .minHeight(25)
       .showBackdrop(true)
   )
@@ -658,7 +658,8 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       ship.attack,
       ship.defense,
       $ship.wepLevel,
-      ship.marines
+      ship.marines,
+      ship.fighters
     ])
 
   # Calculate content height based on active sub-modal

@@ -483,6 +483,7 @@ type
     isCrippled*: bool       # For rendering (crippled ships in yellow/red)
     wepLevel*: int          # WEP tech level ship was built at
     marines*: string        # Marines carried (e.g., "2" for TT, "-" for others)
+    fighters*: string       # Embarked fighters for carriers ("2", "-" otherwise)
 
   FleetDetailData* = object
     ## Complete fleet detail information for rendering
@@ -626,6 +627,9 @@ proc fleetToDetailData*(
     if isDestroyed:
       continue
 
+    if ship.shipClass == ShipClass.Fighter and ship.assignedToCarrier.isSome:
+      continue
+
     totalAS += int(ship.stats.attackStrength)
     totalDS += int(ship.stats.defenseStrength)
     
@@ -637,6 +641,10 @@ proc fleetToDetailData*(
       else:
         marinesStr = "0"
 
+    var fightersStr = "-"
+    if ship.shipClass == ShipClass.Carrier:
+      fightersStr = $ship.embarkedFighters.len
+
     shipRows.add(ShipDetailRow(
       name: shipName,
       class: className,
@@ -645,7 +653,8 @@ proc fleetToDetailData*(
       defense: $ship.stats.defenseStrength,
       isCrippled: isCrippled,
       wepLevel: int(ship.stats.wep),
-      marines: marinesStr
+      marines: marinesStr,
+      fighters: fightersStr
     ))
   
   # Build auxiliary ships summary
@@ -676,7 +685,7 @@ proc fleetToDetailData*(
     fleetName: fleet.name,
     location: locationName,
     systemId: int(fleet.location),
-    shipCount: shipRows.len,
+    shipCount: fleet.ships.len,
     totalAttack: totalAS,
     totalDefense: totalDS,
     command: commandStr,
@@ -1206,7 +1215,11 @@ proc shipToRow(ship: Ship): ShipDetailRow =
       marinesStr = $ship.cargo.get().quantity
     else:
       marinesStr = "0"
-  
+
+  var fightersStr = "-"
+  if ship.shipClass == ShipClass.Carrier:
+    fightersStr = $ship.embarkedFighters.len
+
   ShipDetailRow(
     name: shipName,
     class: className,
@@ -1215,7 +1228,8 @@ proc shipToRow(ship: Ship): ShipDetailRow =
     defense: $ship.stats.defenseStrength,
     isCrippled: isCrippled,
     wepLevel: int(ship.stats.wep),
-    marines: marinesStr
+    marines: marinesStr,
+    fighters: fightersStr
   )
 
 proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailData =
@@ -1283,6 +1297,11 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
         for ship in ps.ownShips:
           if ship.id == shipId:
             if ship.state != CombatState.Destroyed:
+              if ship.shipClass == ShipClass.Fighter and
+                  ship.assignedToCarrier.isSome:
+                totalAS += ship.stats.attackStrength.int
+                totalDS += ship.stats.defenseStrength.int
+                break
               shipRows.add(shipToRow(ship))
               totalAS += ship.stats.attackStrength.int
               totalDS += ship.stats.defenseStrength.int
@@ -1310,7 +1329,7 @@ proc fleetToDetailDataFromPS*(ps: PlayerState, fleetId: FleetId): FleetDetailDat
         fleetName: fleet.name,
         location: locationName,
         systemId: fleet.location.int,
-        shipCount: shipRows.len,
+        shipCount: fleet.ships.len,
         totalAttack: totalAS,
         totalDefense: totalDS,
         command: commandStr,
@@ -1414,6 +1433,11 @@ proc fleetToDetailDataFromOwn*(
     if sid in ownShipsById:
       let ship = ownShipsById[sid]
       if ship.state != CombatState.Destroyed:
+        if ship.shipClass == ShipClass.Fighter and
+            ship.assignedToCarrier.isSome:
+          totalAS += ship.stats.attackStrength.int
+          totalDS += ship.stats.defenseStrength.int
+          continue
         shipRows.add(shipToRow(ship))
         totalAS += ship.stats.attackStrength.int
         totalDS += ship.stats.defenseStrength.int
@@ -1440,7 +1464,7 @@ proc fleetToDetailDataFromOwn*(
     fleetName: fleet.name,
     location: locationName,
     systemId: fleet.location.int,
-    shipCount: shipRows.len,
+    shipCount: fleet.ships.len,
     totalAttack: totalAS,
     totalDefense: totalDS,
     command: commandStr,
