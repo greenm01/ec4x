@@ -41,6 +41,33 @@ import ../event_factory/init
 # CMD1: ORDER CLEANUP
 # =============================================================================
 
+proc terminalCommandFleets(events: seq[GameEvent]): HashSet[FleetId] =
+  ## Fleets whose orders already reached a terminal outcome earlier this turn.
+  ## These commands are consumed and must not be re-stored in CMD6a.
+  result = initHashSet[FleetId]()
+  for event in events:
+    if event.eventType in {
+      GameEventType.CommandCompleted,
+      GameEventType.CommandFailed,
+      GameEventType.CommandAborted
+    }:
+      if event.fleetId.isSome:
+        result.incl(event.fleetId.get())
+
+proc commandStartsTravel(cmd: FleetCommand): bool =
+  ## Commands with a movement target remain in Traveling state until arrival.
+  ## Cleanup skips terminal commands, so this only applies to still-active
+  ## orders entering the next Production Phase.
+  if cmd.commandType in {
+    FleetCommandType.Hold,
+    FleetCommandType.Reserve,
+    FleetCommandType.Mothball,
+    FleetCommandType.Salvage
+  }:
+    return false
+
+  cmd.targetSystem.isSome or cmd.targetFleet.isSome
+
 proc cleanupCompletedCommands(state: GameState, events: seq[GameEvent]) =
   ## [CMD1] Reset completed/failed/aborted commands to Hold + MissionState.None
   ##
@@ -50,15 +77,7 @@ proc cleanupCompletedCommands(state: GameState, events: seq[GameEvent]) =
   logInfo("Commands", "[CMD1] Order Cleanup - resetting completed commands")
 
   # Build set of fleets with completion events
-  var completedFleets = initHashSet[FleetId]()
-  for event in events:
-    if event.eventType in {
-      GameEventType.CommandCompleted,
-      GameEventType.CommandFailed,
-      GameEventType.CommandAborted
-    }:
-      if event.fleetId.isSome:
-        completedFleets.incl(event.fleetId.get())
+  let completedFleets = terminalCommandFleets(events)
 
   # Reset those fleets to Hold + MissionState.None
   var resetCount = 0
@@ -515,12 +534,21 @@ proc processOrderValidation(
   logInfo("Commands", "[CMD6a] Validating fleet commands...")
   var ordersStored = 0
   var ordersRejected = 0
+  let completedFleets = terminalCommandFleets(events)
 
   for (houseId, house) in state.activeHousesWithId():
     if houseId notin orders:
       continue
 
     for cmd in orders[houseId].fleetCommands:
+      if cmd.fleetId in completedFleets:
+        logDebug(
+          "Commands",
+          &"  [SKIPPED] Fleet {cmd.fleetId}: {cmd.commandType} already " &
+          "completed earlier this turn",
+        )
+        continue
+
       let validation = validateFleetCommand(cmd, state, houseId)
 
       if validation.valid:
@@ -528,7 +556,10 @@ proc processOrderValidation(
         if fleetOpt.isSome:
           var fleet = fleetOpt.get()
           fleet.command = cmd
-          fleet.missionState = MissionState.Traveling
+          if commandStartsTravel(cmd):
+            fleet.missionState = MissionState.Traveling
+          else:
+            fleet.missionState = MissionState.None
           fleet.missionTarget = cmd.targetSystem
           state.updateFleet(cmd.fleetId, fleet)
           ordersStored += 1

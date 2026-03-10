@@ -93,6 +93,12 @@ nim r tools/dump_state.nim phase-sapling-awful --house 1
 
 Use this as the main planning input for the LLM.
 
+Map-awareness note:
+- Player state intentionally includes the full starmap topology from turn 1:
+  all system names and jump lanes are public information.
+- Fog-of-war still hides current contents, ownership changes, fleet presence,
+  and detailed intel until observed.
+
 ---
 
 ## Submit a Turn

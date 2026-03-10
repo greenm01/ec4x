@@ -111,6 +111,10 @@ TURN N - INCOME PHASE (INC)
 TURN N - COMMAND PHASE (CMD)
 ├─ 1. Order Cleanup
 │  └─ Clear completed/failed/aborted commands from previous turn
+│     └─ Terminal command events are authoritative; once a fleet emits
+│        `CommandCompleted`, `CommandFailed`, or `CommandAborted`, that
+│        submitted order is consumed for the rest of the turn cycle and must
+│        not be re-stored or re-validated later in CMD6
 │
 ├─ 2. Unified Commissioning
 │  ├─ Commission ships from Neorias:
@@ -164,6 +168,8 @@ TURN N - COMMAND PHASE (CMD)
 │
 └─ 6. Order Processing & Validation
    ├─ 6a. Validate fleet commands (store in Fleet.command)
+   │  └─ Skip fleet orders that already reached a terminal command event
+   │     earlier in the same turn cycle
    ├─ 6b. Process build orders (pay PP upfront)
    │  ├─ Ships → Neoria construction queues
    │  ├─ Fighters/Ground units/Facilities → Colony queues
@@ -239,6 +245,14 @@ EC4X uses a simple three-phase command processing lifecycle:
 - Fleet `missionState` set to `Traveling`
 - Invalid commands rejected with error events
 - Phase: CMD6
+
+### Cleanup and Consumption
+- When a command completes, fails, or aborts in an execution phase, the engine
+  emits a terminal command event immediately.
+- CMD1 uses those terminal events to reset the fleet to `Hold`, clear
+  transient mission state, and mark that submitted order as consumed.
+- CMD6 must not later re-store, re-validate, or re-reject a consumed order in
+  the same turn cycle.
 
 ### Execute (Production/Conflict/Income Phase)
 - **Production Phase**: Fleet travel (PRD1a), arrival detection (PRD1b), administrative completion (PRD1c)
