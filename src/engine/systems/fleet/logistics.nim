@@ -1074,28 +1074,17 @@ proc executeLoadFighters*(
       warnings.add(&"Fighter ship {fighterId} entity not found, skipping")
       continue
 
-    var fighter = fighterOpt.get()
-
-    # Load fighter
-    carrier.embarkedFighters.add(fighterId)
-    fighter.assignedToCarrier = some(carrierShipId)
-    fighter.fleetId = sourceFleetId
-
     # Remove from colony's fighter pool
     colony.fighterIds.keepItIf(it != fighterId)
     loadedCount += 1
 
-    # Update fighter entity
-    state.updateShip(fighterId, fighter)
+    state.assignFighterToCarrier(fighterId, carrierShipId)
 
     logDebug(
       "Fleet",
       &"Loaded Fighter {fighterId} onto carrier {carrierShipId} " &
         &"({currentLoad + loadedCount}/{maxCapacity})"
     )
-
-  # Update carrier ship in entity manager
-  state.updateShip(carrierShipId, carrier)
 
   # Update colony in entity manager
   state.updateColony(colony.id, colony)
@@ -1161,27 +1150,15 @@ proc executeUnloadFighters*(
       warnings.add(&"Fighter ship {fighterId} entity not found, skipping")
       continue
 
-    var fighter = fighterOpt.get()
-
     # Unload fighter
-    carrier.embarkedFighters.keepItIf(it != fighterId)
-    fighter.assignedToCarrier = none(ShipId)
-    fighter.fleetId = FleetId(0) # Unassigned (colony-based)
-
-    # Add to colony's fighter pool
+    state.unassignFighterFromCarrier(fighterId)
     colony.fighterIds.add(fighterId)
     unloadedCount += 1
-
-    # Update fighter entity
-    state.updateShip(fighterId, fighter)
 
     logDebug(
       "Fleet",
       &"Unloaded Fighter {fighterId} from carrier {carrierShipId} to colony {systemId}"
     )
-
-  # Update carrier ship in entity manager
-  state.updateShip(carrierShipId, carrier)
 
   # Update colony in entity manager
   state.updateColony(colony.id, colony)

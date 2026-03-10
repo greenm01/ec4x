@@ -476,6 +476,84 @@ suite "Construction: Ship Commissioning":
 
     check embarked
 
+  test "auto-load cleans up loose fleet fighters and fills newest carriers first":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+
+    var combatFleetId = FleetId(0)
+    for fleet in game.fleetsAtSystem(colony.systemId):
+      if fleet.houseId == colony.owner:
+        combatFleetId = fleet.id
+        break
+    check combatFleetId != FleetId(0)
+
+    let existingCarrier = game.createShip(
+      colony.owner,
+      combatFleetId,
+      ShipClass.Carrier,
+    )
+    let looseFighter = game.createShip(
+      colony.owner,
+      combatFleetId,
+      ShipClass.Fighter,
+    )
+    let looseFighterId = looseFighter.id
+
+    let completed = @[
+      CompletedProject(
+        colonyId: colony.id,
+        projectType: BuildType.Ship,
+        shipClass: some(ShipClass.Fighter),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+        neoriaId: none(NeoriaId)
+      ),
+      CompletedProject(
+        colonyId: colony.id,
+        projectType: BuildType.Ship,
+        shipClass: some(ShipClass.Carrier),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+        neoriaId: none(NeoriaId)
+      )
+    ]
+
+    commissionShips(game, completed, events)
+
+    var carrierIds: seq[ShipId] = @[]
+    for fleet in game.fleetsAtSystem(colony.systemId):
+      if fleet.houseId != colony.owner:
+        continue
+      for shipId in fleet.ships:
+        let ship = game.ship(shipId).get()
+        if ship.shipClass == ShipClass.Carrier:
+          carrierIds.add(shipId)
+
+    check carrierIds.len >= 2
+
+    var newestCarrierId = carrierIds[0]
+    for carrierId in carrierIds:
+      if uint32(carrierId) > uint32(newestCarrierId):
+        newestCarrierId = carrierId
+
+    let newestCarrier = game.ship(newestCarrierId).get()
+    check newestCarrier.embarkedFighters.len > 0
+
+    let updatedLooseFighter = game.ship(looseFighterId).get()
+    check updatedLooseFighter.assignedToCarrier.isSome
+    check updatedLooseFighter.assignedToCarrier.get() == newestCarrierId
+
+    let updatedFleet = game.fleet(combatFleetId).get()
+    check looseFighterId in updatedFleet.ships
+    check existingCarrier.id in updatedFleet.ships
+
   test "commissionShips ignores fleet moved off system by command resolution":
     let game = newGame()
     var events: seq[GameEvent] = @[]

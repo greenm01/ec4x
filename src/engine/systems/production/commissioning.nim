@@ -43,7 +43,7 @@
 ## - Auto-loading fighters to carriers (separate function)
 ## - Construction queue advancement (happens in Production Phase)
 
-import std/[tables, options, strformat, strutils, sequtils]
+import std/[tables, options, strformat, strutils, sequtils, algorithm]
 import ../../types/[core, game_state, production, event, ground_unit, combat]
 import ../../types/[ship, colony, fleet, facilities]
 import ../../state/[engine, id_gen, iterators]
@@ -144,14 +144,13 @@ proc autoLoadFightersToCarriers(
     if not colony.autoLoadFighters:
       continue
 
-    # Skip colonies with no fighters
-    if colony.fighterIds.len == 0:
-      continue
-
     let systemId = colony.systemId
 
     # Get all carriers in fleets at this system with available space
-    var carriersWithSpace: seq[tuple[carrierId: ShipId, availableSpace: int32]] = @[]
+    var carriersWithSpace: seq[
+      tuple[carrierId: ShipId, availableSpace: int32, currentLoad: int]
+    ] = @[]
+    var looseFleetFighters: seq[ShipId] = @[]
 
     for fleet in state.fleetsAtSystem(systemId):
       # Only load onto friendly fleets
@@ -166,24 +165,44 @@ proc autoLoadFightersToCarriers(
 
         let ship = shipOpt.get()
         if not isCarrier(ship.shipClass):
+          if ship.shipClass == ShipClass.Fighter and
+              ship.assignedToCarrier.isNone:
+            looseFleetFighters.add(shipId)
           continue
 
         # Check available hangar space
         let availableSpace = availableHangarSpace(state, shipId)
         if availableSpace > 0:
-          carriersWithSpace.add((shipId, availableSpace))
+          carriersWithSpace.add(
+            (shipId, availableSpace, ship.embarkedFighters.len)
+          )
+
+    # Skip colonies with no fighters available to load
+    if colony.fighterIds.len == 0 and looseFleetFighters.len == 0:
+      continue
 
     # Skip if no carriers with space
     if carriersWithSpace.len == 0:
       continue
 
+    carriersWithSpace.sort(
+      proc (
+        a, b: tuple[carrierId: ShipId, availableSpace: int32, currentLoad: int]
+      ): int =
+        let loadCmp = cmp(a.currentLoad, b.currentLoad)
+        if loadCmp != 0:
+          return loadCmp
+        return cmp(int(uint32(b.carrierId)), int(uint32(a.carrierId)))
+    )
+
     # Load fighters onto carriers (FIFO - oldest fighters first)
     var fightersToLoad = colony.fighterIds
+    fightersToLoad.add(looseFleetFighters)
     var carrierIdx = 0
     var loadedCount = 0
 
     while fightersToLoad.len > 0 and carrierIdx < carriersWithSpace.len:
-      let (carrierId, availableSpace) = carriersWithSpace[carrierIdx]
+      let (carrierId, availableSpace, _) = carriersWithSpace[carrierIdx]
 
       # Load as many fighters as fit in this carrier
       var loadedToThisCarrier = 0

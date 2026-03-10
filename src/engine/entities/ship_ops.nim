@@ -191,17 +191,39 @@ proc assignFighterToCarrier*(state: GameState, fighterId: ShipId, carrierId: Shi
   var fighter = fighterOpt.get()
   var carrier = carrierOpt.get()
 
+  if fighter.assignedToCarrier.isSome:
+    let previousCarrierId = fighter.assignedToCarrier.get()
+    let previousCarrierOpt = state.ship(previousCarrierId)
+    if previousCarrierOpt.isSome:
+      var previousCarrier = previousCarrierOpt.get()
+      previousCarrier.embarkedFighters.keepIf(
+        proc(id: ShipId): bool = id != fighterId
+      )
+      state.updateShip(previousCarrierId, previousCarrier)
+
+    if state.ships.byCarrier.contains(previousCarrierId):
+      state.ships.byCarrier[previousCarrierId].keepIf(
+        proc(id: ShipId): bool = id != fighterId
+      )
+
+    fighter.assignedToCarrier = none(ShipId)
+    state.updateShip(fighterId, fighter)
+
   # Update fighter assignment
+  state.assignShipToFleet(fighterId, carrier.fleetId)
+  fighter = state.ship(fighterId).get()
   fighter.assignedToCarrier = some(carrierId)
-  fighter.fleetId = carrier.fleetId  # Inherit carrier's fleet
   state.updateShip(fighterId, fighter)
 
   # Add to carrier's embarked list
-  carrier.embarkedFighters.add(fighterId)
-  state.updateShip(carrierId, carrier)
+  if fighterId notin carrier.embarkedFighters:
+    carrier.embarkedFighters.add(fighterId)
+    state.updateShip(carrierId, carrier)
 
   # Update byCarrier index
-  state.ships.byCarrier.mgetOrPut(carrierId, @[]).add(fighterId)
+  var byCarrier = state.ships.byCarrier.mgetOrPut(carrierId, @[])
+  if fighterId notin byCarrier:
+    byCarrier.add(fighterId)
 
 proc unassignFighterFromCarrier*(state: GameState, fighterId: ShipId) =
   ## Disembarks a fighter from its carrier
@@ -228,5 +250,5 @@ proc unassignFighterFromCarrier*(state: GameState, fighterId: ShipId) =
 
   # Clear fighter's carrier assignment
   fighter.assignedToCarrier = none(ShipId)
-  fighter.fleetId = FleetId(0)  # Unassign from fleet
   state.updateShip(fighterId, fighter)
+  state.unassignShipFromFleet(fighterId)
