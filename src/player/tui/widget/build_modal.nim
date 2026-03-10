@@ -283,6 +283,13 @@ proc shipSourceLabel(source: ShipBuildSource): string =
   of ShipBuildSource.None:
     "Unavailable"
 
+proc shipSourceStyle(): CellStyle =
+  CellStyle(
+    fg: color(InfoColor),
+    bg: color(TrueBlackColor),
+    attrs: {}
+  )
+
 proc renderBuildTable(
     state: BuildModalState, area: Rect, buf: var CellBuffer
 ) =
@@ -507,7 +514,7 @@ proc renderShipSourceDetail(
   for rune in text.runes:
     if x >= area.right:
       break
-    let width = buf.put(x, area.y, rune.toUTF8, modalDimStyle())
+    let width = buf.put(x, area.y, rune.toUTF8, shipSourceStyle())
     if width <= 0:
       break
     x += width
@@ -568,11 +575,9 @@ proc render*(
     outerBorderStyle())
 
   # Content area (single table)
-  let contentArea = rect(
-    inner.x, separatorY + 1, inner.width, inner.height - 6
-  )
+  let contentArea = rect(inner.x, separatorY + 1, inner.width, tableHeight)
 
-  let detailArea = rect(inner.x, inner.bottom - 2, inner.width, 1)
+  let detailArea = rect(inner.x, contentArea.bottom, inner.width, 1)
 
   # Footer area (above the bottom separator)
   let footerArea = rect(inner.x, inner.bottom - 1, inner.width, 1)
