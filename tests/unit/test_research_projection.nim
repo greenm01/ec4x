@@ -145,6 +145,28 @@ suite "Research Projection: Tech Purchases":
       levels, points, deposits, purchases, item, 100
     ) == 2
 
+suite "Research Projection: Detail Targets":
+  test "detail target level points at next ACO tier when current gate is unmet":
+    let item = researchItemAt(researchIndexForCode("ACO"))
+
+    check detailTargetLevel(1, progressionMaxLevel(item)) == 2
+    check techGateRequiredForLevel(item, detailTargetLevel(
+      1, progressionMaxLevel(item)
+    )) == 4
+
+  test "detail target level points at next military branch tier":
+    let item = researchItemAt(researchIndexForCode("WEP"))
+
+    check detailTargetLevel(1, progressionMaxLevel(item)) == 2
+    check techGateRequiredForLevel(item, detailTargetLevel(
+      1, progressionMaxLevel(item)
+    )) == 2
+
+  test "detail target level clamps to max level":
+    let item = researchItemAt(researchIndexForCode("ACO"))
+
+    check detailTargetLevel(3, progressionMaxLevel(item)) == 3
+
   test "science tech purchase projects one level when affordable":
     let levels = baseLevels(sl = 2)
     var points = emptyPoints()

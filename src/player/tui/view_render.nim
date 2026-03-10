@@ -2476,6 +2476,7 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
     )
     let currentLevel = research_projection.currentTechLevel(levels, item)
     let maxLevel = progressionMaxLevel(item)
+    let targetLevel = detailTargetLevel(currentLevel, maxLevel)
     if dy < detailInner.bottom:
       let levelHeader = "Level: " & $level & " / " & $maxLevel
       renderLine(
@@ -2538,10 +2539,10 @@ proc renderResearchPanel(area: Rect, buf: var CellBuffer, model: TuiModel) =
       let gateText = if gateFor > 0: $gateFor else: "-"
       progTable.addRow(@[$lvl, $costFor, gateText, effect])
 
-    let selectedLevel = clamp(level - 1, 0, maxLevelInt - 1)
+    let selectedLevel = clamp(targetLevel - 1, 0, maxLevelInt - 1)
     progTable = progTable.selectedIdx(selectedLevel)
     let fullProgTableHeight = progTable.renderHeight(maxLevelInt)
-    let gateReq = techGateRequiredForLevel(item, level)
+    let gateReq = techGateRequiredForLevel(item, targetLevel)
 
     # Reserve space for progression table first, then render lower-priority
     # detail lines only if room remains.

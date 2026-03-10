@@ -55,6 +55,12 @@ proc progressionMaxLevel*(item: ResearchItem): int =
     of TechField.AdvancedCarrierOps:
       maxKey(gameConfig.tech.aco.levels)
 
+proc detailTargetLevel*(currentLevel: int, maxLevel: int): int =
+  ## Detail pane shows costs/gates for the next targetable level.
+  if maxLevel <= 0:
+    return 0
+  min(maxLevel, max(1, currentLevel + 1))
+
 proc maxProgressionLevel*(): int =
   maxFromValues([
     maxKey(gameConfig.tech.el.levels),
