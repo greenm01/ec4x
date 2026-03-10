@@ -368,7 +368,12 @@ proc renderCarrierPicker(state: FleetDetailModalState, area: Rect,
       $carrier.fighterCount,
       $carrier.unloadCount
     ])
-  let widths = measuredColumnWidths(headers, rows, @[6, 10, 8, 6])
+  let baseWidths = measuredColumnWidths(headers, rows, @[6, 10, 8, 6])
+  var widths = baseWidths
+  let tableInnerWidth = measuredTableInnerWidth(headers, rows, @[6, 10, 8, 6])
+  let slack = area.width - tableInnerWidth
+  if slack > 0:
+    widths[1] = widths[1] + slack
 
   var carrierTable = table([
     tableColumn("ShipId", width = widths[0],
@@ -808,7 +813,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       (false, "")
 
   let footerWidthHint =
-    if hasFooter and state.subModal == FleetSubModal.SystemPicker:
+    if hasFooter:
       footerText.len
     else:
       0
