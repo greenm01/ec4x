@@ -92,6 +92,8 @@ proc runTui*(gameId: string = "") =
   var lastDraftFingerprint = ""
   var nostrSubmitFuture: Future[bool] = nil  # Pending turn submission
   var nostrSubmitStartTime: float = 0.0  # When submit started
+  var nostrReconnectFuture: Future[int] = nil
+  var nostrReconnectBackoffMs = 1000
   var awaitingTurnAdvanceAfterSubmit = false
   var lastPostSubmitSyncCheckAt: float = 0.0
   var lastInGameSyncCheckAt: float = 0.0
@@ -1399,6 +1401,22 @@ proc runTui*(gameId: string = "") =
       nostrJoinPublishTime = 0.0
       nostrJoinRetryCount = 0
       nostrConnectStartTime = 0.0
+      nostrReconnectFuture = nil
+      nostrReconnectBackoffMs = 1000
+      needsRender = true
+
+    if nostrClient != nil and
+        sam.model.ui.nostrEnabled and
+        not sam.model.ui.nostrJoinRequested and
+        not nostrClient.isConnected() and
+        nostrReconnectFuture == nil:
+      logWarn("Nostr", "Disconnected during live session; attempting reconnect")
+      sam.model.ui.nostrStatus = "reconnecting"
+      sam.model.ui.nostrLastError = "Relay disconnected"
+      sam.model.ui.statusMessage = "Relay disconnected; reconnecting..."
+      nostrListenerStarted = false
+      nostrReconnectFuture = nostrClient.reconnectWithBackoff(
+        nostrReconnectBackoffMs, 30000)
       needsRender = true
 
     # -----------------------------------------------------------------------
@@ -1478,6 +1496,24 @@ proc runTui*(gameId: string = "") =
         nostrConnectStartTime = 0.0
         needsRender = true
 
+    if nostrReconnectFuture != nil and nostrReconnectFuture.finished:
+      nostrReconnectBackoffMs = nostrReconnectFuture.read()
+      nostrReconnectFuture = nil
+      if nostrClient != nil and nostrClient.isConnected():
+        logInfo("Nostr", "Reconnect completed")
+        sam.model.ui.nostrStatus = "connected"
+        sam.model.ui.nostrLastError = ""
+        sam.model.ui.statusMessage = "Relay reconnected"
+        if not nostrListenerStarted:
+          asyncCheck nostrClient.listen()
+          nostrListenerStarted = true
+        if activeGameId.len > 0 and sam.model.view.playerStateLoaded:
+          startupSyncPending = true
+      else:
+        sam.model.ui.nostrStatus = "reconnecting"
+        sam.model.ui.statusMessage = "Relay still reconnecting..."
+      needsRender = true
+
     # -----------------------------------------------------------------------
     # Handle connected client state
     # -----------------------------------------------------------------------
@@ -1507,12 +1543,12 @@ proc runTui*(gameId: string = "") =
 
       # Check for disconnection
       if not nostrClient.isConnected():
-        sam.model.ui.nostrStatus = "error"
+        sam.model.ui.nostrStatus = "reconnecting"
         sam.model.ui.nostrLastError = "Relay disconnected"
-        sam.model.ui.nostrEnabled = false
         nostrListenerStarted = false
-        nostrSubscriptions.setLen(0)
-        nostrDaemonPubkey = ""
+        if nostrReconnectFuture == nil:
+          nostrReconnectFuture = nostrClient.reconnectWithBackoff(
+            nostrReconnectBackoffMs, 30000)
         needsRender = true
 
     # -----------------------------------------------------------------------
@@ -1546,6 +1582,8 @@ proc runTui*(gameId: string = "") =
           identity.nsecHex, identity.npubHex,
           nostrDaemonPubkey, nostrHandlers)
         asyncCheck nostrClient.start()
+        nostrReconnectFuture = nil
+        nostrReconnectBackoffMs = 1000
         sam.model.ui.nostrStatus = "connecting"
         nostrConnectStartTime = epochTime()
         needsRender = true
@@ -1878,6 +1916,8 @@ proc runTui*(gameId: string = "") =
       nostrListenerStarted = false
       nostrSubscriptions.setLen(0)
       nostrDaemonPubkey = ""
+      nostrReconnectFuture = nil
+      nostrReconnectBackoffMs = 1000
       sam.model.ui.nostrEnabled = false
       sam.model.ui.nostrStatus = "idle"
 
@@ -1893,6 +1933,8 @@ proc runTui*(gameId: string = "") =
           nostrHandlers
         )
         asyncCheck nostrClient.start()
+        nostrReconnectFuture = nil
+        nostrReconnectBackoffMs = 1000
         sam.model.ui.nostrStatus = "connecting"
         sam.model.ui.nostrEnabled = true
         nostrConnectStartTime = epochTime()
@@ -1913,8 +1955,10 @@ proc runTui*(gameId: string = "") =
     if nostrClient != nil and
         (nostrListenerStarted or
          nostrPublishFuture != nil or
+         nostrReconnectFuture != nil or
          nostrSubmitFuture != nil or
          sam.model.ui.nostrStatus == "connecting" or
+         sam.model.ui.nostrStatus == "reconnecting" or
          sam.model.ui.nostrEnabled):
       try:
         poll(0)  # Non-blocking poll for async events
@@ -1952,6 +1996,8 @@ proc runTui*(gameId: string = "") =
       lastPostSubmitSyncCheckAt = 0.0
       lastInGameSyncCheckAt = 0.0
       lastDraftFingerprint = ""
+      nostrReconnectFuture = nil
+      nostrReconnectBackoffMs = 1000
       allowSameTurnFullStateRefresh = false
       startupSyncPending = false
       sam.model.ui.statusMessage = "Select a game"
@@ -1963,6 +2009,8 @@ proc runTui*(gameId: string = "") =
       awaitingTurnAdvanceAfterSubmit = false
       lastPostSubmitSyncCheckAt = 0.0
       lastInGameSyncCheckAt = 0.0
+      nostrReconnectFuture = nil
+      nostrReconnectBackoffMs = 1000
       authoritativeConfigLoaded = false
       authoritativeConfigHash = ""
       authoritativeConfigSchema = 0

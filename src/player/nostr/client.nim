@@ -111,6 +111,13 @@ proc stop*(pc: PlayerNostrClient) {.async.} =
 proc isConnected*(pc: PlayerNostrClient): bool =
   pc.client.isConnected()
 
+proc reconnectWithBackoff*(
+  pc: PlayerNostrClient,
+  backoffMs: int,
+  maxBackoffMs: int
+): Future[int] {.async.} =
+  await pc.client.reconnectWithBackoff(backoffMs, maxBackoffMs)
+
 proc subscribe*(pc: PlayerNostrClient, subId: string,
     filters: seq[NostrFilter]) {.async.} =
   await pc.client.subscribe(subId, filters)
