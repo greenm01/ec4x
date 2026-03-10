@@ -366,6 +366,52 @@ suite "Construction: Ship Commissioning":
     # At least one fleet should exist at location
     check newFleetsAtSystem >= 1
 
+  test "commissionShips auto-embarks fighters onto commissioned carriers":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+
+    let completed = @[
+      CompletedProject(
+        colonyId: colony.id,
+        projectType: BuildType.Ship,
+        shipClass: some(ShipClass.Fighter),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+        neoriaId: none(NeoriaId)
+      ),
+      CompletedProject(
+        colonyId: colony.id,
+        projectType: BuildType.Ship,
+        shipClass: some(ShipClass.Carrier),
+        facilityClass: none(FacilityClass),
+        groundClass: none(GroundClass),
+        industrialUnits: 0,
+        neoriaId: none(NeoriaId)
+      )
+    ]
+
+    commissionShips(game, completed, events)
+
+    var embarked = false
+    for ship in game.allShips():
+      if ship.houseId != colony.owner:
+        continue
+      if ship.shipClass == ShipClass.Fighter and ship.assignedToCarrier.isSome:
+        let carrierId = ship.assignedToCarrier.get()
+        let carrier = game.ship(carrierId).get()
+        check carrier.shipClass == ShipClass.Carrier
+        check ship.id in carrier.embarkedFighters
+        embarked = true
+        break
+
+    check embarked
+
   test "commissionShips ignores fleet moved off system by command resolution":
     let game = newGame()
     var events: seq[GameEvent] = @[]

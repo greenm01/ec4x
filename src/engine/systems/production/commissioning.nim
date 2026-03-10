@@ -222,6 +222,78 @@ proc autoLoadFightersToCarriers(
         )
       )
 
+proc autoEmbarkFleetFightersToCarriers(
+    state: GameState,
+    colonyIds: seq[ColonyId],
+    events: var seq[GameEvent],
+) =
+  ## Auto-embark newly commissioned fighter ships onto carriers in the same
+  ## fleet when colony auto-load is enabled.
+  logDebug("Economy", "Starting auto-embark of fleet fighters to carriers")
+
+  for colonyId in colonyIds:
+    let colonyOpt = state.colony(colonyId)
+    if colonyOpt.isNone:
+      continue
+
+    let colony = colonyOpt.get()
+    if not colony.autoLoadFighters:
+      continue
+
+    var loadedCount = 0
+    for fleet in state.fleetsAtSystem(colony.systemId):
+      if fleet.houseId != colony.owner:
+        continue
+
+      var carriersWithSpace: seq[tuple[carrierId: ShipId, availableSpace: int32]] = @[]
+      var fighterIds: seq[ShipId] = @[]
+
+      for shipId in fleet.ships:
+        let shipOpt = state.ship(shipId)
+        if shipOpt.isNone:
+          continue
+        let ship = shipOpt.get()
+
+        if isCarrier(ship.shipClass):
+          let availableSpace = availableHangarSpace(state, shipId)
+          if availableSpace > 0:
+            carriersWithSpace.add((shipId, availableSpace))
+        elif ship.shipClass == ShipClass.Fighter and
+            ship.assignedToCarrier.isNone:
+          fighterIds.add(shipId)
+
+      if carriersWithSpace.len == 0 or fighterIds.len == 0:
+        continue
+
+      var fighterIdx = 0
+      for (carrierId, availableSpace) in carriersWithSpace:
+        var loadedToCarrier = 0
+        while loadedToCarrier < availableSpace and fighterIdx < fighterIds.len:
+          let fighterId = fighterIds[fighterIdx]
+          fighterIdx.inc
+          state.assignFighterToCarrier(fighterId, carrierId)
+          loadedToCarrier.inc
+          loadedCount.inc
+          logDebug(
+            "Economy",
+            &"Auto-embarked fleet fighter {fighterId} to carrier {carrierId} at {colony.systemId}",
+          )
+
+        if fighterIdx >= fighterIds.len:
+          break
+
+    if loadedCount > 0:
+      logInfo(
+        "Economy",
+        &"Auto-embarked {loadedCount} commissioned fighter(s) at {colony.systemId}",
+      )
+      events.add(
+        unitRecruited(
+          colony.owner, "Fleet fighters (auto-embarked)", colony.systemId,
+          loadedCount
+        )
+      )
+
 proc commissionPlanetaryDefense*(
     state: GameState,
     completedProjects: seq[CompletedProject],
@@ -780,6 +852,8 @@ proc commissionShips*(
   ## **Strategic Rationale:** Ships built in docks may be destroyed during
   ## Conflict Phase. Commission only if facilities survived combat.
   ##
+  var modifiedColonyIds: seq[ColonyId] = @[]
+
   # Process each completed ship construction project
   for completed in completedProjects:
     if completed.projectType != BuildType.Ship:
@@ -845,6 +919,11 @@ proc commissionShips*(
       techLevel,
       events,
     )
+
+    if completed.colonyId notin modifiedColonyIds:
+      modifiedColonyIds.add(completed.colonyId)
+
+  autoEmbarkFleetFightersToCarriers(state, modifiedColonyIds, events)
 
 proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
   ## Clear construction and repair queues for crippled/destroyed facilities.
