@@ -12,7 +12,7 @@
 ##       Fleet events (formed, destroyed)
 ##       Ship events (commissioned, lost, crippled, repaired)
 ##       Intel events (enemy fleets detected/departed, colonies
-##         discovered, systems surveyed)
+##         discovered)
 ##       Staleness alerts (intel older than 3 turns)
 ##       Diplomacy events (relation changes, eliminations, acts)
 ##       Economy events (prestige, tech advances, treasury deficit)
@@ -269,6 +269,18 @@ proc houseName(
 ): string =
   ## Return house name or "Unknown" fallback.
   names.getOrDefault(houseId, "Unknown")
+
+proc ownFleetName(
+    ps: ps_types.PlayerState,
+    fleetId: FleetId
+): string =
+  ## Return owned fleet name or "Fleet <id>" fallback.
+  for fleet in ps.ownFleets:
+    if fleet.id == fleetId:
+      if fleet.name.len > 0:
+        return fleet.name
+      break
+  "Fleet " & $fleetId
 
 # =============================================================================
 # Generic Entity Diff Helper
@@ -581,7 +593,7 @@ proc generateShipReports(
 proc generateIntelReports(
     prev, curr: ps_types.PlayerState
 ): seq[ReportEntry] =
-  ## Reports on enemy fleet/colony detection and system surveys.
+  ## Reports on enemy fleet/colony detection.
   result = @[]
 
   let fleetDiff = diffIds(
@@ -647,49 +659,6 @@ proc generateIntelReports(
       isUnread: true,
       linkView: 8, linkLabel: "Intel",
     ))
-
-  # Newly visible or upgraded systems
-  for sysId, currSys in curr.visibleSystems.pairs:
-    if sysId notin prev.visibleSystems:
-      if currSys.visibility >=
-          ps_types.VisibilityLevel.Scouted:
-        result.add(ReportEntry(
-          id: nextId(), turn: int(curr.turn),
-          category: ReportCategory.Intelligence,
-          title: "System Surveyed — " & currSys.name,
-          summary: "Your scouts have surveyed " &
-            currSys.name & ".",
-          detail: @[
-            "System: " & currSys.name,
-            "Planet Class: " & $currSys.planetClass,
-            "Resource Rating: " &
-              $currSys.resourceRating,
-          ],
-          isUnread: true,
-          linkView: 8, linkLabel: "Intel",
-        ))
-    else:
-      let prevVis =
-        prev.visibleSystems[sysId].visibility
-      let currVis = currSys.visibility
-      # Upgraded from Adjacent-only to Scouted+
-      if prevVis < ps_types.VisibilityLevel.Scouted and
-          currVis >= ps_types.VisibilityLevel.Scouted:
-        result.add(ReportEntry(
-          id: nextId(), turn: int(curr.turn),
-          category: ReportCategory.Intelligence,
-          title: "System Surveyed — " & currSys.name,
-          summary: currSys.name &
-            " has been explored by your scouts.",
-          detail: @[
-            "System: " & currSys.name,
-            "Planet Class: " & $currSys.planetClass,
-            "Resource Rating: " &
-              $currSys.resourceRating,
-          ],
-          isUnread: true,
-          linkView: 8, linkLabel: "Intel",
-        ))
 
 proc generateStalenessAlerts(
     prev, curr: ps_types.PlayerState
@@ -1637,6 +1606,16 @@ proc generateIntelPayloadReports(
   ## Generate reports from intelligence payload events.
   result = @[]
   let us = ps.viewingHouse
+
+  var viewWorldFleetBySystem = initTable[SystemId, FleetId]()
+  for evt in events:
+    if evt.eventType == GameEventType.CommandCompleted and
+        evt.houseId == some(us) and
+        evt.orderType == some("ViewWorld") and
+        evt.systemId.isSome and
+        evt.fleetId.isSome:
+      viewWorldFleetBySystem[evt.systemId.get()] = evt.fleetId.get()
+
   for evt in events:
     case evt.eventType
     of GameEventType.IntelGathered:
@@ -1647,6 +1626,45 @@ proc generateIntelPayloadReports(
             sysLabel(ps.visibleSystems,
               evt.systemId.get())
           else: "Unknown System"
+        let intelType = evt.intelType.get("")
+        if intelType == "long-range planetary scan":
+          var detail = @["System: " & sysName]
+          if evt.systemId.isSome:
+            let systemId = evt.systemId.get()
+            if viewWorldFleetBySystem.contains(systemId):
+              let fleetName =
+                ownFleetName(ps, viewWorldFleetBySystem[systemId])
+              detail.add("Fleet: " & fleetName)
+            let visSys =
+              ps.visibleSystems.getOrDefault(systemId)
+            if visSys.planetClass >= 0:
+              detail.add(
+                "Planet Class: " & $visSys.planetClass
+              )
+            if visSys.resourceRating >= 0:
+              detail.add(
+                "Resource Rating: " &
+                $visSys.resourceRating
+              )
+          let fleetName =
+            if evt.systemId.isSome and
+                viewWorldFleetBySystem.contains(evt.systemId.get()):
+              ownFleetName(ps, viewWorldFleetBySystem[evt.systemId.get()])
+            else:
+              "Fleet"
+          result.add(ReportEntry(
+            id: nextId(),
+            turn: int(ps.turn),
+            category: ReportCategory.Intelligence,
+            title: fleetName & " Surveyed " & sysName,
+            summary: fleetName &
+              " completed long-range planetary reconnaissance " &
+              "at " & sysName & ".",
+            detail: detail,
+            isUnread: true,
+            linkView: 8, linkLabel: "Intel",
+          ))
+          continue
         var lines: seq[string] = @[]
         if evt.details.isSome:
           for line in evt.details.get().split(", "):
