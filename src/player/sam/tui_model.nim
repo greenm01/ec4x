@@ -23,6 +23,7 @@ import ../tui/hex_labels
 import ../state/identity
 import ../tui/widget/text_input
 import ../../common/message_types
+import ../../common/logger
 import ../../engine/globals
 import ../../engine/types/[core, colony, fleet, production, command, tech,
   ship, combat, facilities, ground_unit, zero_turn, espionage, diplomacy]
@@ -346,8 +347,8 @@ type
     ## Carrier entry for fighter load/unload picker.
     shipId*: ShipId
     classLabel*: string
-    fighterCount*: int
     unloadCount*: int
+    fighterIds*: seq[ShipId]
 
   SystemPickerFilterResult* = object
     systems*: seq[SystemPickerEntry]
@@ -973,6 +974,7 @@ type
     loadGameRequested*: bool
     loadGameId*: string
     loadHouseId*: int
+    restoreGamesRequested*: bool
 
     # Breadcrumb navigation
     breadcrumbs*: seq[BreadcrumbItem]
@@ -1354,6 +1356,7 @@ proc initTuiUiState*(): TuiUiState =
     loadGameRequested: false,
     loadGameId: "",
     loadHouseId: 0,
+    restoreGamesRequested: false,
     fleetViewMode: FleetViewMode.ListView,
     selectedFleetIds: @[],
     selectedColonyId: 0,
@@ -2672,6 +2675,42 @@ proc stagedCommandsSummary*(model: TuiModel): string =
 # and updateFleetInfoFromStagedCommand which it depends on.
 proc reapplyAllOptimisticUpdates*(model: var TuiModel)
 
+proc zeroTurnTouchesSameFighters(
+    existing: ZeroTurnCommand,
+    candidate: ZeroTurnCommand
+): bool =
+  if existing.commandType notin {
+      ZeroTurnCommandType.LoadFighters,
+      ZeroTurnCommandType.UnloadFighters,
+      ZeroTurnCommandType.TransferFighters
+    }:
+    return false
+  if candidate.commandType notin {
+      ZeroTurnCommandType.LoadFighters,
+      ZeroTurnCommandType.UnloadFighters,
+      ZeroTurnCommandType.TransferFighters
+    }:
+    return false
+  for fighterId in existing.fighterIds:
+    if fighterId in candidate.fighterIds:
+      return true
+  false
+
+proc stageZeroTurnCommandOptimistically*(
+    model: var TuiModel,
+    cmd: ZeroTurnCommand
+) =
+  var idx = 0
+  while idx < model.ui.stagedZeroTurnCommands.len:
+    let existing = model.ui.stagedZeroTurnCommands[idx]
+    if existing == cmd or zeroTurnTouchesSameFighters(existing, cmd):
+      model.ui.stagedZeroTurnCommands.delete(idx)
+    else:
+      inc idx
+  model.ui.stagedZeroTurnCommands.add(cmd)
+  model.ui.modifiedSinceSubmit = true
+  model.reapplyAllOptimisticUpdates()
+
 proc dropStagedCommand*(model: var TuiModel, entry: StagedCommandEntry): bool =
   ## Remove staged command by entry
   case entry.kind
@@ -3683,6 +3722,15 @@ proc applyZeroTurnCommandOptimistically*(
       if colonySystem notin model.view.ownColoniesBySystem or
           carrierId notin model.view.ownShipsById or
           srcId notin model.view.ownFleetsById:
+        logWarn(
+          "TUI Optimistic",
+          "LoadFighters skip: colony=",
+          $colonySystem,
+          " carrier=",
+          $carrierId,
+          " fleet=",
+          $srcId
+        )
         return
       var colony = model.view.ownColoniesBySystem[colonySystem]
       var carrier = model.view.ownShipsById[carrierId]
@@ -3711,6 +3759,15 @@ proc applyZeroTurnCommandOptimistically*(
       if colonySystem notin model.view.ownColoniesBySystem or
           carrierId notin model.view.ownShipsById or
           srcId notin model.view.ownFleetsById:
+        logWarn(
+          "TUI Optimistic",
+          "UnloadFighters skip: colony=",
+          $colonySystem,
+          " carrier=",
+          $carrierId,
+          " fleet=",
+          $srcId
+        )
         return
       var colony = model.view.ownColoniesBySystem[colonySystem]
       var carrier = model.view.ownShipsById[carrierId]
@@ -3741,6 +3798,17 @@ proc applyZeroTurnCommandOptimistically*(
           targetCarrierId notin model.view.ownShipsById or
           srcId notin model.view.ownFleetsById or
           tgtId notin model.view.ownFleetsById:
+        logWarn(
+          "TUI Optimistic",
+          "TransferFighters skip: sourceCarrier=",
+          $sourceCarrierId,
+          " targetCarrier=",
+          $targetCarrierId,
+          " sourceFleet=",
+          $srcId,
+          " targetFleet=",
+          $tgtId
+        )
         return
       var sourceCarrier = model.view.ownShipsById[sourceCarrierId]
       var targetCarrier = model.view.ownShipsById[targetCarrierId]

@@ -365,7 +365,7 @@ proc renderCarrierPicker(state: FleetDetailModalState, area: Rect,
     rows.add(@[
       $int(carrier.shipId),
       carrier.classLabel,
-      $carrier.fighterCount,
+      $carrier.fighterIds.len,
       $carrier.unloadCount
     ])
   let baseWidths = measuredColumnWidths(headers, rows, @[6, 10, 8, 6])
@@ -538,7 +538,7 @@ proc renderFighterParams(state: FleetDetailModalState, area: Rect,
     for carrier in state.carrierPickerCandidates:
       if int(carrier.shipId) == int(state.selectedCarrierShipId.get()):
         discard buf.setString(area.x, y,
-          "Embarked Fighters: " & $carrier.fighterCount,
+          "Embarked Fighters: " & $carrier.fighterIds.len,
           canvasStyle())
         y += 1
         break
@@ -658,7 +658,7 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
         rows.add(@[
           $int(carrier.shipId),
           carrier.classLabel,
-          $carrier.fighterCount,
+          $carrier.fighterIds.len,
           $carrier.unloadCount
         ])
       measuredTableInnerWidth(@["ShipId", "Class", "Fighters", "Unload"],

@@ -2613,6 +2613,7 @@ proc mapKeyToAction*(key: KeyCode, modifier: KeyModifier,
         FleetSubModal.ZTCPicker,
         FleetSubModal.SystemPicker,
         FleetSubModal.ShipSelector,
+        FleetSubModal.CarrierPicker,
         FleetSubModal.CargoParams,
         FleetSubModal.FighterParams}:
       if modifier == KeyModifier.None:
