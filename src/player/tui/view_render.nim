@@ -1869,6 +1869,10 @@ proc renderPlanetDetailFromPS*(
       ColonyId(model.ui.selectedColonyId),
       model.ui.stagedBuildCommands
     )
+  for colony in model.view.ownColoniesBySystem.values:
+    if int(colony.id) == planetData.colonyId:
+      planetData.fighters = colony.fighterIds.len
+      break
   for cmd in model.ui.stagedColonyManagement:
     if int(cmd.colonyId) == planetData.colonyId:
       planetData.autoRepair = cmd.autoRepair
@@ -3439,7 +3443,14 @@ proc renderPlanetDetailModal*(canvas: Rect, buf: var CellBuffer,
     return
 
   # Get colony data for title
-  let planetData = colonyToDetailDataFromPS(ps, ColonyId(model.ui.selectedColonyId))
+  var planetData = colonyToDetailDataFromPS(
+    ps,
+    ColonyId(model.ui.selectedColonyId)
+  )
+  for colony in model.view.ownColoniesBySystem.values:
+    if int(colony.id) == model.ui.selectedColonyId:
+      planetData.fighters = colony.fighterIds.len
+      break
   var isHomeworld = false
   for row in model.view.planetsRows:
     if row.colonyId.isSome and row.colonyId.get() == model.ui.selectedColonyId:

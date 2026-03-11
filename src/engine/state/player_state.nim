@@ -31,6 +31,8 @@ proc occupiedSystems(state: GameState, houseId: HouseId): HashSet[SystemId] =
   ## Get all systems where this house has fleet(s)
   result = initHashSet[SystemId]()
   for fleet in state.fleetsOwned(houseId):
+    if fleet.ships.len == 0:
+      continue
     result.incl(fleet.location)
 
 proc scoutedSystems(
@@ -193,6 +195,8 @@ proc createPlayerState*(state: GameState, houseId: HouseId): PlayerState =
 
   # Fleets
   for fleet in state.fleetsOwned(houseId):
+    if fleet.ships.len == 0:
+      continue
     result.ownFleets.add(fleet)
     result.ltuFleets.updateLtu(fleet.id, state.turn)
 

@@ -3,11 +3,51 @@
 import std/[algorithm, options, tables]
 
 import ../../engine/types/[command, fleet, zero_turn, tech]
+import ../../common/logger
 import ../sam/tui_model
+
+proc zeroTurnTouchesSameFighters(
+    existing: ZeroTurnCommand,
+    candidate: ZeroTurnCommand
+): bool =
+  if existing.commandType notin {
+      ZeroTurnCommandType.LoadFighters,
+      ZeroTurnCommandType.UnloadFighters,
+      ZeroTurnCommandType.TransferFighters
+    }:
+    return false
+  if candidate.commandType notin {
+      ZeroTurnCommandType.LoadFighters,
+      ZeroTurnCommandType.UnloadFighters,
+      ZeroTurnCommandType.TransferFighters
+    }:
+    return false
+  for fighterId in existing.fighterIds:
+    if fighterId in candidate.fighterIds:
+      return true
+  false
 
 proc normalizeDraftPacket*(packet: CommandPacket): CommandPacket =
   ## Stable ordering for deterministic draft fingerprints.
   result = packet
+  var canonicalZeroTurn: seq[ZeroTurnCommand] = @[]
+  if packet.zeroTurnCommands.len > 0:
+    for idx in countdown(packet.zeroTurnCommands.high, 0):
+      let cmd = packet.zeroTurnCommands[idx]
+      var dominated = false
+      for kept in canonicalZeroTurn:
+        if kept == cmd or zeroTurnTouchesSameFighters(kept, cmd):
+          dominated = true
+          logDebug(
+            "TUI Draft",
+            "Dropped duplicate/conflicting zero-turn command: ",
+            $cmd.commandType
+          )
+          break
+      if not dominated:
+        canonicalZeroTurn.add(cmd)
+  canonicalZeroTurn.reverse()
+  result.zeroTurnCommands = canonicalZeroTurn
   result.zeroTurnCommands.sort(
     proc(a: ZeroTurnCommand, b: ZeroTurnCommand): int =
       result = cmp(int(a.commandType), int(b.commandType))
@@ -24,6 +64,11 @@ proc normalizeDraftPacket*(packet: CommandPacket): CommandPacket =
         if b.targetFleetId.isSome: int(b.targetFleetId.get()) else: -1
       )
   )
+  var dedupedZeroTurn: seq[ZeroTurnCommand] = @[]
+  for cmd in result.zeroTurnCommands:
+    if dedupedZeroTurn.len == 0 or dedupedZeroTurn[^1] != cmd:
+      dedupedZeroTurn.add(cmd)
+  result.zeroTurnCommands = dedupedZeroTurn
   result.fleetCommands.sort(
     proc(a: FleetCommand, b: FleetCommand): int =
       cmp(int(a.fleetId), int(b.fleetId))

@@ -146,6 +146,13 @@ For the fastest reproducible human-vs-OpenCode cycle:
 6. OpenCode submits through real KDL-over-Nostr, not by DB injection.
 7. Verify auto-resolve in daemon logs before trusting the next-turn UI/state.
 
+Claiming notes:
+- Use the bare invite token when calling `claim_invite`, not the display
+  form with `@localhost:8080`.
+- Always pass `--game <slug-or-uuid>` to `claim_invite`.
+- Confirm the slot flips to `CLAIMED` in `./bin/ec4x invite <slug>`
+  before submitting the LLM turn.
+
 ### Notes
 
 - For this workflow, set daemon to manual-only mode to avoid accidental
@@ -169,6 +176,23 @@ Check for:
 - research deposits/purchases appear in the next-turn tech state
 - enemy command events are not leaking unexpectedly into player turn events
 - a left-open TUI refreshes to the new turn after daemon publish
+
+### Operator Discipline
+
+For OpenCode-vs-human sessions, trust this order of evidence:
+
+1. `./bin/ec4x invite <slug>` for seat claim state
+2. `journalctl --user -u ec4x-daemon` for command receipt and resolution
+3. `nim r tools/dump_state.nim <slug> --house <N>` for authoritative player state
+4. TUI display last
+
+Do not trust:
+- `claim_invite` stdout by itself
+- `submit_turn_nostr` stdout by itself
+- a stale TUI header that has not repainted yet
+
+If logs, DB-facing CLI, and TUI disagree, trust daemon logs plus
+`dump_state` and rebuild/redeploy before continuing.
 
 ---
 

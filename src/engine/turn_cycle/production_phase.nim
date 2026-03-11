@@ -30,6 +30,7 @@ import ../types/[
 import ../state/[engine, iterators, fleet_queries]
 import ../entities/fleet_ops
 import ../systems/fleet/[execution, movement]
+import ../systems/colony/engine
 import ../systems/production/queue_advancement
 import ../systems/diplomacy/resolution
 import ../systems/population/transfers
@@ -196,6 +197,19 @@ proc detectFleetArrivals(
         &"  {fleetId} arrived at {targetSystem} ({command.commandType})")
   
   logInfo("Production", &"[PRD1b] Complete ({arrivedCount} fleets arrived)")
+
+proc resolveArrivalColonization(
+    state: GameState,
+    events: var seq[GameEvent],
+    rng: var Rand,
+) =
+  ## Resolve same-turn ETAC colonization after PRD1b arrival detection.
+  ## This keeps adjacent colonize orders consistent with zero-travel
+  ## colonize orders that already resolve in the submitted turn.
+  logInfo("Production", "[PRD1b.5] Resolving colonization after arrivals...")
+  let colonizationResults = state.resolveColonization(rng, events)
+  logInfo("Production", "[PRD1b.5] Colonization complete",
+    " attempts=", colonizationResults.len)
 
 # =============================================================================
 # PRD1c: ADMINISTRATIVE COMPLETION (PRODUCTION COMMANDS)
@@ -577,6 +591,7 @@ proc resolveProductionPhase*(
   # =========================================================================
   processFleetTravel(state, events, completedFleetCommands)
   detectFleetArrivals(state, events)
+  resolveArrivalColonization(state, events, rng)
   processAdministrativeCompletion(state, orders, events, rng)
   processScoutDetection(state, events, rng)
   

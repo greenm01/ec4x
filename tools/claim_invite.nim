@@ -1,6 +1,8 @@
 import std/[asyncdispatch, options, os, strutils]
 
 import ../src/daemon/transport/nostr/[client, events, crypto]
+import ../src/daemon/persistence/reader
+import ../src/common/invite_code
 import ../src/player/state/wallet
 
 proc usage() =
@@ -50,7 +52,7 @@ proc main() {.async.} =
     usage()
 
   let relay = args[0]
-  let inviteCode = args[1]
+  let inviteCode = normalizeInviteCode(args[1])
 
   var playerPrivHex = ""
   var playerPubHex = ""
@@ -87,6 +89,13 @@ proc main() {.async.} =
     let identity = loadWalletIdentity(passwordOpt, ensureWalletFlag)
     playerPrivHex = identity.privHex
     playerPubHex = identity.pubHex
+
+  if gameId != "invite":
+    let gameOpt = findGameByToken(gameId)
+    if gameOpt.isNone:
+      stderr.writeLine("Game not found: " & gameId)
+      quit(1)
+    gameId = gameOpt.get().gameId
 
   let priv = hexToBytes32(playerPrivHex)
 

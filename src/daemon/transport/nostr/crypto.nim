@@ -233,8 +233,7 @@ proc calcPaddedLen*(unpaddedLen: int): int =
   chunk * ((unpaddedLen - 1) div chunk + 1)
 
 proc padPlaintext*(plaintext: string): seq[byte] =
-  let bytes = cast[seq[byte]](plaintext)
-  let len = bytes.len
+  let len = plaintext.len
   if len < MinPlaintextSize or len > MaxPlaintextSize:
     raise newException(ValueError, "Invalid plaintext length")
 
@@ -243,7 +242,7 @@ proc padPlaintext*(plaintext: string): seq[byte] =
   result[0] = byte((len shr 8) and 0xff)
   result[1] = byte(len and 0xff)
   for i in 0..<len:
-    result[2 + i] = bytes[i]
+    result[2 + i] = byte(plaintext[i])
 
 proc unpadPlaintext*(padded: openArray[byte]): string =
   if padded.len < 2:
@@ -257,8 +256,9 @@ proc unpadPlaintext*(padded: openArray[byte]): string =
   if padded.len != paddedLen + 2:
     raise newException(ValueError, "Invalid padding length")
 
-  let content = padded[2 ..< 2 + len]
-  result = cast[string](content)
+  result = newString(len)
+  for i in 0..<len:
+    result[i] = char(padded[2 + i])
 
 # =============================================================================
 # NIP-44: Encryption

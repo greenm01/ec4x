@@ -9,6 +9,80 @@ import ../../src/engine/types/[core, fleet, ship, production, command,
   ground_unit]
 
 suite "TUI draft apply resume":
+  test "normalizeDraftPacket collapses duplicate fighter unloads":
+    var packet = CommandPacket(
+      houseId: HouseId(1),
+      turn: 7,
+      zeroTurnCommands: @[
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.UnloadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        ),
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.UnloadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        ),
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.UnloadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        )
+      ]
+    )
+
+    let normalized = normalizeDraftPacket(packet)
+
+    check normalized.zeroTurnCommands.len == 1
+    check normalized.zeroTurnCommands[0].commandType ==
+      ZeroTurnCommandType.UnloadFighters
+    check normalized.zeroTurnCommands[0].fighterIds == @[ShipId(46)]
+
+  test "normalizeDraftPacket keeps last fighter command on conflict":
+    var packet = CommandPacket(
+      houseId: HouseId(1),
+      turn: 7,
+      zeroTurnCommands: @[
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.LoadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        ),
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.UnloadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        )
+      ]
+    )
+
+    let normalized = normalizeDraftPacket(packet)
+
+    check normalized.zeroTurnCommands.len == 1
+    check normalized.zeroTurnCommands[0].commandType ==
+      ZeroTurnCommandType.UnloadFighters
+
   test "applyOrderDraft restores all command categories":
     var model = initTuiModel()
     model.view.viewingHouse = 1

@@ -1998,6 +1998,51 @@ proc runTui*(gameId: string = "") =
       sam.model.ui.entryModal.identityNeedsRefresh = false
       needsRender = true
 
+    if sam.model.ui.restoreGamesRequested:
+      let restorePubkey = sam.model.ui.entryModal.identity.npubHex
+      let restoreRelay =
+        if sam.model.ui.entryModal.relayUrl().len > 0:
+          sam.model.ui.entryModal.relayUrl()
+        else:
+          sam.model.ui.nostrRelayUrl
+      refreshLobbyGamesForPubkey(sam.model, restorePubkey)
+      sam.model.ui.restoreGamesRequested = false
+
+      if restoreRelay.len == 0:
+        sam.model.ui.statusMessage =
+          "No relay configured for game restore"
+      else:
+        sam.model.ui.nostrJoinRequested = true
+        sam.model.ui.nostrJoinSent = false
+        sam.model.ui.nostrJoinInviteCode = ""
+        sam.model.ui.nostrJoinRelayUrl = restoreRelay
+        sam.model.ui.nostrJoinGameId = ""
+        sam.model.ui.nostrJoinPubkey = restorePubkey
+
+        if nostrClient != nil and nostrClient.isConnected():
+          let lobbyFilter =
+            newFilter().withKinds(@[EventKindGameDefinition])
+          asyncCheck nostrClient.unsubscribe("lobby:games")
+          asyncCheck nostrClient.subscribe("lobby:games", @[lobbyFilter])
+          nostrGameDefinitionSeen.clear()
+
+          if restorePubkey.len > 0:
+            let joinErrorFilter = newFilter()
+              .withKinds(@[EventKindJoinError])
+              .withTag(TagP, @[restorePubkey])
+            asyncCheck nostrClient.unsubscribe("lobby:join-errors")
+            asyncCheck nostrClient.subscribe(
+              "lobby:join-errors",
+              @[joinErrorFilter]
+            )
+
+        if sam.model.ui.entryModal.activeGames.len > 0:
+          sam.model.ui.statusMessage =
+            "Restored cached games; refreshing relay..."
+        else:
+          sam.model.ui.statusMessage = "Restoring games from relay..."
+      needsRender = true
+
     # -------------------------------------------------------------------------
     # Phase 6: Process async operations (Nostr WebSocket events)
     # -------------------------------------------------------------------------

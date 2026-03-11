@@ -27,7 +27,7 @@ export msgpack_types
 proc serializeGameState*(state: GameState): string =
   ## Serialize GameState to msgpack binary string
   ## Returns base64-encoded msgpack data for safe SQLite storage
-  let binary = pack(state)
+  let binary = pack(state[])
   result = encode(binary)
 
 proc deserializeGameState*(data: string): GameState =
@@ -35,7 +35,8 @@ proc deserializeGameState*(data: string): GameState =
   ## Expects base64-encoded msgpack data
   ## Returns a fully reconstructed GameState object
   let binary = decode(data)
-  unpack(binary, GameState)
+  new(result)
+  unpack(binary, result[])
 
 # =============================================================================
 # PlayerState Serialization

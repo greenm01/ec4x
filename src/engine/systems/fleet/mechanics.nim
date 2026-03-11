@@ -672,6 +672,10 @@ proc resolveColonizationCommand*(
   # Destroy ETAC ship (cleans up indexes)
   state.destroyShip(shipId)
 
+  let emptiedFleetOpt = state.fleet(command.fleetId)
+  if emptiedFleetOpt.isSome and emptiedFleetOpt.get().ships.len == 0:
+    state.destroyFleet(command.fleetId)
+
   logInfo(
     "Colonization",
     &"ETAC ship {shipId} cannibalized for colony infrastructure"
