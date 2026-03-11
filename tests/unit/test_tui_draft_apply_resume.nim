@@ -83,6 +83,146 @@ suite "TUI draft apply resume":
     check normalized.zeroTurnCommands[0].commandType ==
       ZeroTurnCommandType.UnloadFighters
 
+  test "applyOrderDraft restores staged fighter load optimism":
+    var model = initTuiModel()
+    model.view.viewingHouse = 1
+    model.view.turn = 8
+    model.view.ownColoniesBySystem[37] = Colony(
+      id: ColonyId(1),
+      owner: HouseId(1),
+      systemId: SystemId(37),
+      fighterIds: @[ShipId(46), ShipId(47)]
+    )
+    model.view.ownFleetsById[12] = Fleet(
+      id: FleetId(12),
+      houseId: HouseId(1),
+      location: SystemId(37),
+      ships: @[ShipId(42)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(12),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[]
+    )
+    model.view.fleets = @[
+      FleetInfo(
+        id: 12,
+        name: "A5",
+        location: 37,
+        locationName: "Silouan",
+        shipCount: 1,
+        owner: 1
+      )
+    ]
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      model.ui.fleetConsoleFleetsBySystem
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+
+    let packet = CommandPacket(
+      houseId: HouseId(1),
+      turn: 8,
+      zeroTurnCommands: @[
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.LoadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        )
+      ]
+    )
+
+    model.applyOrderDraft(packet)
+
+    check model.ui.stagedZeroTurnCommands.len == 1
+    check model.view.ownShipsById[42].embarkedFighters == @[ShipId(46)]
+    check model.view.ownColoniesBySystem[37].fighterIds == @[ShipId(47)]
+    check model.ztcValidationErrorForFleet(
+      12, ZeroTurnCommandType.UnloadFighters
+    ).len == 0
+
+  test "applyOrderDraft restores staged fighter unload optimism":
+    var model = initTuiModel()
+    model.view.viewingHouse = 1
+    model.view.turn = 8
+    model.view.ownColoniesBySystem[37] = Colony(
+      id: ColonyId(1),
+      owner: HouseId(1),
+      systemId: SystemId(37),
+      fighterIds: @[]
+    )
+    model.view.ownFleetsById[12] = Fleet(
+      id: FleetId(12),
+      houseId: HouseId(1),
+      location: SystemId(37),
+      ships: @[ShipId(42), ShipId(46)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(12),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[ShipId(46)]
+    )
+    model.view.ownShipsById[46] = Ship(
+      id: ShipId(46),
+      houseId: HouseId(1),
+      fleetId: FleetId(12),
+      shipClass: ShipClass.Fighter,
+      state: CombatState.Nominal,
+      assignedToCarrier: some(ShipId(42))
+    )
+    model.view.fleets = @[
+      FleetInfo(
+        id: 12,
+        name: "A5",
+        location: 37,
+        locationName: "Silouan",
+        shipCount: 2,
+        owner: 1
+      )
+    ]
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      model.ui.fleetConsoleFleetsBySystem
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+
+    let packet = CommandPacket(
+      houseId: HouseId(1),
+      turn: 8,
+      zeroTurnCommands: @[
+        ZeroTurnCommand(
+          houseId: HouseId(1),
+          commandType: ZeroTurnCommandType.UnloadFighters,
+          colonySystem: some(SystemId(37)),
+          sourceFleetId: some(FleetId(12)),
+          targetFleetId: none(FleetId),
+          fighterIds: @[ShipId(46)],
+          carrierShipId: some(ShipId(42))
+        )
+      ]
+    )
+
+    model.applyOrderDraft(packet)
+
+    check model.ui.stagedZeroTurnCommands.len == 1
+    check model.view.ownShipsById[42].embarkedFighters.len == 0
+    check model.view.ownColoniesBySystem[37].fighterIds == @[ShipId(46)]
+    check model.ztcValidationErrorForFleet(
+      12, ZeroTurnCommandType.UnloadFighters
+    ).len > 0
+
   test "applyOrderDraft restores all command categories":
     var model = initTuiModel()
     model.view.viewingHouse = 1
