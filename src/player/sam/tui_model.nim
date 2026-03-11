@@ -347,7 +347,8 @@ type
     ## Carrier entry for fighter load/unload picker.
     shipId*: ShipId
     classLabel*: string
-    unloadCount*: int
+    maxCount*: int
+    stagedCount*: int
     fighterIds*: seq[ShipId]
 
   SystemPickerFilterResult* = object
@@ -406,6 +407,7 @@ type
     fleetPickerCandidates*: seq[FleetConsoleFleet]  # Other fleets at same system
     carrierPickerIdx*: int
     carrierPickerCandidates*: seq[CarrierPickerRow]
+    carrierPickerPoolCount*: int
     selectedCarrierShipId*: Option[ShipId]
     # ZTCPicker state (for Zero-Turn Commands)
     ztcIdx*: int               # Selected ZTC index in filtered picker list
@@ -3737,17 +3739,26 @@ proc applyZeroTurnCommandOptimistically*(
       var srcFleet = model.view.ownFleetsById[srcId]
       for fighterId in cmd.fighterIds:
         let sid = int(fighterId)
-        if sid notin model.view.ownShipsById:
-          continue
         colony.fighterIds.keepItIf(it != fighterId)
-        var fighter = model.view.ownShipsById[sid]
-        fighter.assignedToCarrier = some(ShipId(carrierId))
-        fighter.fleetId = FleetId(srcId)
         if fighterId notin carrier.embarkedFighters:
           carrier.embarkedFighters.add(fighterId)
-        if fighterId notin srcFleet.ships:
-          srcFleet.ships.add(fighterId)
-        model.view.ownShipsById[sid] = fighter
+        if sid in model.view.ownShipsById:
+          var fighter = model.view.ownShipsById[sid]
+          fighter.assignedToCarrier = some(ShipId(carrierId))
+          fighter.fleetId = FleetId(srcId)
+          if fighterId notin srcFleet.ships:
+            srcFleet.ships.add(fighterId)
+          model.view.ownShipsById[sid] = fighter
+        else:
+          logWarn(
+            "TUI Optimistic",
+            "LoadFighters recovered colony fighter without ship entity: fighter=",
+            $sid,
+            " carrier=",
+            $carrierId,
+            " fleet=",
+            $srcId
+          )
       model.view.ownColoniesBySystem[colonySystem] = colony
       model.view.ownShipsById[carrierId] = carrier
       model.view.ownFleetsById[srcId] = srcFleet

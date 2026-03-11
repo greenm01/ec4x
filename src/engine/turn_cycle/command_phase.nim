@@ -235,9 +235,11 @@ proc processColonyAutomation(
 
   # [CMD4b] Auto-load marines onto transports (autoLoadMarines)
   # [CMD4c] Auto-load fighters onto carriers (autoLoadFighters)
-  # autoLoadCargo handles marines; fighters handled by commissioning module
-  # via autoLoadFightersToCarriers() after commissioning fighters
+  # autoLoadCargo handles marines/colonists. Fighter auto-load also sweeps
+  # existing colony fighters here so toggling auto-load or new carrier
+  # arrivals behaves consistently, not only newly commissioned fighters.
   mechanics.autoLoadCargo(state, orders, events)
+  commissioning.autoLoadAllColonyFightersToCarriers(state, events)
 
   logInfo("Commands", "[CMD4] Colony Automation complete")
 

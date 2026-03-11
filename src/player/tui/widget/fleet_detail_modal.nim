@@ -359,32 +359,61 @@ proc renderCarrierPicker(state: FleetDetailModalState, area: Rect,
   if area.isEmpty:
     return
 
-  let headers = @["ShipId", "Class", "Fighters", "Unload"]
+  let isLoad =
+    state.ztcType.isSome and
+    state.ztcType.get() == ZeroTurnCommandType.LoadFighters
+  let headers = if isLoad:
+      @["ShipId", "Class", "Load"]
+    else:
+      @["ShipId", "Class", "Fighters", "Unload"]
+  let tableArea = if isLoad and area.height > 1:
+      rect(area.x, area.y, area.width, area.height - 1)
+    else:
+      area
   var rows: seq[seq[string]] = @[]
   for carrier in state.carrierPickerCandidates:
-    rows.add(@[
-      $int(carrier.shipId),
-      carrier.classLabel,
-      $carrier.fighterIds.len,
-      $carrier.unloadCount
-    ])
-  let baseWidths = measuredColumnWidths(headers, rows, @[6, 10, 8, 6])
+    if isLoad:
+      rows.add(@[
+        $int(carrier.shipId),
+        carrier.classLabel,
+        $carrier.stagedCount
+      ])
+    else:
+      rows.add(@[
+        $int(carrier.shipId),
+        carrier.classLabel,
+        $carrier.maxCount,
+        $carrier.stagedCount
+      ])
+  let mins = if isLoad: @[6, 10, 6] else: @[6, 10, 8, 6]
+  let baseWidths = measuredColumnWidths(headers, rows, mins)
   var widths = baseWidths
-  let tableInnerWidth = measuredTableInnerWidth(headers, rows, @[6, 10, 8, 6])
-  let slack = area.width - tableInnerWidth
+  let tableInnerWidth = measuredTableInnerWidth(headers, rows, mins)
+  let slack = tableArea.width - tableInnerWidth
   if slack > 0:
     widths[1] = widths[1] + slack
 
-  var carrierTable = table([
-    tableColumn("ShipId", width = widths[0],
-      minWidth = widths[0], align = table.Alignment.Right),
-    tableColumn("Class", width = widths[1],
-      minWidth = widths[1], align = table.Alignment.Left),
-    tableColumn("Fighters", width = widths[2],
-      minWidth = widths[2], align = table.Alignment.Right),
-    tableColumn("Unload", width = widths[3],
-      minWidth = widths[3], align = table.Alignment.Right)
-  ])
+  var carrierTable = if isLoad:
+      table([
+        tableColumn("ShipId", width = widths[0],
+          minWidth = widths[0], align = table.Alignment.Right),
+        tableColumn("Class", width = widths[1],
+          minWidth = widths[1], align = table.Alignment.Left),
+        tableColumn("Load", width = widths[2],
+          minWidth = widths[2], align = table.Alignment.Right)
+      ])
+    else:
+      table([
+        tableColumn("ShipId", width = widths[0],
+          minWidth = widths[0], align = table.Alignment.Right),
+        tableColumn("Class", width = widths[1],
+          minWidth = widths[1], align = table.Alignment.Left),
+        tableColumn("Fighters", width = widths[2],
+          minWidth = widths[2], align = table.Alignment.Right),
+        tableColumn("Unload", width = widths[3],
+          minWidth = widths[3], align = table.Alignment.Right)
+      ])
+  carrierTable = carrierTable
     .showBorders(true)
     .showHeader(true)
     .showSeparator(true)
@@ -398,11 +427,16 @@ proc renderCarrierPicker(state: FleetDetailModalState, area: Rect,
   let count = max(1, state.carrierPickerCandidates.len)
   renderPickerTable(
     carrierTable,
-    area,
+    tableArea,
     buf,
     selectedIdx = state.carrierPickerIdx,
     itemCount = count
   )
+  if isLoad and area.height > 1:
+    let summaryY = area.bottom - 1
+    let summary = "Colony Fighters Available: " &
+      $state.carrierPickerPoolCount
+    discard buf.setString(area.x, summaryY, summary, canvasHeaderStyle())
 
 proc renderSystemPicker(state: FleetDetailModalState,
                         area: Rect,
@@ -653,16 +687,30 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
       measuredTableInnerWidth(@["Fleet", "Ships", "AS", "DS"],
         rows, @[5, 5, 2, 2])
     of FleetSubModal.CarrierPicker:
+      let isLoad =
+        state.ztcType.isSome and
+        state.ztcType.get() == ZeroTurnCommandType.LoadFighters
       var rows: seq[seq[string]] = @[]
       for carrier in state.carrierPickerCandidates:
-        rows.add(@[
-          $int(carrier.shipId),
-          carrier.classLabel,
-          $carrier.fighterIds.len,
-          $carrier.unloadCount
-        ])
-      measuredTableInnerWidth(@["ShipId", "Class", "Fighters", "Unload"],
-        rows, @[6, 10, 8, 6])
+        if isLoad:
+          rows.add(@[
+            $int(carrier.shipId),
+            carrier.classLabel,
+            $carrier.stagedCount
+          ])
+        else:
+          rows.add(@[
+            $int(carrier.shipId),
+            carrier.classLabel,
+            $carrier.maxCount,
+            $carrier.stagedCount
+          ])
+      let headers = if isLoad:
+          @["ShipId", "Class", "Load"]
+        else:
+          @["ShipId", "Class", "Fighters", "Unload"]
+      let mins = if isLoad: @[6, 10, 6] else: @[6, 10, 8, 6]
+      measuredTableInnerWidth(headers, rows, mins)
     of FleetSubModal.ZTCPicker:
       var rows: seq[seq[string]] = @[]
       for idx, ztcType in state.ztcPickerCommands:
@@ -753,7 +801,12 @@ proc render*(widget: FleetDetailModalWidget, state: FleetDetailModalState,
     of FleetSubModal.FleetPicker:
       measuredTableContentHeight(state.fleetPickerCandidates.len)
     of FleetSubModal.CarrierPicker:
-      measuredTableContentHeight(state.carrierPickerCandidates.len)
+      measuredTableContentHeight(state.carrierPickerCandidates.len) +
+        (if state.ztcType.isSome and
+            state.ztcType.get() == ZeroTurnCommandType.LoadFighters:
+          1
+        else:
+          0)
     of FleetSubModal.Staged:
       8
     of FleetSubModal.ZTCPicker:

@@ -112,11 +112,12 @@ proc countGroundUnits(state: GameState, colony: Colony, unitType: GroundClass): 
 
 proc autoLoadFightersToCarriers(
     state: GameState,
-    modifiedColonies: Table[ColonyId, Colony],
+    colonyIds: openArray[ColonyId],
     events: var seq[GameEvent],
 ) =
-  ## Auto-load newly commissioned fighters onto carriers with available hangar
-  ## space. Only processes colonies with autoLoadFighters = true.
+  ## Auto-load colony fighters and loose fleet fighters onto carriers with
+  ## available hangar space. Only processes colonies with
+  ## autoLoadFighters = true.
   ##
   ## **Design:**
   ## - Follows DoD pattern: uses entity managers for all state access
@@ -131,7 +132,7 @@ proc autoLoadFightersToCarriers(
 
   logDebug("Economy", "Starting auto-load fighters to carriers")
 
-  for colonyId in modifiedColonies.keys:
+  for colonyId in colonyIds:
     # Re-fetch colony from state to get current fighterIds
     # (they may have been modified by previous auto-loading operations)
     let colonyOpt = state.colony(colonyId)
@@ -240,6 +241,16 @@ proc autoLoadFightersToCarriers(
           colony.owner, "Fighters (auto-loaded)", systemId, loadedCount
         )
       )
+
+proc autoLoadAllColonyFightersToCarriers*(
+    state: GameState,
+    events: var seq[GameEvent],
+) =
+  ## Sweep all owned colonies for fighter auto-load during colony automation.
+  var colonyIds: seq[ColonyId] = @[]
+  for colony in state.allColonies():
+    colonyIds.add(colony.id)
+  autoLoadFightersToCarriers(state, colonyIds, events)
 
 proc commissionPlanetaryDefense*(
     state: GameState,
@@ -641,7 +652,7 @@ proc commissionPlanetaryDefense*(
   # Auto-load fighters onto carriers with available hangar space
   # Per phas commanding (commissioning.nim:22-24), this happens after
   # commissioning but before new build commands
-  autoLoadFightersToCarriers(state, modifiedColonies, events)
+  autoLoadFightersToCarriers(state, modifiedColonies.keys.toSeq, events)
 
 # =============================================================================
 # Fleet Classification Helpers
@@ -903,7 +914,7 @@ proc commissionShips*(
       if colonyOpt2.isSome:
         modifiedColonies[completed.colonyId] = colonyOpt2.get()
 
-  autoLoadFightersToCarriers(state, modifiedColonies, events)
+  autoLoadFightersToCarriers(state, modifiedColonies.keys.toSeq, events)
 
 proc clearDamagedFacilityQueues*(state: GameState, events: var seq[GameEvent]) =
   ## Clear construction and repair queues for crippled/destroyed facilities.

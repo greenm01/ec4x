@@ -123,6 +123,39 @@ suite "Construction: Dock Capacity":
             check neoria.baseDocks == expectedDocks
     check foundShipyard == true
 
+suite "Construction: Fighter Auto-Load":
+
+  test "auto-load sweeps existing colony fighters onto carriers":
+    let game = newGame()
+    var events: seq[GameEvent] = @[]
+
+    var colony: Colony
+    for c in game.allColonies():
+      colony = c
+      break
+
+    let owner = colony.owner
+    var updatedColony = colony
+    updatedColony.autoLoadFighters = true
+    game.updateColony(colony.id, updatedColony)
+
+    let fleet = game.createFleet(owner, colony.systemId)
+    let carrier = game.createShip(owner, fleet.id, ShipClass.Carrier)
+    let fighter = game.createShip(owner, fleet.id, ShipClass.Fighter)
+
+    game.unassignFighterFromCarrier(fighter.id)
+    var colonyAfterCreate = game.colony(colony.id).get()
+    if fighter.id notin colonyAfterCreate.fighterIds:
+      colonyAfterCreate.fighterIds.add(fighter.id)
+      game.updateColony(colony.id, colonyAfterCreate)
+
+    commissioning.autoLoadAllColonyFightersToCarriers(game, events)
+
+    let reloadedCarrier = game.ship(carrier.id).get()
+    let reloadedColony = game.colony(colony.id).get()
+    check fighter.id in reloadedCarrier.embarkedFighters
+    check fighter.id notin reloadedColony.fighterIds
+
 suite "Construction: Build Order Processing":
 
   test "build command rejected for wrong owner":
