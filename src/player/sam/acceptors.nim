@@ -833,7 +833,7 @@ proc buildCarrierPickerCandidatesForZtc(
         classLabel: $ship.shipClass,
         maxCount: availableSpace,
         stagedCount: 0,
-        fighterIds: @[]
+        fighterIds: ship.embarkedFighters
       ))
     else:
       if ship.embarkedFighters.len == 0:
@@ -885,7 +885,7 @@ proc refreshCarrierPickerCandidates(model: var TuiModel) =
         classLabel: $ship.shipClass,
         maxCount: availableSpace,
         stagedCount: clamp(row.stagedCount, 0, availableSpace),
-        fighterIds: @[]
+        fighterIds: ship.embarkedFighters
       ))
     else:
       if ship.embarkedFighters.len == 0:
@@ -912,6 +912,24 @@ proc refreshCarrierPickerCandidates(model: var TuiModel) =
       model.ui.fleetDetailModal.carrierPickerCandidates.len - 1
     )
 
+proc syncCarrierPickerPoolCount(model: var TuiModel) =
+  let sourceFleetId = model.ui.fleetDetailModal.fleetId
+  if sourceFleetId notin model.view.ownFleetsById:
+    model.ui.fleetDetailModal.carrierPickerPoolCount = 0
+    return
+  let sourceFleet = model.view.ownFleetsById[sourceFleetId]
+  let colonyPool = model.colonyCarrierLoadPool(sourceFleet)
+  var totalStaged = 0
+  for row in model.ui.fleetDetailModal.carrierPickerCandidates:
+    totalStaged += row.stagedCount
+  let isLoad =
+    model.ui.fleetDetailModal.ztcType.isSome and
+    model.ui.fleetDetailModal.ztcType.get() == ZeroTurnCommandType.LoadFighters
+  model.ui.fleetDetailModal.carrierPickerPoolCount = if isLoad:
+      max(0, colonyPool - totalStaged)
+    else:
+      colonyPool + totalStaged
+
 proc setCarrierPickerQty(
     model: var TuiModel,
     rowIdx: int,
@@ -936,6 +954,7 @@ proc setCarrierPickerQty(
     maxQty = min(maxQty, max(0, colonyPool - usedElsewhere))
   row.stagedCount = clamp(desiredQty, 0, maxQty)
   model.ui.fleetDetailModal.carrierPickerCandidates[rowIdx] = row
+  model.syncCarrierPickerPoolCount()
 
 proc buildFleetPickerCandidatesForZtc(
     model: var TuiModel,

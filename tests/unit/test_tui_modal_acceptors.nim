@@ -833,6 +833,117 @@ suite "TUI modal acceptors":
       ZeroTurnCommandType.LoadFighters
     check sam.state.ui.stagedZeroTurnCommands[0].fighterIds == @[ShipId(44)]
 
+  test "load picker colony fighter summary updates immediately":
+    initBindings()
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.FleetDetail
+    model.view.viewingHouse = 1
+    model.view.techLevels = some(TechLevel(aco: 1))
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[ShipId(44), ShipId(45)],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(42)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[]
+    )
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      initTable[int, seq[FleetConsoleFleet]]()
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+    model.ui.fleetDetailModal.fleetId = 300
+    model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
+    model.ui.fleetDetailModal.ztcPickerCommands = @[
+      ZeroTurnCommandType.LoadFighters
+    ]
+    var sam = initTuiSam()
+    sam.setInitialState(model)
+
+    pressKey(sam, KeyCode.KeyEnter)
+    check sam.state.ui.fleetDetailModal.carrierPickerPoolCount == 2
+
+    pressKey(sam, KeyCode.KeyPlus, KeyModifier.Shift)
+    check sam.state.ui.fleetDetailModal.carrierPickerPoolCount == 1
+
+    pressKey(sam, KeyCode.KeyMinus)
+    check sam.state.ui.fleetDetailModal.carrierPickerPoolCount == 2
+
+  test "unload picker colony fighter summary updates immediately":
+    initBindings()
+    var model = initTuiModel()
+    model.ui.mode = ViewMode.FleetDetail
+    model.view.viewingHouse = 1
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[ShipId(50)],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(42), ShipId(44)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[ShipId(44)]
+    )
+    model.view.ownShipsById[44] = Ship(
+      id: ShipId(44),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Fighter,
+      state: CombatState.Nominal,
+      assignedToCarrier: some(ShipId(42))
+    )
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      initTable[int, seq[FleetConsoleFleet]]()
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+    model.ui.fleetDetailModal.fleetId = 300
+    model.ui.fleetDetailModal.subModal = FleetSubModal.ZTCPicker
+    model.ui.fleetDetailModal.ztcPickerCommands = @[
+      ZeroTurnCommandType.UnloadFighters
+    ]
+    var sam = initTuiSam()
+    sam.setInitialState(model)
+
+    pressKey(sam, KeyCode.KeyEnter)
+    check sam.state.ui.fleetDetailModal.carrierPickerPoolCount == 1
+
+    pressKey(sam, KeyCode.KeyPlus, KeyModifier.Shift)
+    check sam.state.ui.fleetDetailModal.carrierPickerPoolCount == 2
+
+    pressKey(sam, KeyCode.KeyMinus)
+    check sam.state.ui.fleetDetailModal.carrierPickerPoolCount == 1
+
   test "optimistic load makes unload immediately available":
     var model = initTuiModel()
     model.view.viewingHouse = 1
