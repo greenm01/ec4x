@@ -1147,11 +1147,15 @@ proc executeUnloadFighters*(
     # Get fighter ship entity
     let fighterOpt = state.ship(fighterId)
     if fighterOpt.isNone:
-      warnings.add(&"Fighter ship {fighterId} entity not found, skipping")
+      state.unassignFighterFromCarrier(fighterId, some(carrierShipId))
+      warnings.add(
+        &"Fighter ship {fighterId} entity not found; " &
+        "cleared dangling carrier reference"
+      )
       continue
 
     # Unload fighter
-    state.unassignFighterFromCarrier(fighterId)
+    state.unassignFighterFromCarrier(fighterId, some(carrierShipId))
     colony.fighterIds.add(fighterId)
     unloadedCount += 1
 

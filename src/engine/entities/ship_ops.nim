@@ -225,30 +225,45 @@ proc assignFighterToCarrier*(state: GameState, fighterId: ShipId, carrierId: Shi
   if fighterId notin byCarrier:
     byCarrier.add(fighterId)
 
-proc unassignFighterFromCarrier*(state: GameState, fighterId: ShipId) =
+proc unassignFighterFromCarrier*(
+    state: GameState,
+    fighterId: ShipId,
+    carrierIdHint: Option[ShipId] = none(ShipId)
+) =
   ## Disembarks a fighter from its carrier
   let fighterOpt = state.ship(fighterId)
-  if fighterOpt.isNone:
-    return
-
-  var fighter = fighterOpt.get()
-  if fighter.assignedToCarrier.isNone:
-    return
-
-  let carrierId = fighter.assignedToCarrier.get()
+  var carrierId = carrierIdHint
+  if fighterOpt.isSome:
+    let fighter = fighterOpt.get()
+    if fighter.assignedToCarrier.isSome:
+      carrierId = fighter.assignedToCarrier
+  if carrierId.isNone:
+    for candidateCarrierId, fighterIds in state.ships.byCarrier.pairs:
+      if fighterId in fighterIds:
+        carrierId = some(candidateCarrierId)
+        break
 
   # Remove from carrier's embarked list
-  let carrierOpt = state.ship(carrierId)
-  if carrierOpt.isSome:
-    var carrier = carrierOpt.get()
-    carrier.embarkedFighters.keepIf(proc(id: ShipId): bool = id != fighterId)
-    state.updateShip(carrierId, carrier)
+  if carrierId.isSome:
+    let carrierOpt = state.ship(carrierId.get())
+    if carrierOpt.isSome:
+      var carrier = carrierOpt.get()
+      carrier.embarkedFighters.keepIf(
+        proc(id: ShipId): bool =
+          id != fighterId
+      )
+      state.updateShip(carrierId.get(), carrier)
 
   # Remove from byCarrier index
-  if state.ships.byCarrier.contains(carrierId):
-    state.ships.byCarrier[carrierId].keepIf(proc(id: ShipId): bool = id != fighterId)
+  if carrierId.isSome and state.ships.byCarrier.contains(carrierId.get()):
+    state.ships.byCarrier[carrierId.get()].keepIf(
+      proc(id: ShipId): bool =
+        id != fighterId
+    )
 
   # Clear fighter's carrier assignment
-  fighter.assignedToCarrier = none(ShipId)
-  state.updateShip(fighterId, fighter)
-  state.unassignShipFromFleet(fighterId)
+  if fighterOpt.isSome:
+    var fighter = fighterOpt.get()
+    fighter.assignedToCarrier = none(ShipId)
+    state.updateShip(fighterId, fighter)
+    state.unassignShipFromFleet(fighterId)

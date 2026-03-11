@@ -3774,16 +3774,25 @@ proc applyZeroTurnCommandOptimistically*(
       var srcFleet = model.view.ownFleetsById[srcId]
       for fighterId in cmd.fighterIds:
         let sid = int(fighterId)
-        if sid notin model.view.ownShipsById:
-          continue
         carrier.embarkedFighters.keepItIf(it != fighterId)
         if fighterId notin colony.fighterIds:
           colony.fighterIds.add(fighterId)
-        srcFleet.ships.keepItIf(it != fighterId)
-        var fighter = model.view.ownShipsById[sid]
-        fighter.assignedToCarrier = none(ShipId)
-        fighter.fleetId = FleetId(0)
-        model.view.ownShipsById[sid] = fighter
+        if sid in model.view.ownShipsById:
+          srcFleet.ships.keepItIf(it != fighterId)
+          var fighter = model.view.ownShipsById[sid]
+          fighter.assignedToCarrier = none(ShipId)
+          fighter.fleetId = FleetId(0)
+          model.view.ownShipsById[sid] = fighter
+        else:
+          logWarn(
+            "TUI Optimistic",
+            "UnloadFighters recovered dangling embark: fighter=",
+            $sid,
+            " carrier=",
+            $carrierId,
+            " fleet=",
+            $srcId
+          )
       model.view.ownColoniesBySystem[colonySystem] = colony
       model.view.ownShipsById[carrierId] = carrier
       model.view.ownFleetsById[srcId] = srcFleet

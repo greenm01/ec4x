@@ -880,6 +880,58 @@ suite "Fleet Operations - Zero-Turn Admin: Cargo Operations":
 
 suite "Fleet Operations - Zero-Turn Admin: Limitations":
 
+  test "UnloadFighters recovers stale embarked fighter bindings":
+    let game = setupTestGame()
+    let houseId = firstHouse(game)
+    let colony = houseColony(game, houseId)
+    let fleet = createTestFleet(
+      game, houseId, colony.systemId, @[ShipClass.Carrier]
+    )
+
+    var carrierId = ShipId(0)
+    for ship in game.shipsInFleet(fleet.id):
+      if ship.shipClass == ShipClass.Carrier:
+        carrierId = ship.id
+        break
+    check carrierId != ShipId(0)
+
+    let fighterId = game.createShip(houseId, fleet.id, ShipClass.Fighter).id
+    game.assignFighterToCarrier(fighterId, carrierId)
+
+    var fighter = game.ship(fighterId).get()
+    fighter.assignedToCarrier = none(ShipId)
+    game.updateShip(fighterId, fighter)
+    game.unassignShipFromFleet(fighterId)
+
+    check fighterId in game.ship(carrierId).get().embarkedFighters
+    check game.ship(fighterId).get().assignedToCarrier.isNone
+    check fighterId notin game.fleet(fleet.id).get().ships
+
+    var events: seq[GameEvent] = @[]
+    let cmd = ZeroTurnCommand(
+      houseId: houseId,
+      commandType: ZeroTurnCommandType.UnloadFighters,
+      colonySystem: some(colony.systemId),
+      sourceFleetId: some(fleet.id),
+      targetFleetId: none(FleetId),
+      shipIndices: @[],
+      shipIds: @[],
+      cargoType: none(CargoClass),
+      cargoQuantity: none(int),
+      fighterIds: @[fighterId],
+      carrierShipId: some(carrierId),
+      sourceCarrierShipId: none(ShipId),
+      targetCarrierShipId: none(ShipId),
+      newFleetId: none(FleetId),
+    )
+
+    let result = game.submitZeroTurnCommand(cmd, events)
+
+    check result.success
+    check result.fightersUnloaded == 1
+    check fighterId notin game.ship(carrierId).get().embarkedFighters
+    check fighterId in game.colony(colony.id).get().fighterIds
+
   test "Requires friendly colony for reorganization":
     let game = setupTestGame()
     let houseId = firstHouse(game)

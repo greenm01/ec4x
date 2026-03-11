@@ -606,6 +606,66 @@ suite "TUI modal acceptors":
     check model.view.ownShipsById[44].assignedToCarrier.isNone
     check ShipId(44) notin model.view.ownFleetsById[300].ships
 
+  test "optimistic unload clears dangling embarked fighter references":
+    var model = initTuiModel()
+    model.view.ownColoniesBySystem[201] = Colony(
+      id: ColonyId(21),
+      owner: HouseId(1),
+      systemId: SystemId(201),
+      fighterIds: @[],
+      groundUnitIds: @[],
+      neoriaIds: @[],
+      kastraIds: @[]
+    )
+    model.view.ownFleetsById[300] = Fleet(
+      id: FleetId(300),
+      houseId: HouseId(1),
+      location: SystemId(201),
+      ships: @[ShipId(42)]
+    )
+    model.view.ownShipsById[42] = Ship(
+      id: ShipId(42),
+      houseId: HouseId(1),
+      fleetId: FleetId(300),
+      shipClass: ShipClass.Carrier,
+      state: CombatState.Nominal,
+      embarkedFighters: @[ShipId(44)]
+    )
+    model.view.fleets = @[
+      FleetInfo(id: 300, name: "A5", location: 201, shipCount: 1,
+        attackStrength: 6, defenseStrength: 23)
+    ]
+    model.ui.pristineFleets = model.view.fleets
+    model.ui.pristineFleetConsoleFleetsBySystem =
+      initTable[int, seq[FleetConsoleFleet]]()
+    model.ui.pristineOwnFleetsById = model.view.ownFleetsById
+    model.ui.pristineOwnColoniesBySystem = model.view.ownColoniesBySystem
+    model.ui.pristineOwnShipsById = model.view.ownShipsById
+    model.ui.stagedZeroTurnCommands = @[
+      ZeroTurnCommand(
+        houseId: HouseId(1),
+        commandType: ZeroTurnCommandType.UnloadFighters,
+        colonySystem: some(SystemId(201)),
+        sourceFleetId: some(FleetId(300)),
+        targetFleetId: none(FleetId),
+        shipIndices: @[],
+        shipIds: @[],
+        cargoType: none(CargoClass),
+        cargoQuantity: none(int),
+        fighterIds: @[ShipId(44)],
+        carrierShipId: some(ShipId(42)),
+        sourceCarrierShipId: none(ShipId),
+        targetCarrierShipId: none(ShipId),
+        newFleetId: none(FleetId),
+      )
+    ]
+
+    model.reapplyAllOptimisticUpdates()
+
+    check model.view.ownColoniesBySystem[201].fighterIds == @[ShipId(44)]
+    check model.view.ownShipsById[42].embarkedFighters.len == 0
+    check ShipId(44) notin model.view.ownFleetsById[300].ships
+
   test "duplicate fighter unload staging is collapsed":
     var model = initTuiModel()
     model.view.ownColoniesBySystem[201] = Colony(
